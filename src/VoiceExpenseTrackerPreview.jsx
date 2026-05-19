@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 
 const STORAGE_KEY = 'businessLogs';
 const PROFILE_KEY = 'businessProfile';
@@ -568,6 +569,7 @@ export default function VoiceExpenseTrackerPreview() {
           ))}
         </div>
       </section>
+      <Analytics />
     </main>
   );
 }
