@@ -156,6 +156,33 @@ function formatPartyBalance(ledger, balance) {
   return formatCurrency(balance);
 }
 
+function getBusinessHealthLabel(score) {
+  if (score >= 80) {
+    return 'Strong';
+  }
+  if (score >= 60) {
+    return 'Stable';
+  }
+  if (score >= 40) {
+    return 'Watch';
+  }
+  return 'Risk';
+}
+
+function safeMathAnswer(input) {
+  const expression = input.replace(/,/g, '').trim();
+  if (!/^[\d+\-*/().\s]+$/.test(expression)) {
+    return null;
+  }
+
+  try {
+    const value = Function(`"use strict"; return (${expression});`)();
+    return Number.isFinite(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function VoiceExpenseTrackerPreview() {
   const [transcript, setTranscript] = useState('Click start and speak your expense...');
   const [status, setStatus] = useState('Idle');
@@ -183,6 +210,8 @@ export default function VoiceExpenseTrackerPreview() {
   const [newPartyName, setNewPartyName] = useState('');
   const [newPartyType, setNewPartyType] = useState('customer');
   const [dayBookFilter, setDayBookFilter] = useState('');
+  const [aiQuestion, setAiQuestion] = useState('');
+  const [aiAnswer, setAiAnswer] = useState('Ask about profit, loss, cash balance, party balance, or type a calculation.');
 
   useEffect(() => {
     if (!getSpeechRecognition()) {
@@ -250,6 +279,83 @@ export default function VoiceExpenseTrackerPreview() {
 
   const partyOutstanding = useMemo(() => getPartyOutstanding(ledgers, vouchers), [ledgers, vouchers]);
   const suggestions = useMemo(() => getBusinessSuggestions(ledgers, vouchers), [ledgers, vouchers]);
+  const netProfit = totals.income - totals.expense;
+
+  const aiInsights = useMemo(() => {
+    const totalDebits = vouchers.reduce((total, voucher) => total + voucher.lines.reduce((sum, line) => sum + (line.debit || 0), 0), 0);
+    const totalCredits = vouchers.reduce(
+      (total, voucher) => total + voucher.lines.reduce((sum, line) => sum + (line.credit || 0), 0),
+      0
+    );
+    const unbalancedVouchers = vouchers.filter((voucher) => {
+      const debit = voucher.lines.reduce((sum, line) => sum + (line.debit || 0), 0);
+      const credit = voucher.lines.reduce((sum, line) => sum + (line.credit || 0), 0);
+      return Math.abs(debit - credit) > 0.01;
+    });
+    const receivables = partyOutstanding.filter(
+      ({ ledger, balance }) => ledger.group === 'Sundry Debtors' && balance > 0
+    );
+    const payables = partyOutstanding.filter(
+      ({ ledger, balance }) => ledger.group === 'Sundry Creditors' && balance > 0
+    );
+    const receivableTotal = receivables.reduce((sum, item) => sum + item.balance, 0);
+    const payableTotal = payables.reduce((sum, item) => sum + item.balance, 0);
+    const expenseRatio = totals.income > 0 ? Math.round((totals.expense / totals.income) * 100) : 0;
+    const profitMargin = totals.income > 0 ? Math.round((netProfit / totals.income) * 100) : 0;
+    let score = 70;
+
+    if (netProfit > 0) score += 12;
+    if (netProfit < 0) score -= 22;
+    if (cashBalance < 0) score -= 18;
+    if (expenseRatio > 75) score -= 15;
+    if (expenseRatio < 55 && totals.income > 0) score += 8;
+    if (receivableTotal > totals.income * 0.35 && totals.income > 0) score -= 10;
+    if (unbalancedVouchers.length > 0) score -= 20;
+    score = Math.max(0, Math.min(100, score));
+
+    const pros = [];
+    const cons = [];
+
+    if (netProfit >= 0) {
+      pros.push(`Profit side positive hai: ${formatCurrency(netProfit)} net balance.`);
+    } else {
+      cons.push(`Loss chal raha hai: ${formatCurrency(Math.abs(netProfit))} shortfall.`);
+    }
+    if (cashBalance >= 0) {
+      pros.push(`Cash/Bank balance available hai: ${formatCurrency(cashBalance)}.`);
+    } else {
+      cons.push(`Cash/Bank negative dikh raha hai: ${formatCurrency(Math.abs(cashBalance))}.`);
+    }
+    if (receivableTotal > 0) {
+      cons.push(`Customer se collect karna baki hai: ${formatCurrency(receivableTotal)}.`);
+    } else {
+      pros.push('Receivable pressure low hai.');
+    }
+    if (expenseRatio > 70) {
+      cons.push(`Expense ratio high hai: ${expenseRatio}%. Cost control check karo.`);
+    } else if (totals.income > 0) {
+      pros.push(`Expense ratio manageable hai: ${expenseRatio}%.`);
+    }
+    if (unbalancedVouchers.length > 0) {
+      cons.push(`${unbalancedVouchers.length} voucher debit-credit mismatch me hai.`);
+    } else {
+      pros.push('Balance sheet checker: sab vouchers debit-credit balanced hain.');
+    }
+
+    return {
+      score,
+      health: getBusinessHealthLabel(score),
+      totalDebits,
+      totalCredits,
+      unbalancedVouchers,
+      receivableTotal,
+      payableTotal,
+      expenseRatio,
+      profitMargin,
+      pros,
+      cons,
+    };
+  }, [cashBalance, netProfit, partyOutstanding, totals.expense, totals.income, vouchers]);
 
   const filteredVouchers = useMemo(() => {
     if (!dayBookFilter) {
@@ -257,8 +363,6 @@ export default function VoiceExpenseTrackerPreview() {
     }
     return vouchers.filter((voucher) => voucher.date === dayBookFilter);
   }, [vouchers, dayBookFilter]);
-
-  const netProfit = totals.income - totals.expense;
 
   const refreshVouchers = () => setVouchers(readVouchers());
 
@@ -724,6 +828,143 @@ export default function VoiceExpenseTrackerPreview() {
     return nonCashLines.map((line) => getLedgerById(ledgers, line.ledgerId)?.name || '?').join(' / ');
   };
 
+  const buildVoucherReceiptText = (voucher) => [
+    `${profile.name}`,
+    profile.tagline,
+    profile.owner ? `Owner: ${profile.owner}` : '',
+    profile.phone ? `Phone: ${profile.phone}` : '',
+    profile.email ? `Email: ${profile.email}` : '',
+    '',
+    `Receipt / Voucher: ${voucher.id}`,
+    `Date: ${voucher.date}`,
+    `Type: ${voucher.type}`,
+    `Amount: ${formatCurrency(voucher.amount)}`,
+    `Party / Ledger: ${counterLabel(voucher)}`,
+    `Narration: ${voucher.narration}`,
+    `Source: ${voucher.source || 'manual'}`,
+  ].filter(Boolean).join('\n');
+
+  const shareVoucher = async (voucher) => {
+    const text = buildVoucherReceiptText(voucher);
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `${profile.name} ${voucher.type} Receipt`,
+          text,
+        });
+        setStatus('Receipt shared');
+        return;
+      }
+      await navigator.clipboard.writeText(text);
+      setStatus('Receipt copied. Paste it in WhatsApp, Facebook, or email.');
+    } catch {
+      setStatus('Receipt share cancelled');
+    }
+  };
+
+  const shareVoucherToWhatsApp = (voucher) => {
+    const text = encodeURIComponent(buildVoucherReceiptText(voucher));
+    window.open(`https://wa.me/?text=${text}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const shareVoucherToFacebook = (voucher) => {
+    const quote = encodeURIComponent(buildVoucherReceiptText(voucher));
+    const url = encodeURIComponent(window.location.href);
+    window.open(
+      `https://www.facebook.com/sharer/sharer.php?u=${url}&quote=${quote}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
+  };
+
+  const printVoucherReceipt = (voucher) => {
+    const receiptText = buildVoucherReceiptText(voucher)
+      .split('\n')
+      .map((line) => `<p>${line.replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+      })[char])}</p>`)
+      .join('');
+    const receiptWindow = window.open('', '_blank', 'width=720,height=860');
+    if (!receiptWindow) {
+      setStatus('Allow popups to print receipt/PDF');
+      return;
+    }
+    receiptWindow.document.write(`
+      <html>
+        <head>
+          <title>${voucher.type} Receipt</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 32px; color: #111827; }
+            .receipt { border: 1px solid #d1d5db; border-radius: 12px; padding: 24px; }
+            h1 { margin: 0 0 16px; font-size: 24px; }
+            p { margin: 8px 0; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="receipt">
+            <h1>${profile.name}</h1>
+            ${receiptText}
+          </div>
+          <script>window.print();</script>
+        </body>
+      </html>
+    `);
+    receiptWindow.document.close();
+  };
+
+  const answerAiQuestion = (event) => {
+    event.preventDefault();
+    const question = aiQuestion.trim();
+    const lowerQuestion = question.toLowerCase();
+    const mathResult = safeMathAnswer(question);
+
+    if (!question) {
+      setAiAnswer('Question ya calculation type karo.');
+      return;
+    }
+
+    if (mathResult !== null) {
+      setAiAnswer(`AI Calculator answer: ${formatCurrency(mathResult)} (${mathResult})`);
+      return;
+    }
+
+    if (lowerQuestion.includes('profit') || lowerQuestion.includes('loss') || lowerQuestion.includes('nuksan')) {
+      setAiAnswer(
+        netProfit >= 0
+          ? `Business abhi profit side par hai. Net profit/cash surplus: ${formatCurrency(netProfit)}. Margin approx ${aiInsights.profitMargin}%.`
+          : `Business abhi loss side par hai. Net loss/shortfall: ${formatCurrency(Math.abs(netProfit))}. Expense ratio ${aiInsights.expenseRatio}% hai.`
+      );
+      return;
+    }
+
+    if (lowerQuestion.includes('balance') || lowerQuestion.includes('sheet') || lowerQuestion.includes('check')) {
+      setAiAnswer(
+        aiInsights.unbalancedVouchers.length === 0
+          ? `Balance sheet checker OK: debit ${formatCurrency(aiInsights.totalDebits)} aur credit ${formatCurrency(aiInsights.totalCredits)} match kar rahe hain.`
+          : `Warning: ${aiInsights.unbalancedVouchers.length} voucher mismatch me hai. Debit ${formatCurrency(aiInsights.totalDebits)}, credit ${formatCurrency(aiInsights.totalCredits)}.`
+      );
+      return;
+    }
+
+    if (lowerQuestion.includes('cash')) {
+      setAiAnswer(`Current cash/bank balance: ${formatCurrency(cashBalance)}.`);
+      return;
+    }
+
+    if (lowerQuestion.includes('receive') || lowerQuestion.includes('customer') || lowerQuestion.includes('party')) {
+      setAiAnswer(`Customer receivable total: ${formatCurrency(aiInsights.receivableTotal)}. Supplier payable total: ${formatCurrency(aiInsights.payableTotal)}.`);
+      return;
+    }
+
+    setAiAnswer(
+      `AI summary: Health ${aiInsights.health} (${aiInsights.score}/100), net ${formatCurrency(netProfit)}, cash ${formatCurrency(cashBalance)}, expense ratio ${aiInsights.expenseRatio}%.`
+    );
+  };
+
   return (
     <div className="app-frame">
       <aside className="sidebar" aria-label="Main menu">
@@ -736,6 +977,7 @@ export default function VoiceExpenseTrackerPreview() {
         </div>
         <nav className="side-nav">
           <a href="#dashboard">Dashboard</a>
+          <a href="#ai-assistant">AI Assistant</a>
           <a href="#voucher-entry">Voucher Entry</a>
           <a href="#reports">Reports</a>
           <a href="#day-book">Day Book</a>
@@ -833,6 +1075,83 @@ export default function VoiceExpenseTrackerPreview() {
             ))}
           </div>
         </section>
+      </section>
+
+      <section className="panel ai-panel" id="ai-assistant">
+        <div className="section-header">
+          <div>
+            <span className="eyebrow">AI Business Assistant</span>
+            <h2>Owner ka smart business checker</h2>
+            <p className="panel-hint">
+              Local database se profit/loss, balance sheet, party outstanding aur business pros-cons calculate karta hai.
+            </p>
+          </div>
+          <span>{aiInsights.health} · {aiInsights.score}/100</span>
+        </div>
+        <div className="ai-grid">
+          <article className="ai-score-card">
+            <span>Business Health</span>
+            <strong>{aiInsights.health}</strong>
+            <p>Profit margin {aiInsights.profitMargin}% · Expense ratio {aiInsights.expenseRatio}%</p>
+          </article>
+          <article className="summary-card">
+            <span>AI Profit / Loss</span>
+            <strong>{formatCurrency(netProfit)}</strong>
+          </article>
+          <article className="summary-card">
+            <span>Receivable</span>
+            <strong>{formatCurrency(aiInsights.receivableTotal)}</strong>
+          </article>
+          <article className="summary-card">
+            <span>Payable</span>
+            <strong>{formatCurrency(aiInsights.payableTotal)}</strong>
+          </article>
+        </div>
+        <div className="ai-checker-grid">
+          <div className="ai-list good">
+            <h3>Pros</h3>
+            {aiInsights.pros.map((item) => (
+              <p key={item}>{item}</p>
+            ))}
+          </div>
+          <div className="ai-list watch">
+            <h3>Cons / Warning</h3>
+            {aiInsights.cons.map((item) => (
+              <p key={item}>{item}</p>
+            ))}
+          </div>
+        </div>
+        <div className="balance-checker">
+          <div>
+            <span>Debit Total</span>
+            <strong>{formatCurrency(aiInsights.totalDebits)}</strong>
+          </div>
+          <div>
+            <span>Credit Total</span>
+            <strong>{formatCurrency(aiInsights.totalCredits)}</strong>
+          </div>
+          <div>
+            <span>Mismatch</span>
+            <strong>{aiInsights.unbalancedVouchers.length}</strong>
+          </div>
+        </div>
+        <form className="ai-calculator" onSubmit={answerAiQuestion}>
+          <label className="field-label" htmlFor="ai-question">
+            AI Calculator / Question
+          </label>
+          <div className="ai-input-row">
+            <input
+              id="ai-question"
+              value={aiQuestion}
+              onChange={(event) => setAiQuestion(event.target.value)}
+              placeholder="Example: profit kitna hai? / balance check / 2500+1800-400"
+            />
+            <button className="manual-button" type="submit">
+              Ask AI
+            </button>
+          </div>
+          <div className="ai-answer">{aiAnswer}</div>
+        </form>
       </section>
 
       <section className="content-grid" id="voucher-entry">
@@ -1165,9 +1484,23 @@ export default function VoiceExpenseTrackerPreview() {
                   </p>
                 </div>
                 <strong>{formatCurrency(voucher.amount)}</strong>
-                <button className="delete-entry-button" type="button" onClick={() => removeVoucher(voucher.id)}>
-                  Delete
-                </button>
+                <div className="voucher-actions">
+                  <button className="share-entry-button" type="button" onClick={() => shareVoucher(voucher)}>
+                    Share
+                  </button>
+                  <button className="share-entry-button" type="button" onClick={() => shareVoucherToWhatsApp(voucher)}>
+                    WhatsApp
+                  </button>
+                  <button className="share-entry-button" type="button" onClick={() => shareVoucherToFacebook(voucher)}>
+                    Facebook
+                  </button>
+                  <button className="share-entry-button" type="button" onClick={() => printVoucherReceipt(voucher)}>
+                    PDF
+                  </button>
+                  <button className="delete-entry-button" type="button" onClick={() => removeVoucher(voucher.id)}>
+                    Delete
+                  </button>
+                </div>
               </article>
             ))
           )}
