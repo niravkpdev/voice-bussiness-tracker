@@ -417,6 +417,23 @@
         flex: 0 0 auto;
       }
 
+      .storage-box {
+        border: 1px solid #cbd5e1;
+        border-radius: 16px;
+        padding: 16px;
+        margin-top: 16px;
+        background: #f8fafc;
+        color: #334155;
+      }
+
+      .storage-box code {
+        display: inline-block;
+        border-radius: 8px;
+        padding: 2px 6px;
+        background: #e2e8f0;
+        color: #0f172a;
+      }
+
       .feature-item,
       .activity-item,
       .empty-state {
@@ -736,6 +753,29 @@
         <div class="suggestion-list" id="suggestionList"></div>
       </section>
 
+      <section class="panel">
+        <h2>Backup / Restore</h2>
+
+        <div class="inline-actions">
+          <button class="secondary-button" id="backupJsonButton" type="button">Download Full Backup</button>
+          <button class="warning-button" id="restoreBackupButton" type="button">Restore Backup File</button>
+        </div>
+
+        <input id="restoreBackupInput" accept="application/json,.json" hidden type="file" />
+
+        <div class="storage-box">
+          <strong>Data Storage Location</strong>
+          <p id="storageLocationText"></p>
+          <p>
+            Saved keys:
+            <code>businessLogs</code>
+            <code>businessInventory</code>
+            <code>businessOrders</code>
+            <code>businessProfile</code>
+          </p>
+        </div>
+      </section>
+
       <section class="tool-grid">
         <article class="panel">
           <h2>Inventory Tracking</h2>
@@ -894,6 +934,8 @@
       const profilePreviewName = document.getElementById('profilePreviewName');
       const profilePreviewTagline = document.getElementById('profilePreviewTagline');
       const voiceAlertsToggle = document.getElementById('voiceAlertsToggle');
+      const storageLocationText = document.getElementById('storageLocationText');
+      const restoreBackupInput = document.getElementById('restoreBackupInput');
 
       function getSpeechRecognition() {
         return window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -914,6 +956,10 @@
 
       function writeSavedArray(key, items) {
         localStorage.setItem(key, JSON.stringify(items));
+      }
+
+      function renderStorageLocation() {
+        storageLocationText.textContent = `Your data is saved inside this browser on this device using localStorage for ${window.location.origin}. It is not uploaded to any server.`;
       }
 
       function readProfile() {
@@ -1372,6 +1418,88 @@
         writeStatus('Excel CSV exported');
       }
 
+      function downloadFullBackup() {
+        const backup = {
+          app: 'Voice Business Tracker',
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          storageLocation: {
+            type: 'Browser localStorage',
+            origin: window.location.origin,
+            deviceScope: 'This browser on this device',
+          },
+          data: {
+            businessLogs: readSavedArray(STORAGE_KEY),
+            businessInventory: readSavedArray(INVENTORY_KEY),
+            businessOrders: readSavedArray(ORDERS_KEY),
+            businessProfile: readProfile(),
+            voiceLowStockAlertsEnabled: isVoiceAlertEnabled(),
+          },
+        };
+        const json = JSON.stringify(backup, null, 2);
+        const url = URL.createObjectURL(new Blob([json], { type: 'application/json;charset=utf-8' }));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `business-tracker-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        link.click();
+        URL.revokeObjectURL(url);
+        writeStatus('Full backup downloaded');
+      }
+
+      async function restoreFullBackup(file) {
+        if (!file) {
+          return;
+        }
+
+        try {
+          const backup = JSON.parse(await file.text());
+          const data = backup.data || backup;
+
+          if (
+            !Array.isArray(data.businessLogs) ||
+            !Array.isArray(data.businessInventory) ||
+            !Array.isArray(data.businessOrders)
+          ) {
+            writeStatus('Invalid backup file');
+            return;
+          }
+
+          const confirmed = confirm(
+            'Restore backup will replace current logs, inventory, orders, and business profile. Continue?'
+          );
+
+          if (!confirmed) {
+            writeStatus('Restore cancelled');
+            return;
+          }
+
+          writeSavedArray(STORAGE_KEY, data.businessLogs);
+          writeSavedArray(INVENTORY_KEY, data.businessInventory);
+          writeSavedArray(ORDERS_KEY, data.businessOrders);
+
+          if (data.businessProfile) {
+            localStorage.setItem(PROFILE_KEY, JSON.stringify(data.businessProfile));
+          }
+
+          if (typeof data.voiceLowStockAlertsEnabled === 'boolean') {
+            localStorage.setItem(VOICE_ALERTS_KEY, String(data.voiceLowStockAlertsEnabled));
+          }
+
+          renderProfile();
+          voiceAlertsToggle.checked = isVoiceAlertEnabled();
+          renderLogs();
+          renderInventory();
+          renderOrders();
+          writeStatus('Backup restored successfully');
+          announceLowStockIfNeeded(true);
+        } catch (error) {
+          console.error(error);
+          writeStatus('Could not restore backup file');
+        } finally {
+          restoreBackupInput.value = '';
+        }
+      }
+
       function printReport() {
         window.print();
       }
@@ -1566,6 +1694,13 @@
       document.getElementById('resetProfileButton').addEventListener('click', resetBusinessProfile);
       document.getElementById('exportCsvButton').addEventListener('click', exportCsv);
       document.getElementById('printReportButton').addEventListener('click', printReport);
+      document.getElementById('backupJsonButton').addEventListener('click', downloadFullBackup);
+      document.getElementById('restoreBackupButton').addEventListener('click', () => {
+        restoreBackupInput.click();
+      });
+      restoreBackupInput.addEventListener('change', () => {
+        restoreFullBackup(restoreBackupInput.files[0]);
+      });
       voiceAlertsToggle.addEventListener('change', () => {
         setVoiceAlertEnabled(voiceAlertsToggle.checked);
         announceLowStockIfNeeded(true);
@@ -1592,6 +1727,7 @@
       }
 
       renderProfile();
+      renderStorageLocation();
       voiceAlertsToggle.checked = isVoiceAlertEnabled();
       renderLogs();
       renderInventory();
