@@ -38,7 +38,13 @@ const DEFAULT_PROFILE = {
   name: 'Voice Business Tracker',
   tagline: 'Cash book and party khata for small business',
   logo: '/assets/logo.svg',
+  owner: 'Business Owner',
+  email: 'trinetr1901@gmail.com',
+  phone: '+918488943771',
+  address: '',
 };
+const SUPPORT_EMAIL = 'trinetr1901@gmail.com';
+const SUPPORT_PHONE = '+918488943771';
 
 const CASH_LEDGER_ID = 'ledger-cash';
 const SALES_LEDGER_ID = 'ledger-sales';
@@ -615,6 +621,10 @@ export default function VoiceExpenseTrackerPreview() {
       ...profile,
       name: formData.get('profileName')?.trim() || DEFAULT_PROFILE.name,
       tagline: formData.get('profileTagline')?.trim() || DEFAULT_PROFILE.tagline,
+      owner: formData.get('profileOwner')?.trim() || DEFAULT_PROFILE.owner,
+      email: formData.get('profileEmail')?.trim() || DEFAULT_PROFILE.email,
+      phone: formData.get('profilePhone')?.trim() || DEFAULT_PROFILE.phone,
+      address: formData.get('profileAddress')?.trim() || '',
     };
 
     const uploadedLogo = formData.get('profileLogo');
@@ -715,49 +725,60 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   return (
-    <main className="page-shell">
-      <section className="hero-panel">
+    <div className="app-frame">
+      <aside className="sidebar" aria-label="Main menu">
+        <div className="sidebar-brand">
+          <img className="sidebar-logo" src={profile.logo} alt="" />
+          <div>
+            <strong>{profile.name}</strong>
+            <span>Business Console</span>
+          </div>
+        </div>
+        <nav className="side-nav">
+          <a href="#dashboard">Dashboard</a>
+          <a href="#voucher-entry">Voucher Entry</a>
+          <a href="#reports">Reports</a>
+          <a href="#day-book">Day Book</a>
+          <a href="#party-statement">Party Statement</a>
+          <a href="#voice-entry">Voice Entry</a>
+          <a href="#profile-settings">Profile</a>
+          <a href="#app-settings">Settings</a>
+          <a href="#support">Help & Support</a>
+        </nav>
+        <div className="sidebar-support">
+          <span>Support</span>
+          <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
+          <a href={`tel:${SUPPORT_PHONE}`}>{SUPPORT_PHONE}</a>
+        </div>
+      </aside>
+
+      <div className="workspace">
+        <header className="topbar">
+          <div>
+            <span className="eyebrow">Professional business tracker</span>
+            <strong>{status}</strong>
+          </div>
+          <div className="topbar-actions">
+            <a className="topbar-link" href="#profile-settings">Profile</a>
+            <a className="topbar-link" href="#app-settings">Settings</a>
+            <a className="topbar-link primary" href="#support">Support</a>
+          </div>
+        </header>
+
+        <main className="page-shell">
+      <section className="hero-panel" id="dashboard">
         <div className="brand-header">
           <img className="brand-logo" src={profile.logo} alt="Business logo" />
           <div>
             <h1>{profile.name}</h1>
             <p>{profile.tagline}</p>
+            <div className="profile-meta">
+              <span>{profile.owner}</span>
+              <span>{profile.email}</span>
+              <span>{profile.phone}</span>
+            </div>
           </div>
         </div>
-
-        <details className="profile-panel">
-          <summary>Business Profile</summary>
-          <form onSubmit={saveBusinessProfile}>
-            <div className="form-grid">
-              <div>
-                <label className="field-label" htmlFor="profile-name">
-                  Shop / Company Name
-                </label>
-                <input id="profile-name" name="profileName" defaultValue={profile.name} />
-              </div>
-              <div>
-                <label className="field-label" htmlFor="profile-tagline">
-                  Short Description
-                </label>
-                <input id="profile-tagline" name="profileTagline" defaultValue={profile.tagline} />
-              </div>
-              <div className="wide-field">
-                <label className="field-label" htmlFor="profile-logo">
-                  Upload Logo
-                </label>
-                <input accept="image/*" id="profile-logo" name="profileLogo" type="file" />
-              </div>
-            </div>
-            <div className="inline-actions">
-              <button className="manual-button" type="submit">
-                Save Business Profile
-              </button>
-              <button className="warning-button" type="button" onClick={resetBusinessProfile}>
-                Reset Default
-              </button>
-            </div>
-          </form>
-        </details>
 
         {!browserSupported && (
           <div className="notice error">
@@ -814,7 +835,7 @@ export default function VoiceExpenseTrackerPreview() {
         </section>
       </section>
 
-      <section className="content-grid">
+      <section className="content-grid" id="voucher-entry">
         <article className="panel">
           <h2>Voucher Entry</h2>
           <p className="panel-hint">
@@ -1060,7 +1081,7 @@ export default function VoiceExpenseTrackerPreview() {
         </article>
       </section>
 
-      <section className="panel">
+      <section className="panel" id="reports">
         <h2>Business Reports</h2>
         <div className="summary-grid report-summary">
           <div className="summary-card">
@@ -1111,7 +1132,7 @@ export default function VoiceExpenseTrackerPreview() {
         )}
       </section>
 
-      <section className="panel">
+      <section className="panel" id="day-book">
         <label className="field-label" htmlFor="daybook-filter">
           Filter day book by date (optional)
         </label>
@@ -1153,7 +1174,7 @@ export default function VoiceExpenseTrackerPreview() {
         </div>
       </section>
 
-      <section className="panel">
+      <section className="panel" id="party-statement">
         <h2>Party Statement (Khata)</h2>
         {partyLedgers.length === 0 ? (
           <p className="panel-hint">Add a customer or supplier party to see their running balance.</p>
@@ -1216,7 +1237,7 @@ export default function VoiceExpenseTrackerPreview() {
         )}
       </section>
 
-      <section className="content-grid">
+      <section className="content-grid" id="voice-entry">
         <article className="panel">
           <h2>Voice Entry</h2>
           <div className="terminal">
@@ -1334,6 +1355,124 @@ export default function VoiceExpenseTrackerPreview() {
         </div>
       </section>
 
+      <section className="panel profile-editor" id="profile-settings">
+        <div className="section-header">
+          <div>
+            <h2>Business Profile</h2>
+            <p className="panel-hint">Edit the identity and contact details shown across the app.</p>
+          </div>
+          <span>Profile</span>
+        </div>
+        <form onSubmit={saveBusinessProfile}>
+          <div className="profile-editor-grid">
+            <div className="profile-logo-card">
+              <img className="profile-logo-preview" src={profile.logo} alt="Business logo preview" />
+              <label className="field-label" htmlFor="profile-logo">
+                Upload Logo
+              </label>
+              <input accept="image/*" id="profile-logo" name="profileLogo" type="file" />
+            </div>
+            <div className="form-grid">
+              <div>
+                <label className="field-label" htmlFor="profile-name">
+                  Shop / Company Name
+                </label>
+                <input id="profile-name" name="profileName" defaultValue={profile.name} />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="profile-owner">
+                  Owner / Manager
+                </label>
+                <input id="profile-owner" name="profileOwner" defaultValue={profile.owner} />
+              </div>
+              <div className="wide-field">
+                <label className="field-label" htmlFor="profile-tagline">
+                  Short Description
+                </label>
+                <input id="profile-tagline" name="profileTagline" defaultValue={profile.tagline} />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="profile-email">
+                  Email
+                </label>
+                <input id="profile-email" name="profileEmail" type="email" defaultValue={profile.email} />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="profile-phone">
+                  Phone
+                </label>
+                <input id="profile-phone" name="profilePhone" defaultValue={profile.phone} />
+              </div>
+              <div className="wide-field">
+                <label className="field-label" htmlFor="profile-address">
+                  Business Address
+                </label>
+                <textarea id="profile-address" name="profileAddress" defaultValue={profile.address} />
+              </div>
+            </div>
+          </div>
+          <div className="inline-actions">
+            <button className="manual-button" type="submit">
+              Save Business Profile
+            </button>
+            <button className="warning-button" type="button" onClick={resetBusinessProfile}>
+              Reset Default
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section className="panel settings-panel" id="app-settings">
+        <div className="section-header">
+          <div>
+            <h2>Settings</h2>
+            <p className="panel-hint">Manage language, data storage, backups, and report output.</p>
+          </div>
+          <span>Admin</span>
+        </div>
+        <div className="settings-grid">
+          <article className="settings-card">
+            <h3>Voice Language</h3>
+            <p>Current input language: {language}</p>
+            <a href="#voice-entry">Change voice entry language</a>
+          </article>
+          <article className="settings-card">
+            <h3>Data Safety</h3>
+            <p>Download a JSON backup before clearing browser storage or changing devices.</p>
+            <button className="secondary-button compact-button" type="button" onClick={downloadFullBackup}>
+              Download Backup
+            </button>
+          </article>
+          <article className="settings-card">
+            <h3>Reports</h3>
+            <p>Export the day book for Excel or print a summary for review.</p>
+            <button className="warning-button compact-button" type="button" onClick={printReport}>
+              Print Report
+            </button>
+          </article>
+        </div>
+      </section>
+
+      <section className="panel support-panel" id="support">
+        <div>
+          <span className="eyebrow">Help & Contact Support</span>
+          <h2>Need help with your business tracker?</h2>
+          <p>
+            Contact support for setup help, backup guidance, deployment issues, or workflow customization.
+          </p>
+        </div>
+        <div className="support-actions">
+          <a className="support-card" href={`mailto:${SUPPORT_EMAIL}`}>
+            <span>Email Support</span>
+            <strong>{SUPPORT_EMAIL}</strong>
+          </a>
+          <a className="support-card" href={`tel:${SUPPORT_PHONE}`}>
+            <span>Call / WhatsApp</span>
+            <strong>{SUPPORT_PHONE}</strong>
+          </a>
+        </div>
+      </section>
+
       <section className="panel">
         <h2>Backup / Restore</h2>
         <div className="inline-actions">
@@ -1353,6 +1492,8 @@ export default function VoiceExpenseTrackerPreview() {
           </p>
         </div>
       </section>
-    </main>
+        </main>
+      </div>
+    </div>
   );
 }
