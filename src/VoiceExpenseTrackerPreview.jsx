@@ -27,6 +27,9 @@ import {
   saveVoucher,
   voucherCashTotals,
   voucherToCsvRows,
+  parseVoiceCommand,
+  getDailyAndMonthlyStats,
+  getPartySummary,
 } from './accounting';
 
 const STORAGE_KEY = 'businessLogs';
@@ -42,6 +45,7 @@ const DEFAULT_PROFILE = {
   email: 'trinetr1901@gmail.com',
   phone: '+918488943771',
   address: '',
+  gstin: '',
 };
 const SUPPORT_EMAIL = 'trinetr1901@gmail.com';
 const SUPPORT_PHONE = '+918488943771';
@@ -183,6 +187,312 @@ function safeMathAnswer(input) {
   }
 }
 
+function getLast6MonthsData(vouchers) {
+  const months = [];
+  const now = new Date();
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = d.toLocaleDateString('en-CA').slice(0, 7);
+    const label = d.toLocaleString('default', { month: 'short' });
+    let sales = 0, expenses = 0;
+    vouchers.forEach(v => {
+      if ((v.date || '').slice(0, 7) === key) {
+        if (v.type === 'Receipt' || v.type === 'Sales') sales += v.amount || 0;
+        if (v.type === 'Payment' || v.type === 'Purchase') expenses += v.amount || 0;
+      }
+    });
+    months.push({ label, key, sales, expenses, profit: sales - expenses });
+  }
+  return months;
+}
+
+function getTopCustomers(partySummary) {
+  return partySummary
+    .filter(p => p.group === 'Sundry Debtors' && p.totalSales > 0)
+    .sort((a, b) => b.totalSales - a.totalSales)
+    .slice(0, 5);
+}
+
+// -------------------------------------------------------------
+// SVG CHART COMPONENTS
+// -------------------------------------------------------------
+
+function MiniBarChart({ data, valueKey, barColor, title }) {
+  const maxValue = Math.max(...data.map(d => d[valueKey] || 0), 1000);
+  const height = 160;
+  const width = 360;
+  const paddingLeft = 45;
+  const paddingBottom = 25;
+  const paddingTop = 15;
+  const paddingRight = 15;
+  
+  const chartHeight = height - paddingTop - paddingBottom;
+  const chartWidth = width - paddingLeft - paddingRight;
+  
+  const barWidth = Math.min(25, (chartWidth / data.length) * 0.6);
+  const colWidth = chartWidth / data.length;
+
+  return (
+    <div className="svg-chart-container">
+      <h3 className="chart-title">{title}</h3>
+      <svg viewBox={`0 0 ${width} ${height}`} className="svg-chart">
+        {/* Y Axis Grid Lines */}
+        {[0, 0.25, 0.5, 0.75, 1].map((ratio, idx) => {
+          const y = paddingTop + chartHeight * (1 - ratio);
+          const val = Math.round(maxValue * ratio);
+          return (
+            <g key={idx}>
+              <line x1={paddingLeft} y1={y} x2={width - paddingRight} y2={y} stroke="var(--border-main)" strokeDasharray="3 3" opacity="0.5" />
+              <text x={paddingLeft - 8} y={y + 4} textAnchor="end" fontSize="9" fill="var(--text-muted)">
+                {val >= 10000000 ? `${(val/10000000).toFixed(1)}Cr` : val >= 100000 ? `${(val/100000).toFixed(1)}L` : val >= 1000 ? `${(val/1000).toFixed(0)}k` : val}
+              </text>
+            </g>
+          );
+        })}
+        
+        {/* Bars */}
+        {data.map((item, idx) => {
+          const val = item[valueKey] || 0;
+          const barHeight = (val / maxValue) * chartHeight;
+          const x = paddingLeft + idx * colWidth + (colWidth - barWidth) / 2;
+          const y = height - paddingBottom - barHeight;
+          
+          return (
+            <g key={idx} className="chart-bar-group">
+              <rect
+                x={x}
+                y={y}
+                width={barWidth}
+                height={Math.max(barHeight, 2)}
+                fill={barColor}
+                rx="4"
+                className="chart-rect"
+              />
+              {val > 0 && (
+                <text x={x + barWidth/2} y={y - 4} textAnchor="middle" fontSize="8" fontWeight="bold" fill="var(--text-main)">
+                  {val >= 1000 ? `${(val/1000).toFixed(0)}k` : val}
+                </text>
+              )}
+              <text x={x + barWidth/2} y={height - paddingBottom + 14} textAnchor="middle" fontSize="10" fill="var(--text-muted)">
+                {item.label}
+              </text>
+            </g>
+          );
+        })}
+        {/* Baseline */}
+        <line x1={paddingLeft} y1={height - paddingBottom} x2={width - paddingRight} y2={height - paddingBottom} stroke="var(--border-main)" strokeWidth="1.5" />
+      </svg>
+    </div>
+  );
+}
+
+function ProfitTrendChart({ data }) {
+  const values = data.map(d => d.profit || 0);
+  const minVal = Math.min(...values, 0);
+  const maxVal = Math.max(...values, 1000);
+  
+  const height = 160;
+  const width = 360;
+  const paddingLeft = 45;
+  const paddingBottom = 25;
+  const paddingTop = 15;
+  const paddingRight = 15;
+  
+  const chartHeight = height - paddingTop - paddingBottom;
+  const chartWidth = width - paddingLeft - paddingRight;
+  const colWidth = chartWidth / (data.length - 1 || 1);
+
+  const getZeroY = () => {
+    if (maxVal === minVal) return paddingTop + chartHeight / 2;
+    return paddingTop + chartHeight * (1 - (0 - minVal) / (maxVal - minVal));
+  };
+  const zeroY = getZeroY();
+
+  const getPoints = () => {
+    return data.map((item, idx) => {
+      const x = paddingLeft + idx * colWidth;
+      const val = item.profit || 0;
+      let y;
+      if (maxVal === minVal) {
+        y = paddingTop + chartHeight / 2;
+      } else {
+        y = paddingTop + chartHeight * (1 - (val - minVal) / (maxVal - minVal));
+      }
+      return { x, y, label: item.label, profit: val };
+    });
+  };
+
+  const points = getPoints();
+  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+  const areaPath = points.length > 0 
+    ? `${linePath} L ${points[points.length-1].x} ${height - paddingBottom} L ${points[0].x} ${height - paddingBottom} Z` 
+    : '';
+
+  return (
+    <div className="svg-chart-container">
+      <h3 className="chart-title">Monthly Net Profit Trend</h3>
+      <svg viewBox={`0 0 ${width} ${height}`} className="svg-chart">
+        {/* Grid lines */}
+        {[0, 0.25, 0.5, 0.75, 1].map((ratio, idx) => {
+          const val = Math.round(minVal + (maxVal - minVal) * ratio);
+          let y = paddingTop + chartHeight * (1 - ratio);
+          if (isNaN(y)) y = paddingTop;
+          return (
+            <g key={idx}>
+              <line x1={paddingLeft} y1={y} x2={width - paddingRight} y2={y} stroke="var(--border-main)" strokeDasharray="3 3" opacity="0.5" />
+              <text x={paddingLeft - 8} y={y + 4} textAnchor="end" fontSize="9" fill="var(--text-muted)">
+                {val >= 0 ? (val >= 1000 ? `${(val/1000).toFixed(0)}k` : val) : (val <= -1000 ? `-${(Math.abs(val)/1000).toFixed(0)}k` : val)}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Zero baseline */}
+        {minVal < 0 && (
+          <line x1={paddingLeft} y1={zeroY} x2={width - paddingRight} y2={zeroY} stroke="#ef4444" strokeWidth="1" strokeDasharray="4 2" opacity="0.8" />
+        )}
+
+        {/* Area fill */}
+        {areaPath && (
+          <path d={areaPath} fill="url(#profitGrad)" opacity="0.15" />
+        )}
+
+        {/* Line */}
+        {linePath && (
+          <path d={linePath} fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" />
+        )}
+
+        <defs>
+          <linearGradient id="profitGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#10b981" />
+            <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+
+        {/* Data points */}
+        {points.map((p, idx) => (
+          <g key={idx}>
+            <circle cx={p.x} cy={p.y} r="4" fill="#10b981" stroke="#ffffff" strokeWidth="1.5" />
+            <text x={p.x} y={p.y - 8} textAnchor="middle" fontSize="8" fontWeight="bold" fill="var(--text-main)">
+              {p.profit >= 0 ? `${p.profit >= 1000 ? (p.profit/1000).toFixed(0)+'k' : p.profit}` : `-${Math.abs(p.profit) >= 1000 ? (Math.abs(p.profit)/1000).toFixed(0)+'k' : Math.abs(p.profit)}`}
+            </text>
+            <text x={p.x} y={height - paddingBottom + 14} textAnchor="middle" fontSize="10" fill="var(--text-muted)">
+              {p.label}
+            </text>
+          </g>
+        ))}
+
+        {/* Baseline */}
+        <line x1={paddingLeft} y1={height - paddingBottom} x2={width - paddingRight} y2={height - paddingBottom} stroke="var(--border-main)" strokeWidth="1.5" />
+      </svg>
+    </div>
+  );
+}
+
+function TopCustomersChart({ data }) {
+  const maxValue = Math.max(...data.map(d => d.totalSales || 0), 1000);
+  const height = 160;
+  const width = 360;
+  const paddingLeft = 85;
+  const paddingBottom = 15;
+  const paddingTop = 15;
+  const paddingRight = 45;
+  
+  const chartHeight = height - paddingTop - paddingBottom;
+  const chartWidth = width - paddingLeft - paddingRight;
+  const rowHeight = chartHeight / (data.length || 1);
+  const barHeight = Math.min(16, rowHeight * 0.5);
+
+  return (
+    <div className="svg-chart-container">
+      <h3 className="chart-title">Top Customers (by Sales)</h3>
+      {data.length === 0 ? (
+        <div className="empty-chart-state">No customer sales recorded yet.</div>
+      ) : (
+        <svg viewBox={`0 0 ${width} ${height}`} className="svg-chart">
+          {data.map((item, idx) => {
+            const val = item.totalSales || 0;
+            const barWidth = (val / maxValue) * chartWidth;
+            const y = paddingTop + idx * rowHeight + (rowHeight - barHeight) / 2;
+            
+            return (
+              <g key={item.id}>
+                <text x={paddingLeft - 8} y={y + barHeight/2 + 3} textAnchor="end" fontSize="10" fontWeight="bold" fill="var(--text-main)" className="chart-label-text">
+                  {item.name.length > 12 ? `${item.name.slice(0, 10)}...` : item.name}
+                </text>
+                <rect
+                  x={paddingLeft}
+                  y={y}
+                  width={Math.max(barWidth, 4)}
+                  height={barHeight}
+                  fill="#3b82f6"
+                  rx="3"
+                  className="chart-rect"
+                />
+                <text x={paddingLeft + barWidth + 6} y={y + barHeight/2 + 3.5} textAnchor="start" fontSize="9" fontWeight="bold" fill="var(--text-main)">
+                  ₹{val >= 1000 ? `${(val/1000).toFixed(0)}k` : val}
+                </text>
+              </g>
+            );
+          })}
+          <line x1={paddingLeft} y1={paddingTop} x2={paddingLeft} y2={height - paddingBottom} stroke="var(--border-main)" strokeWidth="1.5" />
+        </svg>
+      )}
+    </div>
+  );
+}
+
+function CircularHealthScore({ score }) {
+  const radius = 35;
+  const stroke = 6;
+  const normalizedRadius = radius - stroke * 2;
+  const circumference = normalizedRadius * 2 * Math.PI;
+  const strokeDashoffset = circumference - (score / 100) * circumference;
+
+  let strokeColor = '#ef4444';
+  if (score >= 80) strokeColor = '#10b981';
+  else if (score >= 60) strokeColor = '#0d9488';
+  else if (score >= 40) strokeColor = '#d97706';
+
+  return (
+    <div className="circular-score-wrap">
+      <svg height={radius * 2} width={radius * 2} style={{ transform: 'rotate(-90deg)' }}>
+        <circle
+          stroke="var(--bg-card-dark)"
+          fill="transparent"
+          strokeWidth={stroke}
+          r={normalizedRadius}
+          cx={radius}
+          cy={radius}
+        />
+        <circle
+          stroke={strokeColor}
+          fill="transparent"
+          strokeWidth={stroke}
+          strokeDasharray={circumference + ' ' + circumference}
+          style={{ strokeDashoffset, transition: 'stroke-dashoffset 0.35s' }}
+          strokeLinecap="round"
+          r={normalizedRadius}
+          cx={radius}
+          cy={radius}
+        />
+        <text
+          x="50%"
+          y="50%"
+          textAnchor="middle"
+          dy=".3em"
+          fontSize="14"
+          fontWeight="bold"
+          fill="var(--text-main)"
+          style={{ transform: 'rotate(90deg)', transformOrigin: 'center' }}
+        >
+          {score}
+        </text>
+      </svg>
+    </div>
+  );
+}
+
 export default function VoiceExpenseTrackerPreview() {
   const [transcript, setTranscript] = useState('Click start and speak your expense...');
   const [status, setStatus] = useState('Idle');
@@ -210,8 +520,40 @@ export default function VoiceExpenseTrackerPreview() {
   const [newPartyName, setNewPartyName] = useState('');
   const [newPartyType, setNewPartyType] = useState('customer');
   const [dayBookFilter, setDayBookFilter] = useState('');
+  const [dayBookFromDate, setDayBookFromDate] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+  });
+  const [dayBookToDate, setDayBookToDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [aiQuestion, setAiQuestion] = useState('');
   const [aiAnswer, setAiAnswer] = useState('Ask about profit, loss, cash balance, party balance, or type a calculation.');
+  const [activeTab, setActiveTab] = useState(() => {
+    const hash = window.location.hash.slice(1);
+    return ['dashboard', 'ai-assistant', 'voucher-entry', 'party-management', 'reports', 'day-book', 'party-statement', 'profile-settings', 'app-settings', 'support'].includes(hash) ? hash : 'dashboard';
+  });
+  const [voiceConfirmation, setVoiceConfirmation] = useState(null);
+  const [activeReportTab, setActiveReportTab] = useState('pnl');
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.slice(1);
+      if (hash && ['dashboard', 'ai-assistant', 'voucher-entry', 'party-management', 'reports', 'day-book', 'party-statement', 'profile-settings', 'app-settings', 'support'].includes(hash)) {
+        setActiveTab(hash);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('darkMode', String(darkMode));
+    if (darkMode) {
+      document.body.classList.add('dark');
+    } else {
+      document.body.classList.remove('dark');
+    }
+  }, [darkMode]);
 
   useEffect(() => {
     if (!getSpeechRecognition()) {
@@ -234,7 +576,6 @@ export default function VoiceExpenseTrackerPreview() {
       setUseSalesInsteadOfParty(false);
     }
   }, []);
-
   const partyLedgers = useMemo(() => getPartyLedgers(ledgers), [ledgers]);
   const customerParties = useMemo(
     () => partyLedgers.filter((ledger) => ledger.group === 'Sundry Debtors'),
@@ -249,113 +590,193 @@ export default function VoiceExpenseTrackerPreview() {
 
   const totals = useMemo(() => voucherCashTotals(vouchers), [vouchers]);
 
-  const cashBalance = useMemo(
-    () => computeLedgerBalance(CASH_LEDGER_ID, ledgers, vouchers),
-    [ledgers, vouchers]
-  );
-
-  const chartData = useMemo(() => {
-    const maxValue = Math.max(totals.income, totals.expense, 1);
-    return [
-      {
-        label: 'Receipts',
-        amount: totals.income,
-        colorClass: 'income',
-        width: Math.round((totals.income / maxValue) * 100),
-      },
-      {
-        label: 'Payments',
-        amount: totals.expense,
-        colorClass: 'expense',
-        width: Math.round((totals.expense / maxValue) * 100),
-      },
-    ];
-  }, [totals]);
-
   const statement = useMemo(
     () => getLedgerStatement(statementLedgerId, ledgers, vouchers),
     [statementLedgerId, ledgers, vouchers]
   );
 
-  const partyOutstanding = useMemo(() => getPartyOutstanding(ledgers, vouchers), [ledgers, vouchers]);
-  const suggestions = useMemo(() => getBusinessSuggestions(ledgers, vouchers), [ledgers, vouchers]);
-  const netProfit = totals.income - totals.expense;
+  const partySummary = useMemo(() => getPartySummary(ledgers, vouchers), [ledgers, vouchers]);
+
+  const stats = useMemo(() => {
+    return getDailyAndMonthlyStats(vouchers, ledgers);
+  }, [vouchers, ledgers]);
+
+  const cashInHand = useMemo(() => {
+    return cashLedgers.reduce((sum, ledger) => sum + computeLedgerBalance(ledger.id, ledgers, vouchers), 0);
+  }, [cashLedgers, ledgers, vouchers]);
+
+  const receivableTotal = useMemo(() => {
+    return partySummary
+      .filter(p => p.group === 'Sundry Debtors' && p.outstandingAmount > 0)
+      .reduce((sum, item) => sum + item.outstandingAmount, 0);
+  }, [partySummary]);
+
+  const payableTotal = useMemo(() => {
+    return partySummary
+      .filter(p => p.group === 'Sundry Creditors' && p.outstandingAmount > 0)
+      .reduce((sum, item) => sum + item.outstandingAmount, 0);
+  }, [partySummary]);
+
+  const monthlyNetProfit = stats.monthlySales - stats.monthlyExpenses;
+  const prevMonthlyNetProfit = stats.prevMonthlySales - stats.prevMonthlyExpenses;
+
+  const netProfitGrowth = useMemo(() => {
+    if (prevMonthlyNetProfit === 0) return monthlyNetProfit > 0 ? 100 : 0;
+    return Math.round(((monthlyNetProfit - prevMonthlyNetProfit) / Math.abs(prevMonthlyNetProfit)) * 100);
+  }, [monthlyNetProfit, prevMonthlyNetProfit]);
 
   const aiInsights = useMemo(() => {
-    const totalDebits = vouchers.reduce((total, voucher) => total + voucher.lines.reduce((sum, line) => sum + (line.debit || 0), 0), 0);
-    const totalCredits = vouchers.reduce(
-      (total, voucher) => total + voucher.lines.reduce((sum, line) => sum + (line.credit || 0), 0),
-      0
-    );
-    const unbalancedVouchers = vouchers.filter((voucher) => {
-      const debit = voucher.lines.reduce((sum, line) => sum + (line.debit || 0), 0);
-      const credit = voucher.lines.reduce((sum, line) => sum + (line.credit || 0), 0);
-      return Math.abs(debit - credit) > 0.01;
+    // 1. Expense Control Score
+    const expenseRatio = stats.monthlySales > 0 ? (stats.monthlyExpenses / stats.monthlySales) : 0;
+    const expenseControlScore = Math.max(0, Math.min(100, Math.round(100 - (expenseRatio * 100))));
+
+    // 2. Collection Efficiency
+    let totalCustSales = 0;
+    let totalCustPayments = 0;
+    partySummary.forEach(p => {
+      if (p.group === 'Sundry Debtors') {
+        totalCustSales += p.totalSales;
+        totalCustPayments += p.totalPayments;
+      }
     });
-    const receivables = partyOutstanding.filter(
-      ({ ledger, balance }) => ledger.group === 'Sundry Debtors' && balance > 0
-    );
-    const payables = partyOutstanding.filter(
-      ({ ledger, balance }) => ledger.group === 'Sundry Creditors' && balance > 0
-    );
-    const receivableTotal = receivables.reduce((sum, item) => sum + item.balance, 0);
-    const payableTotal = payables.reduce((sum, item) => sum + item.balance, 0);
-    const expenseRatio = totals.income > 0 ? Math.round((totals.expense / totals.income) * 100) : 0;
-    const profitMargin = totals.income > 0 ? Math.round((netProfit / totals.income) * 100) : 0;
-    let score = 70;
+    const collectionEfficiency = totalCustSales > 0 
+      ? Math.max(0, Math.min(100, Math.round((totalCustPayments / totalCustSales) * 100))) 
+      : 100;
 
-    if (netProfit > 0) score += 12;
-    if (netProfit < 0) score -= 22;
-    if (cashBalance < 0) score -= 18;
-    if (expenseRatio > 75) score -= 15;
-    if (expenseRatio < 55 && totals.income > 0) score += 8;
-    if (receivableTotal > totals.income * 0.35 && totals.income > 0) score -= 10;
-    if (unbalancedVouchers.length > 0) score -= 20;
-    score = Math.max(0, Math.min(100, score));
+    // 3. Cash Flow Status
+    const cashFlowStatus = cashInHand >= 0 ? (stats.monthlySales >= stats.monthlyExpenses ? 'Healthy' : 'Strained') : 'Risk';
 
-    const pros = [];
-    const cons = [];
+    // 4. Profit Trend Label
+    let profitTrendLabel = 'Stable';
+    if (netProfitGrowth > 5) profitTrendLabel = 'Upward';
+    else if (netProfitGrowth < -5) profitTrendLabel = 'Downward';
 
-    if (netProfit >= 0) {
-      pros.push(`Profit side positive hai: ${formatCurrency(netProfit)} net balance.`);
-    } else {
-      cons.push(`Loss chal raha hai: ${formatCurrency(Math.abs(netProfit))} shortfall.`);
+    // Health Score calculation
+    let healthScore = 50;
+    healthScore += (stats.monthlySales > stats.monthlyExpenses ? 15 : -15);
+    healthScore += (cashInHand > 0 ? 15 : -20);
+    healthScore += Math.round(expenseControlScore * 0.2);
+    healthScore += Math.round(collectionEfficiency * 0.2);
+    healthScore = Math.max(0, Math.min(100, healthScore));
+
+    // Dynamic suggestions based on data
+    const dynamicSuggestions = [];
+    if (stats.expenseGrowth > 10) {
+      dynamicSuggestions.push(`Expenses increased ${stats.expenseGrowth}% this month. Check where cash is going.`);
     }
-    if (cashBalance >= 0) {
-      pros.push(`Cash/Bank balance available hai: ${formatCurrency(cashBalance)}.`);
-    } else {
-      cons.push(`Cash/Bank negative dikh raha hai: ${formatCurrency(Math.abs(cashBalance))}.`);
+    if (stats.salesGrowth < -5) {
+      dynamicSuggestions.push(`Sales growth is slowing down (${stats.salesGrowth}% this month). Focus on collection and customer outreach.`);
+    } else if (stats.salesGrowth > 10) {
+      dynamicSuggestions.push(`Good job! Sales increased by ${stats.salesGrowth}% MoM.`);
     }
-    if (receivableTotal > 0) {
-      cons.push(`Customer se collect karna baki hai: ${formatCurrency(receivableTotal)}.`);
-    } else {
-      pros.push('Receivable pressure low hai.');
+
+    // Top pending payments
+    const pendingCustomers = partySummary
+      .filter(p => p.group === 'Sundry Debtors' && p.outstandingAmount > 0)
+      .sort((a, b) => b.outstandingAmount - a.outstandingAmount);
+    
+    if (pendingCustomers.length > 0) {
+      const topPending = pendingCustomers[0];
+      dynamicSuggestions.push(`${topPending.name} has pending payment of ${formatCurrency(topPending.outstandingAmount)}.`);
     }
-    if (expenseRatio > 70) {
-      cons.push(`Expense ratio high hai: ${expenseRatio}%. Cost control check karo.`);
-    } else if (totals.income > 0) {
-      pros.push(`Expense ratio manageable hai: ${expenseRatio}%.`);
+
+    // Check material cost or specific ledger categories
+    let materialCostThisMonth = 0;
+    let materialCostPrevMonth = 0;
+    vouchers.forEach(vch => {
+      const month = (vch.date || '').slice(0, 7);
+      const isCurrentMonth = month === new Date().toLocaleDateString('en-CA').slice(0, 7);
+      const isPrevMonth = month === new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toLocaleDateString('en-CA').slice(0, 7);
+      
+      vch.lines.forEach(l => {
+        if (l.ledgerId === 'ledger-material') {
+          if (isCurrentMonth) materialCostThisMonth += l.debit || 0;
+          if (isPrevMonth) materialCostPrevMonth += l.debit || 0;
+        }
+      });
+    });
+
+    if (materialCostThisMonth > materialCostPrevMonth && materialCostPrevMonth > 0) {
+      const pct = Math.round(((materialCostThisMonth - materialCostPrevMonth) / materialCostPrevMonth) * 100);
+      dynamicSuggestions.push(`Material cost is increasing (${pct}% MoM). Check supplier rates.`);
     }
-    if (unbalancedVouchers.length > 0) {
-      cons.push(`${unbalancedVouchers.length} voucher debit-credit mismatch me hai.`);
-    } else {
-      pros.push('Balance sheet checker: sab vouchers debit-credit balanced hain.');
+
+    if (dynamicSuggestions.length < 3) {
+      dynamicSuggestions.push('All accounts are balanced. Keep recording voice notes regularly.');
     }
 
     return {
-      score,
-      health: getBusinessHealthLabel(score),
-      totalDebits,
-      totalCredits,
-      unbalancedVouchers,
-      receivableTotal,
-      payableTotal,
-      expenseRatio,
-      profitMargin,
-      pros,
-      cons,
+      score: healthScore,
+      health: getBusinessHealthLabel(healthScore),
+      profitTrend: profitTrendLabel,
+      cashFlowStatus,
+      collectionEfficiency,
+      expenseControlScore,
+      suggestions: dynamicSuggestions
     };
-  }, [cashBalance, netProfit, partyOutstanding, totals.expense, totals.income, vouchers]);
+  }, [stats, cashInHand, partySummary, vouchers, netProfitGrowth]);
+
+  const pnlData = useMemo(() => {
+    const sales = computeLedgerBalance('ledger-sales', ledgers, vouchers);
+    const purchases = computeLedgerBalance('ledger-material', ledgers, vouchers);
+    const rent = computeLedgerBalance('ledger-rent', ledgers, vouchers);
+    const general = computeLedgerBalance('ledger-misc-expense', ledgers, vouchers);
+    
+    const totalExpenses = rent + general;
+    const grossProfit = sales - purchases;
+    const netProfitVal = grossProfit - totalExpenses;
+    
+    return {
+      sales,
+      purchases,
+      rent,
+      general,
+      totalExpenses,
+      grossProfit,
+      netProfit: netProfitVal
+    };
+  }, [ledgers, vouchers]);
+
+  const cashBookData = useMemo(() => {
+    const cashIds = new Set(cashLedgers.map(l => l.id));
+    const rows = [];
+    let running = 0;
+    
+    const sortedVouchers = [...vouchers].sort((a, b) => a.date.localeCompare(b.date) || (a.dateTime || '').localeCompare(a.dateTime || ''));
+    
+    sortedVouchers.forEach(vch => {
+      let cashDebit = 0;
+      let cashCredit = 0;
+      let affected = false;
+      let particulars = '';
+      
+      vch.lines.forEach(line => {
+        if (cashIds.has(line.ledgerId)) {
+          affected = true;
+          cashDebit += line.debit || 0;
+          cashCredit += line.credit || 0;
+        } else {
+          particulars = getLedgerById(ledgers, line.ledgerId)?.name || particulars;
+        }
+      });
+      
+      if (affected) {
+        running += cashDebit - cashCredit;
+        rows.push({
+          id: vch.id,
+          date: vch.date,
+          type: vch.type,
+          narration: vch.narration,
+          particulars: particulars || 'Sales / Expense',
+          debit: cashDebit,
+          credit: cashCredit,
+          balance: running
+        });
+      }
+    });
+    
+    return { rows, closingBalance: running };
+  }, [cashLedgers, ledgers, vouchers]);
 
   const filteredVouchers = useMemo(() => {
     if (!dayBookFilter) {
@@ -481,53 +902,89 @@ export default function VoiceExpenseTrackerPreview() {
     } catch (error) {
       setStatus(error.message);
     }
-  };
+  };  const handleSaveVoiceConfirmation = (confirmedData) => {
+    const { type, amount, partyName, category, date, narration } = confirmedData;
 
-  const saveVoiceAsVoucher = (voiceText, detectedType, amount) => {
     if (amount <= 0) {
-      saveLog({
-        type: detectedType,
-        text: voiceText,
-        amount: 0,
-        date: new Date().toLocaleString(),
-      });
-      setStatus('Voice note saved (no amount detected)');
+      setStatus('Amount must be greater than zero');
       return;
     }
 
-    if (detectedType === 'Income') {
-      saveReceiptOrPayment({
-        type: 'Receipt',
-        amount,
-        narration: voiceText,
-        cashLedgerId: CASH_LEDGER_ID,
-        counterLedgerId: SALES_LEDGER_ID,
-        source: 'voice',
-      });
-      setStatus('Receipt voucher saved from voice');
-      return;
-    }
+    try {
+      let resolvedPartyId = '';
+      if (partyName.trim()) {
+        const partyType = (type === 'Receipt' || type === 'Sales') ? 'customer' : 'supplier';
+        const { ledgers: nextLedgers, ledger } = addPartyLedger(partyName, partyType);
+        setLedgers(nextLedgers);
+        resolvedPartyId = ledger.id;
+        setVoucherPartyId(ledger.id);
+        setStatementLedgerId(ledger.id);
+        setUseSalesInsteadOfParty(false);
+      }
 
-    if (detectedType === 'Expense') {
-      saveReceiptOrPayment({
-        type: 'Payment',
-        amount,
-        narration: voiceText,
-        cashLedgerId: CASH_LEDGER_ID,
-        counterLedgerId: DEFAULT_EXPENSE_LEDGER_ID,
-        source: 'voice',
-      });
-      setStatus('Payment voucher saved from voice');
-      return;
-    }
+      const defaultCashId = CASH_LEDGER_ID;
+      
+      let resolvedCategoryLedgerId = DEFAULT_EXPENSE_LEDGER_ID;
+      if (category === 'Material / Purchase') resolvedCategoryLedgerId = MATERIAL_LEDGER_ID;
+      else if (category === 'Rent') resolvedCategoryLedgerId = 'ledger-rent';
+      else if (category === 'Sales') resolvedCategoryLedgerId = SALES_LEDGER_ID;
 
-    saveLog({
-      type: detectedType,
-      text: voiceText,
-      amount: 0,
-      date: new Date().toLocaleString(),
-    });
-    setStatus('Work note saved');
+      const targetDate = date || new Date().toISOString().slice(0, 10);
+
+      if (type === 'Receipt') {
+        saveReceiptOrPayment({
+          type: 'Receipt',
+          amount,
+          narration,
+          cashLedgerId: defaultCashId,
+          counterLedgerId: resolvedPartyId || SALES_LEDGER_ID,
+          source: 'voice',
+          date: targetDate,
+        });
+      } else if (type === 'Payment') {
+        saveReceiptOrPayment({
+          type: 'Payment',
+          amount,
+          narration,
+          cashLedgerId: defaultCashId,
+          counterLedgerId: resolvedPartyId || resolvedCategoryLedgerId,
+          source: 'voice',
+          date: targetDate,
+        });
+      } else if (type === 'Sales') {
+        if (!resolvedPartyId) {
+          throw new Error('Customer party name is required for credit sale');
+        }
+        const voucher = createVoucher({
+          type: 'Sales',
+          amount,
+          narration,
+          lines: buildCreditSaleLines(amount, resolvedPartyId, SALES_LEDGER_ID),
+          source: 'voice',
+          date: targetDate,
+        });
+        persistVoucher(voucher);
+      } else if (type === 'Purchase') {
+        if (!resolvedPartyId) {
+          throw new Error('Supplier party name is required for credit purchase');
+        }
+        const voucher = createVoucher({
+          type: 'Purchase',
+          amount,
+          narration,
+          lines: buildCreditPurchaseLines(amount, resolvedCategoryLedgerId || MATERIAL_LEDGER_ID, resolvedPartyId),
+          source: 'voice',
+          date: targetDate,
+        });
+        persistVoucher(voucher);
+      }
+
+      setStatus(`${type} voucher saved successfully`);
+      setVoiceConfirmation(null);
+    } catch (error) {
+      setStatus(error.message);
+      alert(error.message);
+    }
   };
 
   const startVoiceRecognition = async () => {
@@ -570,11 +1027,15 @@ export default function VoiceExpenseTrackerPreview() {
 
       recognition.onresult = (event) => {
         const voiceText = event.results[0][0].transcript;
-        const detectedType = detectType(voiceText);
-        const amount = detectAmount(voiceText, detectedType);
-
         setTranscript(voiceText);
-        saveVoiceAsVoucher(voiceText, detectedType, amount);
+
+        const parsed = parseVoiceCommand(voiceText, partyLedgers);
+        
+        setVoiceConfirmation({
+          ...parsed,
+          date: new Date().toISOString().slice(0, 10)
+        });
+        setStatus('Voice parsed. Awaiting confirmation...');
       };
 
       recognition.onerror = (event) => {
@@ -934,34 +1395,32 @@ export default function VoiceExpenseTrackerPreview() {
 
     if (lowerQuestion.includes('profit') || lowerQuestion.includes('loss') || lowerQuestion.includes('nuksan')) {
       setAiAnswer(
-        netProfit >= 0
-          ? `Business abhi profit side par hai. Net profit/cash surplus: ${formatCurrency(netProfit)}. Margin approx ${aiInsights.profitMargin}%.`
-          : `Business abhi loss side par hai. Net loss/shortfall: ${formatCurrency(Math.abs(netProfit))}. Expense ratio ${aiInsights.expenseRatio}% hai.`
+        monthlyNetProfit >= 0
+          ? `Business profit side par hai. Monthly net profit: ${formatCurrency(monthlyNetProfit)}. Health Score: ${aiInsights.score}/100.`
+          : `Business loss side par hai. Monthly net loss: ${formatCurrency(Math.abs(monthlyNetProfit))}. Expenses check karo.`
       );
       return;
     }
 
     if (lowerQuestion.includes('balance') || lowerQuestion.includes('sheet') || lowerQuestion.includes('check')) {
       setAiAnswer(
-        aiInsights.unbalancedVouchers.length === 0
-          ? `Balance sheet checker OK: debit ${formatCurrency(aiInsights.totalDebits)} aur credit ${formatCurrency(aiInsights.totalCredits)} match kar rahe hain.`
-          : `Warning: ${aiInsights.unbalancedVouchers.length} voucher mismatch me hai. Debit ${formatCurrency(aiInsights.totalDebits)}, credit ${formatCurrency(aiInsights.totalCredits)}.`
+        `Balance snapshot: Cash in hand ${formatCurrency(cashInHand)}, Receivable ${formatCurrency(receivableTotal)}, Payable ${formatCurrency(payableTotal)}.`
       );
       return;
     }
 
     if (lowerQuestion.includes('cash')) {
-      setAiAnswer(`Current cash/bank balance: ${formatCurrency(cashBalance)}.`);
+      setAiAnswer(`Current cash/bank balance: ${formatCurrency(cashInHand)}.`);
       return;
     }
 
     if (lowerQuestion.includes('receive') || lowerQuestion.includes('customer') || lowerQuestion.includes('party')) {
-      setAiAnswer(`Customer receivable total: ${formatCurrency(aiInsights.receivableTotal)}. Supplier payable total: ${formatCurrency(aiInsights.payableTotal)}.`);
+      setAiAnswer(`Customer receivable total: ${formatCurrency(receivableTotal)}. Supplier payable total: ${formatCurrency(payableTotal)}.`);
       return;
     }
 
     setAiAnswer(
-      `AI summary: Health ${aiInsights.health} (${aiInsights.score}/100), net ${formatCurrency(netProfit)}, cash ${formatCurrency(cashBalance)}, expense ratio ${aiInsights.expenseRatio}%.`
+      `AI summary: Health ${aiInsights.health} (${aiInsights.score}/100), Monthly profit ${formatCurrency(monthlyNetProfit)}, Cash in hand ${formatCurrency(cashInHand)}.`
     );
   };
 
@@ -976,16 +1435,15 @@ export default function VoiceExpenseTrackerPreview() {
           </div>
         </div>
         <nav className="side-nav">
-          <a href="#dashboard">Dashboard</a>
-          <a href="#ai-assistant">AI Assistant</a>
-          <a href="#voucher-entry">Voucher Entry</a>
-          <a href="#reports">Reports</a>
-          <a href="#day-book">Day Book</a>
-          <a href="#party-statement">Party Statement</a>
-          <a href="#voice-entry">Voice Entry</a>
-          <a href="#profile-settings">Profile</a>
-          <a href="#app-settings">Settings</a>
-          <a href="#support">Help & Support</a>
+          <a href="#dashboard" className={activeTab === 'dashboard' ? 'active' : ''}>Dashboard</a>
+          <a href="#ai-assistant" className={activeTab === 'ai-assistant' ? 'active' : ''}>AI Insights</a>
+          <a href="#voucher-entry" className={activeTab === 'voucher-entry' ? 'active' : ''}>Voucher Entry</a>
+          <a href="#party-management" className={activeTab === 'party-management' ? 'active' : ''}>Party Khata</a>
+          <a href="#reports" className={activeTab === 'reports' ? 'active' : ''}>Reports</a>
+          <a href="#day-book" className={activeTab === 'day-book' ? 'active' : ''}>Day Book</a>
+          <a href="#party-statement" className={activeTab === 'party-statement' ? 'active' : ''}>Party Statement</a>
+          <a href="#profile-settings" className={activeTab === 'profile-settings' ? 'active' : ''}>Profile</a>
+          <a href="#app-settings" className={activeTab === 'app-settings' ? 'active' : ''}>Settings</a>
         </nav>
         <div className="sidebar-support">
           <span>Support</span>
@@ -997,10 +1455,17 @@ export default function VoiceExpenseTrackerPreview() {
       <div className="workspace">
         <header className="topbar">
           <div>
-            <span className="eyebrow">Professional business tracker</span>
+            <span className="eyebrow">Professional Business Tracker</span>
             <strong>{status}</strong>
           </div>
           <div className="topbar-actions">
+            <button 
+              className="topbar-link dark-mode-toggle-btn"
+              onClick={() => setDarkMode(!darkMode)}
+              type="button"
+            >
+              {darkMode ? '☀️ Light' : '🌙 Dark'}
+            </button>
             <a className="topbar-link" href="#profile-settings">Profile</a>
             <a className="topbar-link" href="#app-settings">Settings</a>
             <a className="topbar-link primary" href="#support">Support</a>
@@ -1008,824 +1473,1302 @@ export default function VoiceExpenseTrackerPreview() {
         </header>
 
         <main className="page-shell">
-      <section className="hero-panel" id="dashboard">
-        <div className="brand-header">
-          <img className="brand-logo" src={profile.logo} alt="Business logo" />
-          <div>
-            <h1>{profile.name}</h1>
-            <p>{profile.tagline}</p>
-            <div className="profile-meta">
-              <span>{profile.owner}</span>
-              <span>{profile.email}</span>
-              <span>{profile.phone}</span>
-            </div>
-          </div>
-        </div>
-
-        {!browserSupported && (
-          <div className="notice error">
-            Your browser does not support voice recognition. Please use Google Chrome.
-          </div>
-        )}
-
-        <div className="stats-grid">
-          <article className="stat-card income">
-            <h2>Cash Receipts</h2>
-            <p>{formatCurrency(totals.income)}</p>
-          </article>
-          <article className="stat-card expense">
-            <h2>Cash Payments</h2>
-            <p>{formatCurrency(totals.expense)}</p>
-          </article>
-          <article className="stat-card profit">
-            <h2>Net (Receipts − Payments)</h2>
-            <p>{formatCurrency(netProfit)}</p>
-          </article>
-        </div>
-
-        <div className="stats-grid secondary-stats">
-          <article className="stat-card profit">
-            <h2>Cash in Hand</h2>
-            <p>{formatCurrency(cashBalance)}</p>
-          </article>
-          <article className="stat-card income">
-            <h2>Parties with balance</h2>
-            <p>{partyOutstanding.length}</p>
-          </article>
-          <article className="stat-card expense">
-            <h2>Total vouchers</h2>
-            <p>{vouchers.length}</p>
-          </article>
-        </div>
-
-        <section className="chart-panel">
-          <div className="chart-header">
-            <h2>Receipts vs Payments</h2>
-            <p>Tally-style cash book summary from balanced vouchers.</p>
-          </div>
-          <div className="bar-chart">
-            {chartData.map((item) => (
-              <div className="bar-row" key={item.label}>
-                <div className="bar-label">{item.label}</div>
-                <div className="bar-track">
-                  <div className={`bar-fill ${item.colorClass}`} style={{ width: `${item.width}%` }} />
-                </div>
-                <div className="bar-value">{formatCurrency(item.amount)}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-      </section>
-
-      <section className="panel ai-panel" id="ai-assistant">
-        <div className="section-header">
-          <div>
-            <span className="eyebrow">AI Business Assistant</span>
-            <h2>Owner ka smart business checker</h2>
-            <p className="panel-hint">
-              Local database se profit/loss, balance sheet, party outstanding aur business pros-cons calculate karta hai.
-            </p>
-          </div>
-          <span>{aiInsights.health} · {aiInsights.score}/100</span>
-        </div>
-        <div className="ai-grid">
-          <article className="ai-score-card">
-            <span>Business Health</span>
-            <strong>{aiInsights.health}</strong>
-            <p>Profit margin {aiInsights.profitMargin}% · Expense ratio {aiInsights.expenseRatio}%</p>
-          </article>
-          <article className="summary-card">
-            <span>AI Profit / Loss</span>
-            <strong>{formatCurrency(netProfit)}</strong>
-          </article>
-          <article className="summary-card">
-            <span>Receivable</span>
-            <strong>{formatCurrency(aiInsights.receivableTotal)}</strong>
-          </article>
-          <article className="summary-card">
-            <span>Payable</span>
-            <strong>{formatCurrency(aiInsights.payableTotal)}</strong>
-          </article>
-        </div>
-        <div className="ai-checker-grid">
-          <div className="ai-list good">
-            <h3>Pros</h3>
-            {aiInsights.pros.map((item) => (
-              <p key={item}>{item}</p>
-            ))}
-          </div>
-          <div className="ai-list watch">
-            <h3>Cons / Warning</h3>
-            {aiInsights.cons.map((item) => (
-              <p key={item}>{item}</p>
-            ))}
-          </div>
-        </div>
-        <div className="balance-checker">
-          <div>
-            <span>Debit Total</span>
-            <strong>{formatCurrency(aiInsights.totalDebits)}</strong>
-          </div>
-          <div>
-            <span>Credit Total</span>
-            <strong>{formatCurrency(aiInsights.totalCredits)}</strong>
-          </div>
-          <div>
-            <span>Mismatch</span>
-            <strong>{aiInsights.unbalancedVouchers.length}</strong>
-          </div>
-        </div>
-        <form className="ai-calculator" onSubmit={answerAiQuestion}>
-          <label className="field-label" htmlFor="ai-question">
-            AI Calculator / Question
-          </label>
-          <div className="ai-input-row">
-            <input
-              id="ai-question"
-              value={aiQuestion}
-              onChange={(event) => setAiQuestion(event.target.value)}
-              placeholder="Example: profit kitna hai? / balance check / 2500+1800-400"
-            />
-            <button className="manual-button" type="submit">
-              Ask AI
-            </button>
-          </div>
-          <div className="ai-answer">{aiAnswer}</div>
-        </form>
-      </section>
-
-      <section className="content-grid" id="voucher-entry">
-        <article className="panel">
-          <h2>Voucher Entry</h2>
-          <p className="panel-hint">
-            Receipt / Payment = cash. Sales / Purchase = credit (party khata). Every voucher balances debit and
-            credit.
-          </p>
-          <form onSubmit={saveVoucherEntry}>
-            <div className="form-grid">
-              <div>
-                <label className="field-label" htmlFor="voucher-type">
-                  Voucher Type
-                </label>
-                <select
-                  id="voucher-type"
-                  value={voucherType}
-                  onChange={(event) => setVoucherType(event.target.value)}
-                >
-                  <option value="Receipt">Receipt (cash in)</option>
-                  <option value="Payment">Payment (cash out)</option>
-                  <option value="Sales">Sales (credit — customer owes)</option>
-                  <option value="Purchase">Purchase (credit — you owe supplier)</option>
-                </select>
-              </div>
-              <div>
-                <label className="field-label" htmlFor="voucher-date">
-                  Date
-                </label>
-                <input
-                  id="voucher-date"
-                  type="date"
-                  value={voucherDate}
-                  onChange={(event) => setVoucherDate(event.target.value)}
-                />
-              </div>
-              <div>
-                <label className="field-label" htmlFor="voucher-amount">
-                  Amount
-                </label>
-                <input
-                  id="voucher-amount"
-                  min="0"
-                  step="1"
-                  type="number"
-                  value={voucherAmount}
-                  onChange={(event) => setVoucherAmount(event.target.value)}
-                  placeholder="Example: 2500"
-                />
-              </div>
-              {(voucherType === 'Receipt' || voucherType === 'Payment') && (
+          {/* Active View conditional rendering */}
+          
+          {activeTab === 'dashboard' && (
+            <section className="hero-panel fade-in" id="dashboard">
+              <div className="brand-header">
+                <img className="brand-logo" src={profile.logo} alt="Business logo" />
                 <div>
-                  <label className="field-label" htmlFor="voucher-cash">
-                    Cash / Bank
-                  </label>
-                  <select
-                    id="voucher-cash"
-                    value={voucherCashId}
-                    onChange={(event) => setVoucherCashId(event.target.value)}
-                  >
-                    {cashLedgers.map((ledger) => (
-                      <option key={ledger.id} value={ledger.id}>
-                        {ledger.name}
-                      </option>
-                    ))}
-                  </select>
+                  <h1>{profile.name}</h1>
+                  <p>{profile.tagline}</p>
+                  <div className="profile-meta">
+                    <span>GSTIN: {profile.gstin || 'Not Provided'}</span>
+                    <span>Owner: {profile.owner}</span>
+                    <span>Email: {profile.email}</span>
+                    <span>Phone: {profile.phone}</span>
+                  </div>
+                </div>
+              </div>
+
+              {!browserSupported && (
+                <div className="notice error">
+                  Your browser does not support voice recognition. Please use Google Chrome.
                 </div>
               )}
-              {voucherType === 'Receipt' ? (
-                <>
-                  <div>
-                    <label className="field-label" htmlFor="receipt-counter">
-                      Credit To
-                    </label>
-                    <select
-                      id="receipt-counter"
-                      value={useSalesInsteadOfParty ? SALES_LEDGER_ID : voucherPartyId}
-                      onChange={(event) => {
-                        if (event.target.value === SALES_LEDGER_ID) {
-                          setUseSalesInsteadOfParty(true);
-                        } else {
-                          setUseSalesInsteadOfParty(false);
-                          setVoucherPartyId(event.target.value);
-                        }
-                      }}
-                    >
-                      <option value={SALES_LEDGER_ID}>Sales (general income)</option>
-                      {customerParties.map((ledger) => (
-                        <option key={ledger.id} value={ledger.id}>
-                          {ledger.name} (party)
-                        </option>
-                      ))}
-                    </select>
+
+              <div className="dashboard-stats-grid">
+                {/* Today's Sales */}
+                <article className="stat-card-modern">
+                  <div className="stat-card-header">
+                    <span>Today's Sales</span>
+                    <span className="stat-icon-badge text-green">₹</span>
                   </div>
-                </>
-              ) : voucherType === 'Payment' ? (
+                  <strong>{formatCurrency(stats.todaySales)}</strong>
+                  <p>Today's Inflow (Sales + Cash Receipts)</p>
+                </article>
+
+                {/* Today's Expenses */}
+                <article className="stat-card-modern">
+                  <div className="stat-card-header">
+                    <span>Today's Expenses</span>
+                    <span className="stat-icon-badge text-red">₹</span>
+                  </div>
+                  <strong>{formatCurrency(stats.todayExpenses)}</strong>
+                  <p>Today's Outflow (Purchases + Payments)</p>
+                </article>
+
+                {/* Monthly Sales */}
+                <article className="stat-card-modern">
+                  <div className="stat-card-header">
+                    <span>Monthly Sales</span>
+                    <span className={`growth-badge ${stats.salesGrowth >= 0 ? 'growth-up' : 'growth-down'}`}>
+                      {stats.salesGrowth >= 0 ? '↑' : '↓'} {Math.abs(stats.salesGrowth)}%
+                    </span>
+                  </div>
+                  <strong>{formatCurrency(stats.monthlySales)}</strong>
+                  <p>vs last month ({formatCurrency(stats.prevMonthlySales)})</p>
+                </article>
+
+                {/* Monthly Expenses */}
+                <article className="stat-card-modern">
+                  <div className="stat-card-header">
+                    <span>Monthly Expenses</span>
+                    <span className={`growth-badge ${stats.expenseGrowth <= 0 ? 'growth-up' : 'growth-down'}`}>
+                      {stats.expenseGrowth > 0 ? '↑' : '↓'} {Math.abs(stats.expenseGrowth)}%
+                    </span>
+                  </div>
+                  <strong>{formatCurrency(stats.monthlyExpenses)}</strong>
+                  <p>vs last month ({formatCurrency(stats.prevMonthlyExpenses)})</p>
+                </article>
+
+                {/* Net Profit */}
+                <article className="stat-card-modern">
+                  <div className="stat-card-header">
+                    <span>Net Profit</span>
+                    <span className={`growth-badge ${netProfitGrowth >= 0 ? 'growth-up' : 'growth-down'}`}>
+                      {netProfitGrowth >= 0 ? '↑' : '↓'} {Math.abs(netProfitGrowth)}%
+                    </span>
+                  </div>
+                  <strong className={monthlyNetProfit >= 0 ? 'text-green' : 'text-red'}>
+                    {formatCurrency(monthlyNetProfit)}
+                  </strong>
+                  <p>Monthly Sales - Expenses</p>
+                </article>
+
+                {/* Cash in Hand */}
+                <article className="stat-card-modern">
+                  <div className="stat-card-header">
+                    <span>Cash in Hand</span>
+                    <span className="stat-icon-badge text-blue">🏦</span>
+                  </div>
+                  <strong>{formatCurrency(cashInHand)}</strong>
+                  <p>Cash + Bank Balance</p>
+                </article>
+
+                {/* Receivable Amount */}
+                <article className="stat-card-modern">
+                  <div className="stat-card-header">
+                    <span>Receivable Amount</span>
+                    <span className="stat-icon-badge text-amber">📥</span>
+                  </div>
+                  <strong className="text-amber">{formatCurrency(receivableTotal)}</strong>
+                  <p>Outstanding Customers</p>
+                </article>
+
+                {/* Payable Amount */}
+                <article className="stat-card-modern">
+                  <div className="stat-card-header">
+                    <span>Payable Amount</span>
+                    <span className="stat-icon-badge text-red">📤</span>
+                  </div>
+                  <strong className="text-red">{formatCurrency(payableTotal)}</strong>
+                  <p>Outstanding Suppliers</p>
+                </article>
+              </div>
+
+              <div className="charts-grid-layout">
+                <MiniBarChart 
+                  data={getLast6MonthsData(vouchers)} 
+                  valueKey="sales" 
+                  barColor="#3b82f6" 
+                  title="Monthly Sales (Last 6 Months)" 
+                />
+                <MiniBarChart 
+                  data={getLast6MonthsData(vouchers)} 
+                  valueKey="expenses" 
+                  barColor="#ef4444" 
+                  title="Monthly Expenses (Last 6 Months)" 
+                />
+                <ProfitTrendChart data={getLast6MonthsData(vouchers)} />
+                <TopCustomersChart data={getTopCustomers(partySummary)} />
+              </div>
+            </section>
+          )}
+
+          {activeTab === 'ai-assistant' && (
+            <section className="panel ai-panel fade-in" id="ai-assistant">
+              <div className="section-header">
                 <div>
-                  <label className="field-label" htmlFor="payment-expense">
-                    Debit To
-                  </label>
-                  <select
-                    id="payment-expense"
-                    value={useExpenseInsteadOfSupplier ? voucherExpenseId : voucherPartyId}
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      if (supplierParties.some((party) => party.id === value)) {
-                        setUseExpenseInsteadOfSupplier(false);
-                        setVoucherPartyId(value);
-                        return;
-                      }
-                      setUseExpenseInsteadOfSupplier(true);
-                      setVoucherExpenseId(value);
-                    }}
-                  >
-                    <optgroup label="Expenses">
-                      {expenseLedgers.map((ledger) => (
-                        <option key={ledger.id} value={ledger.id}>
-                          {ledger.name}
-                        </option>
-                      ))}
-                    </optgroup>
-                    {supplierParties.length > 0 && (
-                      <optgroup label="Suppliers">
-                        {supplierParties.map((ledger) => (
-                          <option key={ledger.id} value={ledger.id}>
-                            {ledger.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                    )}
-                  </select>
+                  <span className="eyebrow">AI Business Console</span>
+                  <h2>Business Health Diagnostics</h2>
+                  <p className="panel-hint">
+                    Local analysis of double-entry ledger transactions, credit statements, and payment cycles.
+                  </p>
                 </div>
-              ) : voucherType === 'Sales' ? (
+                <div className="health-badge-wrap">
+                  <CircularHealthScore score={aiInsights.score} />
+                  <span className="health-score-value">{aiInsights.health} ({aiInsights.score}/100)</span>
+                </div>
+              </div>
+
+              <div className="ai-stats-breakdown">
+                <div className="insight-metric-card">
+                  <div className="insight-metric-title">
+                    <span>Profit Trend</span>
+                    <strong>{aiInsights.profitTrend}</strong>
+                  </div>
+                  <div className="insight-progress-bar">
+                    <div 
+                      className="insight-progress-fill success" 
+                      style={{ width: `${aiInsights.profitTrend === 'Upward' ? 100 : aiInsights.profitTrend === 'Stable' ? 65 : 30}%` }} 
+                    />
+                  </div>
+                </div>
+
+                <div className="insight-metric-card">
+                  <div className="insight-metric-title">
+                    <span>Cash Flow Status</span>
+                    <strong>{aiInsights.cashFlowStatus}</strong>
+                  </div>
+                  <div className="insight-progress-bar">
+                    <div 
+                      className="insight-progress-fill primary" 
+                      style={{ width: `${aiInsights.cashFlowStatus === 'Healthy' ? 100 : aiInsights.cashFlowStatus === 'Strained' ? 60 : 25}%` }} 
+                    />
+                  </div>
+                </div>
+
+                <div className="insight-metric-card">
+                  <div className="insight-metric-title">
+                    <span>Collection Efficiency</span>
+                    <strong>{aiInsights.collectionEfficiency}%</strong>
+                  </div>
+                  <div className="insight-progress-bar">
+                    <div 
+                      className="insight-progress-fill warning" 
+                      style={{ width: `${aiInsights.collectionEfficiency}%` }} 
+                    />
+                  </div>
+                </div>
+
+                <div className="insight-metric-card">
+                  <div className="insight-metric-title">
+                    <span>Expense Control</span>
+                    <strong>{aiInsights.expenseControlScore}/100</strong>
+                  </div>
+                  <div className="insight-progress-bar">
+                    <div 
+                      className="insight-progress-fill success" 
+                      style={{ width: `${aiInsights.expenseControlScore}%` }} 
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="ai-checker-grid">
+                <div className="ai-list good">
+                  <h3>AI Positive Indicators</h3>
+                  <p>• Sabhi accounts double-entry standards me mathematically check ho rahe hain.</p>
+                  {aiInsights.score >= 60 ? (
+                    <p>• Health score strong hai. Working capital cycles regular hain.</p>
+                  ) : (
+                    <p>• Working capital constraints warning level pe hai.</p>
+                  )}
+                  {cashInHand >= 0 && (
+                    <p>• Liquid cash positions stable hain. Short-term payables easily addressable hain.</p>
+                  )}
+                </div>
+                <div className="ai-list watch">
+                  <h3>AI Suggestions & Warnings</h3>
+                  {aiInsights.suggestions.map((text, idx) => (
+                    <p key={idx}>• {text}</p>
+                  ))}
+                </div>
+              </div>
+
+              <form className="ai-calculator" onSubmit={answerAiQuestion}>
+                <label className="field-label" htmlFor="ai-question">
+                  Ask AI Assistant / Quick Calculator
+                </label>
+                <div className="ai-input-row">
+                  <input
+                    id="ai-question"
+                    value={aiQuestion}
+                    onChange={(event) => setAiQuestion(event.target.value)}
+                    placeholder="Ask about profit / cash balance / outstanding / enter expression (e.g. 5000 + 4500 * 0.18)"
+                  />
+                  <button className="manual-button" type="submit">
+                    Ask AI
+                  </button>
+                </div>
+                <div className="ai-answer">{aiAnswer}</div>
+              </form>
+            </section>
+          )}
+
+          {activeTab === 'voucher-entry' && (
+            <section className="content-grid fade-in" id="voucher-entry">
+              <article className="panel">
+                <h2>Voucher Entry</h2>
+                <p className="panel-hint">
+                  Receipt / Payment = cash. Sales / Purchase = credit (party khata). Every voucher balances debit and
+                  credit.
+                </p>
+                <form onSubmit={saveVoucherEntry}>
+                  <div className="form-grid">
+                    <div>
+                      <label className="field-label" htmlFor="voucher-type">
+                        Voucher Type
+                      </label>
+                      <select
+                        id="voucher-type"
+                        value={voucherType}
+                        onChange={(event) => setVoucherType(event.target.value)}
+                      >
+                        <option value="Receipt">Receipt (cash in)</option>
+                        <option value="Payment">Payment (cash out)</option>
+                        <option value="Sales">Sales (credit — customer owes)</option>
+                        <option value="Purchase">Purchase (credit — you owe supplier)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="field-label" htmlFor="voucher-date">
+                        Date
+                      </label>
+                      <input
+                        id="voucher-date"
+                        type="date"
+                        value={voucherDate}
+                        onChange={(event) => setVoucherDate(event.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="field-label" htmlFor="voucher-amount">
+                        Amount
+                      </label>
+                      <input
+                        id="voucher-amount"
+                        min="0"
+                        step="1"
+                        type="number"
+                        value={voucherAmount}
+                        onChange={(event) => setVoucherAmount(event.target.value)}
+                        placeholder="Example: 2500"
+                      />
+                    </div>
+                    {(voucherType === 'Receipt' || voucherType === 'Payment') && (
+                      <div>
+                        <label className="field-label" htmlFor="voucher-cash">
+                          Cash / Bank
+                        </label>
+                        <select
+                          id="voucher-cash"
+                          value={voucherCashId}
+                          onChange={(event) => setVoucherCashId(event.target.value)}
+                        >
+                          {cashLedgers.map((ledger) => (
+                            <option key={ledger.id} value={ledger.id}>
+                              {ledger.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    {voucherType === 'Receipt' ? (
+                      <div>
+                        <label className="field-label" htmlFor="receipt-counter">
+                          Credit To
+                        </label>
+                        <select
+                          id="receipt-counter"
+                          value={useSalesInsteadOfParty ? SALES_LEDGER_ID : voucherPartyId}
+                          onChange={(event) => {
+                            if (event.target.value === SALES_LEDGER_ID) {
+                              setUseSalesInsteadOfParty(true);
+                            } else {
+                              setUseSalesInsteadOfParty(false);
+                              setVoucherPartyId(event.target.value);
+                            }
+                          }}
+                        >
+                          <option value={SALES_LEDGER_ID}>Sales (general income)</option>
+                          {customerParties.map((ledger) => (
+                            <option key={ledger.id} value={ledger.id}>
+                              {ledger.name} (party)
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : voucherType === 'Payment' ? (
+                      <div>
+                        <label className="field-label" htmlFor="payment-expense">
+                          Debit To
+                        </label>
+                        <select
+                          id="payment-expense"
+                          value={useExpenseInsteadOfSupplier ? voucherExpenseId : voucherPartyId}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            if (supplierParties.some((party) => party.id === value)) {
+                              setUseExpenseInsteadOfSupplier(false);
+                              setVoucherPartyId(value);
+                              return;
+                            }
+                            setUseExpenseInsteadOfSupplier(true);
+                            setVoucherExpenseId(value);
+                          }}
+                        >
+                          <optgroup label="Expenses">
+                            {expenseLedgers.map((ledger) => (
+                              <option key={ledger.id} value={ledger.id}>
+                                {ledger.name}
+                              </option>
+                            ))}
+                          </optgroup>
+                          {supplierParties.length > 0 && (
+                            <optgroup label="Suppliers">
+                              {supplierParties.map((ledger) => (
+                                <option key={ledger.id} value={ledger.id}>
+                                  {ledger.name}
+                                </option>
+                              ))}
+                            </optgroup>
+                          )}
+                        </select>
+                      </div>
+                    ) : voucherType === 'Sales' ? (
+                      <div>
+                        <label className="field-label" htmlFor="sales-customer">
+                          Customer (credit sale)
+                        </label>
+                        <select
+                          id="sales-customer"
+                          value={voucherPartyId}
+                          onChange={(event) => {
+                            setUseSalesInsteadOfParty(false);
+                            setVoucherPartyId(event.target.value);
+                          }}
+                        >
+                          <option value="">Select customer</option>
+                          {customerParties.map((ledger) => (
+                            <option key={ledger.id} value={ledger.id}>
+                              {ledger.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : voucherType === 'Purchase' ? (
+                      <>
+                        <div>
+                          <label className="field-label" htmlFor="purchase-ledger">
+                            Purchase / Material
+                          </label>
+                          <select
+                            id="purchase-ledger"
+                            value={voucherExpenseId}
+                            onChange={(event) => setVoucherExpenseId(event.target.value)}
+                          >
+                            {expenseLedgers.map((ledger) => (
+                              <option key={ledger.id} value={ledger.id}>
+                                {ledger.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="field-label" htmlFor="purchase-supplier">
+                            Supplier (credit purchase)
+                          </label>
+                          <select
+                            id="purchase-supplier"
+                            value={voucherPartyId}
+                            onChange={(event) => {
+                              setUseExpenseInsteadOfSupplier(false);
+                              setVoucherPartyId(event.target.value);
+                            }}
+                          >
+                            <option value="">Select supplier</option>
+                            {supplierParties.map((ledger) => (
+                              <option key={ledger.id} value={ledger.id}>
+                                {ledger.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </>
+                    ) : null}
+                    <div className="wide-field">
+                      <label className="field-label" htmlFor="voucher-narration">
+                        Narration
+                      </label>
+                      <textarea
+                        id="voucher-narration"
+                        value={voucherNarration}
+                        onChange={(event) => setVoucherNarration(event.target.value)}
+                        placeholder="Example: Received 2500 from Ram Traders"
+                      />
+                    </div>
+                  </div>
+                  <button className="manual-button" type="submit">
+                    Save {voucherType} Voucher
+                  </button>
+                </form>
+              </article>
+
+              <article className="panel">
+                <h2>Add Party (Khata)</h2>
+                <form onSubmit={addParty}>
+                  <div className="form-grid">
+                    <div>
+                      <label className="field-label" htmlFor="party-name">
+                        Party Name
+                      </label>
+                      <input
+                        id="party-name"
+                        value={newPartyName}
+                        onChange={(event) => setNewPartyName(event.target.value)}
+                        placeholder="Example: Ram Traders"
+                      />
+                    </div>
+                    <div>
+                      <label className="field-label" htmlFor="party-type">
+                        Party Type
+                      </label>
+                      <select
+                        id="party-type"
+                        value={newPartyType}
+                        onChange={(event) => setNewPartyType(event.target.value)}
+                      >
+                        <option value="customer">Customer (they owe you)</option>
+                        <option value="supplier">Supplier (you owe them)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <button className="secondary-button" type="submit">
+                    Add Party Ledger
+                  </button>
+                </form>
+              </article>
+            </section>
+          )}
+
+          {activeTab === 'party-management' && (
+            <section className="panel fade-in" id="party-management">
+              <div className="section-header">
                 <div>
-                  <label className="field-label" htmlFor="sales-customer">
-                    Customer (credit sale)
+                  <h2>Party Khata Management</h2>
+                  <p className="panel-hint">Track outstanding customer receivables, supplier payables, and sales histories.</p>
+                </div>
+                <span className="info-badge">{partySummary.length} Parties</span>
+              </div>
+
+              <div className="party-table-wrap">
+                <table className="statement-table">
+                  <thead>
+                    <tr>
+                      <th>Party Name</th>
+                      <th>Type</th>
+                      <th>Total Invoices (Sales/Purchases)</th>
+                      <th>Total Payments Received/Made</th>
+                      <th>Outstanding Balance</th>
+                      <th>Last Active Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {partySummary.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="empty-state">No parties added yet. Go to Voucher Entry to add a customer or supplier.</td>
+                      </tr>
+                    ) : (
+                      partySummary.map((party) => {
+                        const isDebtor = party.group === 'Sundry Debtors';
+                        const balance = party.outstandingAmount;
+                        
+                        return (
+                          <tr key={party.id}>
+                            <td><strong>{party.name}</strong></td>
+                            <td>
+                              <span className={`badge ${isDebtor ? 'badge-debtor' : 'badge-creditor'}`}>
+                                {isDebtor ? 'Customer' : 'Supplier'}
+                              </span>
+                            </td>
+                            <td>{formatCurrency(party.totalSales)}</td>
+                            <td>{formatCurrency(party.totalPayments)}</td>
+                            <td>
+                              <strong className={balance > 0 ? (isDebtor ? 'text-amber' : 'text-red') : 'text-green'}>
+                                {balance === 0 ? 'Settled' : isDebtor ? `${formatCurrency(balance)} Dr` : `${formatCurrency(Math.abs(balance))} Cr`}
+                              </strong>
+                            </td>
+                            <td>{party.lastTransactionDate}</td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
+          {activeTab === 'reports' && (
+            <section className="panel reports-panel fade-in" id="reports">
+              <div className="section-header">
+                <div>
+                  <h2>Business Reports Console</h2>
+                  <p className="panel-hint">Review Profit & Loss statements, Cash Books, and customer outstanding summaries.</p>
+                </div>
+                <div className="inline-actions topbar-actions">
+                  <button className="secondary-button" type="button" onClick={exportVouchersCsv}>
+                    Export CSV
+                  </button>
+                  <button className="warning-button" type="button" onClick={printReport}>
+                    Print Report
+                  </button>
+                </div>
+              </div>
+
+              {/* Sub Navigation */}
+              <div className="reports-sub-nav">
+                <button className={activeReportTab === 'pnl' ? 'active' : ''} onClick={() => setActiveReportTab('pnl')}>Profit & Loss</button>
+                <button className={activeReportTab === 'daybook' ? 'active' : ''} onClick={() => setActiveReportTab('daybook')}>Day Book</button>
+                <button className={activeReportTab === 'cashbook' ? 'active' : ''} onClick={() => setActiveReportTab('cashbook')}>Cash Book</button>
+                <button className={activeReportTab === 'customer' ? 'active' : ''} onClick={() => setActiveReportTab('customer')}>Customer Outstanding</button>
+                <button className={activeReportTab === 'supplier' ? 'active' : ''} onClick={() => setActiveReportTab('supplier')}>Supplier Outstanding</button>
+              </div>
+
+              {/* Filter Row for Date-based Reports (Day Book & Cash Book) */}
+              {(activeReportTab === 'daybook' || activeReportTab === 'cashbook') && (
+                <div className="reports-filter-row">
+                  <div>
+                    <label className="field-label">From Date</label>
+                    <input type="date" value={dayBookFromDate} onChange={(e) => setDayBookFromDate(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="field-label">To Date</label>
+                    <input type="date" value={dayBookToDate} onChange={(e) => setDayBookToDate(e.target.value)} />
+                  </div>
+                </div>
+              )}
+
+              {/* Onscreen Report Preview */}
+              <div className="onscreen-report-container">
+                {activeReportTab === 'pnl' && (
+                  <div className="pnl-report-view">
+                    <h3 className="report-view-title">Profit & Loss Statement</h3>
+                    <div className="pnl-grid">
+                      <div className="pnl-row header-row">
+                        <span>Particulars</span>
+                        <span>Debit (Dr)</span>
+                        <span>Credit (Cr)</span>
+                      </div>
+                      <div className="pnl-row">
+                        <span>Sales Revenue</span>
+                        <span>—</span>
+                        <span className="text-green">{formatCurrency(pnlData.sales)}</span>
+                      </div>
+                      <div className="pnl-row">
+                        <span>Less: Purchase Accounts (Material / Purchase)</span>
+                        <span className="text-red">{formatCurrency(pnlData.purchases)}</span>
+                        <span>—</span>
+                      </div>
+                      <div className="pnl-row subtotal-row">
+                        <span>Gross Profit</span>
+                        <span>—</span>
+                        <strong>{formatCurrency(pnlData.grossProfit)}</strong>
+                      </div>
+                      <div className="pnl-row">
+                        <span>Less: Rent Expenses</span>
+                        <span className="text-red">{formatCurrency(pnlData.rent)}</span>
+                        <span>—</span>
+                      </div>
+                      <div className="pnl-row">
+                        <span>Less: General Expenses</span>
+                        <span className="text-red">{formatCurrency(pnlData.general)}</span>
+                        <span>—</span>
+                      </div>
+                      <div className="pnl-row total-row">
+                        <span>Net Profit</span>
+                        <span>—</span>
+                        <strong className="text-green">{formatCurrency(pnlData.netProfit)}</strong>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeReportTab === 'daybook' && (
+                  <div className="daybook-report-view">
+                    <h3 className="report-view-title">Day Book Report ({dayBookFromDate} to {dayBookToDate})</h3>
+                    <table className="statement-table">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Voucher ID</th>
+                          <th>Type</th>
+                          <th>Particulars</th>
+                          <th>Narration</th>
+                          <th>Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {vouchers
+                          .filter(v => v.date >= dayBookFromDate && v.date <= dayBookToDate)
+                          .map(v => (
+                            <tr key={v.id}>
+                              <td>{v.date}</td>
+                              <td><code className="text-muted">{v.id.slice(0, 10)}</code></td>
+                              <td><span className={`badge badge-${v.type.toLowerCase()}`}>{v.type}</span></td>
+                              <td>{counterLabel(v)}</td>
+                              <td>{v.narration}</td>
+                              <td><strong>{formatCurrency(v.amount)}</strong></td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {activeReportTab === 'cashbook' && (
+                  <div className="cashbook-report-view">
+                    <h3 className="report-view-title">Cash Book Statement ({dayBookFromDate} to {dayBookToDate})</h3>
+                    <table className="statement-table">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Particulars (Counter)</th>
+                          <th>Type</th>
+                          <th>Receipts (Dr)</th>
+                          <th>Payments (Cr)</th>
+                          <th>Running Balance</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {cashBookData.rows
+                          .filter(r => r.date >= dayBookFromDate && r.date <= dayBookToDate)
+                          .map((r, idx) => (
+                            <tr key={idx}>
+                              <td>{r.date}</td>
+                              <td>{r.particulars}</td>
+                              <td><span className={`badge badge-${r.type.toLowerCase()}`}>{r.type}</span></td>
+                              <td>{r.debit ? <span className="text-green">+{formatCurrency(r.debit)}</span> : '—'}</td>
+                              <td>{r.credit ? <span className="text-red">-{formatCurrency(r.credit)}</span> : '—'}</td>
+                              <td><strong>{formatCurrency(r.balance)}</strong></td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {activeReportTab === 'customer' && (
+                  <div className="customer-report-view">
+                    <h3 className="report-view-title">Customer Outstanding Receivables</h3>
+                    <table className="statement-table">
+                      <thead>
+                        <tr>
+                          <th>Customer Name</th>
+                          <th>Total Sales Invoiced</th>
+                          <th>Total Payments Received</th>
+                          <th>Outstanding Balance</th>
+                          <th>Last Transaction</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {partySummary
+                          .filter(p => p.group === 'Sundry Debtors' && p.outstandingAmount > 0)
+                          .map(p => (
+                            <tr key={p.id}>
+                              <td><strong>{p.name}</strong></td>
+                              <td>{formatCurrency(p.totalSales)}</td>
+                              <td>{formatCurrency(p.totalPayments)}</td>
+                              <td><strong className="text-amber">{formatCurrency(p.outstandingAmount)}</strong></td>
+                              <td>{p.lastTransactionDate}</td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {activeReportTab === 'supplier' && (
+                  <div className="supplier-report-view">
+                    <h3 className="report-view-title">Supplier Outstanding Payables</h3>
+                    <table className="statement-table">
+                      <thead>
+                        <tr>
+                          <th>Supplier Name</th>
+                          <th>Total Purchases Invoiced</th>
+                          <th>Total Payments Made</th>
+                          <th>Outstanding Balance</th>
+                          <th>Last Transaction</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {partySummary
+                          .filter(p => p.group === 'Sundry Creditors' && p.outstandingAmount > 0)
+                          .map(p => (
+                            <tr key={p.id}>
+                              <td><strong>{p.name}</strong></td>
+                              <td>{formatCurrency(p.totalSales)}</td>
+                              <td>{formatCurrency(p.totalPayments)}</td>
+                              <td><strong className="text-red">{formatCurrency(Math.abs(p.outstandingAmount))}</strong></td>
+                              <td>{p.lastTransactionDate}</td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+
+          {activeTab === 'day-book' && (
+            <section className="panel fade-in" id="day-book">
+              <div className="section-header">
+                <h2>Day Book Overview</h2>
+                <span>{filteredVouchers.length} Vouchers</span>
+              </div>
+              <label className="field-label" htmlFor="daybook-filter">
+                Filter Day Book by Date
+              </label>
+              <input
+                id="daybook-filter"
+                type="date"
+                value={dayBookFilter}
+                onChange={(event) => setDayBookFilter(event.target.value)}
+              />
+              {dayBookFilter && (
+                <button className="delete-entry-button" style={{ marginTop: '10px' }} type="button" onClick={() => setDayBookFilter('')}>
+                  Clear Filter
+                </button>
+              )}
+              <div className="activity-list" style={{ marginTop: '20px' }}>
+                {filteredVouchers.length === 0 ? (
+                  <div className="empty-state">No vouchers recorded for this date.</div>
+                ) : (
+                  filteredVouchers.map((voucher) => (
+                    <article className="activity-item" key={voucher.id}>
+                      <div>
+                        <p className={`activity-type voucher-${voucher.type.toLowerCase()}`}>{voucher.type}</p>
+                        <p className="voucher-narration">{voucher.narration}</p>
+                        <p className="voucher-meta">
+                          {voucher.date} · {counterLabel(voucher)} · {voucher.source}
+                        </p>
+                      </div>
+                      <strong>{formatCurrency(voucher.amount)}</strong>
+                      <div className="voucher-actions">
+                        <button className="share-entry-button" type="button" onClick={() => shareVoucher(voucher)}>
+                          Share
+                        </button>
+                        <button className="share-entry-button" type="button" onClick={() => shareVoucherToWhatsApp(voucher)}>
+                          WhatsApp
+                        </button>
+                        <button className="share-entry-button" type="button" onClick={() => shareVoucherToFacebook(voucher)}>
+                          Facebook
+                        </button>
+                        <button className="share-entry-button" type="button" onClick={() => printVoucherReceipt(voucher)}>
+                          PDF Receipt
+                        </button>
+                        <button className="delete-entry-button" type="button" onClick={() => removeVoucher(voucher.id)}>
+                          Delete
+                        </button>
+                      </div>
+                    </article>
+                  ))
+                )}
+              </div>
+            </section>
+          )}
+
+          {activeTab === 'party-statement' && (
+            <section className="panel fade-in" id="party-statement">
+              <h2>Party Statement Ledger</h2>
+              {partyLedgers.length === 0 ? (
+                <p className="panel-hint">Add a customer or supplier party in Voucher Entry to check statement ledgers.</p>
+              ) : (
+                <>
+                  <label className="field-label" htmlFor="statement-party">
+                    Select Party
                   </label>
                   <select
-                    id="sales-customer"
-                    value={voucherPartyId}
-                    onChange={(event) => {
-                      setUseSalesInsteadOfParty(false);
-                      setVoucherPartyId(event.target.value);
-                    }}
+                    id="statement-party"
+                    value={statementLedgerId}
+                    onChange={(event) => setStatementLedgerId(event.target.value)}
                   >
-                    <option value="">Select customer</option>
-                    {customerParties.map((ledger) => (
+                    {partyLedgers.map((ledger) => (
                       <option key={ledger.id} value={ledger.id}>
-                        {ledger.name}
+                        {ledger.name} ({ledger.group})
                       </option>
                     ))}
                   </select>
-                </div>
-              ) : voucherType === 'Purchase' ? (
-                <>
-                  <div>
-                    <label className="field-label" htmlFor="purchase-ledger">
-                      Purchase / Material
-                    </label>
-                    <select
-                      id="purchase-ledger"
-                      value={voucherExpenseId}
-                      onChange={(event) => setVoucherExpenseId(event.target.value)}
-                    >
-                      {expenseLedgers.map((ledger) => (
-                        <option key={ledger.id} value={ledger.id}>
-                          {ledger.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="field-label" htmlFor="purchase-supplier">
-                      Supplier (credit purchase)
-                    </label>
-                    <select
-                      id="purchase-supplier"
-                      value={voucherPartyId}
-                      onChange={(event) => {
-                        setUseExpenseInsteadOfSupplier(false);
-                        setVoucherPartyId(event.target.value);
-                      }}
-                    >
-                      <option value="">Select supplier</option>
-                      {supplierParties.map((ledger) => (
-                        <option key={ledger.id} value={ledger.id}>
-                          {ledger.name}
-                        </option>
-                      ))}
-                    </select>
+                  {statement.ledger && (
+                    <p className="statement-balance">
+                      Closing balance: {formatPartyBalance(statement.ledger, statement.closingBalance)}
+                    </p>
+                  )}
+                  <div className="statement-table-wrap">
+                    <table className="statement-table">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Type</th>
+                          <th>Narration</th>
+                          <th>Debit (Dr)</th>
+                          <th>Credit (Cr)</th>
+                          <th>Running Balance</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {statement.rows.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="empty-state">
+                              No statement entries found for this party.
+                            </td>
+                          </tr>
+                        ) : (
+                          statement.rows.map((row, index) => (
+                            <tr key={index}>
+                              <td>{row.date}</td>
+                              <td><span className={`badge badge-${row.type.toLowerCase()}`}>{row.type}</span></td>
+                              <td>{row.narration}</td>
+                              <td>{row.debit ? formatCurrency(row.debit) : '—'}</td>
+                              <td>{row.credit ? formatCurrency(row.credit) : '—'}</td>
+                              <td><strong>{formatCurrency(row.balance)}</strong></td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </>
-              ) : null}
-              <div className="wide-field">
-                <label className="field-label" htmlFor="voucher-narration">
-                  Narration
-                </label>
-                <textarea
-                  id="voucher-narration"
-                  value={voucherNarration}
-                  onChange={(event) => setVoucherNarration(event.target.value)}
-                  placeholder="Example: Received 2500 from Ram Traders"
-                />
-              </div>
-            </div>
-            <button className="manual-button" type="submit">
-              Save {voucherType} Voucher
-            </button>
-          </form>
-        </article>
+              )}
+            </section>
+          )}
 
-        <article className="panel">
-          <h2>Add Party (Khata)</h2>
-          <form onSubmit={addParty}>
-            <div className="form-grid">
-              <div>
-                <label className="field-label" htmlFor="party-name">
-                  Party Name
-                </label>
-                <input
-                  id="party-name"
-                  value={newPartyName}
-                  onChange={(event) => setNewPartyName(event.target.value)}
-                  placeholder="Example: Ram Traders"
-                />
+          {activeTab === 'profile-settings' && (
+            <section className="panel profile-editor fade-in" id="profile-settings">
+              <div className="section-header">
+                <div>
+                  <h2>Business Profile</h2>
+                  <p className="panel-hint">Configure your company identity, logo, and GST number for invoice printing.</p>
+                </div>
+                <span>Profile</span>
               </div>
-              <div>
-                <label className="field-label" htmlFor="party-type">
-                  Party Type
-                </label>
-                <select
-                  id="party-type"
-                  value={newPartyType}
-                  onChange={(event) => setNewPartyType(event.target.value)}
-                >
-                  <option value="customer">Customer (they owe you)</option>
-                  <option value="supplier">Supplier (you owe them)</option>
-                </select>
-              </div>
-            </div>
-            <button className="secondary-button" type="submit">
-              Add Party Ledger
-            </button>
-          </form>
-        </article>
-      </section>
-
-      <section className="panel" id="reports">
-        <h2>Business Reports</h2>
-        <div className="summary-grid report-summary">
-          <div className="summary-card">
-            <span>Total receipts + sales</span>
-            <strong>{formatCurrency(totals.income)}</strong>
-          </div>
-          <div className="summary-card">
-            <span>Total payments + purchases</span>
-            <strong>{formatCurrency(totals.expense)}</strong>
-          </div>
-          <div className="summary-card">
-            <span>Net</span>
-            <strong>{formatCurrency(netProfit)}</strong>
-          </div>
-          <div className="summary-card">
-            <span>Cash in hand</span>
-            <strong>{formatCurrency(cashBalance)}</strong>
-          </div>
-        </div>
-        <div className="inline-actions">
-          <button className="secondary-button" type="button" onClick={exportVouchersCsv}>
-            Export Day Book CSV
-          </button>
-          <button className="warning-button" type="button" onClick={printReport}>
-            Print Report
-          </button>
-        </div>
-        <div className="suggestion-list">
-          {suggestions.map((text) => (
-            <div key={text}>{text}</div>
-          ))}
-        </div>
-        {partyOutstanding.length > 0 && (
-          <>
-            <h3 className="subsection-title">Party outstanding (Khata)</h3>
-            <div className="compact-list">
-              {partyOutstanding.map(({ ledger, balance }) => (
-                <article className="compact-item" key={ledger.id}>
-                  <div>
-                    <strong>{ledger.name}</strong>
-                    <p>{ledger.group}</p>
+              <form onSubmit={saveBusinessProfile}>
+                <div className="profile-editor-grid">
+                  <div className="profile-logo-card">
+                    <img className="profile-logo-preview" src={profile.logo} alt="Business logo preview" />
+                    <label className="field-label" htmlFor="profile-logo">
+                      Upload Business Logo
+                    </label>
+                    <input accept="image/*" id="profile-logo" name="profileLogo" type="file" />
                   </div>
-                  <strong>{formatPartyBalance(ledger, balance)}</strong>
+                  <div className="form-grid">
+                    <div>
+                      <label className="field-label" htmlFor="profile-name">
+                        Company / Shop Name
+                      </label>
+                      <input id="profile-name" name="profileName" defaultValue={profile.name} required />
+                    </div>
+                    <div>
+                      <label className="field-label" htmlFor="profile-owner">
+                        Owner Name
+                      </label>
+                      <input id="profile-owner" name="profileOwner" defaultValue={profile.owner} required />
+                    </div>
+                    <div className="wide-field">
+                      <label className="field-label" htmlFor="profile-tagline">
+                        Business Tagline / Description
+                      </label>
+                      <input id="profile-tagline" name="profileTagline" defaultValue={profile.tagline} />
+                    </div>
+                    <div>
+                      <label className="field-label" htmlFor="profile-gstin">
+                        GSTIN Number
+                      </label>
+                      <input id="profile-gstin" name="profileGstin" defaultValue={profile.gstin} placeholder="e.g. 27AAAAA1111A1Z1" />
+                    </div>
+                    <div>
+                      <label className="field-label" htmlFor="profile-phone">
+                        Mobile Number
+                      </label>
+                      <input id="profile-phone" name="profilePhone" defaultValue={profile.phone} required />
+                    </div>
+                    <div className="wide-field">
+                      <label className="field-label" htmlFor="profile-email">
+                        Email Address
+                      </label>
+                      <input id="profile-email" name="profileEmail" type="email" defaultValue={profile.email} required />
+                    </div>
+                    <div className="wide-field">
+                      <label className="field-label" htmlFor="profile-address">
+                        Business Address
+                      </label>
+                      <textarea id="profile-address" name="profileAddress" defaultValue={profile.address} placeholder="Street, City, State, ZIP" />
+                    </div>
+                  </div>
+                </div>
+                <div className="inline-actions">
+                  <button className="manual-button" type="submit">
+                    Save Business Profile
+                  </button>
+                  <button className="warning-button" type="button" onClick={resetBusinessProfile}>
+                    Reset Defaults
+                  </button>
+                </div>
+              </form>
+            </section>
+          )}
+
+          {activeTab === 'app-settings' && (
+            <section className="panel settings-panel fade-in" id="app-settings">
+              <div className="section-header">
+                <div>
+                  <h2>Application Configurations</h2>
+                  <p className="panel-hint">Configure system backups, restoration endpoints, and database cleanups.</p>
+                </div>
+                <span>Admin Settings</span>
+              </div>
+              <div className="settings-grid">
+                <article className="settings-card">
+                  <h3>Voice Language</h3>
+                  <p>Current recording dialect: <strong>{language}</strong></p>
+                  <select
+                    id="settings-voice-lang"
+                    value={language}
+                    onChange={(event) => setLanguage(event.target.value)}
+                    style={{ marginTop: '8px' }}
+                  >
+                    <option value="en-US">English (US)</option>
+                    <option value="hi-IN">Hindi (India)</option>
+                    <option value="gu-IN">Gujarati (India)</option>
+                  </select>
                 </article>
-              ))}
-            </div>
-          </>
-        )}
-      </section>
-
-      <section className="panel" id="day-book">
-        <label className="field-label" htmlFor="daybook-filter">
-          Filter day book by date (optional)
-        </label>
-        <input
-          id="daybook-filter"
-          type="date"
-          value={dayBookFilter}
-          onChange={(event) => setDayBookFilter(event.target.value)}
-        />
-        {dayBookFilter && (
-          <button className="delete-entry-button" type="button" onClick={() => setDayBookFilter('')}>
-            Clear filter
-          </button>
-        )}
-        <div className="section-header">
-          <h2>Day Book</h2>
-          <span>{filteredVouchers.length} shown</span>
-        </div>
-        <div className="activity-list">
-          {filteredVouchers.length === 0 ? (
-            <div className="empty-state">No vouchers for this filter.</div>
-          ) : (
-            filteredVouchers.map((voucher) => (
-              <article className="activity-item" key={voucher.id}>
-                <div>
-                  <p className={`activity-type voucher-${voucher.type.toLowerCase()}`}>{voucher.type}</p>
-                  <p>{voucher.narration}</p>
-                  <p className="voucher-meta">
-                    {voucher.date} · {counterLabel(voucher)} · {voucher.source}
-                  </p>
-                </div>
-                <strong>{formatCurrency(voucher.amount)}</strong>
-                <div className="voucher-actions">
-                  <button className="share-entry-button" type="button" onClick={() => shareVoucher(voucher)}>
-                    Share
+                <article className="settings-card">
+                  <h3>Data Safety & Backups</h3>
+                  <p>Download a JSON package of your invoices, settings, and party histories.</p>
+                  <button className="secondary-button compact-button" type="button" onClick={downloadFullBackup}>
+                    Download Backup JSON
                   </button>
-                  <button className="share-entry-button" type="button" onClick={() => shareVoucherToWhatsApp(voucher)}>
-                    WhatsApp
-                  </button>
-                  <button className="share-entry-button" type="button" onClick={() => shareVoucherToFacebook(voucher)}>
-                    Facebook
-                  </button>
-                  <button className="share-entry-button" type="button" onClick={() => printVoucherReceipt(voucher)}>
-                    PDF
-                  </button>
-                  <button className="delete-entry-button" type="button" onClick={() => removeVoucher(voucher.id)}>
-                    Delete
-                  </button>
-                </div>
-              </article>
-            ))
+                </article>
+                <article className="settings-card">
+                  <h3>Database Operations</h3>
+                  <p>Restore backups or permanently flush all double-entry voucher tables.</p>
+                  <div style={{ display: 'grid', gap: '8px', marginTop: '8px' }}>
+                    <label className="warning-button restore-label" style={{ margin: 0 }}>
+                      Restore Backup
+                      <input accept="application/json,.json" hidden type="file" onChange={restoreFullBackup} />
+                    </label>
+                    <button className="danger-button" style={{ margin: 0, minHeight: '44px' }} type="button" onClick={clearAllData}>
+                      Reset All Data
+                    </button>
+                  </div>
+                </article>
+              </div>
+            </section>
           )}
-        </div>
-      </section>
-
-      <section className="panel" id="party-statement">
-        <h2>Party Statement (Khata)</h2>
-        {partyLedgers.length === 0 ? (
-          <p className="panel-hint">Add a customer or supplier party to see their running balance.</p>
-        ) : (
-          <>
-            <label className="field-label" htmlFor="statement-party">
-              Select Party
-            </label>
-            <select
-              id="statement-party"
-              value={statementLedgerId}
-              onChange={(event) => setStatementLedgerId(event.target.value)}
-            >
-              {partyLedgers.map((ledger) => (
-                <option key={ledger.id} value={ledger.id}>
-                  {ledger.name} ({ledger.group})
-                </option>
-              ))}
-            </select>
-            {statement.ledger && (
-              <p className="statement-balance">
-                Closing balance: {formatPartyBalance(statement.ledger, statement.closingBalance)}
-              </p>
-            )}
-            <div className="statement-table-wrap">
-              <table className="statement-table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Type</th>
-                    <th>Narration</th>
-                    <th>Debit</th>
-                    <th>Credit</th>
-                    <th>Balance</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {statement.rows.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="empty-state">
-                        No entries for this party yet.
-                      </td>
-                    </tr>
-                  ) : (
-                    statement.rows.map((row) => (
-                      <tr key={`${row.voucherId}-${row.dateTime}-${row.debit}-${row.credit}`}>
-                        <td>{row.date}</td>
-                        <td>{row.type}</td>
-                        <td>{row.narration}</td>
-                        <td>{row.debit ? formatCurrency(row.debit) : '—'}</td>
-                        <td>{row.credit ? formatCurrency(row.credit) : '—'}</td>
-                        <td>{formatCurrency(row.balance)}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
-      </section>
-
-      <section className="content-grid" id="voice-entry">
-        <article className="panel">
-          <h2>Voice Entry</h2>
-          <div className="terminal">
-            <p>{status}</p>
-            <p>{transcript}</p>
-          </div>
-          <label className="field-label" htmlFor="voice-language">
-            Select Voice Language
-          </label>
-          <select
-            id="voice-language"
-            value={language}
-            onChange={(event) => setLanguage(event.target.value)}
-          >
-            <option value="en-US">English</option>
-            <option value="hi-IN">Hindi</option>
-            <option value="gu-IN">Gujarati</option>
-          </select>
-          <button className="primary-button" type="button" onClick={startVoiceRecognition}>
-            Start Voice Tracking
-          </button>
-          <button className="danger-button" type="button" onClick={clearAllData}>
-            Clear All Data
-          </button>
-        </article>
-
-        <article className="panel">
-          <h2>Quick Manual Entry</h2>
-          <form onSubmit={saveManualEntry}>
-            <div className="form-grid">
-              <div>
-                <label className="field-label" htmlFor="manual-type">
-                  Entry Type
-                </label>
-                <select
-                  id="manual-type"
-                  value={manualType}
-                  onChange={(event) => setManualType(event.target.value)}
-                >
-                  <option value="Expense">Payment (expense)</option>
-                  <option value="Income">Receipt (income)</option>
-                  <option value="Routine Work">Routine Work</option>
-                  <option value="Daily Note">Daily Note</option>
-                </select>
-              </div>
-              <div>
-                <label className="field-label" htmlFor="manual-amount">
-                  Amount
-                </label>
-                <input
-                  id="manual-amount"
-                  min="0"
-                  step="1"
-                  type="number"
-                  value={manualAmount}
-                  onChange={(event) => setManualAmount(event.target.value)}
-                  placeholder="Example: 500"
-                />
-              </div>
-              <div className="wide-field">
-                <label className="field-label" htmlFor="manual-text">
-                  Details
-                </label>
-                <textarea
-                  id="manual-text"
-                  value={manualText}
-                  onChange={(event) => setManualText(event.target.value)}
-                  placeholder="Income/expense creates a voucher; notes stay as text only"
-                />
-              </div>
-            </div>
-            <button className="manual-button" type="submit">
-              Save Entry
-            </button>
-          </form>
-          <div className="quick-actions">
-            <button
-              type="button"
-              onClick={() => fillManualTemplate('Expense', 500, 'Spent 500 rupees on material')}
-            >
-              Payment ₹500
-            </button>
-            <button
-              type="button"
-              onClick={() => fillManualTemplate('Income', 2500, 'Received 2500 rupees from customer')}
-            >
-              Receipt ₹2500
-            </button>
-          </div>
-        </article>
-      </section>
-
-      <section className="panel">
-        <div className="section-header">
-          <h2>Notes (non-voucher)</h2>
-          <span>{logs.length} Notes</span>
-        </div>
-        <div className="activity-list">
-          {logs.length === 0 ? (
-            <div className="empty-state">No text notes. Routine work and daily notes appear here.</div>
-          ) : (
-            logs.map((log, index) => (
-              <article className="activity-item" key={`${log.date}-${index}`}>
-                <div>
-                  <p className="activity-type">{log.type}</p>
-                  <p>{log.text}</p>
-                  <time>{log.date}</time>
-                </div>
-                <button className="delete-entry-button" type="button" onClick={() => deleteLog(index)}>
-                  Delete
-                </button>
-              </article>
-            ))
-          )}
-        </div>
-      </section>
-
-      <section className="panel profile-editor" id="profile-settings">
-        <div className="section-header">
-          <div>
-            <h2>Business Profile</h2>
-            <p className="panel-hint">Edit the identity and contact details shown across the app.</p>
-          </div>
-          <span>Profile</span>
-        </div>
-        <form onSubmit={saveBusinessProfile}>
-          <div className="profile-editor-grid">
-            <div className="profile-logo-card">
-              <img className="profile-logo-preview" src={profile.logo} alt="Business logo preview" />
-              <label className="field-label" htmlFor="profile-logo">
-                Upload Logo
-              </label>
-              <input accept="image/*" id="profile-logo" name="profileLogo" type="file" />
-            </div>
-            <div className="form-grid">
-              <div>
-                <label className="field-label" htmlFor="profile-name">
-                  Shop / Company Name
-                </label>
-                <input id="profile-name" name="profileName" defaultValue={profile.name} />
-              </div>
-              <div>
-                <label className="field-label" htmlFor="profile-owner">
-                  Owner / Manager
-                </label>
-                <input id="profile-owner" name="profileOwner" defaultValue={profile.owner} />
-              </div>
-              <div className="wide-field">
-                <label className="field-label" htmlFor="profile-tagline">
-                  Short Description
-                </label>
-                <input id="profile-tagline" name="profileTagline" defaultValue={profile.tagline} />
-              </div>
-              <div>
-                <label className="field-label" htmlFor="profile-email">
-                  Email
-                </label>
-                <input id="profile-email" name="profileEmail" type="email" defaultValue={profile.email} />
-              </div>
-              <div>
-                <label className="field-label" htmlFor="profile-phone">
-                  Phone
-                </label>
-                <input id="profile-phone" name="profilePhone" defaultValue={profile.phone} />
-              </div>
-              <div className="wide-field">
-                <label className="field-label" htmlFor="profile-address">
-                  Business Address
-                </label>
-                <textarea id="profile-address" name="profileAddress" defaultValue={profile.address} />
-              </div>
-            </div>
-          </div>
-          <div className="inline-actions">
-            <button className="manual-button" type="submit">
-              Save Business Profile
-            </button>
-            <button className="warning-button" type="button" onClick={resetBusinessProfile}>
-              Reset Default
-            </button>
-          </div>
-        </form>
-      </section>
-
-      <section className="panel settings-panel" id="app-settings">
-        <div className="section-header">
-          <div>
-            <h2>Settings</h2>
-            <p className="panel-hint">Manage language, data storage, backups, and report output.</p>
-          </div>
-          <span>Admin</span>
-        </div>
-        <div className="settings-grid">
-          <article className="settings-card">
-            <h3>Voice Language</h3>
-            <p>Current input language: {language}</p>
-            <a href="#voice-entry">Change voice entry language</a>
-          </article>
-          <article className="settings-card">
-            <h3>Data Safety</h3>
-            <p>Download a JSON backup before clearing browser storage or changing devices.</p>
-            <button className="secondary-button compact-button" type="button" onClick={downloadFullBackup}>
-              Download Backup
-            </button>
-          </article>
-          <article className="settings-card">
-            <h3>Reports</h3>
-            <p>Export the day book for Excel or print a summary for review.</p>
-            <button className="warning-button compact-button" type="button" onClick={printReport}>
-              Print Report
-            </button>
-          </article>
-        </div>
-      </section>
-
-      <section className="panel support-panel" id="support">
-        <div>
-          <span className="eyebrow">Help & Contact Support</span>
-          <h2>Need help with your business tracker?</h2>
-          <p>
-            Contact support for setup help, backup guidance, deployment issues, or workflow customization.
-          </p>
-        </div>
-        <div className="support-actions">
-          <a className="support-card" href={`mailto:${SUPPORT_EMAIL}`}>
-            <span>Email Support</span>
-            <strong>{SUPPORT_EMAIL}</strong>
-          </a>
-          <a className="support-card" href={`tel:${SUPPORT_PHONE}`}>
-            <span>Call / WhatsApp</span>
-            <strong>{SUPPORT_PHONE}</strong>
-          </a>
-        </div>
-      </section>
-
-      <section className="panel">
-        <h2>Backup / Restore</h2>
-        <div className="inline-actions">
-          <button className="secondary-button" type="button" onClick={downloadFullBackup}>
-            Download Full Backup
-          </button>
-          <label className="warning-button restore-label">
-            Restore Backup
-            <input accept="application/json,.json" hidden type="file" onChange={restoreFullBackup} />
-          </label>
-        </div>
-        <div className="storage-box">
-          <strong>Data Storage Location</strong>
-          <p>
-            Saved in this browser via localStorage: businessLedgers, businessVouchers, businessLogs,
-            businessProfile.
-          </p>
-        </div>
-      </section>
         </main>
+      </div>
+
+      {/* Floating Microphone Action Button */}
+      <button 
+        className={`floating-mic-btn ${status === 'Listening...' ? 'listening' : ''}`}
+        onClick={startVoiceRecognition}
+        type="button"
+        title="Click to record transactions"
+      >
+        <span className="mic-icon">🎤</span>
+        {status === 'Listening...' && <span className="pulse-ring"></span>}
+      </button>
+
+      {/* Confirmation Modal Popup backdrop */}
+      {voiceConfirmation && (
+        <div className="modal-backdrop">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>Confirm Voice Entry</h3>
+              <button className="close-modal-btn" onClick={() => setVoiceConfirmation(null)}>×</button>
+            </div>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              handleSaveVoiceConfirmation(voiceConfirmation);
+            }}>
+              <div className="form-grid">
+                <div>
+                  <label className="field-label">Transaction Type</label>
+                  <select
+                    value={voiceConfirmation.type}
+                    onChange={(e) => setVoiceConfirmation({ ...voiceConfirmation, type: e.target.value })}
+                  >
+                    <option value="Receipt">Receipt (Cash In)</option>
+                    <option value="Payment">Payment (Cash Out)</option>
+                    <option value="Sales">Sales (Credit Sale)</option>
+                    <option value="Purchase">Purchase (Credit Purchase)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="field-label">Amount (₹)</label>
+                  <input
+                    type="number"
+                    value={voiceConfirmation.amount}
+                    onChange={(e) => setVoiceConfirmation({ ...voiceConfirmation, amount: Number(e.target.value) || 0 })}
+                    required
+                  />
+                </div>
+                <div className="wide-field">
+                  <label className="field-label">Party (Customer / Supplier)</label>
+                  <input
+                    type="text"
+                    placeholder="Enter customer or supplier name"
+                    value={voiceConfirmation.partyName}
+                    onChange={(e) => setVoiceConfirmation({ ...voiceConfirmation, partyName: e.target.value })}
+                  />
+                  <p className="field-help">New ledger will be created if name is unrecognized.</p>
+                </div>
+                <div>
+                  <label className="field-label">Category / Ledger</label>
+                  <select
+                    value={voiceConfirmation.category}
+                    onChange={(e) => setVoiceConfirmation({ ...voiceConfirmation, category: e.target.value })}
+                  >
+                    <optgroup label="Direct/Indirect Expenses">
+                      <option value="General Expense">General Expense</option>
+                      <option value="Material / Purchase">Material / Purchase</option>
+                      <option value="Rent">Rent</option>
+                    </optgroup>
+                    <optgroup label="Revenue">
+                      <option value="Sales">Sales</option>
+                    </optgroup>
+                  </select>
+                </div>
+                <div>
+                  <label className="field-label">Transaction Date</label>
+                  <input
+                    type="date"
+                    value={voiceConfirmation.date || new Date().toISOString().slice(0, 10)}
+                    onChange={(e) => setVoiceConfirmation({ ...voiceConfirmation, date: e.target.value })}
+                  />
+                </div>
+                <div className="wide-field">
+                  <label className="field-label">Narration Note</label>
+                  <textarea
+                    value={voiceConfirmation.narration}
+                    onChange={(e) => setVoiceConfirmation({ ...voiceConfirmation, narration: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="secondary-button" onClick={() => setVoiceConfirmation(null)}>Cancel</button>
+                <button type="submit" className="manual-button">Confirm & Save</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* HIDDEN PRINT LAYOUT */}
+      <div className="print-report-layout">
+        <div className="print-header">
+          {profile.logo && <img src={profile.logo} className="print-logo" alt="Business Logo" />}
+          <div className="print-biz-info">
+            <h2>{profile.name}</h2>
+            <p>{profile.tagline}</p>
+            <p>{profile.address}</p>
+            <p>GSTIN: {profile.gstin} | Mob: {profile.phone} | Email: {profile.email}</p>
+          </div>
+        </div>
+        
+        <hr className="print-divider" />
+        
+        <div className="print-meta-section">
+          <h3>
+            {activeReportTab === 'pnl' ? 'Profit & Loss Statement' : 
+             activeReportTab === 'daybook' ? 'Day Book Report' : 
+             activeReportTab === 'cashbook' ? 'Cash Book Statement' : 
+             activeReportTab === 'customer' ? 'Customer Outstanding Statement' : 
+             'Supplier Outstanding Statement'}
+          </h3>
+          <p>Report Period: {dayBookFromDate} to {dayBookToDate} | Generated: {new Date().toLocaleString()} | Owner: {profile.owner}</p>
+        </div>
+
+        {activeReportTab === 'pnl' && (
+          <div className="print-pnl-sheet">
+            <table className="statement-table font-mono">
+              <thead>
+                <tr>
+                  <th>Particulars</th>
+                  <th>Debit (Dr)</th>
+                  <th>Credit (Cr)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Sales Accounts (Revenue)</strong></td>
+                  <td>—</td>
+                  <td>{formatCurrency(pnlData.sales)}</td>
+                </tr>
+                <tr>
+                  <td>Less: Cost of Material / Purchases</td>
+                  <td>{formatCurrency(pnlData.purchases)}</td>
+                  <td>—</td>
+                </tr>
+                <tr className="subtotal-row">
+                  <td><strong>Gross Profit</strong></td>
+                  <td>—</td>
+                  <td><strong>{formatCurrency(pnlData.grossProfit)}</strong></td>
+                </tr>
+                <tr>
+                  <td>Less: Rent Expenses</td>
+                  <td>{formatCurrency(pnlData.rent)}</td>
+                  <td>—</td>
+                </tr>
+                <tr>
+                  <td>Less: General Indirect Expenses</td>
+                  <td>{formatCurrency(pnlData.general)}</td>
+                  <td>—</td>
+                </tr>
+                <tr className="total-row">
+                  <td><strong>Net Profit (Surplus)</strong></td>
+                  <td>—</td>
+                  <td><strong>{formatCurrency(pnlData.netProfit)}</strong></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {activeReportTab === 'daybook' && (
+          <table className="statement-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Voucher ID</th>
+                <th>Type</th>
+                <th>Particulars (Counter)</th>
+                <th>Narration</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {vouchers
+                .filter(v => v.date >= dayBookFromDate && v.date <= dayBookToDate)
+                .map(v => (
+                  <tr key={v.id}>
+                    <td>{v.date}</td>
+                    <td>{v.id.slice(0, 10)}</td>
+                    <td>{v.type}</td>
+                    <td>{counterLabel(v)}</td>
+                    <td>{v.narration}</td>
+                    <td>{formatCurrency(v.amount)}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        )}
+
+        {activeReportTab === 'cashbook' && (
+          <table className="statement-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Particulars</th>
+                <th>Type</th>
+                <th>Receipts (Dr)</th>
+                <th>Payments (Cr)</th>
+                <th>Running Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cashBookData.rows
+                .filter(r => r.date >= dayBookFromDate && r.date <= dayBookToDate)
+                .map((r, idx) => (
+                  <tr key={idx}>
+                    <td>{r.date}</td>
+                    <td>{r.particulars}</td>
+                    <td>{r.type}</td>
+                    <td>{r.debit ? formatCurrency(r.debit) : '—'}</td>
+                    <td>{r.credit ? formatCurrency(r.credit) : '—'}</td>
+                    <td>{formatCurrency(r.balance)}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        )}
+
+        {activeReportTab === 'customer' && (
+          <table className="statement-table">
+            <thead>
+              <tr>
+                <th>Customer Name</th>
+                <th>Total Invoiced Sales</th>
+                <th>Total Receipts</th>
+                <th>Outstanding Receivable Balance</th>
+                <th>Last Active Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {partySummary
+                .filter(p => p.group === 'Sundry Debtors' && p.outstandingAmount > 0)
+                .map(p => (
+                  <tr key={p.id}>
+                    <td>{p.name}</td>
+                    <td>{formatCurrency(p.totalSales)}</td>
+                    <td>{formatCurrency(p.totalPayments)}</td>
+                    <td><strong>{formatCurrency(p.outstandingAmount)}</strong></td>
+                    <td>{p.lastTransactionDate}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        )}
+
+        {activeReportTab === 'supplier' && (
+          <table className="statement-table">
+            <thead>
+              <tr>
+                <th>Supplier Name</th>
+                <th>Total Invoiced Purchases</th>
+                <th>Total Payments Made</th>
+                <th>Outstanding Payable Balance</th>
+                <th>Last Active Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {partySummary
+                .filter(p => p.group === 'Sundry Creditors' && p.outstandingAmount > 0)
+                .map(p => (
+                  <tr key={p.id}>
+                    <td>{p.name}</td>
+                    <td>{formatCurrency(p.totalSales)}</td>
+                    <td>{formatCurrency(p.totalPayments)}</td>
+                    <td><strong>{formatCurrency(Math.abs(p.outstandingAmount))}</strong></td>
+                    <td>{p.lastTransactionDate}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        )}
+
+        <div className="print-signature-area">
+          <div className="signature-line">
+            <span>Authorized Signatory</span>
+          </div>
+        </div>
+        
+        <div className="print-footer">
+          <span>Page 1 of 1</span>
+        </div>
       </div>
     </div>
   );

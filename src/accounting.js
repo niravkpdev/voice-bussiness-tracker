@@ -470,3 +470,246 @@ export function migrateLogsToVouchers(logs, ledgers) {
 
   return readVouchers();
 }
+
+/**
+ * Parses spoken text to extract accounting entities (amount, type, party, category, narration)
+ */
+export function parseVoiceCommand(text, existingParties = []) {
+  const normalized = text.toLowerCase().trim();
+
+  // 1. Detect Amount
+  // Look for any sequence of digits, optionally separated by commas/dots
+  const numbers = [];
+  const rx = /\b\d+(?:,\d{3})*(?:\.\d+)?\b/g;
+  let match;
+  while ((match = rx.exec(normalized)) !== null) {
+    numbers.push(Number(match[0].replace(/,/g, '')));
+  }
+  const amount = numbers.length > 0 ? numbers[0] : 0;
+
+  // 2. Detect Transaction Type
+  // Receipt (received/income/payment from)
+  // Payment (paid/spent/expense/kharch/payment to)
+  // Sales (sold/sales/invoice/credit sale)
+  // Purchase (purchased/purchase/bought/credit purchase)
+  let type = 'Receipt'; // Default fallback
+  if (normalized.includes('sold') || normalized.includes('sales') || normalized.includes('sale') || normalized.includes('invoice')) {
+    type = 'Sales';
+  } else if (normalized.includes('purchased') || normalized.includes('purchase') || normalized.includes('bought')) {
+    type = 'Purchase';
+  } else if (
+    normalized.includes('paid') ||
+    normalized.includes('spent') ||
+    normalized.includes('expense') ||
+    normalized.includes('kharch') ||
+    normalized.includes('payment to') ||
+    normalized.includes('pay to') ||
+    normalized.includes('de rahe hain') ||
+    normalized.includes('diya')
+  ) {
+    type = 'Payment';
+  } else if (
+    normalized.includes('received') ||
+    normalized.includes('receipt') ||
+    normalized.includes('income') ||
+    normalized.includes('payment from') ||
+    normalized.includes('mila') ||
+    normalized.includes('mil gaya') ||
+    normalized.includes('pay kiya')
+  ) {
+    type = 'Receipt';
+  }
+
+  // 3. Detect Party Name
+  let partyName = '';
+  let partyLedgerId = '';
+
+  // First, check if any existing party is mentioned in the text
+  const matchedParty = existingParties.find(p => normalized.includes(p.name.toLowerCase()));
+  if (matchedParty) {
+    partyName = matchedParty.name;
+    partyLedgerId = matchedParty.id;
+  } else {
+    // If no existing party matches, try to extract name after indicators
+    // Look for patterns like: "from [Name]", "to [Name]", "[Name] ko", "[Name] se"
+    const fromMatch = normalized.match(/from\s+([a-z0-9\s]+?)(?:\s+worth|\s+of|\s+for|\s+on|\s+today|\s+dated|\s+\d|$)/i);
+    const toMatch = normalized.match(/to\s+([a-z0-9\s]+?)(?:\s+worth|\s+of|\s+for|\s+on|\s+today|\s+dated|\s+\d|$)/i);
+    const koMatch = normalized.match(/(?:^|\s)([a-z0-9\s]+?)\s+ko\b/i);
+    const seMatch = normalized.match(/(?:^|\s)([a-z0-9\s]+?)\s+se\b/i);
+
+    let candidate = '';
+    if (fromMatch && fromMatch[1]) {
+      candidate = fromMatch[1].trim();
+    } else if (toMatch && toMatch[1]) {
+      candidate = toMatch[1].trim();
+    } else if (koMatch && koMatch[1]) {
+      candidate = koMatch[1].trim();
+    } else if (seMatch && seMatch[1]) {
+      candidate = seMatch[1].trim();
+    }
+
+    if (candidate) {
+      // Clean up common words
+      candidate = candidate.replace(/\b(?:rs|rupees|rupaye|inr|worth|of|today|yesterday|date|for|on|worth|value|cash|bank)\b.*/gi, '').trim();
+      // Remove starting prepositions if any
+      candidate = candidate.replace(/^(?:received|paid|spent|purchased|sold|from|to|for|se|ko)\s+/i, '').trim();
+      
+      if (candidate.length > 2 && candidate.length < 30) {
+        // Capitalize first letters
+        partyName = candidate.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      }
+    }
+  }
+
+  // 4. Detect Category (Expense/Revenue Account)
+  let category = '';
+  const categoryKeywords = [
+    { keywords: ['material', 'goods', 'stock', 'purchase', 'raw'], ledgerId: 'ledger-material', name: 'Material / Purchase' },
+    { keywords: ['rent', 'office rent', 'shop rent', 'kiraya'], ledgerId: 'ledger-rent', name: 'Rent' },
+    { keywords: ['courier', 'post', 'shipping', 'delivery', 'transport', 'speed post'], ledgerId: 'ledger-misc-expense', name: 'General Expense' },
+    { keywords: ['tea', 'coffee', 'snacks', 'food', 'lunch', 'chai'], ledgerId: 'ledger-misc-expense', name: 'General Expense' },
+    { keywords: ['salary', 'wage', 'staff', 'payment to helper'], ledgerId: 'ledger-misc-expense', name: 'General Expense' },
+    { keywords: ['electricity', 'power', 'light', 'bill'], ledgerId: 'ledger-misc-expense', name: 'General Expense' }
+  ];
+
+  for (const item of categoryKeywords) {
+    if (item.keywords.some(kw => normalized.includes(kw))) {
+      category = item.name;
+      break;
+    }
+  }
+
+  // Fallback category mapping based on transaction type
+  if (!category) {
+    if (type === 'Payment' || type === 'Purchase') {
+      category = 'General Expense';
+    } else {
+      category = 'Sales';
+    }
+  }
+
+  return {
+    amount,
+    type,
+    partyName,
+    partyLedgerId,
+    category,
+    narration: text
+  };
+}
+
+/**
+ * Computes daily and monthly stats with Month-over-Month (MoM) growth rates
+ */
+export function getDailyAndMonthlyStats(vouchers, ledgers) {
+  const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD format in local timezone
+  const currentMonthStr = todayStr.slice(0, 7); // YYYY-MM
+
+  // Compute previous month YYYY-MM
+  const d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth() - 1);
+  const prevMonthStr = d.toLocaleDateString('en-CA').slice(0, 7);
+
+  let todaySales = 0;
+  let todayExpenses = 0;
+  let monthlySales = 0;
+  let monthlyExpenses = 0;
+  let prevMonthlySales = 0;
+  let prevMonthlyExpenses = 0;
+
+  vouchers.forEach((vch) => {
+    const amount = Number(vch.amount) || 0;
+    const vchMonth = (vch.date || '').slice(0, 7);
+
+    // Sales/Receipts count under sales metrics, Payment/Purchases count under expense metrics
+    const isSalesType = vch.type === 'Receipt' || vch.type === 'Sales';
+    const isExpenseType = vch.type === 'Payment' || vch.type === 'Purchase';
+
+    if (vch.date === todayStr) {
+      if (isSalesType) todaySales += amount;
+      if (isExpenseType) todayExpenses += amount;
+    }
+
+    if (vchMonth === currentMonthStr) {
+      if (isSalesType) monthlySales += amount;
+      if (isExpenseType) monthlyExpenses += amount;
+    }
+
+    if (vchMonth === prevMonthStr) {
+      if (isSalesType) prevMonthlySales += amount;
+      if (isExpenseType) prevMonthlyExpenses += amount;
+    }
+  });
+
+  const calculateGrowth = (current, previous) => {
+    if (previous === 0) {
+      return current > 0 ? 100 : 0;
+    }
+    return Math.round(((current - previous) / previous) * 100);
+  };
+
+  const salesGrowth = calculateGrowth(monthlySales, prevMonthlySales);
+  const expenseGrowth = calculateGrowth(monthlyExpenses, prevMonthlyExpenses);
+
+  return {
+    todaySales,
+    todayExpenses,
+    monthlySales,
+    monthlyExpenses,
+    salesGrowth,
+    expenseGrowth,
+    prevMonthlySales,
+    prevMonthlyExpenses,
+  };
+}
+
+/**
+ * Computes full performance metrics and details for each party (khata)
+ */
+export function getPartySummary(ledgers, vouchers) {
+  const partyLedgers = getPartyLedgers(ledgers);
+
+  return partyLedgers.map((ledger) => {
+    let totalSales = 0;
+    let totalPayments = 0;
+    let lastDate = '—';
+
+    vouchers.forEach((vch) => {
+      let isPartyInvolved = false;
+      vch.lines.forEach((line) => {
+        if (line.ledgerId === ledger.id) {
+          isPartyInvolved = true;
+          if (ledger.group === 'Sundry Debtors') {
+            // Customer ledger: debits are invoice sales, credits are cash payments received
+            totalSales += line.debit || 0;
+            totalPayments += line.credit || 0;
+          } else {
+            // Supplier ledger: credits are invoice purchases, debits are payments made
+            totalSales += line.credit || 0; // represent purchases from them
+            totalPayments += line.debit || 0; // represent payments made to them
+          }
+        }
+      });
+
+      if (isPartyInvolved) {
+        if (lastDate === '—' || vch.date > lastDate) {
+          lastDate = vch.date;
+        }
+      }
+    });
+
+    const outstandingAmount = computeLedgerBalance(ledger.id, ledgers, vouchers);
+
+    return {
+      id: ledger.id,
+      name: ledger.name,
+      group: ledger.group,
+      totalSales,
+      totalPayments,
+      outstandingAmount,
+      lastTransactionDate: lastDate,
+    };
+  });
+}
+
