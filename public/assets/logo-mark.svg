@@ -1,0 +1,10 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Voice Business Tracker logo mark</title>
+  <desc id="desc">A clean microphone merged with an upward growth chart.</desc>
+  <path d="M46 37C46 27.059 54.059 19 64 19C73.941 19 82 27.059 82 37V56C82 65.941 73.941 74 64 74C54.059 74 46 65.941 46 56V37Z" fill="#4F46E5"/>
+  <path d="M36 52V58C36 73.464 48.536 86 64 86C79.464 86 92 73.464 92 58V52" stroke="#0F172A" stroke-width="8" stroke-linecap="round"/>
+  <path d="M64 86V101" stroke="#0F172A" stroke-width="8" stroke-linecap="round"/>
+  <path d="M49 102H79" stroke="#0F172A" stroke-width="8" stroke-linecap="round"/>
+  <path d="M31 82L49 64L62 77L95 44" stroke="#3B82F6" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M81 44H95V58" stroke="#3B82F6" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

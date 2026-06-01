@@ -1,0 +1,13 @@
+<svg width="520" height="96" viewBox="0 0 520 96" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Voice Business Tracker horizontal logo</title>
+  <desc id="desc">Voice Business Tracker wordmark with microphone and growth chart logo mark.</desc>
+  <rect x="8" y="8" width="80" height="80" rx="22" fill="#F8FAFC"/>
+  <path d="M34 32C34 24.268 40.268 18 48 18C55.732 18 62 24.268 62 32V47C62 54.732 55.732 61 48 61C40.268 61 34 54.732 34 47V32Z" fill="#4F46E5"/>
+  <path d="M26 44V49C26 61.15 35.85 71 48 71C60.15 71 70 61.15 70 49V44" stroke="#0F172A" stroke-width="6" stroke-linecap="round"/>
+  <path d="M48 71V82" stroke="#0F172A" stroke-width="6" stroke-linecap="round"/>
+  <path d="M37 83H59" stroke="#0F172A" stroke-width="6" stroke-linecap="round"/>
+  <path d="M22 69L36 55L47 66L73 40" stroke="#3B82F6" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M62 40H73V51" stroke="#3B82F6" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="112" y="44" fill="#0F172A" font-family="Inter, Poppins, Arial, sans-serif" font-size="28" font-weight="800" letter-spacing="0">Voice Business</text>
+  <text x="112" y="70" fill="#64748B" font-family="Inter, Poppins, Arial, sans-serif" font-size="19" font-weight="700" letter-spacing="0">Tracker</text>
+</svg>
