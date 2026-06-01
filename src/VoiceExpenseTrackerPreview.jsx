@@ -32,6 +32,7 @@ import {
   getPartySummary,
 } from './accounting';
 import Phase2ERP from './Phase2ERP.jsx';
+import Phase3Ops from './Phase3Ops.jsx';
 
 const STORAGE_KEY = 'businessLogs';
 const PROFILE_KEY = 'businessProfile';
@@ -67,6 +68,15 @@ const APP_TABS = [
   'cloud-backup',
   'notifications',
   'analytics',
+  'mobile-app',
+  'whatsapp-automation',
+  'upi-payments',
+  'orders',
+  'voice-bookkeeper',
+  'employees',
+  'subscriptions',
+  'accountant-portal',
+  'security-center',
   'voucher-entry',
   'party-management',
   'reports',
@@ -1541,6 +1551,15 @@ export default function VoiceExpenseTrackerPreview() {
           <a href="#businesses" className={activeTab === 'businesses' ? 'active' : ''}>Businesses</a>
           <a href="#cloud-backup" className={activeTab === 'cloud-backup' ? 'active' : ''}>Cloud Backup</a>
           <a href="#notifications" className={activeTab === 'notifications' ? 'active' : ''}>Notifications</a>
+          <a href="#mobile-app" className={activeTab === 'mobile-app' ? 'active' : ''}>Mobile App</a>
+          <a href="#whatsapp-automation" className={activeTab === 'whatsapp-automation' ? 'active' : ''}>WhatsApp</a>
+          <a href="#upi-payments" className={activeTab === 'upi-payments' ? 'active' : ''}>UPI Payments</a>
+          <a href="#orders" className={activeTab === 'orders' ? 'active' : ''}>Orders</a>
+          <a href="#voice-bookkeeper" className={activeTab === 'voice-bookkeeper' ? 'active' : ''}>Voice AI</a>
+          <a href="#employees" className={activeTab === 'employees' ? 'active' : ''}>Employees</a>
+          <a href="#subscriptions" className={activeTab === 'subscriptions' ? 'active' : ''}>Subscription</a>
+          <a href="#accountant-portal" className={activeTab === 'accountant-portal' ? 'active' : ''}>Accountant</a>
+          <a href="#security-center" className={activeTab === 'security-center' ? 'active' : ''}>Security</a>
           <a href="#profile-settings" className={activeTab === 'profile-settings' ? 'active' : ''}>Profile</a>
           <a href="#app-settings" className={activeTab === 'app-settings' ? 'active' : ''}>Settings</a>
         </nav>
@@ -1836,6 +1855,29 @@ export default function VoiceExpenseTrackerPreview() {
               partySummary={partySummary}
               cashBalance={cashInHand}
               netProfit={monthlyNetProfit}
+              onStatus={setStatus}
+            />
+          )}
+
+          {[
+            'mobile-app',
+            'whatsapp-automation',
+            'upi-payments',
+            'orders',
+            'voice-bookkeeper',
+            'employees',
+            'subscriptions',
+            'accountant-portal',
+            'security-center',
+          ].includes(activeTab) && (
+            <Phase3Ops
+              activeTab={activeTab}
+              profile={profile}
+              invoices={readSavedArray('erpInvoices')}
+              customers={readSavedArray('erpCustomers')}
+              products={readSavedArray('erpProducts')}
+              vouchers={vouchers}
+              partySummary={partySummary}
               onStatus={setStatus}
             />
           )}

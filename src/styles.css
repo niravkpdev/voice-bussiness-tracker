@@ -936,6 +936,146 @@ time {
   background: #ef4444;
 }
 
+/* Phase 3 automation, payments, security, and scale */
+.phase3-stack {
+  display: grid;
+  gap: 20px;
+}
+
+.phase3-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border: 1px solid var(--border-main, #e2e8f0);
+  border-radius: 18px;
+  padding: 24px;
+  background:
+    radial-gradient(circle at top left, rgba(59, 130, 246, 0.12), transparent 34%),
+    linear-gradient(135deg, rgba(15, 23, 42, 0.04), rgba(20, 184, 166, 0.08)),
+    var(--surface-main, #ffffff);
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.08);
+}
+
+.phase3-hero h2 {
+  margin: 6px 0 0;
+  font-size: clamp(1.5rem, 3vw, 2.1rem);
+}
+
+.phase3-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.phase3-card {
+  border: 1px solid var(--border-main, #e2e8f0);
+  border-radius: 14px;
+  padding: 16px;
+  background: var(--surface-main, #ffffff);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.05);
+}
+
+.phase3-card strong,
+.phase3-card a {
+  display: block;
+}
+
+.phase3-card p {
+  color: var(--text-muted, #64748b);
+}
+
+.phase3-card a {
+  margin-top: 10px;
+  color: #0f766e;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.sync-pill {
+  border-radius: 999px;
+  padding: 9px 14px;
+  font-weight: 900;
+}
+
+.sync-pill.online {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.sync-pill.offline {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.payment-card .section-header {
+  align-items: center;
+}
+
+.phase3-qr {
+  flex: 0 0 auto;
+}
+
+.order-stage-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.order-stage-strip span {
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  padding: 8px 10px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.85rem;
+  font-weight: 850;
+}
+
+.selected-plan {
+  border-color: #0f766e;
+  background: #f0fdfa;
+}
+
+.roles-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.usage-row {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.usage-row div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.usage-row span {
+  color: var(--text-muted, #64748b);
+  font-weight: 800;
+}
+
+@media (max-width: 1100px) {
+  .phase3-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .phase3-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .phase3-grid,
+  .roles-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 920px) {
   .erp-hero,
   .filter-row,
