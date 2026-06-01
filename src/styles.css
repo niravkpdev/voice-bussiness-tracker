@@ -691,6 +691,277 @@ time {
   }
 }
 
+/* Phase 2 ERP modules */
+.phase2-stack {
+  display: grid;
+  gap: 20px;
+}
+
+.erp-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border: 1px solid var(--border-main, #e2e8f0);
+  border-radius: 16px;
+  padding: 24px;
+  background:
+    linear-gradient(135deg, rgba(14, 165, 233, 0.1), rgba(20, 184, 166, 0.08)),
+    var(--surface-main, #ffffff);
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.08);
+}
+
+.erp-hero h2 {
+  max-width: 760px;
+  margin: 6px 0 0;
+  font-size: clamp(1.5rem, 3vw, 2.15rem);
+}
+
+.erp-hero-actions {
+  min-width: 220px;
+  border: 1px solid var(--border-main, #e2e8f0);
+  border-radius: 14px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.78);
+  text-align: right;
+}
+
+.erp-hero-actions strong,
+.erp-hero-actions span {
+  display: block;
+}
+
+.erp-hero-actions strong {
+  color: #0f766e;
+  font-size: 1.4rem;
+}
+
+.erp-table-wrap {
+  overflow-x: auto;
+}
+
+.product-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 180px;
+}
+
+.product-cell img {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  border: 1px solid var(--border-main, #e2e8f0);
+  object-fit: cover;
+}
+
+.invoice-line-builder {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.3fr) repeat(3, minmax(92px, 0.7fr)) 92px;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.invoice-line-builder button {
+  margin-top: 0;
+}
+
+.invoice-paper {
+  border: 1px solid #cbd5e1;
+  border-radius: 16px;
+  padding: 18px;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.invoice-head {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 76px;
+  align-items: center;
+  gap: 14px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+}
+
+.invoice-head img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+
+.invoice-head strong,
+.invoice-head span {
+  display: block;
+}
+
+.qr-code {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  width: 70px;
+  height: 70px;
+  border: 5px solid #ffffff;
+  background: #ffffff;
+  box-shadow: 0 0 0 1px #cbd5e1;
+}
+
+.qr-code span {
+  background: #e2e8f0;
+}
+
+.qr-code span.active {
+  background: #0f172a;
+}
+
+.signature-box {
+  margin-top: 30px;
+  border-top: 1px solid #94a3b8;
+  padding-top: 10px;
+  color: #64748b;
+  text-align: right;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: #e2e8f0;
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.status-pill.paid {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-pill.unpaid,
+.status-pill.partial-paid {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.status-pill.draft {
+  background: #eef2ff;
+  color: #3730a3;
+}
+
+.filter-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.filter-row .compact-button {
+  margin-top: 0;
+}
+
+.erp-bars {
+  display: grid;
+  gap: 12px;
+}
+
+.erp-bar-row {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr) 110px;
+  align-items: center;
+  gap: 12px;
+}
+
+.erp-bar-row div {
+  height: 12px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.erp-bar-row i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #0f766e;
+}
+
+.erp-bar-row i.danger {
+  background: #ef4444;
+}
+
+.erp-bar-row i.success {
+  background: #22c55e;
+}
+
+.erp-bar-row i.warning {
+  background: #f59e0b;
+}
+
+.analytics-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.analytics-filter button {
+  width: auto;
+  min-height: 38px;
+  margin: 0;
+  border: 1px solid var(--border-main, #cbd5e1);
+  border-radius: 999px;
+  padding: 0 14px;
+  background: var(--surface-main, #ffffff);
+  color: var(--text-main, #0f172a);
+  font-size: 0.9rem;
+}
+
+.analytics-filter button.active {
+  border-color: #0f766e;
+  background: #0f766e;
+  color: #ffffff;
+}
+
+.notification-link {
+  position: relative;
+}
+
+.notification-link::after {
+  content: "";
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ef4444;
+}
+
+@media (max-width: 920px) {
+  .erp-hero,
+  .filter-row,
+  .invoice-line-builder,
+  .invoice-head {
+    grid-template-columns: 1fr;
+  }
+
+  .erp-hero {
+    display: grid;
+  }
+
+  .erp-hero-actions {
+    width: 100%;
+    text-align: left;
+  }
+
+  .erp-bar-row {
+    grid-template-columns: 90px minmax(0, 1fr);
+  }
+
+  .erp-bar-row strong {
+    grid-column: 2;
+  }
+}
+
 /* Professional app shell */
 html {
   scroll-behavior: smooth;

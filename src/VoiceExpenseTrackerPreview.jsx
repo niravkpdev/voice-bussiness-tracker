@@ -31,6 +31,7 @@ import {
   getDailyAndMonthlyStats,
   getPartySummary,
 } from './accounting';
+import Phase2ERP from './Phase2ERP.jsx';
 
 const STORAGE_KEY = 'businessLogs';
 const PROFILE_KEY = 'businessProfile';
@@ -54,6 +55,27 @@ const CASH_LEDGER_ID = 'ledger-cash';
 const SALES_LEDGER_ID = 'ledger-sales';
 const MATERIAL_LEDGER_ID = 'ledger-material';
 const DEFAULT_EXPENSE_LEDGER_ID = 'ledger-misc-expense';
+const APP_TABS = [
+  'dashboard',
+  'ai-assistant',
+  'inventory',
+  'invoices',
+  'gst',
+  'crm',
+  'suppliers',
+  'businesses',
+  'cloud-backup',
+  'notifications',
+  'analytics',
+  'voucher-entry',
+  'party-management',
+  'reports',
+  'day-book',
+  'party-statement',
+  'profile-settings',
+  'app-settings',
+  'support',
+];
 
 function getSpeechRecognition() {
   return window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -529,7 +551,7 @@ export default function VoiceExpenseTrackerPreview() {
   const [aiAnswer, setAiAnswer] = useState('Ask about profit, loss, cash balance, party balance, or type a calculation.');
   const [activeTab, setActiveTab] = useState(() => {
     const hash = window.location.hash.slice(1);
-    return ['dashboard', 'ai-assistant', 'voucher-entry', 'party-management', 'reports', 'day-book', 'party-statement', 'profile-settings', 'app-settings', 'support'].includes(hash) ? hash : 'dashboard';
+    return APP_TABS.includes(hash) ? hash : 'dashboard';
   });
   const [voiceConfirmation, setVoiceConfirmation] = useState(null);
   const [activeReportTab, setActiveReportTab] = useState('pnl');
@@ -538,7 +560,7 @@ export default function VoiceExpenseTrackerPreview() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.slice(1);
-      if (hash && ['dashboard', 'ai-assistant', 'voucher-entry', 'party-management', 'reports', 'day-book', 'party-statement', 'profile-settings', 'app-settings', 'support'].includes(hash)) {
+      if (hash && APP_TABS.includes(hash)) {
         setActiveTab(hash);
       }
     };
@@ -1393,12 +1415,80 @@ export default function VoiceExpenseTrackerPreview() {
       return;
     }
 
+    const erpProducts = readSavedArray('erpProducts');
+    const erpInvoices = readSavedArray('erpInvoices');
+    const erpCustomers = readSavedArray('erpCustomers');
+    const overdueInvoices = erpInvoices.filter((invoice) => invoice.status !== 'Paid' && invoice.dueDate < new Date().toISOString().slice(0, 10));
+    const productSales = erpProducts
+      .map((product) => ({
+        name: product.name,
+        sold: erpInvoices.reduce(
+          (sum, invoice) =>
+            sum + (invoice.lines || []).filter((line) => line.productId === product.id).reduce((lineSum, line) => lineSum + (Number(line.qty) || 0), 0),
+          0
+        ),
+        stock: Number(product.currentStock) || 0,
+      }))
+      .sort((a, b) => b.sold - a.sold);
+    const thisMonth = new Date().toISOString().slice(0, 7);
+    const lastMonthDate = new Date();
+    lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
+    const lastMonth = lastMonthDate.toISOString().slice(0, 7);
+    const thisMonthSales = erpInvoices
+      .filter((invoice) => (invoice.date || '').slice(0, 7) === thisMonth)
+      .reduce((sum, invoice) => sum + (Number(invoice.total) || 0), 0);
+    const lastMonthSales = erpInvoices
+      .filter((invoice) => (invoice.date || '').slice(0, 7) === lastMonth)
+      .reduce((sum, invoice) => sum + (Number(invoice.total) || 0), 0);
+
     if (lowerQuestion.includes('profit') || lowerQuestion.includes('loss') || lowerQuestion.includes('nuksan')) {
       setAiAnswer(
         monthlyNetProfit >= 0
           ? `Business profit side par hai. Monthly net profit: ${formatCurrency(monthlyNetProfit)}. Health Score: ${aiInsights.score}/100.`
           : `Business loss side par hai. Monthly net loss: ${formatCurrency(Math.abs(monthlyNetProfit))}. Expenses check karo.`
       );
+      return;
+    }
+
+    if (lowerQuestion.includes('product') || lowerQuestion.includes('sell best') || lowerQuestion.includes('best sell')) {
+      const best = productSales.find((product) => product.sold > 0);
+      setAiAnswer(best ? `Best selling product: ${best.name}, ${best.sold} units sold.` : 'Product sales history abhi available nahi hai.');
+      return;
+    }
+
+    if (lowerQuestion.includes('inventory') || lowerQuestion.includes('stock')) {
+      const inventoryValue = erpProducts.reduce((sum, product) => sum + (Number(product.currentStock) || 0) * (Number(product.purchasePrice) || 0), 0);
+      const lowStock = erpProducts.filter((product) => Number(product.currentStock) <= Number(product.minStock)).length;
+      setAiAnswer(`Inventory summary: ${erpProducts.length} products, value ${formatCurrency(inventoryValue)}, low stock items ${lowStock}.`);
+      return;
+    }
+
+    if (lowerQuestion.includes('overdue') || lowerQuestion.includes('invoice')) {
+      setAiAnswer(
+        overdueInvoices.length > 0
+          ? `${overdueInvoices.length} overdue invoices. Highest overdue: ${overdueInvoices[0]?.invoiceNo || 'invoice'} ${formatCurrency(overdueInvoices[0]?.balance || overdueInvoices[0]?.total || 0)}.`
+          : 'Koi overdue invoice nahi mila.'
+      );
+      return;
+    }
+
+    if (lowerQuestion.includes('compare') || lowerQuestion.includes('last month')) {
+      const change = lastMonthSales === 0 ? (thisMonthSales > 0 ? 100 : 0) : Math.round(((thisMonthSales - lastMonthSales) / lastMonthSales) * 100);
+      setAiAnswer(`This month sales ${formatCurrency(thisMonthSales)} vs last month ${formatCurrency(lastMonthSales)}. Change: ${change}%.`);
+      return;
+    }
+
+    if (lowerQuestion.includes('predict') || lowerQuestion.includes('next month')) {
+      const predicted = Math.round((thisMonthSales * 0.65 + lastMonthSales * 0.35) || monthlyNetProfit + stats.monthlySales);
+      setAiAnswer(`Next month sales prediction: around ${formatCurrency(predicted)} based on current and previous month trend.`);
+      return;
+    }
+
+    if (lowerQuestion.includes('owes') || lowerQuestion.includes('most')) {
+      const topCustomer = partySummary
+        .filter((party) => party.group === 'Sundry Debtors')
+        .sort((a, b) => b.outstandingAmount - a.outstandingAmount)[0];
+      setAiAnswer(topCustomer ? `${topCustomer.name} owes the most: ${formatCurrency(topCustomer.outstandingAmount)}.` : 'Customer outstanding abhi available nahi hai.');
       return;
     }
 
@@ -1437,11 +1527,20 @@ export default function VoiceExpenseTrackerPreview() {
         <nav className="side-nav">
           <a href="#dashboard" className={activeTab === 'dashboard' ? 'active' : ''}>Dashboard</a>
           <a href="#ai-assistant" className={activeTab === 'ai-assistant' ? 'active' : ''}>AI Insights</a>
+          <a href="#inventory" className={activeTab === 'inventory' ? 'active' : ''}>Inventory</a>
+          <a href="#invoices" className={activeTab === 'invoices' ? 'active' : ''}>Invoices</a>
+          <a href="#gst" className={activeTab === 'gst' ? 'active' : ''}>GST Center</a>
+          <a href="#crm" className={activeTab === 'crm' ? 'active' : ''}>Customer CRM</a>
+          <a href="#suppliers" className={activeTab === 'suppliers' ? 'active' : ''}>Suppliers</a>
+          <a href="#analytics" className={activeTab === 'analytics' ? 'active' : ''}>Analytics</a>
           <a href="#voucher-entry" className={activeTab === 'voucher-entry' ? 'active' : ''}>Voucher Entry</a>
           <a href="#party-management" className={activeTab === 'party-management' ? 'active' : ''}>Party Khata</a>
           <a href="#reports" className={activeTab === 'reports' ? 'active' : ''}>Reports</a>
           <a href="#day-book" className={activeTab === 'day-book' ? 'active' : ''}>Day Book</a>
           <a href="#party-statement" className={activeTab === 'party-statement' ? 'active' : ''}>Party Statement</a>
+          <a href="#businesses" className={activeTab === 'businesses' ? 'active' : ''}>Businesses</a>
+          <a href="#cloud-backup" className={activeTab === 'cloud-backup' ? 'active' : ''}>Cloud Backup</a>
+          <a href="#notifications" className={activeTab === 'notifications' ? 'active' : ''}>Notifications</a>
           <a href="#profile-settings" className={activeTab === 'profile-settings' ? 'active' : ''}>Profile</a>
           <a href="#app-settings" className={activeTab === 'app-settings' ? 'active' : ''}>Settings</a>
         </nav>
@@ -1466,6 +1565,7 @@ export default function VoiceExpenseTrackerPreview() {
             >
               {darkMode ? '☀️ Light' : '🌙 Dark'}
             </button>
+            <a className="topbar-link notification-link" href="#notifications">Alerts</a>
             <a className="topbar-link" href="#profile-settings">Profile</a>
             <a className="topbar-link" href="#app-settings">Settings</a>
             <a className="topbar-link primary" href="#support">Support</a>
@@ -1715,6 +1815,29 @@ export default function VoiceExpenseTrackerPreview() {
                 <div className="ai-answer">{aiAnswer}</div>
               </form>
             </section>
+          )}
+
+          {[
+            'inventory',
+            'invoices',
+            'gst',
+            'crm',
+            'suppliers',
+            'businesses',
+            'cloud-backup',
+            'notifications',
+            'analytics',
+          ].includes(activeTab) && (
+            <Phase2ERP
+              activeTab={activeTab}
+              profile={profile}
+              vouchers={vouchers}
+              ledgers={ledgers}
+              partySummary={partySummary}
+              cashBalance={cashInHand}
+              netProfit={monthlyNetProfit}
+              onStatus={setStatus}
+            />
           )}
 
           {activeTab === 'voucher-entry' && (
