@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   LEDGERS_KEY,
   VOUCHERS_KEY,
@@ -85,6 +85,65 @@ const APP_TABS = [
   'profile-settings',
   'app-settings',
   'support',
+];
+const SIDEBAR_SECTIONS = [
+  {
+    id: 'overview',
+    label: 'Overview',
+    items: [
+      ['dashboard', 'Dashboard'],
+      ['ai-assistant', 'AI Insights'],
+      ['analytics', 'Analytics'],
+      ['notifications', 'Notifications'],
+    ],
+  },
+  {
+    id: 'erp',
+    label: 'ERP Modules',
+    items: [
+      ['inventory', 'Inventory'],
+      ['invoices', 'Invoices'],
+      ['gst', 'GST Center'],
+      ['voucher-entry', 'Voucher Entry'],
+      ['reports', 'Reports'],
+      ['day-book', 'Day Book'],
+    ],
+  },
+  {
+    id: 'people',
+    label: 'People & Ledger',
+    items: [
+      ['crm', 'Customer CRM'],
+      ['suppliers', 'Suppliers'],
+      ['party-management', 'Party Khata'],
+      ['party-statement', 'Party Statement'],
+      ['employees', 'Employees'],
+      ['accountant-portal', 'Accountant'],
+    ],
+  },
+  {
+    id: 'automation',
+    label: 'Automation',
+    items: [
+      ['mobile-app', 'Mobile App'],
+      ['whatsapp-automation', 'WhatsApp'],
+      ['upi-payments', 'UPI Payments'],
+      ['orders', 'Orders'],
+      ['voice-bookkeeper', 'Voice AI'],
+    ],
+  },
+  {
+    id: 'admin',
+    label: 'Admin & Security',
+    items: [
+      ['businesses', 'Businesses'],
+      ['cloud-backup', 'Cloud Backup'],
+      ['subscriptions', 'Subscription'],
+      ['security-center', 'Security'],
+      ['profile-settings', 'Profile'],
+      ['app-settings', 'Settings'],
+    ],
+  },
 ];
 
 function getSpeechRecognition() {
@@ -566,17 +625,45 @@ export default function VoiceExpenseTrackerPreview() {
   const [voiceConfirmation, setVoiceConfirmation] = useState(null);
   const [activeReportTab, setActiveReportTab] = useState('pnl');
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
+  const [expandedSidebarSection, setExpandedSidebarSection] = useState(() => {
+    const section = SIDEBAR_SECTIONS.find((group) => group.items.some(([tab]) => tab === activeTab));
+    return section?.id || 'overview';
+  });
+  const sidebarSectionRefs = useRef({});
 
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.slice(1);
       if (hash && APP_TABS.includes(hash)) {
         setActiveTab(hash);
+        const section = SIDEBAR_SECTIONS.find((group) => group.items.some(([tab]) => tab === hash));
+        if (section) {
+          setExpandedSidebarSection(section.id);
+        }
       }
     };
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
+
+  useEffect(() => {
+    const sectionNode = sidebarSectionRefs.current[expandedSidebarSection];
+    if (!sectionNode) {
+      return;
+    }
+
+    window.setTimeout(() => {
+      sectionNode.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'nearest',
+      });
+    }, 90);
+  }, [expandedSidebarSection]);
+
+  const toggleSidebarSection = (sectionId) => {
+    setExpandedSidebarSection(sectionId);
+  };
 
   useEffect(() => {
     localStorage.setItem('darkMode', String(darkMode));
@@ -1534,34 +1621,38 @@ export default function VoiceExpenseTrackerPreview() {
             <span>Business Console</span>
           </div>
         </div>
-        <nav className="side-nav">
-          <a href="#dashboard" className={activeTab === 'dashboard' ? 'active' : ''}>Dashboard</a>
-          <a href="#ai-assistant" className={activeTab === 'ai-assistant' ? 'active' : ''}>AI Insights</a>
-          <a href="#inventory" className={activeTab === 'inventory' ? 'active' : ''}>Inventory</a>
-          <a href="#invoices" className={activeTab === 'invoices' ? 'active' : ''}>Invoices</a>
-          <a href="#gst" className={activeTab === 'gst' ? 'active' : ''}>GST Center</a>
-          <a href="#crm" className={activeTab === 'crm' ? 'active' : ''}>Customer CRM</a>
-          <a href="#suppliers" className={activeTab === 'suppliers' ? 'active' : ''}>Suppliers</a>
-          <a href="#analytics" className={activeTab === 'analytics' ? 'active' : ''}>Analytics</a>
-          <a href="#voucher-entry" className={activeTab === 'voucher-entry' ? 'active' : ''}>Voucher Entry</a>
-          <a href="#party-management" className={activeTab === 'party-management' ? 'active' : ''}>Party Khata</a>
-          <a href="#reports" className={activeTab === 'reports' ? 'active' : ''}>Reports</a>
-          <a href="#day-book" className={activeTab === 'day-book' ? 'active' : ''}>Day Book</a>
-          <a href="#party-statement" className={activeTab === 'party-statement' ? 'active' : ''}>Party Statement</a>
-          <a href="#businesses" className={activeTab === 'businesses' ? 'active' : ''}>Businesses</a>
-          <a href="#cloud-backup" className={activeTab === 'cloud-backup' ? 'active' : ''}>Cloud Backup</a>
-          <a href="#notifications" className={activeTab === 'notifications' ? 'active' : ''}>Notifications</a>
-          <a href="#mobile-app" className={activeTab === 'mobile-app' ? 'active' : ''}>Mobile App</a>
-          <a href="#whatsapp-automation" className={activeTab === 'whatsapp-automation' ? 'active' : ''}>WhatsApp</a>
-          <a href="#upi-payments" className={activeTab === 'upi-payments' ? 'active' : ''}>UPI Payments</a>
-          <a href="#orders" className={activeTab === 'orders' ? 'active' : ''}>Orders</a>
-          <a href="#voice-bookkeeper" className={activeTab === 'voice-bookkeeper' ? 'active' : ''}>Voice AI</a>
-          <a href="#employees" className={activeTab === 'employees' ? 'active' : ''}>Employees</a>
-          <a href="#subscriptions" className={activeTab === 'subscriptions' ? 'active' : ''}>Subscription</a>
-          <a href="#accountant-portal" className={activeTab === 'accountant-portal' ? 'active' : ''}>Accountant</a>
-          <a href="#security-center" className={activeTab === 'security-center' ? 'active' : ''}>Security</a>
-          <a href="#profile-settings" className={activeTab === 'profile-settings' ? 'active' : ''}>Profile</a>
-          <a href="#app-settings" className={activeTab === 'app-settings' ? 'active' : ''}>Settings</a>
+        <nav className="side-nav" aria-label="ERP sections">
+          {SIDEBAR_SECTIONS.map((section) => {
+            const isExpanded = expandedSidebarSection === section.id;
+            const hasActiveItem = section.items.some(([tab]) => tab === activeTab);
+
+            return (
+              <div
+                className={`sidebar-section ${isExpanded ? 'expanded' : ''} ${hasActiveItem ? 'has-active' : ''}`}
+                key={section.id}
+                ref={(node) => {
+                  sidebarSectionRefs.current[section.id] = node;
+                }}
+              >
+                <button
+                  aria-expanded={isExpanded}
+                  className="sidebar-section-trigger"
+                  type="button"
+                  onClick={() => toggleSidebarSection(section.id)}
+                >
+                  <span>{section.label}</span>
+                  <span className="sidebar-chevron">›</span>
+                </button>
+                <div className="sidebar-section-panel">
+                  {section.items.map(([tab, label]) => (
+                    <a href={`#${tab}`} className={activeTab === tab ? 'active' : ''} key={tab}>
+                      {label}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </nav>
         <div className="sidebar-support">
           <span>Support</span>
