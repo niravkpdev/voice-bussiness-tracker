@@ -36,6 +36,7 @@ import Phase3Ops from './Phase3Ops.jsx';
 
 const STORAGE_KEY = 'businessLogs';
 const PROFILE_KEY = 'businessProfile';
+const AUTH_KEY = 'voiceBusinessTrackerAuth';
 const INVENTORY_KEY = 'businessInventory';
 const ORDERS_KEY = 'businessOrders';
 const VOICE_ALERTS_KEY = 'voiceLowStockAlertsEnabled';
@@ -51,6 +52,21 @@ const DEFAULT_PROFILE = {
 };
 const SUPPORT_EMAIL = 'trinetr1901@gmail.com';
 const SUPPORT_PHONE = '+918488943771';
+const FEATURE_CARDS = [
+  ['Voice Transactions', 'Add expenses, sales, customers, and inventory using natural commands.'],
+  ['Expense Tracking', 'Capture daily expenses instantly with categories and notes.'],
+  ['Income Tracking', 'Record cash sales, credit sales, and customer receipts.'],
+  ['Inventory Management', 'Track stock levels, purchase price, selling price, and alerts.'],
+  ['Customer Management', 'Maintain customer records, dues, reminders, and statements.'],
+  ['Reports & Analytics', 'Visual insights for revenue, expense, profit, GST, and growth.'],
+];
+const COMMAND_EXAMPLES = [
+  'Add ₹500 expense for groceries',
+  'Record ₹2,000 sale from customer Raj',
+  'Add customer Rahul owes ₹1000',
+  'Add 10 units of product Rice',
+  "Show today's sales",
+];
 
 const CASH_LEDGER_ID = 'ledger-cash';
 const SALES_LEDGER_ID = 'ledger-sales';
@@ -585,6 +601,14 @@ function CircularHealthScore({ score }) {
 }
 
 export default function VoiceExpenseTrackerPreview() {
+  const [authView, setAuthView] = useState(() => (localStorage.getItem(AUTH_KEY) ? 'app' : 'landing'));
+  const [authUser, setAuthUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(AUTH_KEY) || 'null');
+    } catch {
+      return null;
+    }
+  });
   const [transcript, setTranscript] = useState('Click start and speak your expense...');
   const [status, setStatus] = useState('Idle');
   const [language, setLanguage] = useState('en-US');
@@ -663,6 +687,43 @@ export default function VoiceExpenseTrackerPreview() {
 
   const toggleSidebarSection = (sectionId) => {
     setExpandedSidebarSection(sectionId);
+  };
+
+  const completeAuth = (event) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const nextUser = {
+      businessName: form.get('businessName')?.trim() || profile.name,
+      ownerName: form.get('ownerName')?.trim() || profile.owner,
+      email: form.get('email')?.trim() || 'owner@business.local',
+      role: 'Owner',
+      loginAt: new Date().toISOString(),
+    };
+    localStorage.setItem(AUTH_KEY, JSON.stringify(nextUser));
+    setAuthUser(nextUser);
+    setAuthView('app');
+    setStatus('Welcome to Voice Business Tracker');
+  };
+
+  const loginWithGoogle = () => {
+    const nextUser = {
+      businessName: profile.name,
+      ownerName: profile.owner,
+      email: profile.email,
+      role: 'Owner',
+      provider: 'Google',
+      loginAt: new Date().toISOString(),
+    };
+    localStorage.setItem(AUTH_KEY, JSON.stringify(nextUser));
+    setAuthUser(nextUser);
+    setAuthView('app');
+    setStatus('Google login simulated. Connect OAuth backend for production.');
+  };
+
+  const logout = () => {
+    localStorage.removeItem(AUTH_KEY);
+    setAuthUser(null);
+    setAuthView('landing');
   };
 
   useEffect(() => {
@@ -1611,6 +1672,184 @@ export default function VoiceExpenseTrackerPreview() {
     );
   };
 
+  if (authView !== 'app') {
+    return (
+      <main className="saas-public-shell">
+        <header className="saas-nav">
+          <a className="saas-logo" href="#home" onClick={() => setAuthView('landing')}>
+            <img src={profile.logo} alt="" />
+            <span>Voice Business Tracker</span>
+          </a>
+          <nav>
+            <a href="#features">Features</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#help">Help</a>
+            <button type="button" onClick={() => setAuthView('login')}>Login</button>
+            <button className="saas-primary-button" type="button" onClick={() => setAuthView('register')}>
+              Start Free
+            </button>
+          </nav>
+        </header>
+
+        {authView === 'landing' ? (
+          <>
+            <section className="saas-hero" id="home">
+              <div className="saas-hero-copy">
+                <span className="saas-kicker">Manage Your Business with Voice Commands</span>
+                <h1>Run Your Business Using Only Your Voice</h1>
+                <p>
+                  Track income, expenses, customers, inventory, and business performance using natural voice commands.
+                </p>
+                <div className="saas-hero-actions">
+                  <button className="saas-primary-button" type="button" onClick={() => setAuthView('register')}>
+                    Start Free
+                  </button>
+                  <button className="saas-secondary-button" type="button" onClick={() => setAuthView('login')}>
+                    Watch Demo
+                  </button>
+                </div>
+                <div className="saas-command-strip">
+                  {COMMAND_EXAMPLES.slice(0, 3).map((command) => (
+                    <span key={command}>{command}</span>
+                  ))}
+                </div>
+              </div>
+              <div className="saas-dashboard-preview" aria-label="Product dashboard preview">
+                <div className="preview-topbar"><span /><span /><span /></div>
+                <div className="preview-grid">
+                  <article><span>Total Revenue</span><strong>{formatCurrency(stats.monthlySales)}</strong></article>
+                  <article><span>Expenses</span><strong>{formatCurrency(stats.monthlyExpenses)}</strong></article>
+                  <article><span>Net Profit</span><strong>{formatCurrency(monthlyNetProfit)}</strong></article>
+                  <article><span>Inventory</span><strong>Live</strong></article>
+                </div>
+                <div className="preview-chart">
+                  <i style={{ height: '46%' }} />
+                  <i style={{ height: '72%' }} />
+                  <i style={{ height: '58%' }} />
+                  <i style={{ height: '84%' }} />
+                  <i style={{ height: '64%' }} />
+                </div>
+              </div>
+            </section>
+
+            <section className="saas-section" id="features">
+              <div className="saas-section-heading">
+                <span className="saas-kicker">Features</span>
+                <h2>Everything a small business needs, simplified by voice.</h2>
+              </div>
+              <div className="saas-feature-grid">
+                {FEATURE_CARDS.map(([title, description]) => (
+                  <article className="saas-feature-card" key={title}>
+                    <strong>{title}</strong>
+                    <p>{description}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="saas-section saas-steps">
+              <div className="saas-section-heading">
+                <span className="saas-kicker">How It Works</span>
+                <h2>Speak naturally. Let the system do the bookkeeping.</h2>
+              </div>
+              <div className="saas-feature-grid four">
+                {['Press microphone', 'Speak naturally', 'AI understands', 'Data gets saved'].map((step, index) => (
+                  <article className="saas-feature-card" key={step}>
+                    <span className="saas-step-number">{index + 1}</span>
+                    <strong>{step}</strong>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="saas-section">
+              <div className="saas-section-heading">
+                <span className="saas-kicker">Loved by operators</span>
+                <h2>Built for shopkeepers, freelancers, makers, and entrepreneurs.</h2>
+              </div>
+              <div className="saas-feature-grid three">
+                {['Daily entries became faster than WhatsApp notes.', 'Inventory and dues are visible in one place.', 'Voice commands make accounting less scary.'].map((quote) => (
+                  <article className="saas-testimonial-card" key={quote}>
+                    <p>{quote}</p>
+                    <strong>Small Business Owner</strong>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="saas-section" id="pricing">
+              <div className="saas-section-heading">
+                <span className="saas-kicker">Pricing</span>
+                <h2>Start simple. Scale when your business grows.</h2>
+              </div>
+              <div className="saas-feature-grid three">
+                {['Starter', 'Business', 'Enterprise'].map((plan, index) => (
+                  <article className="saas-pricing-card" key={plan}>
+                    <strong>{plan}</strong>
+                    <h3>{index === 0 ? 'Free' : index === 1 ? '₹499/mo' : 'Custom'}</h3>
+                    <p>{index === 0 ? 'Voice entries and reports' : index === 1 ? 'ERP, invoices, inventory, AI' : 'Security, roles, integrations'}</p>
+                    <button className={index === 1 ? 'saas-primary-button' : 'saas-secondary-button'} type="button" onClick={() => setAuthView('register')}>
+                      Start
+                    </button>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <footer className="saas-footer" id="help">
+              <span>Voice Business Tracker</span>
+              <nav>
+                <a href="#privacy">Privacy Policy</a>
+                <a href="#terms">Terms of Service</a>
+                <a href={`mailto:${SUPPORT_EMAIL}`}>Contact</a>
+                <a href="#help">Help Center</a>
+              </nav>
+            </footer>
+          </>
+        ) : (
+          <section className="auth-page">
+            <div className="auth-card">
+              <span className="saas-kicker">{authView === 'login' ? 'Welcome back' : 'Create account'}</span>
+              <h1>{authView === 'login' ? 'Login to your dashboard' : 'Start managing your business'}</h1>
+              <form onSubmit={completeAuth}>
+                {authView === 'register' && (
+                  <>
+                    <label className="field-label" htmlFor="auth-business">Business Name</label>
+                    <input id="auth-business" name="businessName" placeholder="Your business name" />
+                    <label className="field-label" htmlFor="auth-owner">Owner Name</label>
+                    <input id="auth-owner" name="ownerName" placeholder="Owner name" />
+                  </>
+                )}
+                <label className="field-label" htmlFor="auth-email">Email</label>
+                <input id="auth-email" name="email" type="email" placeholder="owner@business.com" />
+                <label className="field-label" htmlFor="auth-password">Password</label>
+                <input id="auth-password" name="password" type="password" placeholder="••••••••" />
+                {authView === 'login' && (
+                  <div className="auth-row">
+                    <label><input type="checkbox" /> Remember me</label>
+                    <button type="button">Forgot password?</button>
+                  </div>
+                )}
+                <button className="saas-primary-button full" type="submit">
+                  {authView === 'login' ? 'Login' : 'Create Account'}
+                </button>
+              </form>
+              <button className="saas-google-button" type="button" onClick={loginWithGoogle}>
+                Continue with Google
+              </button>
+              <p>
+                {authView === 'login' ? "Don't have an account?" : 'Already have an account?'}{' '}
+                <button type="button" onClick={() => setAuthView(authView === 'login' ? 'register' : 'login')}>
+                  {authView === 'login' ? 'Register' : 'Login'}
+                </button>
+              </p>
+            </div>
+          </section>
+        )}
+      </main>
+    );
+  }
+
   return (
     <div className="app-frame">
       <aside className="sidebar" aria-label="Main menu">
@@ -1678,6 +1917,7 @@ export default function VoiceExpenseTrackerPreview() {
             <a className="topbar-link notification-link" href="#notifications">Alerts</a>
             <a className="topbar-link" href="#profile-settings">Profile</a>
             <a className="topbar-link" href="#app-settings">Settings</a>
+            <button className="topbar-link" type="button" onClick={logout}>Logout</button>
             <a className="topbar-link primary" href="#support">Support</a>
           </div>
         </header>
@@ -2736,6 +2976,13 @@ export default function VoiceExpenseTrackerPreview() {
           )}
         </main>
       </div>
+
+      <nav className="mobile-bottom-nav" aria-label="Mobile navigation">
+        <a className={activeTab === 'dashboard' ? 'active' : ''} href="#dashboard">Home</a>
+        <a className={activeTab === 'voice-bookkeeper' ? 'active' : ''} href="#voice-bookkeeper">Voice</a>
+        <a className={activeTab === 'invoices' ? 'active' : ''} href="#invoices">Invoices</a>
+        <a className={activeTab === 'analytics' ? 'active' : ''} href="#analytics">Reports</a>
+      </nav>
 
       {/* Floating Microphone Action Button */}
       <button 
