@@ -2,6 +2,7 @@
   "name": "Voice Business Tracker",
   "short_name": "VBT ERP",
   "description": "AI-powered business operating system for accounting, inventory, invoices, CRM, and analytics.",
+  "id": "/react.html",
   "start_url": "/react.html",
   "scope": "/",
   "display": "standalone",
@@ -14,6 +15,20 @@
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/assets/og-image.svg",
+      "sizes": "1200x630",
+      "type": "image/svg+xml",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/assets/splash.svg",
+      "sizes": "1080x1920",
+      "type": "image/svg+xml",
+      "form_factor": "narrow"
     }
   ],
   "shortcuts": [

@@ -27,12 +27,43 @@ import {
   saveVoucher,
   voucherCashTotals,
   voucherToCsvRows,
-  parseVoiceCommand,
   getDailyAndMonthlyStats,
   getPartySummary,
 } from './accounting';
 import Phase2ERP from './Phase2ERP.jsx';
 import Phase3Ops from './Phase3Ops.jsx';
+import { LegalPage, LEGAL_PAGE_IDS } from './LegalPages.jsx';
+import {
+  createFirebaseAccount,
+  isFirebaseConfigured,
+  listenToFirebaseAuth,
+  loadCloudSnapshot,
+  saveCloudRecord,
+  saveCloudSnapshot,
+  saveUserProfile,
+  signInFirebaseAccount,
+  signInFirebaseGoogle,
+  signOutFirebase,
+} from './firebaseClient.js';
+import {
+  canRunRateLimitedAction,
+  normalizeAmount,
+  publicSafeError,
+  sanitizeEmail,
+  sanitizeText,
+  validateEmail,
+  validatePassword,
+  validatePhone,
+  validateVoicePayload,
+} from './security.js';
+import {
+  clearStorageScope,
+  readScopedString,
+  removeScopedValue,
+  setStorageScope,
+  writeScopedString,
+} from './storageScope.js';
+import { mapVoiceTypeToAccounting, parseReliableVoiceCommand } from './voiceParser.js';
 
 const STORAGE_KEY = 'businessLogs';
 const PROFILE_KEY = 'businessProfile';
@@ -101,6 +132,7 @@ const APP_TABS = [
   'profile-settings',
   'app-settings',
   'support',
+  ...LEGAL_PAGE_IDS,
 ];
 const SIDEBAR_SECTIONS = [
   {
@@ -172,7 +204,7 @@ function readSavedLogs() {
 
 function readProfile() {
   try {
-    return { ...DEFAULT_PROFILE, ...JSON.parse(localStorage.getItem(PROFILE_KEY) || '{}') };
+    return { ...DEFAULT_PROFILE, ...JSON.parse(readScopedString(PROFILE_KEY) || '{}') };
   } catch {
     return DEFAULT_PROFILE;
   }
@@ -604,14 +636,23 @@ export default function VoiceExpenseTrackerPreview() {
   const [authView, setAuthView] = useState(() => (localStorage.getItem(AUTH_KEY) ? 'app' : 'landing'));
   const [authUser, setAuthUser] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem(AUTH_KEY) || 'null');
+      const storedUser = JSON.parse(localStorage.getItem(AUTH_KEY) || 'null');
+      if (storedUser?.uid || storedUser?.email) {
+        setStorageScope(storedUser.uid || storedUser.email);
+      }
+      return storedUser;
     } catch {
       return null;
     }
   });
+  const [authLoading, setAuthLoading] = useState(false);
+  const [appLoading, setAppLoading] = useState(true);
+  const [secureError, setSecureError] = useState('');
+  const [offline, setOffline] = useState(() => typeof navigator !== 'undefined' && !navigator.onLine);
+  const [firebaseEnabled] = useState(() => isFirebaseConfigured());
   const [transcript, setTranscript] = useState('Click start and speak your expense...');
   const [status, setStatus] = useState('Idle');
-  const [language, setLanguage] = useState('en-US');
+  const [language, setLanguage] = useState('en-IN');
   const [logs, setLogs] = useState([]);
   const [ledgers, setLedgers] = useState([]);
   const [vouchers, setVouchers] = useState([]);
@@ -689,53 +730,7 @@ export default function VoiceExpenseTrackerPreview() {
     setExpandedSidebarSection(sectionId);
   };
 
-  const completeAuth = (event) => {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const nextUser = {
-      businessName: form.get('businessName')?.trim() || profile.name,
-      ownerName: form.get('ownerName')?.trim() || profile.owner,
-      email: form.get('email')?.trim() || 'owner@business.local',
-      role: 'Owner',
-      loginAt: new Date().toISOString(),
-    };
-    localStorage.setItem(AUTH_KEY, JSON.stringify(nextUser));
-    setAuthUser(nextUser);
-    setAuthView('app');
-    setStatus('Welcome to Voice Business Tracker');
-  };
-
-  const loginWithGoogle = () => {
-    const nextUser = {
-      businessName: profile.name,
-      ownerName: profile.owner,
-      email: profile.email,
-      role: 'Owner',
-      provider: 'Google',
-      loginAt: new Date().toISOString(),
-    };
-    localStorage.setItem(AUTH_KEY, JSON.stringify(nextUser));
-    setAuthUser(nextUser);
-    setAuthView('app');
-    setStatus('Google login simulated. Connect OAuth backend for production.');
-  };
-
-  const logout = () => {
-    localStorage.removeItem(AUTH_KEY);
-    setAuthUser(null);
-    setAuthView('landing');
-  };
-
-  useEffect(() => {
-    localStorage.setItem('darkMode', String(darkMode));
-    if (darkMode) {
-      document.body.classList.add('dark');
-    } else {
-      document.body.classList.remove('dark');
-    }
-  }, [darkMode]);
-
-  useEffect(() => {
+  const hydrateWorkspace = () => {
     if (!getSpeechRecognition()) {
       setBrowserSupported(false);
     }
@@ -755,7 +750,219 @@ export default function VoiceExpenseTrackerPreview() {
       setVoucherPartyId(parties[0].id);
       setUseSalesInsteadOfParty(false);
     }
+
+    setAppLoading(false);
+  };
+
+  const applyAuthenticatedUser = async (nextUser, { restoreCloud = true } = {}) => {
+    const scopedUser = {
+      ...nextUser,
+      uid: nextUser.uid || nextUser.email,
+      role: nextUser.role || 'Owner',
+      loginAt: new Date().toISOString(),
+    };
+
+    setStorageScope(scopedUser.uid || scopedUser.email);
+    localStorage.setItem(AUTH_KEY, JSON.stringify(scopedUser));
+    setAuthUser(scopedUser);
+    setAuthView('app');
+    setSecureError('');
+
+    if (restoreCloud && firebaseEnabled && scopedUser.uid) {
+      const snapshot = await loadCloudSnapshot(scopedUser.uid).catch(() => null);
+      if (snapshot?.businessProfile) {
+        writeScopedString(PROFILE_KEY, JSON.stringify(snapshot.businessProfile));
+      }
+      if (Array.isArray(snapshot?.businessLedgers)) {
+        writeScopedString(LEDGERS_KEY, JSON.stringify(snapshot.businessLedgers));
+      }
+      if (Array.isArray(snapshot?.businessVouchers)) {
+        writeScopedString(VOUCHERS_KEY, JSON.stringify(snapshot.businessVouchers));
+      }
+      if (Array.isArray(snapshot?.businessLogs)) {
+        writeScopedString(STORAGE_KEY, JSON.stringify(snapshot.businessLogs));
+      }
+    }
+
+    hydrateWorkspace();
+  };
+
+  const saveCloudDataSnapshot = (reason = 'autosave') => {
+    if (!firebaseEnabled || !authUser?.uid) {
+      return;
+    }
+
+    saveCloudSnapshot(authUser.uid, {
+      reason,
+      businessLogs: readSavedArray(STORAGE_KEY),
+      businessLedgers: readLedgers(),
+      businessVouchers: readVouchers(),
+      businessInventory: readSavedArray(INVENTORY_KEY),
+      businessOrders: readSavedArray(ORDERS_KEY),
+      businessProfile: readProfile(),
+      voiceLowStockAlertsEnabled: readScopedString(VOICE_ALERTS_KEY) !== 'false',
+    }).catch((error) => setSecureError(publicSafeError(error, 'Cloud sync failed. Your local data is still saved.')));
+  };
+
+  const completeAuth = async (event) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const email = sanitizeEmail(form.get('email'));
+    const password = String(form.get('password') || '');
+    const businessName = sanitizeText(form.get('businessName') || profile.name, 140);
+    const ownerName = sanitizeText(form.get('ownerName') || profile.owner, 120);
+
+    if (!validateEmail(email)) {
+      setSecureError('Enter a valid email address.');
+      return;
+    }
+
+    if (!validatePassword(password)) {
+      setSecureError('Password must be at least 8 characters.');
+      return;
+    }
+
+    setAuthLoading(true);
+    setSecureError('');
+
+    try {
+      if (firebaseEnabled) {
+        const firebaseUser = authView === 'login'
+          ? await signInFirebaseAccount({ email, password })
+          : await createFirebaseAccount({ email, password, ownerName, businessName });
+
+        await applyAuthenticatedUser(firebaseUser);
+        setStatus('Secure Firebase login active');
+        return;
+      }
+
+      const nextUser = {
+        uid: email,
+        businessName,
+        ownerName,
+        email,
+        role: 'Owner',
+        loginAt: new Date().toISOString(),
+        mode: 'demo',
+      };
+      await applyAuthenticatedUser(nextUser, { restoreCloud: false });
+      setSecureError('Firebase is not configured yet, so this session is running in local demo mode.');
+      setStatus('Demo mode active. Configure Firebase env variables for production login.');
+    } catch (error) {
+      const message = publicSafeError(error, 'Login failed. Please check your details and try again.');
+      setSecureError(message);
+      setStatus(message);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const loginWithGoogle = async () => {
+    setAuthLoading(true);
+    setSecureError('');
+
+    try {
+      if (firebaseEnabled) {
+        const firebaseUser = await signInFirebaseGoogle();
+        await applyAuthenticatedUser(firebaseUser);
+        setStatus('Signed in with Google');
+        return;
+      }
+
+      const nextUser = {
+        uid: profile.email,
+        businessName: profile.name,
+        ownerName: profile.owner,
+        email: profile.email,
+        role: 'Owner',
+        provider: 'Google',
+        loginAt: new Date().toISOString(),
+        mode: 'demo',
+      };
+      await applyAuthenticatedUser(nextUser, { restoreCloud: false });
+      setSecureError('Firebase is not configured yet, so Google login is running in local demo mode.');
+      setStatus('Google login simulated. Configure Firebase for production OAuth.');
+    } catch (error) {
+      const message = publicSafeError(error, 'Google login failed. Please try again.');
+      setSecureError(message);
+      setStatus(message);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    if (firebaseEnabled) {
+      await signOutFirebase().catch(() => {});
+    }
+    localStorage.removeItem(AUTH_KEY);
+    clearStorageScope();
+    setAuthUser(null);
+    setAuthView('landing');
+  };
+
+  useEffect(() => {
+    localStorage.setItem('darkMode', String(darkMode));
+    if (darkMode) {
+      document.body.classList.add('dark');
+    } else {
+      document.body.classList.remove('dark');
+    }
+  }, [darkMode]);
+
+  useEffect(() => {
+    hydrateWorkspace();
   }, []);
+
+  useEffect(() => {
+    const handleOnline = () => setOffline(false);
+    const handleOffline = () => setOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    let unsubscribe = () => {};
+    let active = true;
+
+    if (!firebaseEnabled) {
+      return () => {};
+    }
+
+    setAuthLoading(true);
+    listenToFirebaseAuth(
+      async (user) => {
+        if (!active) {
+          return;
+        }
+        if (user) {
+          await applyAuthenticatedUser(user);
+        }
+        setAuthLoading(false);
+      },
+      (error) => {
+        if (!active) {
+          return;
+        }
+        setSecureError(publicSafeError(error, 'Firebase authentication is unavailable.'));
+        setAuthLoading(false);
+      }
+    ).then((handler) => {
+      unsubscribe = handler;
+    }).catch((error) => {
+      setSecureError(publicSafeError(error, 'Firebase authentication is unavailable.'));
+      setAuthLoading(false);
+    });
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [firebaseEnabled]);
   const partyLedgers = useMemo(() => getPartyLedgers(ledgers), [ledgers]);
   const customerParties = useMemo(
     () => partyLedgers.filter((ledger) => ledger.group === 'Sundry Debtors'),
@@ -970,6 +1177,11 @@ export default function VoiceExpenseTrackerPreview() {
   const persistVoucher = (voucher) => {
     saveVoucher(voucher);
     refreshVouchers();
+    if (authUser?.uid) {
+      saveCloudRecord(authUser.uid, 'vouchers', voucher.id, voucher)
+        .catch((error) => setSecureError(publicSafeError(error, 'Voucher saved locally but cloud sync failed.')));
+      saveCloudDataSnapshot('voucher_saved');
+    }
   };
 
   const saveReceiptOrPayment = ({
@@ -1002,8 +1214,8 @@ export default function VoiceExpenseTrackerPreview() {
   const saveVoucherEntry = (event) => {
     event.preventDefault();
 
-    const amount = Number(voucherAmount) || 0;
-    const narration = voucherNarration.trim();
+    const amount = normalizeAmount(voucherAmount);
+    const narration = sanitizeText(voucherNarration, 300);
 
     if (amount <= 0) {
       setStatus('Enter a voucher amount greater than zero');
@@ -1083,7 +1295,19 @@ export default function VoiceExpenseTrackerPreview() {
       setStatus(error.message);
     }
   };  const handleSaveVoiceConfirmation = (confirmedData) => {
-    const { type, amount, partyName, category, date, narration } = confirmedData;
+    const validation = validateVoicePayload(confirmedData);
+    if (!validation.valid && confirmedData.confidence < 0.35) {
+      setSecureError(validation.errors.join(' '));
+      setStatus('Please review unclear voice input before saving');
+      return;
+    }
+
+    const type = mapVoiceTypeToAccounting(confirmedData.type || confirmedData.accountingType);
+    const amount = normalizeAmount(confirmedData.amount);
+    const partyName = sanitizeText(confirmedData.partyName || confirmedData.customer, 120);
+    const category = sanitizeText(confirmedData.category, 120);
+    const date = confirmedData.date;
+    const narration = sanitizeText(confirmedData.narration || confirmedData.notes || confirmedData.transcript, 300);
 
     if (amount <= 0) {
       setStatus('Amount must be greater than zero');
@@ -1161,13 +1385,22 @@ export default function VoiceExpenseTrackerPreview() {
 
       setStatus(`${type} voucher saved successfully`);
       setVoiceConfirmation(null);
+      setSecureError('');
     } catch (error) {
-      setStatus(error.message);
-      alert(error.message);
+      const message = publicSafeError(error);
+      setSecureError(message);
+      setStatus(message);
     }
   };
 
   const startVoiceRecognition = async () => {
+    const rateLimit = canRunRateLimitedAction(`voice:${authUser?.uid || 'guest'}`, { limit: 8, windowMs: 60_000 });
+    if (!rateLimit.allowed) {
+      setSecureError(rateLimit.message);
+      setStatus(rateLimit.message);
+      return;
+    }
+
     const SpeechRecognition = getSpeechRecognition();
 
     if (!SpeechRecognition) {
@@ -1188,7 +1421,7 @@ export default function VoiceExpenseTrackerPreview() {
 
         if (permissionStatus.state === 'denied') {
           setStatus('Microphone permission denied');
-          alert('Please allow microphone access in your browser settings and refresh the page.');
+          setSecureError('Please allow microphone access in browser settings and refresh the page.');
           return;
         }
       }
@@ -1200,22 +1433,25 @@ export default function VoiceExpenseTrackerPreview() {
       recognition.lang = language;
       recognition.continuous = false;
       recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
+      recognition.maxAlternatives = 3;
 
       setStatus('Listening...');
+      setVoiceConfirmation(null);
       recognition.start();
 
       recognition.onresult = (event) => {
         const voiceText = event.results[0][0].transcript;
+        const speechConfidence = event.results[0][0].confidence || 0;
         setTranscript(voiceText);
 
-        const parsed = parseVoiceCommand(voiceText, partyLedgers);
+        const parsed = parseReliableVoiceCommand(voiceText, partyLedgers, speechConfidence);
         
-        setVoiceConfirmation({
-          ...parsed,
-          date: new Date().toISOString().slice(0, 10)
-        });
-        setStatus('Voice parsed. Awaiting confirmation...');
+        setVoiceConfirmation(parsed);
+        setStatus(parsed.unclear ? 'Speech unclear. Please edit or retry.' : 'Voice parsed. Review before saving.');
+      };
+
+      recognition.onnomatch = () => {
+        setStatus('Speech was unclear. Please retry closer to the microphone.');
       };
 
       recognition.onerror = (event) => {
@@ -1225,6 +1461,7 @@ export default function VoiceExpenseTrackerPreview() {
             break;
           case 'no-speech':
             setStatus('No voice detected');
+            setSecureError('No speech was detected. Tap retry and speak one clear transaction.');
             break;
           case 'network':
             setStatus('Internet is required for voice recognition');
@@ -1237,22 +1474,28 @@ export default function VoiceExpenseTrackerPreview() {
         }
       };
     } catch (error) {
-      console.error(error);
+      setSecureError(publicSafeError(error, 'Microphone permission is required for voice entries.'));
       setStatus('Please allow microphone permission and use Google Chrome');
     }
   };
 
   const saveLog = (log) => {
     const updatedLogs = [log, ...readSavedLogs()];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedLogs));
+    writeScopedString(STORAGE_KEY, JSON.stringify(updatedLogs));
     setLogs(updatedLogs);
+    if (authUser?.uid) {
+      saveCloudRecord(authUser.uid, 'logs', log.id || `log-${Date.now()}`, log)
+        .catch((error) => setSecureError(publicSafeError(error, 'Entry saved locally but cloud sync failed.')));
+      saveCloudDataSnapshot('log_saved');
+    }
   };
 
   const deleteLog = (index) => {
     const updatedLogs = readSavedLogs().filter((_, logIndex) => logIndex !== index);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedLogs));
+    writeScopedString(STORAGE_KEY, JSON.stringify(updatedLogs));
     setLogs(updatedLogs);
     setStatus('Entry deleted');
+    saveCloudDataSnapshot('log_deleted');
   };
 
   const removeVoucher = (voucherId) => {
@@ -1264,8 +1507,8 @@ export default function VoiceExpenseTrackerPreview() {
   const saveManualEntry = (event) => {
     event.preventDefault();
 
-    const text = manualText.trim();
-    const amount = Number(manualAmount) || 0;
+    const text = sanitizeText(manualText, 300);
+    const amount = normalizeAmount(manualAmount);
 
     if (!text) {
       setStatus('Please write entry details before saving');
@@ -1349,14 +1592,15 @@ export default function VoiceExpenseTrackerPreview() {
       return;
     }
 
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(VOUCHERS_KEY);
-    localStorage.removeItem(LEDGERS_KEY);
+    removeScopedValue(STORAGE_KEY);
+    removeScopedValue(VOUCHERS_KEY);
+    removeScopedValue(LEDGERS_KEY);
     const freshLedgers = ensureDefaultLedgers();
     setLogs([]);
     setLedgers(freshLedgers);
     setVouchers([]);
     setStatus('All accounting data cleared');
+    saveCloudDataSnapshot('data_cleared');
   };
 
   const saveBusinessProfile = async (event) => {
@@ -1364,26 +1608,47 @@ export default function VoiceExpenseTrackerPreview() {
     const formData = new FormData(event.currentTarget);
     const nextProfile = {
       ...profile,
-      name: formData.get('profileName')?.trim() || DEFAULT_PROFILE.name,
-      tagline: formData.get('profileTagline')?.trim() || DEFAULT_PROFILE.tagline,
-      owner: formData.get('profileOwner')?.trim() || DEFAULT_PROFILE.owner,
-      email: formData.get('profileEmail')?.trim() || DEFAULT_PROFILE.email,
-      phone: formData.get('profilePhone')?.trim() || DEFAULT_PROFILE.phone,
-      address: formData.get('profileAddress')?.trim() || '',
+      name: sanitizeText(formData.get('profileName'), 140) || DEFAULT_PROFILE.name,
+      tagline: sanitizeText(formData.get('profileTagline'), 160) || DEFAULT_PROFILE.tagline,
+      owner: sanitizeText(formData.get('profileOwner'), 120) || DEFAULT_PROFILE.owner,
+      email: sanitizeEmail(formData.get('profileEmail')) || DEFAULT_PROFILE.email,
+      phone: sanitizeText(formData.get('profilePhone'), 24) || DEFAULT_PROFILE.phone,
+      address: sanitizeText(formData.get('profileAddress'), 240),
     };
+
+    if (!validateEmail(nextProfile.email)) {
+      setSecureError('Enter a valid business email.');
+      return;
+    }
+
+    if (!validatePhone(nextProfile.phone)) {
+      setSecureError('Enter a valid business phone number.');
+      return;
+    }
 
     const uploadedLogo = formData.get('profileLogo');
     if (uploadedLogo?.size) {
       nextProfile.logo = await fileToDataUrl(uploadedLogo);
     }
 
-    localStorage.setItem(PROFILE_KEY, JSON.stringify(nextProfile));
+    writeScopedString(PROFILE_KEY, JSON.stringify(nextProfile));
     setProfile(nextProfile);
+    if (authUser?.uid) {
+      saveUserProfile(authUser.uid, {
+        businessName: nextProfile.name,
+        ownerName: nextProfile.owner,
+        email: nextProfile.email,
+        role: authUser.role || 'Owner',
+      }).catch((error) => setSecureError(publicSafeError(error, 'Profile saved locally but cloud sync failed.')));
+      saveCloudRecord(authUser.uid, 'profile', 'business', nextProfile)
+        .catch((error) => setSecureError(publicSafeError(error, 'Profile saved locally but cloud sync failed.')));
+      saveCloudDataSnapshot('profile_saved');
+    }
     setStatus('Business profile saved');
   };
 
   const resetBusinessProfile = () => {
-    localStorage.removeItem(PROFILE_KEY);
+    removeScopedValue(PROFILE_KEY);
     setProfile(DEFAULT_PROFILE);
     setStatus('Business profile reset');
   };
@@ -1418,8 +1683,9 @@ export default function VoiceExpenseTrackerPreview() {
         setVoucherPartyId(parties[0].id);
       }
       setStatus('Backup restored successfully');
+      saveCloudDataSnapshot('backup_restored');
     } catch (error) {
-      setStatus(error.message || 'Could not restore backup');
+      setStatus(publicSafeError(error, 'Could not restore backup'));
     } finally {
       event.target.value = '';
     }
@@ -1446,7 +1712,7 @@ export default function VoiceExpenseTrackerPreview() {
         businessInventory: readSavedArray(INVENTORY_KEY),
         businessOrders: readSavedArray(ORDERS_KEY),
         businessProfile: readProfile(),
-        voiceLowStockAlertsEnabled: localStorage.getItem(VOICE_ALERTS_KEY) !== 'false',
+        voiceLowStockAlertsEnabled: readScopedString(VOICE_ALERTS_KEY) !== 'false',
       },
     };
     const url = URL.createObjectURL(
@@ -1559,7 +1825,14 @@ export default function VoiceExpenseTrackerPreview() {
 
   const answerAiQuestion = (event) => {
     event.preventDefault();
-    const question = aiQuestion.trim();
+    const rateLimit = canRunRateLimitedAction(`ai:${authUser?.uid || 'guest'}`, { limit: 20, windowMs: 60_000 });
+    if (!rateLimit.allowed) {
+      setAiAnswer(rateLimit.message);
+      setSecureError(rateLimit.message);
+      return;
+    }
+
+    const question = sanitizeText(aiQuestion, 280);
     const lowerQuestion = question.toLowerCase();
     const mathResult = safeMathAnswer(question);
 
@@ -1683,7 +1956,8 @@ export default function VoiceExpenseTrackerPreview() {
           <nav>
             <a href="#features">Features</a>
             <a href="#pricing">Pricing</a>
-            <a href="#help">Help</a>
+            <button type="button" onClick={() => setAuthView('about-app')}>About</button>
+            <button type="button" onClick={() => setAuthView('contact-us')}>Contact</button>
             <button type="button" onClick={() => setAuthView('login')}>Login</button>
             <button className="saas-primary-button" type="button" onClick={() => setAuthView('register')}>
               Start Free
@@ -1691,7 +1965,9 @@ export default function VoiceExpenseTrackerPreview() {
           </nav>
         </header>
 
-        {authView === 'landing' ? (
+        {LEGAL_PAGE_IDS.includes(authView) ? (
+          <LegalPage page={authView} onBack={() => setAuthView('landing')} />
+        ) : authView === 'landing' ? (
           <>
             <section className="saas-hero" id="home">
               <div className="saas-hero-copy">
@@ -1799,18 +2075,22 @@ export default function VoiceExpenseTrackerPreview() {
             <footer className="saas-footer" id="help">
               <span>Voice Business Tracker</span>
               <nav>
-                <a href="#privacy">Privacy Policy</a>
-                <a href="#terms">Terms of Service</a>
-                <a href={`mailto:${SUPPORT_EMAIL}`}>Contact</a>
-                <a href="#help">Help Center</a>
+                <button type="button" onClick={() => setAuthView('privacy-policy')}>Privacy Policy</button>
+                <button type="button" onClick={() => setAuthView('terms-conditions')}>Terms of Service</button>
+                <button type="button" onClick={() => setAuthView('data-deletion')}>Data Deletion</button>
+                <button type="button" onClick={() => setAuthView('contact-us')}>Contact</button>
               </nav>
             </footer>
           </>
         ) : (
           <section className="auth-page">
             <div className="auth-card">
+              <span className={`security-mode ${firebaseEnabled ? 'live' : 'demo'}`}>
+                {firebaseEnabled ? 'Firebase secure mode' : 'Local demo mode'}
+              </span>
               <span className="saas-kicker">{authView === 'login' ? 'Welcome back' : 'Create account'}</span>
               <h1>{authView === 'login' ? 'Login to your dashboard' : 'Start managing your business'}</h1>
+              {secureError && <div className="notice error">{secureError}</div>}
               <form onSubmit={completeAuth}>
                 {authView === 'register' && (
                   <>
@@ -1830,12 +2110,12 @@ export default function VoiceExpenseTrackerPreview() {
                     <button type="button">Forgot password?</button>
                   </div>
                 )}
-                <button className="saas-primary-button full" type="submit">
-                  {authView === 'login' ? 'Login' : 'Create Account'}
+                <button className="saas-primary-button full" type="submit" disabled={authLoading}>
+                  {authLoading ? 'Please wait...' : authView === 'login' ? 'Login' : 'Create Account'}
                 </button>
               </form>
-              <button className="saas-google-button" type="button" onClick={loginWithGoogle}>
-                Continue with Google
+              <button className="saas-google-button" type="button" onClick={loginWithGoogle} disabled={authLoading}>
+                {authLoading ? 'Connecting...' : 'Continue with Google'}
               </button>
               <p>
                 {authView === 'login' ? "Don't have an account?" : 'Already have an account?'}{' '}
@@ -1905,6 +2185,15 @@ export default function VoiceExpenseTrackerPreview() {
           <div>
             <span className="eyebrow">Professional Business Tracker</span>
             <strong>{status}</strong>
+            <div className="runtime-badges">
+              <span className={`runtime-pill ${firebaseEnabled ? 'live' : 'demo'}`}>
+                {firebaseEnabled ? 'Firebase protected' : 'Local demo'}
+              </span>
+              <span className={`runtime-pill ${offline ? 'offline' : 'online'}`}>
+                {offline ? 'Offline' : 'Online'}
+              </span>
+              <span className="runtime-pill role">{authUser?.role || 'Guest'}</span>
+            </div>
           </div>
           <div className="topbar-actions">
             <button 
@@ -1924,6 +2213,28 @@ export default function VoiceExpenseTrackerPreview() {
 
         <main className="page-shell">
           {/* Active View conditional rendering */}
+          {appLoading && (
+            <section className="skeleton-grid" aria-label="Loading dashboard">
+              <span /><span /><span /><span />
+            </section>
+          )}
+
+          {secureError && (
+            <div className="notice error app-error-banner">
+              {secureError}
+              <button type="button" onClick={() => setSecureError('')}>Dismiss</button>
+            </div>
+          )}
+
+          {offline && (
+            <div className="notice warning">
+              You are offline. Entries will stay available locally and can sync when the connection returns.
+            </div>
+          )}
+
+          {LEGAL_PAGE_IDS.includes(activeTab) && (
+            <LegalPage page={activeTab} onBack={() => { window.location.hash = 'app-settings'; }} />
+          )}
           
           {activeTab === 'dashboard' && (
             <section className="hero-panel fade-in" id="dashboard">
@@ -2036,6 +2347,19 @@ export default function VoiceExpenseTrackerPreview() {
                   <p>Outstanding Suppliers</p>
                 </article>
               </div>
+
+              {vouchers.length === 0 && (
+                <div className="empty-state-panel">
+                  <strong>No transactions yet</strong>
+                  <p>Tap the microphone or create a voucher to start building your business dashboard.</p>
+                  <div>
+                    <button className="manual-button compact-button" type="button" onClick={startVoiceRecognition}>
+                      Start Voice Entry
+                    </button>
+                    <a className="secondary-button compact-link" href="#voucher-entry">Add Voucher</a>
+                  </div>
+                </div>
+              )}
 
               <div className="charts-grid-layout">
                 <MiniBarChart 
@@ -2187,6 +2511,7 @@ export default function VoiceExpenseTrackerPreview() {
               cashBalance={cashInHand}
               netProfit={monthlyNetProfit}
               onStatus={setStatus}
+              onCloudSnapshot={saveCloudDataSnapshot}
             />
           )}
 
@@ -2210,6 +2535,7 @@ export default function VoiceExpenseTrackerPreview() {
               vouchers={vouchers}
               partySummary={partySummary}
               onStatus={setStatus}
+              onCloudSnapshot={saveCloudDataSnapshot}
             />
           )}
 
@@ -2947,6 +3273,7 @@ export default function VoiceExpenseTrackerPreview() {
                     style={{ marginTop: '8px' }}
                   >
                     <option value="en-US">English (US)</option>
+                    <option value="en-IN">English / Hinglish (India)</option>
                     <option value="hi-IN">Hindi (India)</option>
                     <option value="gu-IN">Gujarati (India)</option>
                   </select>
@@ -2969,6 +3296,17 @@ export default function VoiceExpenseTrackerPreview() {
                     <button className="danger-button" style={{ margin: 0, minHeight: '44px' }} type="button" onClick={clearAllData}>
                       Reset All Data
                     </button>
+                  </div>
+                </article>
+                <article className="settings-card">
+                  <h3>Legal & Play Store</h3>
+                  <p>Review privacy, terms, contact, and account deletion pages required before public launch.</p>
+                  <div className="legal-link-grid">
+                    <a href="#privacy-policy">Privacy</a>
+                    <a href="#terms-conditions">Terms</a>
+                    <a href="#data-deletion">Data Deletion</a>
+                    <a href="#contact-us">Contact</a>
+                    <a href="#about-app">About</a>
                   </div>
                 </article>
               </div>
@@ -3000,8 +3338,21 @@ export default function VoiceExpenseTrackerPreview() {
         <div className="modal-backdrop">
           <div className="modal-content">
             <div className="modal-header">
-              <h3>Confirm Voice Entry</h3>
+              <div>
+                <h3>Review Voice Entry</h3>
+                <p className="panel-hint">Voice Input / Speech-to-Text / AI Parser / Review / Save</p>
+              </div>
               <button className="close-modal-btn" onClick={() => setVoiceConfirmation(null)}>×</button>
+            </div>
+            <div className={`voice-review-banner ${voiceConfirmation.unclear ? 'warning' : 'ready'}`}>
+              <div>
+                <span>Transcript</span>
+                <strong>{voiceConfirmation.transcript || transcript}</strong>
+              </div>
+              <div className="confidence-meter">
+                <span>Confidence {Math.round((voiceConfirmation.confidence || 0) * 100)}%</span>
+                <i><b style={{ width: `${Math.round((voiceConfirmation.confidence || 0) * 100)}%` }} /></i>
+              </div>
             </div>
             <form onSubmit={(e) => {
               e.preventDefault();
@@ -3012,12 +3363,13 @@ export default function VoiceExpenseTrackerPreview() {
                   <label className="field-label">Transaction Type</label>
                   <select
                     value={voiceConfirmation.type}
-                    onChange={(e) => setVoiceConfirmation({ ...voiceConfirmation, type: e.target.value })}
+                    onChange={(e) => setVoiceConfirmation({ ...voiceConfirmation, type: e.target.value, confidence: Math.max(voiceConfirmation.confidence || 0, 0.72), unclear: false })}
                   >
-                    <option value="Receipt">Receipt (Cash In)</option>
-                    <option value="Payment">Payment (Cash Out)</option>
-                    <option value="Sales">Sales (Credit Sale)</option>
-                    <option value="Purchase">Purchase (Credit Purchase)</option>
+                    <option value="income">Income / Sale</option>
+                    <option value="expense">Expense / Payment</option>
+                    <option value="inventory">Inventory / Purchase</option>
+                    <option value="customer_due">Customer Due</option>
+                    <option value="payment_received">Payment Received</option>
                   </select>
                 </div>
                 <div>
@@ -3025,7 +3377,7 @@ export default function VoiceExpenseTrackerPreview() {
                   <input
                     type="number"
                     value={voiceConfirmation.amount}
-                    onChange={(e) => setVoiceConfirmation({ ...voiceConfirmation, amount: Number(e.target.value) || 0 })}
+                    onChange={(e) => setVoiceConfirmation({ ...voiceConfirmation, amount: normalizeAmount(e.target.value), confidence: Math.max(voiceConfirmation.confidence || 0, 0.72), unclear: false })}
                     required
                   />
                 </div>
@@ -3034,8 +3386,8 @@ export default function VoiceExpenseTrackerPreview() {
                   <input
                     type="text"
                     placeholder="Enter customer or supplier name"
-                    value={voiceConfirmation.partyName}
-                    onChange={(e) => setVoiceConfirmation({ ...voiceConfirmation, partyName: e.target.value })}
+                    value={voiceConfirmation.partyName || voiceConfirmation.customer || ''}
+                    onChange={(e) => setVoiceConfirmation({ ...voiceConfirmation, partyName: sanitizeText(e.target.value, 120), customer: sanitizeText(e.target.value, 120), confidence: Math.max(voiceConfirmation.confidence || 0, 0.72), unclear: false })}
                   />
                   <p className="field-help">New ledger will be created if name is unrecognized.</p>
                 </div>
@@ -3043,7 +3395,7 @@ export default function VoiceExpenseTrackerPreview() {
                   <label className="field-label">Category / Ledger</label>
                   <select
                     value={voiceConfirmation.category}
-                    onChange={(e) => setVoiceConfirmation({ ...voiceConfirmation, category: e.target.value })}
+                    onChange={(e) => setVoiceConfirmation({ ...voiceConfirmation, category: e.target.value, confidence: Math.max(voiceConfirmation.confidence || 0, 0.72), unclear: false })}
                   >
                     <optgroup label="Direct/Indirect Expenses">
                       <option value="General Expense">General Expense</option>
@@ -3060,18 +3412,19 @@ export default function VoiceExpenseTrackerPreview() {
                   <input
                     type="date"
                     value={voiceConfirmation.date || new Date().toISOString().slice(0, 10)}
-                    onChange={(e) => setVoiceConfirmation({ ...voiceConfirmation, date: e.target.value })}
+                    onChange={(e) => setVoiceConfirmation({ ...voiceConfirmation, date: e.target.value, confidence: Math.max(voiceConfirmation.confidence || 0, 0.72), unclear: false })}
                   />
                 </div>
                 <div className="wide-field">
                   <label className="field-label">Narration Note</label>
                   <textarea
-                    value={voiceConfirmation.narration}
-                    onChange={(e) => setVoiceConfirmation({ ...voiceConfirmation, narration: e.target.value })}
+                    value={voiceConfirmation.narration || voiceConfirmation.notes || ''}
+                    onChange={(e) => setVoiceConfirmation({ ...voiceConfirmation, narration: sanitizeText(e.target.value, 300), notes: sanitizeText(e.target.value, 300), confidence: Math.max(voiceConfirmation.confidence || 0, 0.72), unclear: false })}
                   />
                 </div>
               </div>
               <div className="modal-footer">
+                <button type="button" className="secondary-button" onClick={startVoiceRecognition}>Retry</button>
                 <button type="button" className="secondary-button" onClick={() => setVoiceConfirmation(null)}>Cancel</button>
                 <button type="submit" className="manual-button">Confirm & Save</button>
               </div>

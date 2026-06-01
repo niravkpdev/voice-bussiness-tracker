@@ -1,9 +1,11 @@
-const CACHE_NAME = 'voice-business-tracker-v3';
+const CACHE_NAME = 'voice-business-tracker-v4';
 const APP_SHELL = [
   '/',
   '/react.html',
   '/manifest.webmanifest',
-  '/assets/logo.svg'
+  '/assets/logo.svg',
+  '/assets/og-image.svg',
+  '/assets/splash.svg'
 ];
 
 self.addEventListener('install', (event) => {

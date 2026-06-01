@@ -1,0 +1,11 @@
+<svg width="1080" height="1920" viewBox="0 0 1080 1920" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1080" height="1920" fill="#F8FAFC"/>
+  <rect x="330" y="640" width="420" height="420" rx="96" fill="#4F46E5"/>
+  <path d="M540 754C477.04 754 426 805.04 426 868V930C426 992.96 477.04 1044 540 1044C602.96 1044 654 992.96 654 930V868C654 805.04 602.96 754 540 754Z" fill="white"/>
+  <path d="M374 918C374 1009.68 448.32 1084 540 1084C631.68 1084 706 1009.68 706 918" stroke="white" stroke-width="42" stroke-linecap="round"/>
+  <path d="M540 1084V1168" stroke="white" stroke-width="42" stroke-linecap="round"/>
+  <path d="M432 1168H648" stroke="white" stroke-width="42" stroke-linecap="round"/>
+  <path d="M704 988L800 892L886 944L1010 800" stroke="#3B82F6" stroke-width="48" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="540" y="1288" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="64" font-weight="800" text-anchor="middle">Voice Business Tracker</text>
+  <text x="540" y="1362" fill="#475569" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="500" text-anchor="middle">Manage Your Business with Voice Commands</text>
+</svg>

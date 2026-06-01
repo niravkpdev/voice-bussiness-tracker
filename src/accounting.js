@@ -1,3 +1,5 @@
+import { readScopedString, writeScopedString } from './storageScope.js';
+
 export const LEDGERS_KEY = 'businessLedgers';
 export const VOUCHERS_KEY = 'businessVouchers';
 
@@ -50,7 +52,7 @@ const PARTY_GROUPS = new Set(['Sundry Debtors', 'Sundry Creditors']);
 
 export function readSavedArray(key) {
   try {
-    const savedItems = JSON.parse(localStorage.getItem(key) || '[]');
+    const savedItems = JSON.parse(readScopedString(key) || '[]');
     return Array.isArray(savedItems) ? savedItems : [];
   } catch {
     return [];
@@ -58,7 +60,7 @@ export function readSavedArray(key) {
 }
 
 export function writeSavedArray(key, items) {
-  localStorage.setItem(key, JSON.stringify(items));
+  writeScopedString(key, JSON.stringify(items));
 }
 
 export function readLedgers() {
@@ -403,7 +405,7 @@ export function restoreBackupData(backup) {
   }
 
   if (data.businessProfile) {
-    localStorage.setItem('businessProfile', JSON.stringify(data.businessProfile));
+    writeScopedString('businessProfile', JSON.stringify(data.businessProfile));
   }
 
   if (Array.isArray(data.businessInventory)) {
@@ -712,4 +714,3 @@ export function getPartySummary(ledgers, vouchers) {
     };
   });
 }
-

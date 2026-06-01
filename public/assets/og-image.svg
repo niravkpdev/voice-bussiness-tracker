@@ -1,0 +1,14 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" rx="48" fill="#0F172A"/>
+  <rect x="72" y="72" width="1056" height="486" rx="36" fill="#F8FAFC"/>
+  <rect x="112" y="112" width="118" height="118" rx="30" fill="#4F46E5"/>
+  <path d="M171 145C154.984 145 142 157.984 142 174V190C142 206.016 154.984 219 171 219C187.016 219 200 206.016 200 190V174C200 157.984 187.016 145 171 145Z" fill="white"/>
+  <path d="M129 187C129 210.196 147.804 229 171 229C194.196 229 213 210.196 213 187" stroke="white" stroke-width="12" stroke-linecap="round"/>
+  <path d="M171 229V249" stroke="white" stroke-width="12" stroke-linecap="round"/>
+  <path d="M143 249H199" stroke="white" stroke-width="12" stroke-linecap="round"/>
+  <path d="M217 210L244 183L269 198L307 154" stroke="#3B82F6" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="112" y="340" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="72" font-weight="800">Voice Business Tracker</text>
+  <text x="112" y="420" fill="#475569" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="500">Manage Your Business with Voice Commands</text>
+  <rect x="112" y="470" width="278" height="54" rx="16" fill="#4F46E5"/>
+  <text x="142" y="506" fill="white" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">AI-powered business ERP</text>
+</svg>

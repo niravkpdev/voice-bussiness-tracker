@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { normalizeAmount, sanitizeText, validatePhone } from './security.js';
+import { readScopedString, writeScopedString } from './storageScope.js';
 
 const ORDER_KEY = 'phase3Orders';
 const EMPLOYEE_KEY = 'phase3Employees';
@@ -15,7 +17,7 @@ const ROLES = ['Owner', 'Manager', 'Accountant', 'Staff'];
 
 function readArray(key) {
   try {
-    const value = JSON.parse(localStorage.getItem(key) || '[]');
+    const value = JSON.parse(readScopedString(key) || '[]');
     return Array.isArray(value) ? value : [];
   } catch {
     return [];
@@ -23,19 +25,19 @@ function readArray(key) {
 }
 
 function writeArray(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  writeScopedString(key, JSON.stringify(value));
 }
 
 function readObject(key, fallback) {
   try {
-    return { ...fallback, ...JSON.parse(localStorage.getItem(key) || '{}') };
+    return { ...fallback, ...JSON.parse(readScopedString(key) || '{}') };
   } catch {
     return fallback;
   }
 }
 
 function writeObject(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  writeScopedString(key, JSON.stringify(value));
 }
 
 function createId(prefix) {
@@ -93,6 +95,7 @@ export default function Phase3Ops({
   vouchers,
   partySummary,
   onStatus,
+  onCloudSnapshot,
 }) {
   const [orders, setOrders] = useState(() => readArray(ORDER_KEY));
   const [employees, setEmployees] = useState(() => readArray(EMPLOYEE_KEY));
@@ -131,6 +134,9 @@ export default function Phase3Ops({
   useEffect(() => writeObject(SUBSCRIPTION_KEY, subscription), [subscription]);
   useEffect(() => writeObject(SECURITY_KEY, security), [security]);
   useEffect(() => writeArray(DEVICE_KEY, devices), [devices]);
+  useEffect(() => {
+    onCloudSnapshot?.('phase3_ops_updated');
+  }, [orders, employees, attendance, auditLogs, payments, offlineQueue, subscription, security, devices]);
 
   const unpaidInvoices = useMemo(() => invoices.filter((invoice) => invoice.status !== 'Paid'), [invoices]);
   const payrollTotal = useMemo(() => employees.reduce((sum, employee) => sum + (Number(employee.salary) || 0), 0), [employees]);
@@ -160,14 +166,18 @@ export default function Phase3Ops({
     const order = {
       id: createId('ord'),
       orderNo: `ORD-${String(orders.length + 1).padStart(4, '0')}`,
-      customer: form.get('customer').trim(),
-      mobile: form.get('mobile').trim(),
-      details: form.get('details').trim(),
-      amount: Number(form.get('amount')) || 0,
+      customer: sanitizeText(form.get('customer'), 120),
+      mobile: sanitizeText(form.get('mobile'), 24),
+      details: sanitizeText(form.get('details'), 300),
+      amount: normalizeAmount(form.get('amount')),
       status: 'New Order',
       deliveryDate: form.get('deliveryDate') || today(),
       timeline: [{ status: 'New Order', date: new Date().toLocaleString(), note: 'Order created' }],
     };
+    if (!order.customer || !validatePhone(order.mobile)) {
+      onStatus('Enter valid customer and mobile for order');
+      return;
+    }
     setOrders([order, ...orders]);
     queueOfflineAction('order-created', order);
     logAudit(`Created ${order.orderNo}`, 'Orders');
@@ -190,12 +200,16 @@ export default function Phase3Ops({
     const form = new FormData(event.currentTarget);
     const employee = {
       id: createId('emp'),
-      name: form.get('name').trim(),
-      mobile: form.get('mobile').trim(),
-      role: form.get('role'),
-      salary: Number(form.get('salary')) || 0,
-      advance: Number(form.get('advance')) || 0,
+      name: sanitizeText(form.get('name'), 120),
+      mobile: sanitizeText(form.get('mobile'), 24),
+      role: sanitizeText(form.get('role'), 80),
+      salary: normalizeAmount(form.get('salary')),
+      advance: normalizeAmount(form.get('advance')),
     };
+    if (!employee.name || !validatePhone(employee.mobile)) {
+      onStatus('Enter valid employee name and mobile');
+      return;
+    }
     setEmployees([employee, ...employees]);
     logAudit(`Added employee ${employee.name}`, 'Employees');
     event.currentTarget.reset();

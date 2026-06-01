@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { normalizeAmount, sanitizeEmail, sanitizeText, validateEmail, validatePhone } from './security.js';
+import { readScopedString, writeScopedString } from './storageScope.js';
 
 const PRODUCT_KEY = 'erpProducts';
 const STOCK_TXN_KEY = 'erpStockTransactions';
@@ -13,7 +15,7 @@ const TERMS =
 
 function readArray(key) {
   try {
-    const value = JSON.parse(localStorage.getItem(key) || '[]');
+    const value = JSON.parse(readScopedString(key) || '[]');
     return Array.isArray(value) ? value : [];
   } catch {
     return [];
@@ -21,19 +23,19 @@ function readArray(key) {
 }
 
 function writeArray(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  writeScopedString(key, JSON.stringify(value));
 }
 
 function readObject(key, fallback) {
   try {
-    return { ...fallback, ...JSON.parse(localStorage.getItem(key) || '{}') };
+    return { ...fallback, ...JSON.parse(readScopedString(key) || '{}') };
   } catch {
     return fallback;
   }
 }
 
 function writeObject(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  writeScopedString(key, JSON.stringify(value));
 }
 
 function createId(prefix) {
@@ -121,6 +123,7 @@ export default function Phase2ERP({
   cashBalance,
   netProfit,
   onStatus,
+  onCloudSnapshot,
 }) {
   const [products, setProducts] = useState(() => readArray(PRODUCT_KEY));
   const [stockTxns, setStockTxns] = useState(() => readArray(STOCK_TXN_KEY));
@@ -142,7 +145,7 @@ export default function Phase2ERP({
   });
   const [editingInvoiceId, setEditingInvoiceId] = useState('');
   const [dateFilter, setDateFilter] = useState({ from: `${today().slice(0, 7)}-01`, to: today() });
-  const [activeBusinessId, setActiveBusinessId] = useState(() => localStorage.getItem('activeBusinessId') || 'default');
+  const [activeBusinessId, setActiveBusinessId] = useState(() => readScopedString('activeBusinessId') || 'default');
 
   useEffect(() => writeArray(PRODUCT_KEY, products), [products]);
   useEffect(() => writeArray(STOCK_TXN_KEY, stockTxns), [stockTxns]);
@@ -152,6 +155,9 @@ export default function Phase2ERP({
   useEffect(() => writeArray(BUSINESS_KEY, businesses), [businesses]);
   useEffect(() => writeArray(NOTIFICATION_KEY, notifications), [notifications]);
   useEffect(() => writeObject(CLOUD_BACKUP_KEY, cloudSettings), [cloudSettings]);
+  useEffect(() => {
+    onCloudSnapshot?.('phase2_erp_updated');
+  }, [products, stockTxns, invoices, customers, suppliers, businesses, notifications, cloudSettings]);
 
   const scopedProducts = useMemo(
     () => products.filter((product) => (product.businessId || 'default') === activeBusinessId),
@@ -289,15 +295,15 @@ export default function Phase2ERP({
     const product = {
       id: createId('prd'),
       businessId: activeBusinessId,
-      name: form.get('name').trim(),
-      category: form.get('category').trim() || 'General',
-      sku: form.get('sku').trim() || `SKU-${Date.now().toString().slice(-5)}`,
+      name: sanitizeText(form.get('name'), 120),
+      category: sanitizeText(form.get('category'), 80) || 'General',
+      sku: sanitizeText(form.get('sku'), 60) || `SKU-${Date.now().toString().slice(-5)}`,
       image: image?.size ? await fileToDataUrl(image) : '',
-      purchasePrice: Number(form.get('purchasePrice')) || 0,
-      sellingPrice: Number(form.get('sellingPrice')) || 0,
-      currentStock: Number(form.get('currentStock')) || 0,
-      minStock: Number(form.get('minStock')) || 0,
-      unit: form.get('unit') || 'pcs',
+      purchasePrice: normalizeAmount(form.get('purchasePrice')),
+      sellingPrice: normalizeAmount(form.get('sellingPrice')),
+      currentStock: normalizeAmount(form.get('currentStock')),
+      minStock: normalizeAmount(form.get('minStock')),
+      unit: sanitizeText(form.get('unit'), 24) || 'pcs',
       createdAt: new Date().toISOString(),
     };
     if (!product.name) {
@@ -315,7 +321,7 @@ export default function Phase2ERP({
     const form = new FormData(event.currentTarget);
     const productId = form.get('productId');
     const type = form.get('type');
-    const qty = Number(form.get('qty')) || 0;
+    const qty = normalizeAmount(form.get('qty'));
     if (!productId || qty <= 0) {
       onStatus('Select product and quantity');
       return;
@@ -326,7 +332,7 @@ export default function Phase2ERP({
       return { ...product, currentStock: Math.max(0, nextStock) };
     }));
     setStockTxns([
-      { id: createId('stk'), businessId: activeBusinessId, productId, type, qty, note: form.get('note'), date: today() },
+      { id: createId('stk'), businessId: activeBusinessId, productId, type, qty, note: sanitizeText(form.get('note'), 180), date: today() },
       ...stockTxns,
     ]);
     event.currentTarget.reset();
@@ -339,13 +345,21 @@ export default function Phase2ERP({
     const customer = {
       id: createId('cus'),
       businessId: activeBusinessId,
-      name: form.get('name').trim(),
-      mobile: form.get('mobile').trim(),
-      email: form.get('email').trim(),
-      address: form.get('address').trim(),
-      gst: form.get('gst').trim(),
+      name: sanitizeText(form.get('name'), 120),
+      mobile: sanitizeText(form.get('mobile'), 24),
+      email: sanitizeEmail(form.get('email')),
+      address: sanitizeText(form.get('address'), 240),
+      gst: sanitizeText(form.get('gst'), 32),
     };
     if (!customer.name) return;
+    if (customer.email && !validateEmail(customer.email)) {
+      onStatus('Enter valid customer email');
+      return;
+    }
+    if (!validatePhone(customer.mobile)) {
+      onStatus('Enter valid customer mobile');
+      return;
+    }
     setCustomers([customer, ...customers]);
     event.currentTarget.reset();
     onStatus('Customer saved');
@@ -357,12 +371,16 @@ export default function Phase2ERP({
     const supplier = {
       id: createId('sup'),
       businessId: activeBusinessId,
-      name: form.get('name').trim(),
-      mobile: form.get('mobile').trim(),
-      address: form.get('address').trim(),
-      gst: form.get('gst').trim(),
+      name: sanitizeText(form.get('name'), 120),
+      mobile: sanitizeText(form.get('mobile'), 24),
+      address: sanitizeText(form.get('address'), 240),
+      gst: sanitizeText(form.get('gst'), 32),
     };
     if (!supplier.name) return;
+    if (!validatePhone(supplier.mobile)) {
+      onStatus('Enter valid supplier mobile');
+      return;
+    }
     setSuppliers([supplier, ...suppliers]);
     event.currentTarget.reset();
     onStatus('Supplier saved');
@@ -374,10 +392,10 @@ export default function Phase2ERP({
       onStatus('Select product');
       return;
     }
-    const qty = Math.max(1, Number(invoiceLine.qty) || 1);
+    const qty = Math.max(1, normalizeAmount(invoiceLine.qty) || 1);
     const rate = product.sellingPrice;
-    const discount = Number(invoiceLine.discount) || 0;
-    const gst = Number(invoiceLine.gst) || 0;
+    const discount = normalizeAmount(invoiceLine.discount);
+    const gst = normalizeAmount(invoiceLine.gst);
     const taxable = Math.max(0, qty * rate - discount);
     const gstAmount = (taxable * gst) / 100;
     setInvoiceDraft({
@@ -414,6 +432,7 @@ export default function Phase2ERP({
     const paid = invoiceDraft.status === 'Paid' ? total : invoiceDraft.status === 'Partial Paid' ? total / 2 : 0;
     const invoice = {
       ...invoiceDraft,
+      terms: sanitizeText(invoiceDraft.terms, 360) || TERMS,
       id: editingInvoiceId || createId('inv'),
       businessId: activeBusinessId,
       invoiceNo: editingInvoiceId
@@ -545,13 +564,13 @@ export default function Phase2ERP({
     if (!business.name) return;
     setBusinesses([business, ...businesses]);
     setActiveBusinessId(business.id);
-    localStorage.setItem('activeBusinessId', business.id);
+    writeScopedString('activeBusinessId', business.id);
     event.currentTarget.reset();
   };
 
   const switchBusiness = (businessId) => {
     setActiveBusinessId(businessId);
-    localStorage.setItem('activeBusinessId', businessId);
+    writeScopedString('activeBusinessId', businessId);
     onStatus('Business switched');
   };
 
@@ -568,7 +587,7 @@ export default function Phase2ERP({
       ledgers,
       profile,
     };
-    localStorage.setItem('erpLastCloudBackup', JSON.stringify(snapshot));
+    writeScopedString('erpLastCloudBackup', JSON.stringify(snapshot));
     setCloudSettings({ ...cloudSettings, lastBackup: new Date().toLocaleString() });
     addNotification('Backup complete', 'Local cloud backup package prepared.', 'Backup');
     onStatus('Backup completed');
