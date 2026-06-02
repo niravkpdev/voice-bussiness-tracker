@@ -137,6 +137,138 @@ function withFirestoreTimeout(promise, meta) {
   });
 }
 
+function isFirestoreTimeout(error) {
+  return error?.code === 'firestore/write-timeout';
+}
+
+function encodeFirestoreValue(value) {
+  if (value === null) {
+    return { nullValue: null };
+  }
+
+  if (Array.isArray(value)) {
+    return {
+      arrayValue: {
+        values: value
+          .filter((item) => item !== undefined)
+          .map((item) => encodeFirestoreValue(item)),
+      },
+    };
+  }
+
+  if (typeof value === 'object') {
+    return {
+      mapValue: {
+        fields: encodeFirestoreFields(value),
+      },
+    };
+  }
+
+  if (typeof value === 'boolean') {
+    return { booleanValue: value };
+  }
+
+  if (typeof value === 'number') {
+    if (Number.isInteger(value) && Number.isSafeInteger(value)) {
+      return { integerValue: String(value) };
+    }
+    return { doubleValue: Number.isFinite(value) ? value : 0 };
+  }
+
+  return { stringValue: String(value ?? '') };
+}
+
+function encodeFirestoreFields(data) {
+  return Object.entries(data || {})
+    .filter(([, value]) => value !== undefined)
+    .reduce((fields, [key, value]) => {
+      fields[key] = encodeFirestoreValue(value);
+      return fields;
+    }, {});
+}
+
+function firestoreDocumentName(path) {
+  const encodedPath = String(path)
+    .split('/')
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
+  return `projects/${firebaseConfig.projectId}/databases/(default)/documents/${encodedPath}`;
+}
+
+async function commitFirestoreRestWrite(context, path, data, transformFields = []) {
+  const user = context?.authInstance?.currentUser;
+  if (!user) {
+    throw new Error('No authenticated Firebase user is available for Firestore REST write.');
+  }
+
+  const transformSet = new Set(transformFields);
+  const updateData = Object.entries(data || {}).reduce((cleaned, [key, value]) => {
+    if (value !== undefined && !transformSet.has(key)) {
+      cleaned[key] = value;
+    }
+    return cleaned;
+  }, {});
+  const fieldPaths = Object.keys(updateData);
+  const url = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents:commit`;
+
+  console.info('FIRESTORE_REST_FALLBACK_START', {
+    path,
+    uid: user.uid,
+    projectId: firebaseConfig.projectId || null,
+  });
+
+  const response = await withFirestoreTimeout(
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${await user.getIdToken()}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        writes: [
+          {
+            update: {
+              name: firestoreDocumentName(path),
+              fields: encodeFirestoreFields(updateData),
+            },
+            ...(fieldPaths.length ? { updateMask: { fieldPaths } } : {}),
+            ...(transformFields.length
+              ? {
+                  updateTransforms: transformFields.map((fieldPath) => ({
+                    fieldPath,
+                    setToServerValue: 'REQUEST_TIME',
+                  })),
+                }
+              : {}),
+          },
+        ],
+      }),
+    }),
+    { path, uid: user.uid, operation: 'rest:commit' }
+  );
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    const error = new Error(body || `Firestore REST write failed with HTTP ${response.status}`);
+    error.code = `firestore/rest-${response.status}`;
+    console.error('FIRESTORE_REST_FALLBACK_ERROR', {
+      path,
+      uid: user.uid,
+      projectId: firebaseConfig.projectId || null,
+      code: error.code,
+      message: error.message,
+    });
+    throw error;
+  }
+
+  console.info('FIRESTORE_REST_FALLBACK_SUCCESS', {
+    path,
+    uid: user.uid,
+    projectId: firebaseConfig.projectId || null,
+  });
+  return true;
+}
+
 function userPayload(user, extra = {}) {
   return {
     uid: user.uid,
@@ -316,16 +448,23 @@ export async function runFirestoreDebugTest() {
       throw new Error('No authenticated Firebase user is available for Firestore debug test.');
     }
 
-    await withFirestoreTimeout(
-      context.firestore.setDoc(
-        context.firestore.doc(context.db, 'users', uid, 'debug', 'test'),
-        {
-          message: 'hello firestore',
-          createdAt: context.firestore.serverTimestamp(),
-        }
-      ),
-      { path, uid, operation: 'setDoc:debugTest' }
-    );
+    try {
+      await withFirestoreTimeout(
+        context.firestore.setDoc(
+          context.firestore.doc(context.db, 'users', uid, 'debug', 'test'),
+          {
+            message: 'hello firestore',
+            createdAt: context.firestore.serverTimestamp(),
+          }
+        ),
+        { path, uid, operation: 'setDoc:debugTest' }
+      );
+    } catch (error) {
+      if (!isFirestoreTimeout(error)) {
+        throw error;
+      }
+      await commitFirestoreRestWrite(context, path, { message: 'hello firestore' }, ['createdAt']);
+    }
 
     console.info('DEBUG_FIRESTORE_TEST_SUCCESS', {
       uid,
@@ -391,17 +530,25 @@ export async function saveUserProfile(uid, profile) {
 
   const path = `users/${uid}`;
   try {
-    await withFirestoreTimeout(
-      context.firestore.setDoc(
-        context.firestore.doc(context.db, 'users', uid),
-        {
-          ...profile,
-          updatedAt: context.firestore.serverTimestamp(),
-        },
-        { merge: true }
-      ),
-      { path, uid, operation: 'setDoc:userProfile' }
-    );
+    const profilePayload = { ...profile };
+    try {
+      await withFirestoreTimeout(
+        context.firestore.setDoc(
+          context.firestore.doc(context.db, 'users', uid),
+          {
+            ...profilePayload,
+            updatedAt: context.firestore.serverTimestamp(),
+          },
+          { merge: true }
+        ),
+        { path, uid, operation: 'setDoc:userProfile' }
+      );
+    } catch (error) {
+      if (!isFirestoreTimeout(error)) {
+        throw error;
+      }
+      await commitFirestoreRestWrite(context, path, profilePayload, ['updatedAt']);
+    }
     return true;
   } catch (error) {
     console.error('FIRESTORE_WRITE_ERROR', {
@@ -485,19 +632,29 @@ export async function saveCloudRecord(uid, collectionName, id, data) {
   });
 
   try {
+    const recordPayload = {
+      ...data,
+      ownerUid: uid,
+    };
     const docRef = context.firestore.doc(context.db, 'users', uid, collectionName, id);
-    await withFirestoreTimeout(
-      context.firestore.setDoc(
-        docRef,
-        {
-          ...data,
-          ownerUid: uid,
-          updatedAt: context.firestore.serverTimestamp(),
-        },
-        { merge: true }
-      ),
-      { path, uid, operation: 'setDoc:record' }
-    );
+    try {
+      await withFirestoreTimeout(
+        context.firestore.setDoc(
+          docRef,
+          {
+            ...recordPayload,
+            updatedAt: context.firestore.serverTimestamp(),
+          },
+          { merge: true }
+        ),
+        { path, uid, operation: 'setDoc:record' }
+      );
+    } catch (error) {
+      if (!isFirestoreTimeout(error)) {
+        throw error;
+      }
+      await commitFirestoreRestWrite(context, path, recordPayload, ['updatedAt']);
+    }
 
     console.info('FIRESTORE_WRITE_SUCCESS', {
       currentFirebaseUserUid: currentUid,
