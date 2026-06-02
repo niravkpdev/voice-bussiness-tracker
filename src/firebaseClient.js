@@ -301,51 +301,120 @@ export async function saveUserProfile(uid, profile) {
 export async function saveCloudRecord(uid, collectionName, id, data) {
   const context = await getFirebaseContext();
   if (!context || !uid || !collectionName || !id || !CLOUD_COLLECTIONS.has(collectionName)) {
-    console.error('[Firestore write blocked]', {
+    const error = new Error(!context
+      ? 'Firebase is not configured or could not initialize.'
+      : !CLOUD_COLLECTIONS.has(collectionName)
+        ? 'Collection is not allowed for cloud writes.'
+        : 'Missing uid, collection name, or document id.');
+    console.error('FIRESTORE_WRITE_ERROR', {
       requestedUid: uid || null,
       currentFirebaseUserUid: context?.authInstance?.currentUser?.uid || null,
+      projectId: firebaseConfig.projectId || null,
       collectionName,
       documentId: id,
       path: uid && collectionName && id ? `users/${uid}/${collectionName}/${id}` : null,
-      reason: !context
-        ? 'Firebase is not configured or could not initialize.'
-        : !CLOUD_COLLECTIONS.has(collectionName)
-          ? 'Collection is not allowed for cloud writes.'
-          : 'Missing uid, collection name, or document id.',
+      code: error.code || null,
+      message: error.message,
     });
-    return false;
+    throw error;
+  }
+
+  const currentUid = context.authInstance.currentUser?.uid || null;
+  if (!currentUid) {
+    const error = new Error('No authenticated Firebase user is available for Firestore write.');
+    console.error('FIRESTORE_WRITE_ERROR', {
+      requestedUid: uid,
+      currentFirebaseUserUid: null,
+      projectId: firebaseConfig.projectId || null,
+      collectionName,
+      documentId: id,
+      path: `users/${uid}/${collectionName}/${id}`,
+      code: error.code || null,
+      message: error.message,
+    });
+    throw error;
+  }
+
+  if (currentUid !== uid) {
+    const error = new Error('Authenticated Firebase uid does not match requested Firestore owner uid.');
+    console.error('FIRESTORE_WRITE_ERROR', {
+      requestedUid: uid,
+      currentFirebaseUserUid: currentUid,
+      projectId: firebaseConfig.projectId || null,
+      collectionName,
+      documentId: id,
+      path: `users/${uid}/${collectionName}/${id}`,
+      code: error.code || null,
+      message: error.message,
+    });
+    throw error;
   }
 
   const path = `users/${uid}/${collectionName}/${id}`;
+  const parentPath = `users/${uid}`;
   const payload = {
     ...data,
     ownerUid: uid,
     updatedAt: '[serverTimestamp]',
   };
 
-  console.info('[Firestore write start]', {
-    currentFirebaseUserUid: context.authInstance.currentUser?.uid || null,
+  console.info('FIRESTORE_WRITE_START', {
+    currentFirebaseUserUid: currentUid,
     requestedUid: uid,
+    projectId: firebaseConfig.projectId || null,
     path,
+    parentPath,
+    operation: 'setDoc',
     payload,
   });
 
-  await context.firestore.setDoc(
-    context.firestore.doc(context.db, 'users', uid, collectionName, id),
-    {
-      ...data,
-      ownerUid: uid,
-      updatedAt: context.firestore.serverTimestamp(),
-    },
-    { merge: true }
-  );
+  try {
+    await context.firestore.setDoc(
+      context.firestore.doc(context.db, 'users', uid),
+      {
+        uid,
+        updatedAt: context.firestore.serverTimestamp(),
+      },
+      { merge: true }
+    );
 
-  console.info('[Firestore write success]', {
-    currentFirebaseUserUid: context.authInstance.currentUser?.uid || null,
-    requestedUid: uid,
-    path,
-  });
-  return true;
+    const docRef = context.firestore.doc(context.db, 'users', uid, collectionName, id);
+    await context.firestore.setDoc(
+      docRef,
+      {
+        ...data,
+        ownerUid: uid,
+        updatedAt: context.firestore.serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    const verification = await context.firestore.getDoc(docRef);
+    if (!verification.exists()) {
+      throw new Error(`Firestore write verification failed: document not found at ${path}`);
+    }
+
+    console.info('FIRESTORE_WRITE_SUCCESS', {
+      currentFirebaseUserUid: currentUid,
+      requestedUid: uid,
+      projectId: firebaseConfig.projectId || null,
+      path,
+      verified: true,
+    });
+    return true;
+  } catch (error) {
+    console.error('FIRESTORE_WRITE_ERROR', {
+      currentFirebaseUserUid: currentUid,
+      requestedUid: uid,
+      projectId: firebaseConfig.projectId || null,
+      collectionName,
+      documentId: id,
+      path,
+      code: error?.code || null,
+      message: error?.message || String(error),
+    });
+    throw error;
+  }
 }
 
 export async function deleteCloudRecord(uid, collectionName, id) {

@@ -33,13 +33,13 @@ export function scopedKey(key) {
 }
 
 export function readScopedString(key) {
+  if (import.meta.env.PROD && !GLOBAL_KEYS.has(key)) {
+    return null;
+  }
+
   const scoped = localStorage.getItem(scopedKey(key));
   if (scoped !== null) {
     return scoped;
-  }
-
-  if (import.meta.env.PROD) {
-    return null;
   }
 
   return localStorage.getItem(key);

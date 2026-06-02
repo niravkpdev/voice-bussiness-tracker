@@ -1548,11 +1548,6 @@ export default function VoiceExpenseTrackerPreview() {
         transactionId: voucher.id,
       });
 
-      if (import.meta.env.DEV) {
-        saveVoucher(voucher);
-        refreshVouchers();
-      }
-
       try {
         const saved = await saveCloudRecord(authUser.uid, 'transactions', voucher.id, transactionPayload);
         if (!saved) {
@@ -2162,17 +2157,17 @@ export default function VoiceExpenseTrackerPreview() {
       version: 2,
       exportedAt: new Date().toISOString(),
       storageLocation: {
-        type: 'Browser localStorage',
+        type: import.meta.env.PROD ? 'Firebase-backed in-memory export' : 'Browser localStorage development export',
         origin: window.location.origin,
-        deviceScope: 'This browser on this device',
+        deviceScope: import.meta.env.PROD ? 'Current authenticated Firebase session' : 'This browser on this device',
       },
       data: {
-        businessLogs: readSavedArray(STORAGE_KEY),
-        businessLedgers: readLedgers(),
-        businessVouchers: readVouchers(),
+        businessLogs: logs,
+        businessLedgers: ledgers,
+        businessVouchers: vouchers,
         businessInventory: readSavedArray(INVENTORY_KEY),
         businessOrders: readSavedArray(ORDERS_KEY),
-        businessProfile: readProfile(),
+        businessProfile: profile,
         voiceLowStockAlertsEnabled: readScopedString(VOICE_ALERTS_KEY) !== 'false',
       },
     };
