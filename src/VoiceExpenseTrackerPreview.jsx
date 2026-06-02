@@ -214,6 +214,14 @@ function readProfile() {
   }
 }
 
+function sortVouchersNewestFirst(items) {
+  return [...(Array.isArray(items) ? items : [])].sort((a, b) => {
+    const aTime = `${a.date || ''} ${a.dateTime || ''}`;
+    const bTime = `${b.date || ''} ${b.dateTime || ''}`;
+    return bTime.localeCompare(aTime);
+  });
+}
+
 function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -722,6 +730,7 @@ export default function VoiceExpenseTrackerPreview() {
   });
   const [authLoading, setAuthLoading] = useState(false);
   const [appLoading, setAppLoading] = useState(true);
+  const [transactionsLoading, setTransactionsLoading] = useState(false);
   const [secureError, setSecureError] = useState('');
   const [offline, setOffline] = useState(() => typeof navigator !== 'undefined' && !navigator.onLine);
   const [firebaseEnabled] = useState(() => isFirebaseConfigured());
@@ -831,9 +840,11 @@ export default function VoiceExpenseTrackerPreview() {
 
     const initialLedgers = ensureDefaultLedgers();
     const initialLogs = import.meta.env.DEV ? readSavedLogs() : [];
-    const initialVouchers = Array.isArray(cloudTransactions)
-      ? cloudTransactions
-      : migrateLogsToVouchers(initialLogs, initialLedgers);
+    const initialVouchers = sortVouchersNewestFirst(
+      Array.isArray(cloudTransactions)
+        ? cloudTransactions
+        : migrateLogsToVouchers(initialLogs, initialLedgers)
+    );
 
     setLedgers(initialLedgers);
     setVouchers(initialVouchers);
@@ -874,6 +885,13 @@ export default function VoiceExpenseTrackerPreview() {
     let cloudTransactions = null;
     let cloudProfile = null;
     if (restoreCloud && firebaseEnabled && scopedUser.uid) {
+      const transactionPath = `users/${scopedUser.uid}/transactions`;
+      console.info('FIRESTORE_PATH_USED', {
+        feature: 'transactions_load',
+        path: transactionPath,
+        uid: scopedUser.uid,
+      });
+      setTransactionsLoading(true);
       const [transactions, customers, inventory, profileSettings] = await Promise.all([
         loadCloudCollection(scopedUser.uid, 'transactions').catch(() => []),
         loadCloudCollection(scopedUser.uid, 'customers').catch(() => []),
@@ -884,9 +902,20 @@ export default function VoiceExpenseTrackerPreview() {
       cloudProfile = profileSettings;
       setCloudCustomers(customers);
       setCloudInventory(inventory);
+      console.info('DASHBOARD_TRANSACTIONS_LOADED', {
+        path: transactionPath,
+        uid: scopedUser.uid,
+        count: transactions.length,
+      });
+      console.info('DAYBOOK_TRANSACTIONS_LOADED', {
+        path: transactionPath,
+        uid: scopedUser.uid,
+        count: transactions.length,
+      });
     }
 
     hydrateWorkspace({ cloudTransactions, cloudProfile });
+    setTransactionsLoading(false);
   };
 
   const saveAuthenticatedCloudRecord = (collectionName, id, data) => {
@@ -1304,6 +1333,10 @@ export default function VoiceExpenseTrackerPreview() {
     return vouchers.filter((voucher) => voucher.date === dayBookFilter);
   }, [vouchers, dayBookFilter]);
 
+  const recentVouchers = useMemo(() => {
+    return sortVouchersNewestFirst(vouchers).slice(0, 8);
+  }, [vouchers]);
+
   const refreshVouchers = () => setVouchers(import.meta.env.DEV ? readVouchers() : vouchers);
 
   const persistVoucher = async (voucher) => {
@@ -1324,6 +1357,12 @@ export default function VoiceExpenseTrackerPreview() {
         path: firestorePath,
         payload: transactionPayload,
       });
+      console.info('FIRESTORE_PATH_USED', {
+        feature: 'transaction_write',
+        path: firestorePath,
+        uid: authUser.uid,
+        transactionId: voucher.id,
+      });
 
       if (import.meta.env.DEV) {
         saveVoucher(voucher);
@@ -1340,7 +1379,22 @@ export default function VoiceExpenseTrackerPreview() {
           path: firestorePath,
           transactionId: voucher.id,
         });
-        setVouchers((current) => [voucher, ...current.filter((item) => item.id !== voucher.id)]);
+        setVouchers((current) => {
+          const nextVouchers = sortVouchersNewestFirst([voucher, ...current.filter((item) => item.id !== voucher.id)]);
+          console.info('DASHBOARD_TRANSACTIONS_LOADED', {
+            reason: 'transaction_saved',
+            path: `users/${authUser.uid}/transactions`,
+            uid: authUser.uid,
+            count: nextVouchers.length,
+          });
+          console.info('DAYBOOK_TRANSACTIONS_LOADED', {
+            reason: 'transaction_saved',
+            path: `users/${authUser.uid}/transactions`,
+            uid: authUser.uid,
+            count: nextVouchers.length,
+          });
+          return nextVouchers;
+        });
         setStatus('Transaction saved to Firestore');
         return true;
       } catch (error) {
@@ -2526,6 +2580,12 @@ export default function VoiceExpenseTrackerPreview() {
                 </div>
               )}
 
+              {transactionsLoading && (
+                <div className="notice">
+                  Loading dashboard transactions from Firestore...
+                </div>
+              )}
+
               <div className="dashboard-stats-grid">
                 {/* Today's Sales */}
                 <article className="stat-card-modern">
@@ -2627,6 +2687,34 @@ export default function VoiceExpenseTrackerPreview() {
                     <a className="secondary-button compact-link" href="#voucher-entry">Add Voucher</a>
                   </div>
                 </div>
+              )}
+
+              {recentVouchers.length > 0 && (
+                <section className="panel dashboard-recent-panel">
+                  <div className="section-header">
+                    <div>
+                      <span className="eyebrow">Firestore synced</span>
+                      <h2>Recent Vouchers</h2>
+                    </div>
+                    <a className="secondary-button compact-link" href="#day-book">Open Day Book</a>
+                  </div>
+                  <div className="activity-list">
+                    {recentVouchers.map((voucher) => (
+                      <article className="activity-item" key={voucher.id}>
+                        <div>
+                          <p className={`activity-type voucher-${String(voucher.type || 'voucher').toLowerCase()}`}>
+                            {voucher.type || 'Voucher'}
+                          </p>
+                          <p className="voucher-narration">{voucher.narration}</p>
+                          <p className="voucher-meta">
+                            {voucher.date} · {counterLabel(voucher)} · {voucher.source || 'manual'}
+                          </p>
+                        </div>
+                        <strong>{formatCurrency(voucher.amount)}</strong>
+                      </article>
+                    ))}
+                  </div>
+                </section>
               )}
 
               <div className="charts-grid-layout">
@@ -3348,6 +3436,11 @@ export default function VoiceExpenseTrackerPreview() {
                 <button className="delete-entry-button" style={{ marginTop: '10px' }} type="button" onClick={() => setDayBookFilter('')}>
                   Clear Filter
                 </button>
+              )}
+              {transactionsLoading && (
+                <div className="notice" style={{ marginTop: '16px' }}>
+                  Loading day book transactions from Firestore...
+                </div>
               )}
               <div className="activity-list" style={{ marginTop: '20px' }}>
                 {filteredVouchers.length === 0 ? (

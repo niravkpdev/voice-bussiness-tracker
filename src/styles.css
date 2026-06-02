@@ -2612,6 +2612,10 @@ body.dark .badge-purchase { background: #2a1900; color: #fcd34d; }
   align-items: stretch;
 }
 
+.dashboard-recent-panel {
+  margin-top: 18px;
+}
+
 .svg-chart-container {
   height: 100%;
 }
