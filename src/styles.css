@@ -2959,13 +2959,21 @@ body {
 
 .auth-page {
   min-height: calc(100vh - 78px);
+  min-height: calc(100dvh - 78px);
   display: grid;
   place-items: center;
-  padding: 32px 18px;
+  padding: 32px 18px max(32px, env(safe-area-inset-bottom));
+  overflow-y: auto;
 }
 
 .auth-card {
   width: min(100%, 460px);
+  max-height: none;
+}
+
+.auth-card .saas-primary-button.full,
+.auth-card .saas-google-button {
+  min-height: 48px;
 }
 
 .auth-card h1 {

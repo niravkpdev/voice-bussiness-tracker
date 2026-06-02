@@ -13,6 +13,7 @@ const firebaseConfig = {
 let analyticsStarted = false;
 let firebaseModulesPromise;
 let appCheckStarted = false;
+let firebaseProjectLogged = false;
 const CLOUD_COLLECTIONS = new Set([
   'transactions',
   'customers',
@@ -60,6 +61,11 @@ async function getFirebaseContext() {
   const auth = modules.auth.getAuth(app);
   const db = modules.firestore.getFirestore(app);
 
+  if (!firebaseProjectLogged) {
+    console.info('FIREBASE_PROJECT_ID', { projectId: firebaseConfig.projectId || null });
+    firebaseProjectLogged = true;
+  }
+
   if (!analyticsStarted && firebaseConfig.measurementId) {
     modules.analytics.isSupported().then((supported) => {
       if (supported) {
@@ -92,18 +98,18 @@ function normalizeFirebaseEmail(email) {
 export function getFirebaseAuthErrorMessage(error, fallback = 'Authentication failed. Please try again.') {
   const code = String(error?.code || '').toLowerCase();
   const messages = {
-    'auth/invalid-email': 'Enter a valid email address.',
+    'auth/invalid-email': 'Enter a valid email.',
+    'auth/missing-email': 'Please enter your email address.',
     'auth/user-disabled': 'This account has been disabled. Contact support.',
-    'auth/user-not-found': 'No account found with this email. Please register first.',
+    'auth/user-not-found': 'No account exists with this email.',
     'auth/wrong-password': 'Incorrect password. Please try again or reset your password.',
     'auth/invalid-credential': 'Email or password is incorrect. Please check both and try again.',
     'auth/email-already-in-use': 'This email is already registered. Please login instead.',
     'auth/weak-password': 'Password is too weak. Use at least 8 characters.',
-    'auth/too-many-requests': 'Too many login attempts. Please wait and try again later.',
-    'auth/network-request-failed': 'Network error. Check internet connection and try again.',
+    'auth/too-many-requests': 'Too many attempts. Try again later.',
+    'auth/network-request-failed': 'Network error. Check your internet.',
     'auth/popup-closed-by-user': 'Google login was closed before completion.',
     'auth/requires-recent-login': 'Please login again before doing this action.',
-    'auth/missing-email': 'Enter your registered email address.',
   };
 
   return messages[code] || fallback;
@@ -125,12 +131,16 @@ export async function createFirebaseAccount({ email, password, ownerName, busine
     normalizedEmail,
     password
   );
+  console.info('REGISTER_SUCCESS', { uid: credential.user.uid });
   await context.auth.updateProfile(credential.user, {
     displayName: sanitizeText(ownerName || businessName || 'Business Owner', 120),
   });
-  await context.auth.sendEmailVerification(credential.user);
+  await context.auth.sendEmailVerification(context.authInstance.currentUser || credential.user);
+  console.info('EMAIL_VERIFICATION_SENT', { uid: credential.user.uid, email: normalizedEmail });
+  await credential.user.reload();
 
-  const payload = userPayload(credential.user, { email: normalizedEmail, ownerName, businessName });
+  const currentUser = context.authInstance.currentUser || credential.user;
+  const payload = userPayload(currentUser, { email: normalizedEmail, ownerName, businessName });
   await saveUserProfile(payload.uid, payload);
   if (import.meta.env.DEV) {
     console.info('[Firebase auth register success]', { uid: payload.uid, email: payload.email });
@@ -154,8 +164,11 @@ export async function signInFirebaseAccount({ email, password }) {
     normalizedEmail,
     password
   );
-  const payload = userPayload(credential.user, { email: normalizedEmail });
+  await credential.user.reload();
+  const currentUser = context.authInstance.currentUser || credential.user;
+  const payload = userPayload(currentUser, { email: normalizedEmail });
   await saveUserProfile(payload.uid, payload);
+  console.info('LOGIN_SUCCESS', { uid: payload.uid, emailVerified: payload.emailVerified });
   if (import.meta.env.DEV) {
     console.info('[Firebase auth login success]', { uid: payload.uid, email: payload.email });
   }
@@ -183,7 +196,20 @@ export async function sendCurrentUserEmailVerification() {
   }
 
   await context.auth.sendEmailVerification(user);
+  console.info('EMAIL_VERIFICATION_SENT', { uid: user.uid, email: normalizeFirebaseEmail(user.email || '') });
   return true;
+}
+
+export async function reloadCurrentFirebaseUser() {
+  const context = await getFirebaseContext();
+  const user = context?.authInstance?.currentUser;
+  if (!context || !user) {
+    return null;
+  }
+
+  await user.reload();
+  const currentUser = context.authInstance.currentUser || user;
+  return userPayload(currentUser);
 }
 
 export async function sendFirebasePasswordReset(email) {
@@ -194,12 +220,22 @@ export async function sendFirebasePasswordReset(email) {
 
   const normalizedEmail = normalizeFirebaseEmail(email);
   if (import.meta.env.DEV) {
-    console.info('[Firebase auth password reset start]', { email: normalizedEmail });
+    console.info('PASSWORD_RESET_START', { email: normalizedEmail });
   }
 
-  await context.auth.sendPasswordResetEmail(context.authInstance, normalizedEmail);
-  if (import.meta.env.DEV) {
-    console.info('[Firebase auth password reset sent]', { email: normalizedEmail });
+  try {
+    await context.auth.sendPasswordResetEmail(context.authInstance, normalizedEmail);
+    if (import.meta.env.DEV) {
+      console.info('PASSWORD_RESET_SUCCESS', { email: normalizedEmail });
+    }
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('PASSWORD_RESET_ERROR', {
+        code: error?.code || null,
+        message: error?.message || '',
+      });
+    }
+    throw error;
   }
   return true;
 }
@@ -227,7 +263,19 @@ export async function listenToFirebaseAuth(onUser, onError) {
 
   return context.auth.onAuthStateChanged(
     context.authInstance,
-    (user) => onUser(user ? userPayload(user) : null),
+    async (user) => {
+      try {
+        if (!user) {
+          onUser(null);
+          return;
+        }
+
+        await user.reload();
+        onUser(userPayload(context.authInstance.currentUser || user));
+      } catch (error) {
+        onError?.(error);
+      }
+    },
     onError
   );
 }

@@ -40,6 +40,7 @@ import {
   listenToFirebaseAuth,
   loadCloudCollection,
   loadUserProfileSettings,
+  reloadCurrentFirebaseUser,
   saveCloudRecord,
   saveUserProfile,
   saveUserProfileSettings,
@@ -735,6 +736,7 @@ export default function VoiceExpenseTrackerPreview() {
   const [transactionsLoading, setTransactionsLoading] = useState(false);
   const [secureError, setSecureError] = useState('');
   const [authNotice, setAuthNotice] = useState('');
+  const [verificationCooldown, setVerificationCooldown] = useState(0);
   const [offline, setOffline] = useState(() => typeof navigator !== 'undefined' && !navigator.onLine);
   const [firebaseEnabled] = useState(() => isFirebaseConfigured());
   const [transcript, setTranscript] = useState('Click start and speak your expense...');
@@ -977,7 +979,13 @@ export default function VoiceExpenseTrackerPreview() {
           : await createFirebaseAccount({ email, password, ownerName, businessName });
 
         await applyAuthenticatedUser(firebaseUser);
-        setStatus('Secure Firebase login active');
+        if (firebaseUser?.emailVerified) {
+          setStatus('Secure Firebase login active');
+        } else {
+          setAuthNotice('Verification email sent. Please check your inbox or spam folder.');
+          setVerificationCooldown(authView === 'register' ? 60 : 0);
+          setStatus('Email verification required');
+        }
         return;
       }
 
@@ -1058,8 +1066,13 @@ export default function VoiceExpenseTrackerPreview() {
     const form = new FormData(event.currentTarget);
     const email = sanitizeEmail(form.get('email')).toLowerCase().trim();
 
+    if (!email) {
+      setSecureError('Please enter your email address.');
+      return;
+    }
+
     if (!validateEmail(email)) {
-      setSecureError('Enter your registered email address.');
+      setSecureError('Enter a valid email.');
       return;
     }
 
@@ -1078,10 +1091,12 @@ export default function VoiceExpenseTrackerPreview() {
         console.info('[Auth password reset submit]', { email });
       }
       const sent = await sendFirebasePasswordReset(email);
-      setStatus(sent ? 'Password reset email sent' : 'Password reset unavailable');
-      setSecureError('');
-      setAuthNotice('Password reset email sent. Check your inbox and spam folder.');
-      setAuthView('login');
+      if (sent) {
+        setStatus('Password reset email sent');
+        setSecureError('');
+        setAuthNotice('Password reset email sent. Check your inbox and spam folder.');
+        setAuthView('login');
+      }
     } catch (error) {
       const message = getFirebaseAuthErrorMessage(error, 'Could not send password reset email. Please try again.');
       setSecureError(message);
@@ -1121,13 +1136,66 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const resendVerificationEmail = async () => {
+    if (verificationCooldown > 0) {
+      return;
+    }
+
     try {
+      setAuthLoading(true);
+      setSecureError('');
       const sent = await sendCurrentUserEmailVerification();
-      setStatus(sent ? 'Verification email sent' : 'Sign in again to send verification email');
+      if (sent) {
+        setAuthNotice('Verification email sent. Please check your inbox or spam folder.');
+        setVerificationCooldown(60);
+        setStatus('Verification email sent');
+      } else {
+        setStatus('Sign in again to send verification email');
+      }
     } catch (error) {
-      setSecureError(publicSafeError(error, 'Could not send verification email.'));
+      setSecureError(getFirebaseAuthErrorMessage(error, 'Could not send verification email.'));
+    } finally {
+      setAuthLoading(false);
     }
   };
+
+  const checkEmailVerification = async () => {
+    try {
+      setAuthLoading(true);
+      setSecureError('');
+      const refreshedUser = await reloadCurrentFirebaseUser();
+      if (!refreshedUser) {
+        setSecureError('Please login again before checking verification.');
+        setStatus('Login required');
+        return;
+      }
+
+      if (refreshedUser.emailVerified) {
+        await applyAuthenticatedUser(refreshedUser);
+        setAuthNotice('');
+        setStatus('Email verified');
+        return;
+      }
+
+      setAuthNotice('Email is not verified yet. Please check your inbox or spam folder.');
+      setStatus('Email verification pending');
+    } catch (error) {
+      setSecureError(getFirebaseAuthErrorMessage(error, 'Could not check email verification.'));
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (verificationCooldown <= 0) {
+      return undefined;
+    }
+
+    const timer = window.setInterval(() => {
+      setVerificationCooldown((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [verificationCooldown]);
 
   useEffect(() => {
     localStorage.setItem('darkMode', String(darkMode));
@@ -2320,12 +2388,29 @@ export default function VoiceExpenseTrackerPreview() {
               <span className="security-mode live">Verification required</span>
               <h1>Verify your email to continue</h1>
               <p>
-                We sent a verification link to <strong>{authUser?.email}</strong>. Production dashboards and sensitive
-                business actions stay locked until the account email is verified.
+                Verification email sent. Please check your inbox or spam folder.
+                {authUser?.email ? <> We sent it to <strong>{authUser.email}</strong>.</> : null}
               </p>
+              <p>
+                Production dashboards and sensitive business actions stay locked until the account email is verified.
+              </p>
+              {authNotice && <div className="notice">{authNotice}</div>}
               {secureError && <div className="notice error">{secureError}</div>}
-              <button className="saas-primary-button full" type="button" onClick={resendVerificationEmail}>
-                Resend Verification Email
+              <button
+                className="saas-primary-button full"
+                type="button"
+                onClick={checkEmailVerification}
+                disabled={authLoading}
+              >
+                {authLoading ? 'Checking...' : 'I verified my email'}
+              </button>
+              <button
+                className="saas-google-button"
+                type="button"
+                onClick={resendVerificationEmail}
+                disabled={authLoading || verificationCooldown > 0}
+              >
+                {verificationCooldown > 0 ? `Resend in ${verificationCooldown}s` : 'Resend Verification Email'}
               </button>
               <button className="saas-google-button" type="button" onClick={logout}>
                 Logout
