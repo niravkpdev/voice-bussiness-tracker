@@ -1577,14 +1577,15 @@ export default function VoiceExpenseTrackerPreview() {
         setStatus('Transaction saved to Firestore');
         return true;
       } catch (error) {
+        const message = publicSafeError(error, 'Cloud transaction save failed. Please try again.');
         console.error('[Transaction save error]', {
           currentFirebaseUserUid: authUser.uid,
           path: firestorePath,
           payload: transactionPayload,
           error,
         });
-        setSecureError(publicSafeError(error, 'Cloud transaction save failed. Please try again.'));
-        setStatus('Firestore save failed');
+        setSecureError(message);
+        setStatus(message);
         return false;
       }
     }

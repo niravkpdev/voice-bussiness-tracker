@@ -14,7 +14,9 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
-      input: resolve(process.cwd(), 'react.html'),
+      input: {
+        react: resolve(process.cwd(), 'react.html'),
+      },
     },
   },
 });

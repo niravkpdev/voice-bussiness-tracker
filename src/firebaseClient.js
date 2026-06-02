@@ -24,6 +24,8 @@ const CLOUD_COLLECTIONS = new Set([
 ]);
 
 const appCheckSiteKey = import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY;
+const FIRESTORE_TIMEOUT_MS = 10_000;
+const FIRESTORE_TIMEOUT_MESSAGE = 'Firestore write timed out. Check Firebase rules/API permissions.';
 
 export function isFirebaseConfigured() {
   return Boolean(firebaseConfig.apiKey && firebaseConfig.authDomain && firebaseConfig.projectId && firebaseConfig.appId);
@@ -77,6 +79,31 @@ async function getFirebaseContext() {
   }
 
   return { ...modules, appInstance: app, authInstance: auth, db };
+}
+
+function firestoreTimeoutError(meta) {
+  const error = new Error(FIRESTORE_TIMEOUT_MESSAGE);
+  error.code = 'firestore/write-timeout';
+  console.error('FIRESTORE_WRITE_TIMEOUT', {
+    path: meta.path,
+    uid: meta.uid,
+    projectId: firebaseConfig.projectId || null,
+    operation: meta.operation,
+  });
+  return error;
+}
+
+function withFirestoreTimeout(promise, meta) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = window.setTimeout(() => {
+      reject(firestoreTimeoutError(meta));
+    }, FIRESTORE_TIMEOUT_MS);
+  });
+
+  return Promise.race([promise, timeout]).finally(() => {
+    window.clearTimeout(timer);
+  });
 }
 
 function userPayload(user, extra = {}) {
@@ -287,15 +314,31 @@ export async function saveUserProfile(uid, profile) {
     return false;
   }
 
-  await context.firestore.setDoc(
-    context.firestore.doc(context.db, 'users', uid),
-    {
-      ...profile,
-      updatedAt: context.firestore.serverTimestamp(),
-    },
-    { merge: true }
-  );
-  return true;
+  const path = `users/${uid}`;
+  try {
+    await withFirestoreTimeout(
+      context.firestore.setDoc(
+        context.firestore.doc(context.db, 'users', uid),
+        {
+          ...profile,
+          updatedAt: context.firestore.serverTimestamp(),
+        },
+        { merge: true }
+      ),
+      { path, uid, operation: 'setDoc:userProfile' }
+    );
+    return true;
+  } catch (error) {
+    console.error('FIRESTORE_WRITE_ERROR', {
+      currentFirebaseUserUid: context.authInstance.currentUser?.uid || null,
+      requestedUid: uid,
+      projectId: firebaseConfig.projectId || null,
+      path,
+      code: error?.code || null,
+      message: error?.message || String(error),
+    });
+    throw error;
+  }
 }
 
 export async function saveCloudRecord(uid, collectionName, id, data) {
@@ -369,27 +412,36 @@ export async function saveCloudRecord(uid, collectionName, id, data) {
   });
 
   try {
-    await context.firestore.setDoc(
-      context.firestore.doc(context.db, 'users', uid),
-      {
-        uid,
-        updatedAt: context.firestore.serverTimestamp(),
-      },
-      { merge: true }
+    await withFirestoreTimeout(
+      context.firestore.setDoc(
+        context.firestore.doc(context.db, 'users', uid),
+        {
+          uid,
+          updatedAt: context.firestore.serverTimestamp(),
+        },
+        { merge: true }
+      ),
+      { path: parentPath, uid, operation: 'setDoc:userParent' }
     );
 
     const docRef = context.firestore.doc(context.db, 'users', uid, collectionName, id);
-    await context.firestore.setDoc(
-      docRef,
-      {
-        ...data,
-        ownerUid: uid,
-        updatedAt: context.firestore.serverTimestamp(),
-      },
-      { merge: true }
+    await withFirestoreTimeout(
+      context.firestore.setDoc(
+        docRef,
+        {
+          ...data,
+          ownerUid: uid,
+          updatedAt: context.firestore.serverTimestamp(),
+        },
+        { merge: true }
+      ),
+      { path, uid, operation: 'setDoc:record' }
     );
 
-    const verification = await context.firestore.getDoc(docRef);
+    const verification = await withFirestoreTimeout(
+      context.firestore.getDoc(docRef),
+      { path, uid, operation: 'getDoc:verifyRecord' }
+    );
     if (!verification.exists()) {
       throw new Error(`Firestore write verification failed: document not found at ${path}`);
     }
@@ -437,16 +489,33 @@ export async function deleteCloudRecord(uid, collectionName, id) {
     path,
   });
 
-  await context.firestore.deleteDoc(
-    context.firestore.doc(context.db, 'users', uid, collectionName, id)
-  );
+  try {
+    await withFirestoreTimeout(
+      context.firestore.deleteDoc(
+        context.firestore.doc(context.db, 'users', uid, collectionName, id)
+      ),
+      { path, uid, operation: 'deleteDoc:record' }
+    );
 
-  console.info('[Firestore delete success]', {
-    currentFirebaseUserUid: context.authInstance.currentUser?.uid || null,
-    requestedUid: uid,
-    path,
-  });
-  return true;
+    console.info('[Firestore delete success]', {
+      currentFirebaseUserUid: context.authInstance.currentUser?.uid || null,
+      requestedUid: uid,
+      path,
+    });
+    return true;
+  } catch (error) {
+    console.error('FIRESTORE_WRITE_ERROR', {
+      currentFirebaseUserUid: context.authInstance.currentUser?.uid || null,
+      requestedUid: uid,
+      projectId: firebaseConfig.projectId || null,
+      collectionName,
+      documentId: id,
+      path,
+      code: error?.code || null,
+      message: error?.message || String(error),
+    });
+    throw error;
+  }
 }
 
 export async function loadCloudCollection(uid, collectionName) {
@@ -475,8 +544,11 @@ export async function loadUserProfileSettings(uid) {
     return null;
   }
 
-  const snapshot = await context.firestore.getDoc(
-    context.firestore.doc(context.db, 'users', uid, 'settings', 'profile')
+  const snapshot = await withFirestoreTimeout(
+    context.firestore.getDoc(
+      context.firestore.doc(context.db, 'users', uid, 'settings', 'profile')
+    ),
+    { path: `users/${uid}/settings/profile`, uid, operation: 'getDoc:userProfileSettings' }
   );
 
   return snapshot.exists() ? snapshot.data() : null;

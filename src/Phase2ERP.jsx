@@ -330,17 +330,25 @@ export default function Phase2ERP({
       onStatus('Product name required');
       return;
     }
-    setProducts([product, ...products]);
-    onCloudRecord?.('inventory', product.id, {
-      ...product,
-      itemId: product.id,
-    }).catch(() => {});
-    addNotification('Product added', `${product.name} added with stock ${product.currentStock}.`, 'Inventory');
-    event.currentTarget.reset();
-    onStatus('Product saved');
+
+    try {
+      const saved = await onCloudRecord?.('inventory', product.id, {
+        ...product,
+        itemId: product.id,
+      });
+      if (!saved) {
+        throw new Error('Inventory save failed');
+      }
+      setProducts([product, ...products]);
+      addNotification('Product added', `${product.name} added with stock ${product.currentStock}.`, 'Inventory');
+      event.currentTarget.reset();
+      onStatus('Product saved');
+    } catch (error) {
+      onStatus(error?.message || 'Inventory save failed');
+    }
   };
 
-  const stockTransaction = (event) => {
+  const stockTransaction = async (event) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const productId = form.get('productId');
@@ -355,14 +363,22 @@ export default function Phase2ERP({
       const nextStock = type === 'Stock Out' ? product.currentStock - qty : type === 'Adjustment' ? qty : product.currentStock + qty;
       return { ...product, currentStock: Math.max(0, nextStock) };
     });
-    setProducts(updatedProducts);
     const updatedProduct = updatedProducts.find((product) => product.id === productId);
     if (updatedProduct) {
-      onCloudRecord?.('inventory', updatedProduct.id, {
-        ...updatedProduct,
-        itemId: updatedProduct.id,
-      }).catch(() => {});
+      try {
+        const saved = await onCloudRecord?.('inventory', updatedProduct.id, {
+          ...updatedProduct,
+          itemId: updatedProduct.id,
+        });
+        if (!saved) {
+          throw new Error('Stock update failed');
+        }
+      } catch (error) {
+        onStatus(error?.message || 'Stock update failed');
+        return;
+      }
     }
+    setProducts(updatedProducts);
     setStockTxns([
       { id: createId('stk'), businessId: activeBusinessId, productId, type, qty, note: sanitizeText(form.get('note'), 180), date: today() },
       ...stockTxns,
@@ -522,7 +538,7 @@ export default function Phase2ERP({
     setInvoiceLine({ productId: '', qty: 1, gst: 18, discount: 0 });
   };
 
-  const saveInvoice = (event) => {
+  const saveInvoice = async (event) => {
     event.preventDefault();
     if (!invoiceDraft.customerId || invoiceDraft.lines.length === 0) {
       onStatus('Select customer and add products');
@@ -552,15 +568,23 @@ export default function Phase2ERP({
       const sold = invoice.lines.filter((line) => line.productId === product.id).reduce((sum, line) => sum + line.qty, 0);
       return sold ? { ...product, currentStock: Math.max(0, product.currentStock - sold) } : product;
     });
-    setProducts(productsAfterInvoice);
-    productsAfterInvoice
-      .filter((product) => invoice.lines.some((line) => line.productId === product.id))
-      .forEach((product) => {
-        onCloudRecord?.('inventory', product.id, {
+    const affectedProducts = productsAfterInvoice
+      .filter((product) => invoice.lines.some((line) => line.productId === product.id));
+    try {
+      await Promise.all(affectedProducts.map(async (product) => {
+        const saved = await onCloudRecord?.('inventory', product.id, {
           ...product,
           itemId: product.id,
-        }).catch(() => {});
-      });
+        });
+        if (!saved) {
+          throw new Error('Invoice stock update failed');
+        }
+      }));
+    } catch (error) {
+      onStatus(error?.message || 'Invoice stock update failed');
+      return;
+    }
+    setProducts(productsAfterInvoice);
     if (invoice.dueDate < today() && invoice.status !== 'Paid') {
       addNotification('Overdue invoice risk', `${invoice.invoiceNo} is due on ${invoice.dueDate}.`, 'Invoice');
     }
