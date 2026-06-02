@@ -60,40 +60,30 @@ service cloud.firestore {
         && (!('emailVerified' in request.resource.data) || request.resource.data.emailVerified is bool)
         && safeUpdatedAt();
 
-      match /vouchers/{documentId} {
+      match /transactions/{documentId} {
         allow read, delete: if isOwner(userId) && ownsExisting(userId);
         allow create, update: if isOwner(userId)
           && hasOwner(userId)
           && request.resource.data.keys().hasOnly([
-            'id', 'ownerUid', 'ownerId', 'userId', 'date', 'dateTime', 'type',
-            'amount', 'narration', 'lines', 'source', 'updatedAt'
+            'id', 'transactionId', 'ownerUid', 'ownerId', 'userId', 'date',
+            'dateTime', 'type', 'amount', 'category', 'customer', 'narration',
+            'notes', 'lines', 'source', 'confidence', 'needsConfirmation',
+            'updatedAt'
           ])
           && safeText('id', 80)
+          && safeText('transactionId', 80)
           && safeText('type', 40)
+          && safeText('category', 120)
+          && safeText('customer', 120)
           && safeText('dateTime', 80)
           && safeText('narration', 300)
+          && safeText('notes', 500)
           && safeText('source', 40)
           && safeNumber('amount', 0, 100000000)
+          && safeNumber('confidence', 0, 1)
           && safeDateString('date')
           && (!('lines' in request.resource.data) || request.resource.data.lines is list)
-          && safeUpdatedAt();
-      }
-
-      match /logs/{documentId} {
-        allow read, delete: if isOwner(userId) && ownsExisting(userId);
-        allow create, update: if isOwner(userId)
-          && hasOwner(userId)
-          && request.resource.data.keys().hasOnly([
-            'id', 'ownerUid', 'ownerId', 'userId', 'type', 'amount', 'text',
-            'notes', 'date', 'dateTime', 'source', 'updatedAt'
-          ])
-          && safeText('id', 80)
-          && safeText('type', 40)
-          && safeText('text', 500)
-          && safeText('notes', 500)
-          && safeText('dateTime', 80)
-          && safeText('source', 40)
-          && safeNumber('amount', 0, 100000000)
+          && (!('needsConfirmation' in request.resource.data) || request.resource.data.needsConfirmation is bool)
           && safeUpdatedAt();
       }
 
@@ -102,10 +92,12 @@ service cloud.firestore {
         allow create, update: if isOwner(userId)
           && hasOwner(userId)
           && request.resource.data.keys().hasOnly([
-            'id', 'ownerUid', 'ownerId', 'userId', 'businessId', 'name',
-            'mobile', 'email', 'address', 'gst', 'outstanding', 'updatedAt'
+            'id', 'customerId', 'ownerUid', 'ownerId', 'userId', 'businessId',
+            'name', 'mobile', 'email', 'address', 'gst', 'outstanding',
+            'updatedAt'
           ])
           && safeText('id', 80)
+          && safeText('customerId', 80)
           && safeText('businessId', 80)
           && safeText('name', 120)
           && safeText('mobile', 24)
@@ -121,11 +113,12 @@ service cloud.firestore {
         allow create, update: if isOwner(userId)
           && hasOwner(userId)
           && request.resource.data.keys().hasOnly([
-            'id', 'ownerUid', 'ownerId', 'userId', 'businessId', 'name',
+            'id', 'itemId', 'ownerUid', 'ownerId', 'userId', 'businessId', 'name',
             'category', 'sku', 'image', 'purchasePrice', 'sellingPrice',
             'currentStock', 'minStock', 'unit', 'createdAt', 'updatedAt'
           ])
           && safeText('id', 80)
+          && safeText('itemId', 80)
           && safeText('businessId', 80)
           && safeText('name', 120)
           && safeText('category', 80)
@@ -162,26 +155,13 @@ service cloud.firestore {
           && hasOwner(userId)
           && request.resource.data.keys().hasOnly([
             'id', 'ownerUid', 'ownerId', 'userId', 'theme', 'language',
-            'notifications', 'voice', 'backup', 'security', 'updatedAt'
+            'notifications', 'voice', 'backup', 'security', 'name', 'tagline',
+            'logo', 'owner', 'email', 'phone', 'address', 'gstin', 'updatedAt'
           ])
+          && documentId == 'profile'
           && safeText('id', 80)
           && safeText('theme', 20)
           && safeText('language', 20)
-          && (!('notifications' in request.resource.data) || request.resource.data.notifications is map)
-          && (!('voice' in request.resource.data) || request.resource.data.voice is map)
-          && (!('backup' in request.resource.data) || request.resource.data.backup is map)
-          && (!('security' in request.resource.data) || request.resource.data.security is map)
-          && safeUpdatedAt();
-      }
-
-      match /profile/{documentId} {
-        allow read, delete: if isOwner(userId) && ownsExisting(userId);
-        allow create, update: if isOwner(userId)
-          && hasOwner(userId)
-          && request.resource.data.keys().hasOnly([
-            'ownerUid', 'ownerId', 'userId', 'name', 'tagline', 'logo',
-            'owner', 'email', 'phone', 'address', 'gstin', 'updatedAt'
-          ])
           && safeText('name', 140)
           && safeText('tagline', 160)
           && safeText('logo', 200000)
@@ -190,29 +170,10 @@ service cloud.firestore {
           && safeText('phone', 24)
           && safeText('address', 240)
           && safeText('gstin', 32)
-          && safeUpdatedAt();
-      }
-
-      match /snapshots/{documentId} {
-        allow read, delete: if isOwner(userId) && ownsExisting(userId);
-        allow create, update: if isOwner(userId)
-          && hasOwner(userId)
-          && request.resource.data.keys().hasOnly([
-            'ownerUid', 'ownerId', 'userId', 'reason', 'businessLogs',
-            'businessLedgers', 'businessVouchers', 'businessInventory',
-            'businessOrders', 'businessProfile', 'voiceLowStockAlertsEnabled',
-            'schemaVersion', 'savedAt', 'updatedAt'
-          ])
-          && safeText('reason', 80)
-          && safeText('savedAt', 40)
-          && safeNumber('schemaVersion', 1, 20)
-          && (!('businessLogs' in request.resource.data) || request.resource.data.businessLogs is list)
-          && (!('businessLedgers' in request.resource.data) || request.resource.data.businessLedgers is list)
-          && (!('businessVouchers' in request.resource.data) || request.resource.data.businessVouchers is list)
-          && (!('businessInventory' in request.resource.data) || request.resource.data.businessInventory is list)
-          && (!('businessOrders' in request.resource.data) || request.resource.data.businessOrders is list)
-          && (!('businessProfile' in request.resource.data) || request.resource.data.businessProfile is map)
-          && (!('voiceLowStockAlertsEnabled' in request.resource.data) || request.resource.data.voiceLowStockAlertsEnabled is bool)
+          && (!('notifications' in request.resource.data) || request.resource.data.notifications is map)
+          && (!('voice' in request.resource.data) || request.resource.data.voice is map)
+          && (!('backup' in request.resource.data) || request.resource.data.backup is map)
+          && (!('security' in request.resource.data) || request.resource.data.security is map)
           && safeUpdatedAt();
       }
     }

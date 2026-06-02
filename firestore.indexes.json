@@ -1,7 +1,7 @@
 {
   "indexes": [
     {
-      "collectionGroup": "vouchers",
+      "collectionGroup": "transactions",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "ownerUid", "order": "ASCENDING" },

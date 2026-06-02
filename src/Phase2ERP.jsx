@@ -112,7 +112,10 @@ export default function Phase2ERP({
   partySummary,
   cashBalance,
   netProfit,
+  cloudCustomers,
+  cloudInventory,
   onStatus,
+  onCloudRecord,
   onCloudSnapshot,
 }) {
   const [products, setProducts] = useState(() => readArray(PRODUCT_KEY));
@@ -145,6 +148,16 @@ export default function Phase2ERP({
   useEffect(() => writeArray(BUSINESS_KEY, businesses), [businesses]);
   useEffect(() => writeArray(NOTIFICATION_KEY, notifications), [notifications]);
   useEffect(() => writeObject(CLOUD_BACKUP_KEY, cloudSettings), [cloudSettings]);
+  useEffect(() => {
+    if (Array.isArray(cloudInventory) && cloudInventory.length > 0) {
+      setProducts(cloudInventory);
+    }
+  }, [cloudInventory]);
+  useEffect(() => {
+    if (Array.isArray(cloudCustomers) && cloudCustomers.length > 0) {
+      setCustomers(cloudCustomers);
+    }
+  }, [cloudCustomers]);
   useEffect(() => {
     onCloudSnapshot?.('phase2_erp_updated');
   }, [products, stockTxns, invoices, customers, suppliers, businesses, notifications, cloudSettings]);
@@ -301,6 +314,10 @@ export default function Phase2ERP({
       return;
     }
     setProducts([product, ...products]);
+    onCloudRecord?.('inventory', product.id, {
+      ...product,
+      itemId: product.id,
+    }).catch(() => {});
     addNotification('Product added', `${product.name} added with stock ${product.currentStock}.`, 'Inventory');
     event.currentTarget.reset();
     onStatus('Product saved');
@@ -316,11 +333,19 @@ export default function Phase2ERP({
       onStatus('Select product and quantity');
       return;
     }
-    setProducts(products.map((product) => {
+    const updatedProducts = products.map((product) => {
       if (product.id !== productId) return product;
       const nextStock = type === 'Stock Out' ? product.currentStock - qty : type === 'Adjustment' ? qty : product.currentStock + qty;
       return { ...product, currentStock: Math.max(0, nextStock) };
-    }));
+    });
+    setProducts(updatedProducts);
+    const updatedProduct = updatedProducts.find((product) => product.id === productId);
+    if (updatedProduct) {
+      onCloudRecord?.('inventory', updatedProduct.id, {
+        ...updatedProduct,
+        itemId: updatedProduct.id,
+      }).catch(() => {});
+    }
     setStockTxns([
       { id: createId('stk'), businessId: activeBusinessId, productId, type, qty, note: sanitizeText(form.get('note'), 180), date: today() },
       ...stockTxns,
@@ -351,6 +376,11 @@ export default function Phase2ERP({
       return;
     }
     setCustomers([customer, ...customers]);
+    onCloudRecord?.('customers', customer.id, {
+      ...customer,
+      customerId: customer.id,
+      outstanding: 0,
+    }).catch(() => {});
     event.currentTarget.reset();
     onStatus('Customer saved');
   };
@@ -436,10 +466,19 @@ export default function Phase2ERP({
       balance: total - paid,
     };
     setInvoices(editingInvoiceId ? invoices.map((item) => (item.id === editingInvoiceId ? invoice : item)) : [invoice, ...invoices]);
-    setProducts(products.map((product) => {
+    const productsAfterInvoice = products.map((product) => {
       const sold = invoice.lines.filter((line) => line.productId === product.id).reduce((sum, line) => sum + line.qty, 0);
       return sold ? { ...product, currentStock: Math.max(0, product.currentStock - sold) } : product;
-    }));
+    });
+    setProducts(productsAfterInvoice);
+    productsAfterInvoice
+      .filter((product) => invoice.lines.some((line) => line.productId === product.id))
+      .forEach((product) => {
+        onCloudRecord?.('inventory', product.id, {
+          ...product,
+          itemId: product.id,
+        }).catch(() => {});
+      });
     if (invoice.dueDate < today() && invoice.status !== 'Paid') {
       addNotification('Overdue invoice risk', `${invoice.invoiceNo} is due on ${invoice.dueDate}.`, 'Invoice');
     }

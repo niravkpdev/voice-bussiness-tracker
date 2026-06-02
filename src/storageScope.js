@@ -46,10 +46,18 @@ export function readScopedString(key) {
 }
 
 export function writeScopedString(key, value) {
+  if (import.meta.env.PROD && !GLOBAL_KEYS.has(key)) {
+    return;
+  }
+
   localStorage.setItem(scopedKey(key), value);
 }
 
 export function removeScopedValue(key) {
+  if (import.meta.env.PROD && !GLOBAL_KEYS.has(key)) {
+    return;
+  }
+
   localStorage.removeItem(scopedKey(key));
 }
 

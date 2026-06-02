@@ -14,14 +14,11 @@ let analyticsStarted = false;
 let firebaseModulesPromise;
 let appCheckStarted = false;
 const CLOUD_COLLECTIONS = new Set([
-  'vouchers',
-  'logs',
+  'transactions',
   'customers',
   'inventory',
   'reports',
   'settings',
-  'profile',
-  'snapshots',
 ]);
 
 const appCheckSiteKey = import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY;
@@ -206,22 +203,34 @@ export async function saveCloudRecord(uid, collectionName, id, data) {
   return true;
 }
 
-export async function saveCloudSnapshot(uid, snapshot) {
-  return saveCloudRecord(uid, 'snapshots', 'current', {
-    ...snapshot,
-    schemaVersion: 3,
-    savedAt: new Date().toISOString(),
-  });
+export async function loadCloudCollection(uid, collectionName) {
+  const context = await getFirebaseContext();
+  if (!context || !uid || !CLOUD_COLLECTIONS.has(collectionName)) {
+    return [];
+  }
+
+  const snapshot = await context.firestore.getDocs(
+    context.firestore.collection(context.db, 'users', uid, collectionName)
+  );
+
+  return snapshot.docs.map((docSnapshot) => ({
+    id: docSnapshot.id,
+    ...docSnapshot.data(),
+  }));
 }
 
-export async function loadCloudSnapshot(uid) {
+export async function saveUserProfileSettings(uid, profile) {
+  return saveCloudRecord(uid, 'settings', 'profile', profile);
+}
+
+export async function loadUserProfileSettings(uid) {
   const context = await getFirebaseContext();
   if (!context || !uid) {
     return null;
   }
 
   const snapshot = await context.firestore.getDoc(
-    context.firestore.doc(context.db, 'users', uid, 'snapshots', 'current')
+    context.firestore.doc(context.db, 'users', uid, 'settings', 'profile')
   );
 
   return snapshot.exists() ? snapshot.data() : null;

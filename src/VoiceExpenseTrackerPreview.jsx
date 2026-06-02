@@ -37,10 +37,11 @@ import {
   createFirebaseAccount,
   isFirebaseConfigured,
   listenToFirebaseAuth,
-  loadCloudSnapshot,
+  loadCloudCollection,
+  loadUserProfileSettings,
   saveCloudRecord,
-  saveCloudSnapshot,
   saveUserProfile,
+  saveUserProfileSettings,
   sendCurrentUserEmailVerification,
   signInFirebaseAccount,
   signInFirebaseGoogle,
@@ -730,6 +731,8 @@ export default function VoiceExpenseTrackerPreview() {
   const [logs, setLogs] = useState([]);
   const [ledgers, setLedgers] = useState([]);
   const [vouchers, setVouchers] = useState([]);
+  const [cloudCustomers, setCloudCustomers] = useState([]);
+  const [cloudInventory, setCloudInventory] = useState([]);
   const [manualType, setManualType] = useState('Expense');
   const [manualAmount, setManualAmount] = useState('');
   const [manualText, setManualText] = useState('');
@@ -821,19 +824,21 @@ export default function VoiceExpenseTrackerPreview() {
     setExpandedSidebarSection(sectionId);
   };
 
-  const hydrateWorkspace = () => {
+  const hydrateWorkspace = ({ cloudTransactions = null, cloudProfile = null } = {}) => {
     if (!getSpeechRecognition()) {
       setBrowserSupported(false);
     }
 
     const initialLedgers = ensureDefaultLedgers();
-    const initialLogs = readSavedLogs();
-    const initialVouchers = migrateLogsToVouchers(initialLogs, initialLedgers);
+    const initialLogs = import.meta.env.DEV ? readSavedLogs() : [];
+    const initialVouchers = Array.isArray(cloudTransactions)
+      ? cloudTransactions
+      : migrateLogsToVouchers(initialLogs, initialLedgers);
 
     setLedgers(initialLedgers);
     setVouchers(initialVouchers);
     setLogs(initialLogs);
-    setProfile(readProfile());
+    setProfile(cloudProfile ? { ...DEFAULT_PROFILE, ...cloudProfile } : readProfile());
 
     const parties = getPartyLedgers(initialLedgers);
     if (parties.length > 0) {
@@ -866,23 +871,36 @@ export default function VoiceExpenseTrackerPreview() {
       return;
     }
 
+    let cloudTransactions = null;
+    let cloudProfile = null;
     if (restoreCloud && firebaseEnabled && scopedUser.uid) {
-      const snapshot = await loadCloudSnapshot(scopedUser.uid).catch(() => null);
-      if (snapshot?.businessProfile) {
-        writeScopedString(PROFILE_KEY, JSON.stringify(snapshot.businessProfile));
-      }
-      if (Array.isArray(snapshot?.businessLedgers)) {
-        writeScopedString(LEDGERS_KEY, JSON.stringify(snapshot.businessLedgers));
-      }
-      if (Array.isArray(snapshot?.businessVouchers)) {
-        writeScopedString(VOUCHERS_KEY, JSON.stringify(snapshot.businessVouchers));
-      }
-      if (Array.isArray(snapshot?.businessLogs)) {
-        writeScopedString(STORAGE_KEY, JSON.stringify(snapshot.businessLogs));
-      }
+      const [transactions, customers, inventory, profileSettings] = await Promise.all([
+        loadCloudCollection(scopedUser.uid, 'transactions').catch(() => []),
+        loadCloudCollection(scopedUser.uid, 'customers').catch(() => []),
+        loadCloudCollection(scopedUser.uid, 'inventory').catch(() => []),
+        loadUserProfileSettings(scopedUser.uid).catch(() => null),
+      ]);
+      cloudTransactions = transactions;
+      cloudProfile = profileSettings;
+      setCloudCustomers(customers);
+      setCloudInventory(inventory);
     }
 
-    hydrateWorkspace();
+    hydrateWorkspace({ cloudTransactions, cloudProfile });
+  };
+
+  const saveAuthenticatedCloudRecord = (collectionName, id, data) => {
+    if (!firebaseEnabled || !authUser?.uid) {
+      return Promise.resolve(false);
+    }
+
+    return saveCloudRecord(authUser.uid, collectionName, id, {
+      ...data,
+      userId: authUser.uid,
+    }).catch((error) => {
+      setSecureError(publicSafeError(error, 'Cloud data save failed. Please try again.'));
+      throw error;
+    });
   };
 
   const saveCloudDataSnapshot = (reason = 'autosave') => {
@@ -890,16 +908,9 @@ export default function VoiceExpenseTrackerPreview() {
       return;
     }
 
-    saveCloudSnapshot(authUser.uid, {
-      reason,
-      businessLogs: readSavedArray(STORAGE_KEY),
-      businessLedgers: readLedgers(),
-      businessVouchers: readVouchers(),
-      businessInventory: readSavedArray(INVENTORY_KEY),
-      businessOrders: readSavedArray(ORDERS_KEY),
-      businessProfile: readProfile(),
-      voiceLowStockAlertsEnabled: readScopedString(VOICE_ALERTS_KEY) !== 'false',
-    }).catch((error) => setSecureError(publicSafeError(error, 'Cloud sync failed. Your local data is still saved.')));
+    if (import.meta.env.DEV) {
+      setStatus(`Development backup skipped: ${reason}`);
+    }
   };
 
   const completeAuth = async (event) => {
@@ -1293,20 +1304,38 @@ export default function VoiceExpenseTrackerPreview() {
     return vouchers.filter((voucher) => voucher.date === dayBookFilter);
   }, [vouchers, dayBookFilter]);
 
-  const refreshVouchers = () => setVouchers(readVouchers());
+  const refreshVouchers = () => setVouchers(import.meta.env.DEV ? readVouchers() : vouchers);
 
   const persistVoucher = (voucher) => {
     if (!requireSensitiveAccess('voucher saving')) {
       return;
     }
 
-    saveVoucher(voucher);
-    refreshVouchers();
     if (authUser?.uid) {
-      saveCloudRecord(authUser.uid, 'vouchers', voucher.id, voucher)
-        .catch((error) => setSecureError(publicSafeError(error, 'Voucher saved locally but cloud sync failed.')));
-      saveCloudDataSnapshot('voucher_saved');
+      saveCloudRecord(authUser.uid, 'transactions', voucher.id, {
+        ...voucher,
+        transactionId: voucher.id,
+        userId: authUser.uid,
+      })
+        .then(() => {
+          setVouchers((current) => [voucher, ...current.filter((item) => item.id !== voucher.id)]);
+          setStatus('Transaction saved to Firestore');
+        })
+        .catch((error) => setSecureError(publicSafeError(error, 'Cloud transaction save failed. Please try again.')));
+      if (import.meta.env.DEV) {
+        saveVoucher(voucher);
+        refreshVouchers();
+      }
+      return;
     }
+
+    if (import.meta.env.DEV) {
+      saveVoucher(voucher);
+      refreshVouchers();
+      return;
+    }
+
+    setSecureError('Sign in with Firebase before saving production transactions.');
   };
 
   const saveReceiptOrPayment = ({
@@ -1621,22 +1650,20 @@ export default function VoiceExpenseTrackerPreview() {
       return;
     }
 
-    const updatedLogs = [log, ...readSavedLogs()];
-    writeScopedString(STORAGE_KEY, JSON.stringify(updatedLogs));
-    setLogs(updatedLogs);
-    if (authUser?.uid) {
-      saveCloudRecord(authUser.uid, 'logs', log.id || `log-${Date.now()}`, log)
-        .catch((error) => setSecureError(publicSafeError(error, 'Entry saved locally but cloud sync failed.')));
-      saveCloudDataSnapshot('log_saved');
+    const updatedLogs = [log, ...(import.meta.env.DEV ? readSavedLogs() : logs)];
+    if (import.meta.env.DEV) {
+      writeScopedString(STORAGE_KEY, JSON.stringify(updatedLogs));
     }
+    setLogs(updatedLogs);
   };
 
   const deleteLog = (index) => {
-    const updatedLogs = readSavedLogs().filter((_, logIndex) => logIndex !== index);
-    writeScopedString(STORAGE_KEY, JSON.stringify(updatedLogs));
+    const updatedLogs = (import.meta.env.DEV ? readSavedLogs() : logs).filter((_, logIndex) => logIndex !== index);
+    if (import.meta.env.DEV) {
+      writeScopedString(STORAGE_KEY, JSON.stringify(updatedLogs));
+    }
     setLogs(updatedLogs);
     setStatus('Entry deleted');
-    saveCloudDataSnapshot('log_deleted');
   };
 
   const removeVoucher = (voucherId) => {
@@ -1779,7 +1806,9 @@ export default function VoiceExpenseTrackerPreview() {
       nextProfile.logo = await fileToDataUrl(uploadedLogo);
     }
 
-    writeScopedString(PROFILE_KEY, JSON.stringify(nextProfile));
+    if (import.meta.env.DEV) {
+      writeScopedString(PROFILE_KEY, JSON.stringify(nextProfile));
+    }
     setProfile(nextProfile);
     if (authUser?.uid) {
       saveUserProfile(authUser.uid, {
@@ -1788,9 +1817,10 @@ export default function VoiceExpenseTrackerPreview() {
         email: nextProfile.email,
         role: authUser.role || 'Owner',
       }).catch((error) => setSecureError(publicSafeError(error, 'Profile saved locally but cloud sync failed.')));
-      saveCloudRecord(authUser.uid, 'profile', 'business', nextProfile)
-        .catch((error) => setSecureError(publicSafeError(error, 'Profile saved locally but cloud sync failed.')));
-      saveCloudDataSnapshot('profile_saved');
+      saveUserProfileSettings(authUser.uid, {
+        ...nextProfile,
+        userId: authUser.uid,
+      }).catch((error) => setSecureError(publicSafeError(error, 'Profile cloud sync failed.')));
     }
     setStatus('Business profile saved');
   };
@@ -2703,7 +2733,10 @@ export default function VoiceExpenseTrackerPreview() {
               partySummary={partySummary}
               cashBalance={cashInHand}
               netProfit={monthlyNetProfit}
+              cloudCustomers={cloudCustomers}
+              cloudInventory={cloudInventory}
               onStatus={setStatus}
+              onCloudRecord={saveAuthenticatedCloudRecord}
               onCloudSnapshot={saveCloudDataSnapshot}
             />
           )}
