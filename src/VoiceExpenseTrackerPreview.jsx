@@ -35,6 +35,7 @@ import Phase3Ops from './Phase3Ops.jsx';
 import { LegalPage, LEGAL_PAGE_IDS } from './LegalPages.jsx';
 import {
   createFirebaseAccount,
+  getFirebaseAuthErrorMessage,
   isFirebaseConfigured,
   listenToFirebaseAuth,
   loadCloudCollection,
@@ -43,6 +44,7 @@ import {
   saveUserProfile,
   saveUserProfileSettings,
   sendCurrentUserEmailVerification,
+  sendFirebasePasswordReset,
   signInFirebaseAccount,
   signInFirebaseGoogle,
   signOutFirebase,
@@ -732,6 +734,7 @@ export default function VoiceExpenseTrackerPreview() {
   const [appLoading, setAppLoading] = useState(true);
   const [transactionsLoading, setTransactionsLoading] = useState(false);
   const [secureError, setSecureError] = useState('');
+  const [authNotice, setAuthNotice] = useState('');
   const [offline, setOffline] = useState(() => typeof navigator !== 'undefined' && !navigator.onLine);
   const [firebaseEnabled] = useState(() => isFirebaseConfigured());
   const [transcript, setTranscript] = useState('Click start and speak your expense...');
@@ -945,7 +948,7 @@ export default function VoiceExpenseTrackerPreview() {
   const completeAuth = async (event) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const email = sanitizeEmail(form.get('email'));
+    const email = sanitizeEmail(form.get('email')).toLowerCase().trim();
     const password = String(form.get('password') || '');
     const businessName = sanitizeText(form.get('businessName') || profile.name, 140);
     const ownerName = sanitizeText(form.get('ownerName') || profile.owner, 120);
@@ -962,8 +965,12 @@ export default function VoiceExpenseTrackerPreview() {
 
     setAuthLoading(true);
     setSecureError('');
+    setAuthNotice('');
 
     try {
+      if (import.meta.env.DEV) {
+        console.info('[Auth form submit]', { mode: authView, email, firebaseEnabled });
+      }
       if (firebaseEnabled) {
         const firebaseUser = authView === 'login'
           ? await signInFirebaseAccount({ email, password })
@@ -994,8 +1001,9 @@ export default function VoiceExpenseTrackerPreview() {
       setSecureError('Firebase is not configured yet, so this session is running in local demo mode.');
       setStatus('Demo mode active. Configure Firebase env variables for production login.');
     } catch (error) {
-      const message = publicSafeError(error, 'Login failed. Please check your details and try again.');
+      const message = getFirebaseAuthErrorMessage(error, 'Login failed. Please check your details and try again.');
       setSecureError(message);
+      setAuthNotice('');
       setStatus(message);
     } finally {
       setAuthLoading(false);
@@ -1005,6 +1013,7 @@ export default function VoiceExpenseTrackerPreview() {
   const loginWithGoogle = async () => {
     setAuthLoading(true);
     setSecureError('');
+    setAuthNotice('');
 
     try {
       if (firebaseEnabled) {
@@ -1035,8 +1044,48 @@ export default function VoiceExpenseTrackerPreview() {
       setSecureError('Firebase is not configured yet, so Google login is running in local demo mode.');
       setStatus('Google login simulated. Configure Firebase for production OAuth.');
     } catch (error) {
-      const message = publicSafeError(error, 'Google login failed. Please try again.');
+      const message = getFirebaseAuthErrorMessage(error, 'Google login failed. Please try again.');
       setSecureError(message);
+      setAuthNotice('');
+      setStatus(message);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const resetPassword = async (event) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const email = sanitizeEmail(form.get('email')).toLowerCase().trim();
+
+    if (!validateEmail(email)) {
+      setSecureError('Enter your registered email address.');
+      return;
+    }
+
+    if (!firebaseEnabled) {
+      setSecureError('Password reset requires Firebase authentication to be configured.');
+      setStatus('Firebase authentication required');
+      return;
+    }
+
+    setAuthLoading(true);
+    setSecureError('');
+    setAuthNotice('');
+
+    try {
+      if (import.meta.env.DEV) {
+        console.info('[Auth password reset submit]', { email });
+      }
+      const sent = await sendFirebasePasswordReset(email);
+      setStatus(sent ? 'Password reset email sent' : 'Password reset unavailable');
+      setSecureError('');
+      setAuthNotice('Password reset email sent. Check your inbox and spam folder.');
+      setAuthView('login');
+    } catch (error) {
+      const message = getFirebaseAuthErrorMessage(error, 'Could not send password reset email. Please try again.');
+      setSecureError(message);
+      setAuthNotice('');
       setStatus(message);
     } finally {
       setAuthLoading(false);
@@ -1044,13 +1093,31 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const logout = async () => {
+    if (import.meta.env.DEV) {
+      console.info('[Auth logout requested]', { uid: authUser?.uid || null, firebaseEnabled });
+    }
     if (firebaseEnabled) {
-      await signOutFirebase().catch(() => {});
+      await signOutFirebase().catch((error) => {
+        if (import.meta.env.DEV) {
+          console.error('[Auth logout error]', error);
+        }
+      });
     }
     localStorage.removeItem(AUTH_KEY);
     clearStorageScope();
     setAuthUser(null);
-    setAuthView('landing');
+    setLogs([]);
+    setLedgers([]);
+    setVouchers([]);
+    setCloudCustomers([]);
+    setCloudInventory([]);
+    setTransactionsLoading(false);
+    setStatementLedgerId('');
+    setVoucherPartyId('');
+    setSecureError('');
+    setAuthNotice('');
+    setStatus('Logged out');
+    setAuthView('login');
   };
 
   const resendVerificationEmail = async () => {
@@ -1102,6 +1169,15 @@ export default function VoiceExpenseTrackerPreview() {
         }
         if (user) {
           await applyAuthenticatedUser(user);
+        } else {
+          if (import.meta.env.DEV) {
+            console.info('[Firebase auth state]', { user: null });
+          }
+          setAuthUser(null);
+          if (import.meta.env.PROD) {
+            localStorage.removeItem(AUTH_KEY);
+            clearStorageScope();
+          }
         }
         setAuthLoading(false);
       },
@@ -1109,13 +1185,13 @@ export default function VoiceExpenseTrackerPreview() {
         if (!active) {
           return;
         }
-        setSecureError(publicSafeError(error, 'Firebase authentication is unavailable.'));
+        setSecureError(getFirebaseAuthErrorMessage(error, 'Firebase authentication is unavailable.'));
         setAuthLoading(false);
       }
     ).then((handler) => {
       unsubscribe = handler;
     }).catch((error) => {
-      setSecureError(publicSafeError(error, 'Firebase authentication is unavailable.'));
+      setSecureError(getFirebaseAuthErrorMessage(error, 'Firebase authentication is unavailable.'));
       setAuthLoading(false);
     });
 
@@ -2379,9 +2455,30 @@ export default function VoiceExpenseTrackerPreview() {
               <span className={`security-mode ${firebaseEnabled ? 'live' : 'demo'}`}>
                 {firebaseEnabled ? 'Firebase secure mode' : ALLOW_DEMO_AUTH ? 'Local demo mode' : 'Firebase required'}
               </span>
-              <span className="saas-kicker">{authView === 'login' ? 'Welcome back' : 'Create account'}</span>
-              <h1>{authView === 'login' ? 'Login to your dashboard' : 'Start managing your business'}</h1>
+              <span className="saas-kicker">
+                {authView === 'reset-password' ? 'Account recovery' : authView === 'login' ? 'Welcome back' : 'Create account'}
+              </span>
+              <h1>
+                {authView === 'reset-password'
+                  ? 'Reset your password'
+                  : authView === 'login'
+                    ? 'Login to your dashboard'
+                    : 'Start managing your business'}
+              </h1>
+              {authNotice && <div className="notice">{authNotice}</div>}
               {secureError && <div className="notice error">{secureError}</div>}
+              {authView === 'reset-password' ? (
+                <form onSubmit={resetPassword}>
+                  <label className="field-label" htmlFor="reset-email">Registered Email</label>
+                  <input id="reset-email" name="email" type="email" placeholder="owner@business.com" autoComplete="email" />
+                  <button className="saas-primary-button full" type="submit" disabled={authLoading || !firebaseEnabled}>
+                    {authLoading ? 'Sending...' : 'Send Reset Link'}
+                  </button>
+                  <button className="saas-google-button" type="button" onClick={() => setAuthView('login')} disabled={authLoading}>
+                    Back to Login
+                  </button>
+                </form>
+              ) : (
               <form onSubmit={completeAuth}>
                 {authView === 'register' && (
                   <>
@@ -2392,24 +2489,33 @@ export default function VoiceExpenseTrackerPreview() {
                   </>
                 )}
                 <label className="field-label" htmlFor="auth-email">Email</label>
-                <input id="auth-email" name="email" type="email" placeholder="owner@business.com" />
+                <input id="auth-email" name="email" type="email" placeholder="owner@business.com" autoComplete="email" />
                 <label className="field-label" htmlFor="auth-password">Password</label>
-                <input id="auth-password" name="password" type="password" placeholder="••••••••" />
+                <input id="auth-password" name="password" type="password" placeholder="••••••••" autoComplete={authView === 'login' ? 'current-password' : 'new-password'} />
                 {authView === 'login' && (
                   <div className="auth-row">
                     <label><input type="checkbox" /> Remember me</label>
-                    <button type="button" disabled={!firebaseEnabled}>Forgot password?</button>
+                    <button type="button" onClick={() => setAuthView('reset-password')} disabled={!firebaseEnabled}>
+                      Forgot password?
+                    </button>
                   </div>
                 )}
                 <button className="saas-primary-button full" type="submit" disabled={authLoading}>
                   {authLoading ? 'Please wait...' : authView === 'login' ? 'Login' : 'Create Account'}
                 </button>
               </form>
+              )}
+              {authView !== 'reset-password' && (
               <button className="saas-google-button" type="button" onClick={loginWithGoogle} disabled={authLoading}>
                 {authLoading ? 'Connecting...' : 'Continue with Google'}
               </button>
+              )}
               <p>
-                {authView === 'login' ? "Don't have an account?" : 'Already have an account?'}{' '}
+                {authView === 'reset-password'
+                  ? 'Remembered your password?'
+                  : authView === 'login'
+                    ? "Don't have an account?"
+                    : 'Already have an account?'}{' '}
                 <button type="button" onClick={() => setAuthView(authView === 'login' ? 'register' : 'login')}>
                   {authView === 'login' ? 'Register' : 'Login'}
                 </button>

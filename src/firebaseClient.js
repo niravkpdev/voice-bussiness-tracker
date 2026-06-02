@@ -85,15 +85,44 @@ function userPayload(user, extra = {}) {
   };
 }
 
+function normalizeFirebaseEmail(email) {
+  return sanitizeEmail(email).toLowerCase().trim();
+}
+
+export function getFirebaseAuthErrorMessage(error, fallback = 'Authentication failed. Please try again.') {
+  const code = String(error?.code || '').toLowerCase();
+  const messages = {
+    'auth/invalid-email': 'Enter a valid email address.',
+    'auth/user-disabled': 'This account has been disabled. Contact support.',
+    'auth/user-not-found': 'No account found with this email. Please register first.',
+    'auth/wrong-password': 'Incorrect password. Please try again or reset your password.',
+    'auth/invalid-credential': 'Email or password is incorrect. Please check both and try again.',
+    'auth/email-already-in-use': 'This email is already registered. Please login instead.',
+    'auth/weak-password': 'Password is too weak. Use at least 8 characters.',
+    'auth/too-many-requests': 'Too many login attempts. Please wait and try again later.',
+    'auth/network-request-failed': 'Network error. Check internet connection and try again.',
+    'auth/popup-closed-by-user': 'Google login was closed before completion.',
+    'auth/requires-recent-login': 'Please login again before doing this action.',
+    'auth/missing-email': 'Enter your registered email address.',
+  };
+
+  return messages[code] || fallback;
+}
+
 export async function createFirebaseAccount({ email, password, ownerName, businessName }) {
   const context = await getFirebaseContext();
   if (!context) {
     return null;
   }
 
+  const normalizedEmail = normalizeFirebaseEmail(email);
+  if (import.meta.env.DEV) {
+    console.info('[Firebase auth register start]', { email: normalizedEmail });
+  }
+
   const credential = await context.auth.createUserWithEmailAndPassword(
     context.authInstance,
-    sanitizeEmail(email),
+    normalizedEmail,
     password
   );
   await context.auth.updateProfile(credential.user, {
@@ -101,8 +130,11 @@ export async function createFirebaseAccount({ email, password, ownerName, busine
   });
   await context.auth.sendEmailVerification(credential.user);
 
-  const payload = userPayload(credential.user, { email, ownerName, businessName });
+  const payload = userPayload(credential.user, { email: normalizedEmail, ownerName, businessName });
   await saveUserProfile(payload.uid, payload);
+  if (import.meta.env.DEV) {
+    console.info('[Firebase auth register success]', { uid: payload.uid, email: payload.email });
+  }
   return payload;
 }
 
@@ -112,13 +144,21 @@ export async function signInFirebaseAccount({ email, password }) {
     return null;
   }
 
+  const normalizedEmail = normalizeFirebaseEmail(email);
+  if (import.meta.env.DEV) {
+    console.info('[Firebase auth login start]', { email: normalizedEmail });
+  }
+
   const credential = await context.auth.signInWithEmailAndPassword(
     context.authInstance,
-    sanitizeEmail(email),
+    normalizedEmail,
     password
   );
-  const payload = userPayload(credential.user, { email });
+  const payload = userPayload(credential.user, { email: normalizedEmail });
   await saveUserProfile(payload.uid, payload);
+  if (import.meta.env.DEV) {
+    console.info('[Firebase auth login success]', { uid: payload.uid, email: payload.email });
+  }
   return payload;
 }
 
@@ -146,13 +186,37 @@ export async function sendCurrentUserEmailVerification() {
   return true;
 }
 
+export async function sendFirebasePasswordReset(email) {
+  const context = await getFirebaseContext();
+  if (!context) {
+    return false;
+  }
+
+  const normalizedEmail = normalizeFirebaseEmail(email);
+  if (import.meta.env.DEV) {
+    console.info('[Firebase auth password reset start]', { email: normalizedEmail });
+  }
+
+  await context.auth.sendPasswordResetEmail(context.authInstance, normalizedEmail);
+  if (import.meta.env.DEV) {
+    console.info('[Firebase auth password reset sent]', { email: normalizedEmail });
+  }
+  return true;
+}
+
 export async function signOutFirebase() {
   const context = await getFirebaseContext();
   if (!context) {
     return;
   }
 
+  if (import.meta.env.DEV) {
+    console.info('[Firebase auth logout start]', { uid: context.authInstance.currentUser?.uid || null });
+  }
   await context.auth.signOut(context.authInstance);
+  if (import.meta.env.DEV) {
+    console.info('[Firebase auth logout success]');
+  }
 }
 
 export async function listenToFirebaseAuth(onUser, onError) {
