@@ -42,6 +42,7 @@ import {
   loadCloudCollection,
   loadUserProfileSettings,
   reloadCurrentFirebaseUser,
+  runFirestoreDebugTest,
   saveCloudRecord,
   saveUserProfile,
   saveUserProfileSettings,
@@ -139,6 +140,7 @@ const APP_TABS = [
   'party-statement',
   'profile-settings',
   'app-settings',
+  'firestore-test',
   'support',
   ...LEGAL_PAGE_IDS,
 ];
@@ -198,6 +200,7 @@ const SIDEBAR_SECTIONS = [
       ['security-center', 'Security'],
       ['profile-settings', 'Profile'],
       ['app-settings', 'Settings'],
+      ['firestore-test', 'Firestore Test'],
     ],
   },
 ];
@@ -1195,6 +1198,19 @@ export default function VoiceExpenseTrackerPreview() {
       setSecureError(getFirebaseAuthErrorMessage(error, 'Could not send verification email.'));
     } finally {
       setAuthLoading(false);
+    }
+  };
+
+  const runDebugFirestoreTest = async () => {
+    setSecureError('');
+    setStatus('Running Firestore test...');
+    try {
+      const result = await runFirestoreDebugTest();
+      setStatus(`Firestore test wrote ${result.path}`);
+    } catch (error) {
+      const message = publicSafeError(error, 'Firestore test failed. Check console for DEBUG_FIRESTORE_TEST_ERROR.');
+      setSecureError(message);
+      setStatus(message);
     }
   };
 
@@ -3908,6 +3924,34 @@ export default function VoiceExpenseTrackerPreview() {
                   </div>
                 </article>
               </div>
+            </section>
+          )}
+
+          {activeTab === 'firestore-test' && (
+            <section className="panel fade-in" id="firestore-test">
+              <div className="section-header">
+                <div>
+                  <span className="eyebrow">Temporary Debug</span>
+                  <h2>Firestore Test</h2>
+                  <p className="panel-hint">
+                    Direct Firebase setDoc test for the signed-in user. No app business logic is used.
+                  </p>
+                </div>
+                <span className={`runtime-pill ${firebaseEnabled ? 'live' : 'demo'}`}>
+                  {firebaseEnabled ? 'Firebase configured' : 'Firebase missing'}
+                </span>
+              </div>
+              <div className="notice">
+                This writes exactly to <code>{`users/${authUser?.uid || 'uid'}/debug/test`}</code> with message "hello firestore".
+              </div>
+              <button
+                className="manual-button"
+                type="button"
+                onClick={runDebugFirestoreTest}
+                disabled={!authUser || !firebaseEnabled}
+              >
+                Run Firestore Test
+              </button>
             </section>
           )}
         </main>

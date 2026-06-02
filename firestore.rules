@@ -210,6 +210,15 @@ service cloud.firestore {
           && (!('security' in request.resource.data) || request.resource.data.security is map)
           && safeUpdatedAt();
       }
+
+      match /debug/{documentId} {
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId)
+          && documentId == 'test'
+          && request.resource.data.keys().hasOnly(['message', 'createdAt'])
+          && request.resource.data.message == 'hello firestore'
+          && request.resource.data.createdAt == request.time;
+      }
     }
 
     match /publicLegal/{documentId} {

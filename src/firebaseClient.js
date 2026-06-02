@@ -268,6 +268,47 @@ export async function sendFirebasePasswordReset(email) {
   return true;
 }
 
+export async function runFirestoreDebugTest() {
+  const context = await getFirebaseContext();
+  const user = context?.authInstance?.currentUser;
+  const uid = user?.uid;
+  const path = uid ? `users/${uid}/debug/test` : null;
+
+  console.info('DEBUG_FIRESTORE_TEST_START', {
+    uid: uid || null,
+    path,
+    projectId: firebaseConfig.projectId || null,
+  });
+
+  try {
+    if (!context || !user || !uid) {
+      throw new Error('No authenticated Firebase user is available for Firestore debug test.');
+    }
+
+    await context.firestore.setDoc(
+      context.firestore.doc(context.db, 'users', uid, 'debug', 'test'),
+      {
+        message: 'hello firestore',
+        createdAt: context.firestore.serverTimestamp(),
+      }
+    );
+
+    console.info('DEBUG_FIRESTORE_TEST_SUCCESS', {
+      uid,
+      path,
+      projectId: firebaseConfig.projectId || null,
+    });
+    return { ok: true, uid, path };
+  } catch (error) {
+    console.error('DEBUG_FIRESTORE_TEST_ERROR', error?.code || null, error?.message || String(error), {
+      uid: uid || null,
+      path,
+      projectId: firebaseConfig.projectId || null,
+    });
+    throw error;
+  }
+}
+
 export async function signOutFirebase() {
   const context = await getFirebaseContext();
   if (!context) {
