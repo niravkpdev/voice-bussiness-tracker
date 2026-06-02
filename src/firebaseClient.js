@@ -24,6 +24,7 @@ const CLOUD_COLLECTIONS = new Set([
 ]);
 
 const appCheckSiteKey = import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY;
+const appCheckEnabled = import.meta.env.VITE_FIREBASE_APPCHECK_ENABLED === 'true';
 const FIRESTORE_TIMEOUT_MS = 10_000;
 const FIRESTORE_TIMEOUT_MESSAGE = 'Firestore write timed out. Check Firebase rules/API permissions.';
 
@@ -53,7 +54,7 @@ async function getFirebaseContext() {
   const modules = await loadFirebaseModules();
   const app = modules.app.getApps().length ? modules.app.getApp() : modules.app.initializeApp(firebaseConfig);
 
-  if (!appCheckStarted && appCheckSiteKey && typeof window !== 'undefined') {
+  if (!appCheckStarted && appCheckEnabled && appCheckSiteKey && typeof window !== 'undefined') {
     modules.appCheck.initializeAppCheck(app, {
       provider: new modules.appCheck.ReCaptchaV3Provider(appCheckSiteKey),
       isTokenAutoRefreshEnabled: true,
@@ -96,13 +97,15 @@ function firestoreTimeoutError(meta) {
 function withFirestoreTimeout(promise, meta) {
   let timer;
   const timeout = new Promise((_, reject) => {
-    timer = window.setTimeout(() => {
+    const setTimer = typeof window !== 'undefined' ? window.setTimeout : setTimeout;
+    timer = setTimer(() => {
       reject(firestoreTimeoutError(meta));
     }, FIRESTORE_TIMEOUT_MS);
   });
 
   return Promise.race([promise, timeout]).finally(() => {
-    window.clearTimeout(timer);
+    const clearTimer = typeof window !== 'undefined' ? window.clearTimeout : clearTimeout;
+    clearTimer(timer);
   });
 }
 
@@ -285,12 +288,15 @@ export async function runFirestoreDebugTest() {
       throw new Error('No authenticated Firebase user is available for Firestore debug test.');
     }
 
-    await context.firestore.setDoc(
-      context.firestore.doc(context.db, 'users', uid, 'debug', 'test'),
-      {
-        message: 'hello firestore',
-        createdAt: context.firestore.serverTimestamp(),
-      }
+    await withFirestoreTimeout(
+      context.firestore.setDoc(
+        context.firestore.doc(context.db, 'users', uid, 'debug', 'test'),
+        {
+          message: 'hello firestore',
+          createdAt: context.firestore.serverTimestamp(),
+        }
+      ),
+      { path, uid, operation: 'setDoc:debugTest' }
     );
 
     console.info('DEBUG_FIRESTORE_TEST_SUCCESS', {
@@ -435,7 +441,6 @@ export async function saveCloudRecord(uid, collectionName, id, data) {
   }
 
   const path = `users/${uid}/${collectionName}/${id}`;
-  const parentPath = `users/${uid}`;
   const payload = {
     ...data,
     ownerUid: uid,
@@ -447,24 +452,11 @@ export async function saveCloudRecord(uid, collectionName, id, data) {
     requestedUid: uid,
     projectId: firebaseConfig.projectId || null,
     path,
-    parentPath,
     operation: 'setDoc',
     payload,
   });
 
   try {
-    await withFirestoreTimeout(
-      context.firestore.setDoc(
-        context.firestore.doc(context.db, 'users', uid),
-        {
-          uid,
-          updatedAt: context.firestore.serverTimestamp(),
-        },
-        { merge: true }
-      ),
-      { path: parentPath, uid, operation: 'setDoc:userParent' }
-    );
-
     const docRef = context.firestore.doc(context.db, 'users', uid, collectionName, id);
     await withFirestoreTimeout(
       context.firestore.setDoc(
@@ -479,20 +471,12 @@ export async function saveCloudRecord(uid, collectionName, id, data) {
       { path, uid, operation: 'setDoc:record' }
     );
 
-    const verification = await withFirestoreTimeout(
-      context.firestore.getDoc(docRef),
-      { path, uid, operation: 'getDoc:verifyRecord' }
-    );
-    if (!verification.exists()) {
-      throw new Error(`Firestore write verification failed: document not found at ${path}`);
-    }
-
     console.info('FIRESTORE_WRITE_SUCCESS', {
       currentFirebaseUserUid: currentUid,
       requestedUid: uid,
       projectId: firebaseConfig.projectId || null,
       path,
-      verified: true,
+      operation: 'setDoc:record',
     });
     return true;
   } catch (error) {
@@ -565,8 +549,11 @@ export async function loadCloudCollection(uid, collectionName) {
     return [];
   }
 
-  const snapshot = await context.firestore.getDocs(
-    context.firestore.collection(context.db, 'users', uid, collectionName)
+  const snapshot = await withFirestoreTimeout(
+    context.firestore.getDocs(
+      context.firestore.collection(context.db, 'users', uid, collectionName)
+    ),
+    { path: `users/${uid}/${collectionName}`, uid, operation: 'getDocs:collection' }
   );
 
   return snapshot.docs.map((docSnapshot) => ({
