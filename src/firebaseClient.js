@@ -14,6 +14,7 @@ let analyticsStarted = false;
 let firebaseModulesPromise;
 let appCheckStarted = false;
 let firebaseProjectLogged = false;
+let firestoreDb;
 const CLOUD_COLLECTIONS = new Set([
   'transactions',
   'customers',
@@ -63,7 +64,7 @@ async function getFirebaseContext() {
   }
 
   const auth = modules.auth.getAuth(app);
-  const db = modules.firestore.getFirestore(app);
+  const db = getConfiguredFirestore(modules, app);
 
   if (!firebaseProjectLogged) {
     console.info('FIREBASE_PROJECT_ID', { projectId: firebaseConfig.projectId || null });
@@ -80,6 +81,33 @@ async function getFirebaseContext() {
   }
 
   return { ...modules, appInstance: app, authInstance: auth, db };
+}
+
+function getConfiguredFirestore(modules, app) {
+  if (firestoreDb) {
+    return firestoreDb;
+  }
+
+  try {
+    firestoreDb = modules.firestore.initializeFirestore(app, {
+      experimentalForceLongPolling: true,
+      useFetchStreams: false,
+      ignoreUndefinedProperties: true,
+    });
+    console.info('FIRESTORE_TRANSPORT_MODE', {
+      mode: 'force-long-polling',
+      useFetchStreams: false,
+    });
+  } catch (error) {
+    firestoreDb = modules.firestore.getFirestore(app);
+    console.info('FIRESTORE_TRANSPORT_MODE', {
+      mode: 'existing-firestore-instance',
+      code: error?.code || null,
+      message: error?.message || String(error),
+    });
+  }
+
+  return firestoreDb;
 }
 
 function firestoreTimeoutError(meta) {
