@@ -1306,39 +1306,74 @@ export default function VoiceExpenseTrackerPreview() {
 
   const refreshVouchers = () => setVouchers(import.meta.env.DEV ? readVouchers() : vouchers);
 
-  const persistVoucher = (voucher) => {
+  const persistVoucher = async (voucher) => {
     if (!requireSensitiveAccess('voucher saving')) {
-      return;
+      return false;
     }
 
     if (authUser?.uid) {
-      saveCloudRecord(authUser.uid, 'transactions', voucher.id, {
+      const transactionPayload = {
         ...voucher,
         transactionId: voucher.id,
         userId: authUser.uid,
-      })
-        .then(() => {
-          setVouchers((current) => [voucher, ...current.filter((item) => item.id !== voucher.id)]);
-          setStatus('Transaction saved to Firestore');
-        })
-        .catch((error) => setSecureError(publicSafeError(error, 'Cloud transaction save failed. Please try again.')));
+      };
+      const firestorePath = `users/${authUser.uid}/transactions/${voucher.id}`;
+
+      console.info('[Transaction save request]', {
+        currentFirebaseUserUid: authUser.uid,
+        path: firestorePath,
+        payload: transactionPayload,
+      });
+
       if (import.meta.env.DEV) {
         saveVoucher(voucher);
         refreshVouchers();
       }
-      return;
+
+      try {
+        const saved = await saveCloudRecord(authUser.uid, 'transactions', voucher.id, transactionPayload);
+        if (!saved) {
+          throw new Error(`Firestore write returned false for ${firestorePath}`);
+        }
+        console.info('[Transaction save success]', {
+          currentFirebaseUserUid: authUser.uid,
+          path: firestorePath,
+          transactionId: voucher.id,
+        });
+        setVouchers((current) => [voucher, ...current.filter((item) => item.id !== voucher.id)]);
+        setStatus('Transaction saved to Firestore');
+        return true;
+      } catch (error) {
+        console.error('[Transaction save error]', {
+          currentFirebaseUserUid: authUser.uid,
+          path: firestorePath,
+          payload: transactionPayload,
+          error,
+        });
+        setSecureError(publicSafeError(error, 'Cloud transaction save failed. Please try again.'));
+        setStatus('Firestore save failed');
+        return false;
+      }
     }
 
     if (import.meta.env.DEV) {
       saveVoucher(voucher);
       refreshVouchers();
-      return;
+      console.info('[Transaction saved in development storage]', {
+        reason: 'No Firebase user is available in local development.',
+        transactionId: voucher.id,
+        payload: voucher,
+      });
+      setStatus('Development transaction saved locally');
+      return true;
     }
 
     setSecureError('Sign in with Firebase before saving production transactions.');
+    setStatus('Firebase sign-in required');
+    return false;
   };
 
-  const saveReceiptOrPayment = ({
+  const saveReceiptOrPayment = async ({
     type,
     amount,
     narration,
@@ -1361,11 +1396,11 @@ export default function VoiceExpenseTrackerPreview() {
       date,
     });
 
-    persistVoucher(voucher);
-    return voucher;
+    const saved = await persistVoucher(voucher);
+    return saved ? voucher : null;
   };
 
-  const saveVoucherEntry = (event) => {
+  const saveVoucherEntry = async (event) => {
     event.preventDefault();
 
     if (!requireSensitiveAccess('voucher entry')) {
@@ -1386,12 +1421,13 @@ export default function VoiceExpenseTrackerPreview() {
     }
 
     try {
+      let savedVoucher = null;
       if (voucherType === 'Receipt') {
         const creditLedgerId = useSalesInsteadOfParty
           ? SALES_LEDGER_ID
           : voucherPartyId || SALES_LEDGER_ID;
 
-        saveReceiptOrPayment({
+        savedVoucher = await saveReceiptOrPayment({
           type: 'Receipt',
           amount,
           narration,
@@ -1405,7 +1441,7 @@ export default function VoiceExpenseTrackerPreview() {
           ? voucherExpenseId
           : voucherPartyId || voucherExpenseId;
 
-        saveReceiptOrPayment({
+        savedVoucher = await saveReceiptOrPayment({
           type: 'Payment',
           amount,
           narration,
@@ -1428,7 +1464,7 @@ export default function VoiceExpenseTrackerPreview() {
           source: 'manual',
           date: voucherDate,
         });
-        persistVoucher(voucher);
+        savedVoucher = await persistVoucher(voucher) ? voucher : null;
       } else if (voucherType === 'Purchase') {
         if (!voucherPartyId || useExpenseInsteadOfSupplier) {
           setStatus('Select a supplier party for credit purchase');
@@ -1443,16 +1479,18 @@ export default function VoiceExpenseTrackerPreview() {
           source: 'manual',
           date: voucherDate,
         });
-        persistVoucher(voucher);
+        savedVoucher = await persistVoucher(voucher) ? voucher : null;
       }
 
-      setStatus(`${voucherType} voucher saved`);
+      if (!savedVoucher) {
+        return;
+      }
       setVoucherAmount('');
       setVoucherNarration('');
     } catch (error) {
       setStatus(error.message);
     }
-  };  const handleSaveVoiceConfirmation = (confirmedData) => {
+  };  const handleSaveVoiceConfirmation = async (confirmedData) => {
     if (!requireSensitiveAccess('voice saving')) {
       return;
     }
@@ -1477,6 +1515,7 @@ export default function VoiceExpenseTrackerPreview() {
     }
 
     try {
+      let savedVoucher = null;
       let resolvedPartyId = '';
       if (partyName.trim()) {
         const partyType = (type === 'Receipt' || type === 'Sales') ? 'customer' : 'supplier';
@@ -1498,7 +1537,7 @@ export default function VoiceExpenseTrackerPreview() {
       const targetDate = date || new Date().toISOString().slice(0, 10);
 
       if (type === 'Receipt') {
-        saveReceiptOrPayment({
+        savedVoucher = await saveReceiptOrPayment({
           type: 'Receipt',
           amount,
           narration,
@@ -1508,7 +1547,7 @@ export default function VoiceExpenseTrackerPreview() {
           date: targetDate,
         });
       } else if (type === 'Payment') {
-        saveReceiptOrPayment({
+        savedVoucher = await saveReceiptOrPayment({
           type: 'Payment',
           amount,
           narration,
@@ -1529,7 +1568,7 @@ export default function VoiceExpenseTrackerPreview() {
           source: 'voice',
           date: targetDate,
         });
-        persistVoucher(voucher);
+        savedVoucher = await persistVoucher(voucher) ? voucher : null;
       } else if (type === 'Purchase') {
         if (!resolvedPartyId) {
           throw new Error('Supplier party name is required for credit purchase');
@@ -1542,10 +1581,12 @@ export default function VoiceExpenseTrackerPreview() {
           source: 'voice',
           date: targetDate,
         });
-        persistVoucher(voucher);
+        savedVoucher = await persistVoucher(voucher) ? voucher : null;
       }
 
-      setStatus(`${type} voucher saved successfully`);
+      if (!savedVoucher) {
+        return;
+      }
       setVoiceConfirmation(null);
       setSecureError('');
     } catch (error) {
@@ -1672,7 +1713,7 @@ export default function VoiceExpenseTrackerPreview() {
     setStatus('Voucher deleted');
   };
 
-  const saveManualEntry = (event) => {
+  const saveManualEntry = async (event) => {
     event.preventDefault();
 
     if (!requireSensitiveAccess('manual entry')) {
@@ -1688,7 +1729,7 @@ export default function VoiceExpenseTrackerPreview() {
     }
 
     if (manualType === 'Income' && amount > 0) {
-      saveReceiptOrPayment({
+      const savedVoucher = await saveReceiptOrPayment({
         type: 'Receipt',
         amount,
         narration: text,
@@ -1696,15 +1737,17 @@ export default function VoiceExpenseTrackerPreview() {
         counterLedgerId: voucherPartyId && !useSalesInsteadOfParty ? voucherPartyId : SALES_LEDGER_ID,
         source: 'manual',
       });
+      if (!savedVoucher) {
+        return;
+      }
       setTranscript(text);
-      setStatus('Receipt voucher saved');
       setManualText('');
       setManualAmount('');
       return;
     }
 
     if (manualType === 'Expense' && amount > 0) {
-      saveReceiptOrPayment({
+      const savedVoucher = await saveReceiptOrPayment({
         type: 'Payment',
         amount,
         narration: text,
@@ -1712,8 +1755,10 @@ export default function VoiceExpenseTrackerPreview() {
         counterLedgerId: voucherExpenseId,
         source: 'manual',
       });
+      if (!savedVoucher) {
+        return;
+      }
       setTranscript(text);
-      setStatus('Payment voucher saved');
       setManualText('');
       setManualAmount('');
       return;

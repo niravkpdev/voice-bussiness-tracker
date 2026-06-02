@@ -188,8 +188,34 @@ export async function saveUserProfile(uid, profile) {
 export async function saveCloudRecord(uid, collectionName, id, data) {
   const context = await getFirebaseContext();
   if (!context || !uid || !collectionName || !id || !CLOUD_COLLECTIONS.has(collectionName)) {
+    console.error('[Firestore write blocked]', {
+      requestedUid: uid || null,
+      currentFirebaseUserUid: context?.authInstance?.currentUser?.uid || null,
+      collectionName,
+      documentId: id,
+      path: uid && collectionName && id ? `users/${uid}/${collectionName}/${id}` : null,
+      reason: !context
+        ? 'Firebase is not configured or could not initialize.'
+        : !CLOUD_COLLECTIONS.has(collectionName)
+          ? 'Collection is not allowed for cloud writes.'
+          : 'Missing uid, collection name, or document id.',
+    });
     return false;
   }
+
+  const path = `users/${uid}/${collectionName}/${id}`;
+  const payload = {
+    ...data,
+    ownerUid: uid,
+    updatedAt: '[serverTimestamp]',
+  };
+
+  console.info('[Firestore write start]', {
+    currentFirebaseUserUid: context.authInstance.currentUser?.uid || null,
+    requestedUid: uid,
+    path,
+    payload,
+  });
 
   await context.firestore.setDoc(
     context.firestore.doc(context.db, 'users', uid, collectionName, id),
@@ -200,6 +226,12 @@ export async function saveCloudRecord(uid, collectionName, id, data) {
     },
     { merge: true }
   );
+
+  console.info('[Firestore write success]', {
+    currentFirebaseUserUid: context.authInstance.currentUser?.uid || null,
+    requestedUid: uid,
+    path,
+  });
   return true;
 }
 
