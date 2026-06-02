@@ -12,6 +12,19 @@ const firebaseConfig = {
 
 let analyticsStarted = false;
 let firebaseModulesPromise;
+let appCheckStarted = false;
+const CLOUD_COLLECTIONS = new Set([
+  'vouchers',
+  'logs',
+  'customers',
+  'inventory',
+  'reports',
+  'settings',
+  'profile',
+  'snapshots',
+]);
+
+const appCheckSiteKey = import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY;
 
 export function isFirebaseConfigured() {
   return Boolean(firebaseConfig.apiKey && firebaseConfig.authDomain && firebaseConfig.projectId && firebaseConfig.appId);
@@ -24,7 +37,8 @@ async function loadFirebaseModules() {
       import('firebase/auth'),
       import('firebase/firestore'),
       import('firebase/analytics'),
-    ]).then(([app, auth, firestore, analytics]) => ({ app, auth, firestore, analytics }));
+      import('firebase/app-check'),
+    ]).then(([app, auth, firestore, analytics, appCheck]) => ({ app, auth, firestore, analytics, appCheck }));
   }
 
   return firebaseModulesPromise;
@@ -37,6 +51,15 @@ async function getFirebaseContext() {
 
   const modules = await loadFirebaseModules();
   const app = modules.app.getApps().length ? modules.app.getApp() : modules.app.initializeApp(firebaseConfig);
+
+  if (!appCheckStarted && appCheckSiteKey && typeof window !== 'undefined') {
+    modules.appCheck.initializeAppCheck(app, {
+      provider: new modules.appCheck.ReCaptchaV3Provider(appCheckSiteKey),
+      isTokenAutoRefreshEnabled: true,
+    });
+    appCheckStarted = true;
+  }
+
   const auth = modules.auth.getAuth(app);
   const db = modules.firestore.getFirestore(app);
 
@@ -60,6 +83,7 @@ function userPayload(user, extra = {}) {
     businessName: sanitizeText(extra.businessName || 'Voice Business Tracker', 140),
     role: extra.role || 'Owner',
     provider: user.providerData?.[0]?.providerId || extra.provider || 'email',
+    emailVerified: Boolean(user.emailVerified),
     loginAt: new Date().toISOString(),
   };
 }
@@ -78,6 +102,7 @@ export async function createFirebaseAccount({ email, password, ownerName, busine
   await context.auth.updateProfile(credential.user, {
     displayName: sanitizeText(ownerName || businessName || 'Business Owner', 120),
   });
+  await context.auth.sendEmailVerification(credential.user);
 
   const payload = userPayload(credential.user, { email, ownerName, businessName });
   await saveUserProfile(payload.uid, payload);
@@ -111,6 +136,17 @@ export async function signInFirebaseGoogle() {
   const payload = userPayload(credential.user, { provider: 'Google' });
   await saveUserProfile(payload.uid, payload);
   return payload;
+}
+
+export async function sendCurrentUserEmailVerification() {
+  const context = await getFirebaseContext();
+  const user = context?.authInstance?.currentUser;
+  if (!context || !user) {
+    return false;
+  }
+
+  await context.auth.sendEmailVerification(user);
+  return true;
 }
 
 export async function signOutFirebase() {
@@ -154,7 +190,7 @@ export async function saveUserProfile(uid, profile) {
 
 export async function saveCloudRecord(uid, collectionName, id, data) {
   const context = await getFirebaseContext();
-  if (!context || !uid || !collectionName || !id) {
+  if (!context || !uid || !collectionName || !id || !CLOUD_COLLECTIONS.has(collectionName)) {
     return false;
   }
 

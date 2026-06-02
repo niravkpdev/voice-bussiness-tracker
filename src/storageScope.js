@@ -38,6 +38,10 @@ export function readScopedString(key) {
     return scoped;
   }
 
+  if (import.meta.env.PROD) {
+    return null;
+  }
+
   return localStorage.getItem(key);
 }
 

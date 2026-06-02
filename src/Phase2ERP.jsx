@@ -67,16 +67,6 @@ function monthKey(date) {
   return (date || today()).slice(0, 7);
 }
 
-function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>"']/g, (char) => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#039;',
-  })[char]);
-}
-
 function qrCells(seed) {
   const text = String(seed || 'invoice');
   let hash = 0;
@@ -498,63 +488,92 @@ export default function Phase2ERP({
 
   const printInvoice = (invoice) => {
     const customer = scopedCustomers.find((item) => item.id === invoice.customerId) || {};
-    const rows = invoice.lines.map((line) => `
-      <tr>
-        <td>${escapeHtml(line.name)}</td>
-        <td>${escapeHtml(line.qty)}</td>
-        <td>${formatCurrency(line.rate)}</td>
-        <td>${line.gst}%</td>
-        <td>${formatCurrency(line.total)}</td>
-      </tr>
-    `).join('');
     const win = window.open('', '_blank', 'width=900,height=900');
     if (!win) {
       onStatus('Allow popups to print invoice');
       return;
     }
-    win.document.write(`
-      <html>
-        <head>
-          <title>${invoice.invoiceNo}</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 28px; color: #111827; }
-            .head { display: flex; justify-content: space-between; gap: 24px; border-bottom: 2px solid #111827; padding-bottom: 16px; }
-            .logo { width: 72px; height: 72px; object-fit: contain; }
-            table { width: 100%; border-collapse: collapse; margin-top: 22px; }
-            th, td { border: 1px solid #d1d5db; padding: 10px; text-align: left; }
-            .total { text-align: right; margin-top: 18px; font-size: 20px; font-weight: 700; }
-            .signature { margin-top: 80px; text-align: right; }
-          </style>
-        </head>
-        <body>
-          <div class="head">
-            <div>
-              ${profile.logo ? `<img class="logo" src="${profile.logo}" />` : ''}
-              <h1>${escapeHtml(profile.name)}</h1>
-              <p>${escapeHtml(profile.address || profile.tagline)}</p>
-              <p>GSTIN: ${escapeHtml(profile.gstin || '')}</p>
-            </div>
-            <div>
-              <h2>${invoice.invoiceNo}</h2>
-              <p>Date: ${invoice.date}</p>
-              <p>Status: ${invoice.status}</p>
-              <p>Due: ${invoice.dueDate}</p>
-            </div>
-          </div>
-          <h3>Bill To</h3>
-          <p>${escapeHtml(customer.name || '')}<br/>${escapeHtml(customer.mobile || '')}<br/>${escapeHtml(customer.address || '')}<br/>GST: ${escapeHtml(customer.gst || '')}</p>
-          <table>
-            <thead><tr><th>Product</th><th>Qty</th><th>Rate</th><th>GST</th><th>Total</th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
-          <p class="total">Grand Total: ${formatCurrency(invoice.total)}</p>
-          <p>Terms: ${escapeHtml(invoice.terms || TERMS)}</p>
-          <div class="signature">Authorized Signature</div>
-          <script>window.print();</script>
-        </body>
-      </html>
-    `);
-    win.document.close();
+
+    const doc = win.document;
+    doc.title = invoice.invoiceNo;
+    const style = doc.createElement('style');
+    style.textContent = [
+      'body { font-family: Arial, sans-serif; margin: 28px; color: #111827; }',
+      '.head { display: flex; justify-content: space-between; gap: 24px; border-bottom: 2px solid #111827; padding-bottom: 16px; }',
+      '.logo { width: 72px; height: 72px; object-fit: contain; }',
+      'table { width: 100%; border-collapse: collapse; margin-top: 22px; }',
+      'th, td { border: 1px solid #d1d5db; padding: 10px; text-align: left; }',
+      '.total { text-align: right; margin-top: 18px; font-size: 20px; font-weight: 700; }',
+      '.signature { margin-top: 80px; text-align: right; }',
+    ].join('\n');
+    doc.head.append(style);
+
+    const head = doc.createElement('div');
+    head.className = 'head';
+    const left = doc.createElement('div');
+    if (profile.logo) {
+      const logo = doc.createElement('img');
+      logo.className = 'logo';
+      logo.alt = '';
+      logo.src = profile.logo;
+      left.append(logo);
+    }
+    const businessName = doc.createElement('h1');
+    businessName.textContent = profile.name;
+    const businessAddress = doc.createElement('p');
+    businessAddress.textContent = profile.address || profile.tagline;
+    const gst = doc.createElement('p');
+    gst.textContent = `GSTIN: ${profile.gstin || ''}`;
+    left.append(businessName, businessAddress, gst);
+
+    const right = doc.createElement('div');
+    [['h2', invoice.invoiceNo], ['p', `Date: ${invoice.date}`], ['p', `Status: ${invoice.status}`], ['p', `Due: ${invoice.dueDate}`]]
+      .forEach(([tag, value]) => {
+        const node = doc.createElement(tag);
+        node.textContent = value;
+        right.append(node);
+      });
+    head.append(left, right);
+    doc.body.append(head);
+
+    const billTitle = doc.createElement('h3');
+    billTitle.textContent = 'Bill To';
+    const billTo = doc.createElement('p');
+    billTo.textContent = [customer.name, customer.mobile, customer.address, customer.gst ? `GST: ${customer.gst}` : ''].filter(Boolean).join('\n');
+    doc.body.append(billTitle, billTo);
+
+    const table = doc.createElement('table');
+    const thead = doc.createElement('thead');
+    const headerRow = doc.createElement('tr');
+    ['Product', 'Qty', 'Rate', 'GST', 'Total'].forEach((label) => {
+      const th = doc.createElement('th');
+      th.textContent = label;
+      headerRow.append(th);
+    });
+    thead.append(headerRow);
+    const tbody = doc.createElement('tbody');
+    invoice.lines.forEach((line) => {
+      const row = doc.createElement('tr');
+      [line.name, line.qty, formatCurrency(line.rate), `${line.gst}%`, formatCurrency(line.total)].forEach((value) => {
+        const cell = doc.createElement('td');
+        cell.textContent = String(value ?? '');
+        row.append(cell);
+      });
+      tbody.append(row);
+    });
+    table.append(thead, tbody);
+    doc.body.append(table);
+
+    const total = doc.createElement('p');
+    total.className = 'total';
+    total.textContent = `Grand Total: ${formatCurrency(invoice.total)}`;
+    const terms = doc.createElement('p');
+    terms.textContent = `Terms: ${invoice.terms || TERMS}`;
+    const signature = doc.createElement('div');
+    signature.className = 'signature';
+    signature.textContent = 'Authorized Signature';
+    doc.body.append(total, terms, signature);
+    win.setTimeout(() => win.print(), 50);
   };
 
   const addBusiness = (event) => {

@@ -41,6 +41,7 @@ import {
   saveCloudRecord,
   saveCloudSnapshot,
   saveUserProfile,
+  sendCurrentUserEmailVerification,
   signInFirebaseAccount,
   signInFirebaseGoogle,
   signOutFirebase,
@@ -83,6 +84,8 @@ const DEFAULT_PROFILE = {
 };
 const SUPPORT_EMAIL = 'trinetr1901@gmail.com';
 const SUPPORT_PHONE = '+918488943771';
+const ALLOW_DEMO_AUTH = import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEMO_AUTH !== 'false';
+const REQUIRE_VERIFIED_EMAIL = import.meta.env.PROD;
 const FEATURE_CARDS = [
   ['Voice Transactions', 'Add expenses, sales, customers, and inventory using natural commands.'],
   ['Expense Tracking', 'Capture daily expenses instantly with categories and notes.'],
@@ -313,13 +316,76 @@ function getBusinessHealthLabel(score) {
 }
 
 function safeMathAnswer(input) {
-  const expression = input.replace(/,/g, '').trim();
+  const expression = input.replace(/,/g, '').replace(/\s+/g, '');
   if (!/^[\d+\-*/().\s]+$/.test(expression)) {
     return null;
   }
 
   try {
-    const value = Function(`"use strict"; return (${expression});`)();
+    let index = 0;
+
+    const parseNumber = () => {
+      let start = index;
+      while (index < expression.length && /[\d.]/.test(expression[index])) {
+        index += 1;
+      }
+      if (start === index) {
+        throw new Error('Expected number');
+      }
+      const raw = expression.slice(start, index);
+      if ((raw.match(/\./g) || []).length > 1) {
+        throw new Error('Invalid number');
+      }
+      return Number(raw);
+    };
+
+    const parseFactor = () => {
+      if (expression[index] === '+') {
+        index += 1;
+        return parseFactor();
+      }
+      if (expression[index] === '-') {
+        index += 1;
+        return -parseFactor();
+      }
+      if (expression[index] === '(') {
+        index += 1;
+        const value = parseExpression();
+        if (expression[index] !== ')') {
+          throw new Error('Missing closing parenthesis');
+        }
+        index += 1;
+        return value;
+      }
+      return parseNumber();
+    };
+
+    const parseTerm = () => {
+      let value = parseFactor();
+      while (expression[index] === '*' || expression[index] === '/') {
+        const operator = expression[index];
+        index += 1;
+        const next = parseFactor();
+        value = operator === '*' ? value * next : value / next;
+      }
+      return value;
+    };
+
+    function parseExpression() {
+      let value = parseTerm();
+      while (expression[index] === '+' || expression[index] === '-') {
+        const operator = expression[index];
+        index += 1;
+        const next = parseTerm();
+        value = operator === '+' ? value + next : value - next;
+      }
+      return value;
+    }
+
+    const value = parseExpression();
+    if (index !== expression.length) {
+      return null;
+    }
     return Number.isFinite(value) ? value : null;
   } catch {
     return null;
@@ -633,9 +699,17 @@ function CircularHealthScore({ score }) {
 }
 
 export default function VoiceExpenseTrackerPreview() {
-  const [authView, setAuthView] = useState(() => (localStorage.getItem(AUTH_KEY) ? 'app' : 'landing'));
+  const [authView, setAuthView] = useState(() => {
+    if (import.meta.env.PROD) {
+      return 'landing';
+    }
+    return localStorage.getItem(AUTH_KEY) ? 'app' : 'landing';
+  });
   const [authUser, setAuthUser] = useState(() => {
     try {
+      if (import.meta.env.PROD) {
+        return null;
+      }
       const storedUser = JSON.parse(localStorage.getItem(AUTH_KEY) || 'null');
       if (storedUser?.uid || storedUser?.email) {
         setStorageScope(storedUser.uid || storedUser.email);
@@ -695,6 +769,23 @@ export default function VoiceExpenseTrackerPreview() {
     return section?.id || 'overview';
   });
   const sidebarSectionRefs = useRef({});
+  const hasVerifiedAccess = !REQUIRE_VERIFIED_EMAIL || Boolean(authUser?.emailVerified);
+
+  const requireSensitiveAccess = (actionName = 'this action') => {
+    if (!authUser) {
+      setSecureError('Please sign in before using this feature.');
+      setStatus('Authentication required');
+      return false;
+    }
+
+    if (REQUIRE_VERIFIED_EMAIL && !authUser.emailVerified) {
+      setSecureError(`Please verify your email before using ${actionName}.`);
+      setStatus('Email verification required');
+      return false;
+    }
+
+    return true;
+  };
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -763,10 +854,17 @@ export default function VoiceExpenseTrackerPreview() {
     };
 
     setStorageScope(scopedUser.uid || scopedUser.email);
-    localStorage.setItem(AUTH_KEY, JSON.stringify(scopedUser));
+    if (!import.meta.env.PROD) {
+      localStorage.setItem(AUTH_KEY, JSON.stringify(scopedUser));
+    }
     setAuthUser(scopedUser);
-    setAuthView('app');
+    setAuthView(REQUIRE_VERIFIED_EMAIL && !scopedUser.emailVerified ? 'verify-email' : 'app');
     setSecureError('');
+
+    if (REQUIRE_VERIFIED_EMAIL && !scopedUser.emailVerified) {
+      setStatus('Email verification required');
+      return;
+    }
 
     if (restoreCloud && firebaseEnabled && scopedUser.uid) {
       const snapshot = await loadCloudSnapshot(scopedUser.uid).catch(() => null);
@@ -836,12 +934,19 @@ export default function VoiceExpenseTrackerPreview() {
         return;
       }
 
+      if (!ALLOW_DEMO_AUTH) {
+        setSecureError('Production authentication is not configured. Add Firebase environment variables before launch.');
+        setStatus('Firebase authentication required');
+        return;
+      }
+
       const nextUser = {
         uid: email,
         businessName,
         ownerName,
         email,
         role: 'Owner',
+        emailVerified: true,
         loginAt: new Date().toISOString(),
         mode: 'demo',
       };
@@ -869,6 +974,12 @@ export default function VoiceExpenseTrackerPreview() {
         return;
       }
 
+      if (!ALLOW_DEMO_AUTH) {
+        setSecureError('Production Google login requires Firebase configuration.');
+        setStatus('Firebase authentication required');
+        return;
+      }
+
       const nextUser = {
         uid: profile.email,
         businessName: profile.name,
@@ -876,6 +987,7 @@ export default function VoiceExpenseTrackerPreview() {
         email: profile.email,
         role: 'Owner',
         provider: 'Google',
+        emailVerified: true,
         loginAt: new Date().toISOString(),
         mode: 'demo',
       };
@@ -899,6 +1011,15 @@ export default function VoiceExpenseTrackerPreview() {
     clearStorageScope();
     setAuthUser(null);
     setAuthView('landing');
+  };
+
+  const resendVerificationEmail = async () => {
+    try {
+      const sent = await sendCurrentUserEmailVerification();
+      setStatus(sent ? 'Verification email sent' : 'Sign in again to send verification email');
+    } catch (error) {
+      setSecureError(publicSafeError(error, 'Could not send verification email.'));
+    }
   };
 
   useEffect(() => {
@@ -1175,6 +1296,10 @@ export default function VoiceExpenseTrackerPreview() {
   const refreshVouchers = () => setVouchers(readVouchers());
 
   const persistVoucher = (voucher) => {
+    if (!requireSensitiveAccess('voucher saving')) {
+      return;
+    }
+
     saveVoucher(voucher);
     refreshVouchers();
     if (authUser?.uid) {
@@ -1213,6 +1338,10 @@ export default function VoiceExpenseTrackerPreview() {
 
   const saveVoucherEntry = (event) => {
     event.preventDefault();
+
+    if (!requireSensitiveAccess('voucher entry')) {
+      return;
+    }
 
     const amount = normalizeAmount(voucherAmount);
     const narration = sanitizeText(voucherNarration, 300);
@@ -1295,6 +1424,10 @@ export default function VoiceExpenseTrackerPreview() {
       setStatus(error.message);
     }
   };  const handleSaveVoiceConfirmation = (confirmedData) => {
+    if (!requireSensitiveAccess('voice saving')) {
+      return;
+    }
+
     const validation = validateVoicePayload(confirmedData);
     if (!validation.valid && confirmedData.confidence < 0.35) {
       setSecureError(validation.errors.join(' '));
@@ -1394,6 +1527,10 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const startVoiceRecognition = async () => {
+    if (!requireSensitiveAccess('voice entry')) {
+      return;
+    }
+
     const rateLimit = canRunRateLimitedAction(`voice:${authUser?.uid || 'guest'}`, { limit: 8, windowMs: 60_000 });
     if (!rateLimit.allowed) {
       setSecureError(rateLimit.message);
@@ -1480,6 +1617,10 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const saveLog = (log) => {
+    if (!requireSensitiveAccess('log saving')) {
+      return;
+    }
+
     const updatedLogs = [log, ...readSavedLogs()];
     writeScopedString(STORAGE_KEY, JSON.stringify(updatedLogs));
     setLogs(updatedLogs);
@@ -1506,6 +1647,10 @@ export default function VoiceExpenseTrackerPreview() {
 
   const saveManualEntry = (event) => {
     event.preventDefault();
+
+    if (!requireSensitiveAccess('manual entry')) {
+      return;
+    }
 
     const text = sanitizeText(manualText, 300);
     const amount = normalizeAmount(manualAmount);
@@ -1605,6 +1750,9 @@ export default function VoiceExpenseTrackerPreview() {
 
   const saveBusinessProfile = async (event) => {
     event.preventDefault();
+    if (!requireSensitiveAccess('profile changes')) {
+      return;
+    }
     const formData = new FormData(event.currentTarget);
     const nextProfile = {
       ...profile,
@@ -1785,46 +1933,42 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const printVoucherReceipt = (voucher) => {
-    const receiptText = buildVoucherReceiptText(voucher)
-      .split('\n')
-      .map((line) => `<p>${line.replace(/[&<>"']/g, (char) => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;',
-      })[char])}</p>`)
-      .join('');
     const receiptWindow = window.open('', '_blank', 'width=720,height=860');
     if (!receiptWindow) {
       setStatus('Allow popups to print receipt/PDF');
       return;
     }
-    receiptWindow.document.write(`
-      <html>
-        <head>
-          <title>${voucher.type} Receipt</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 32px; color: #111827; }
-            .receipt { border: 1px solid #d1d5db; border-radius: 12px; padding: 24px; }
-            h1 { margin: 0 0 16px; font-size: 24px; }
-            p { margin: 8px 0; font-size: 14px; }
-          </style>
-        </head>
-        <body>
-          <div class="receipt">
-            <h1>${profile.name}</h1>
-            ${receiptText}
-          </div>
-          <script>window.print();</script>
-        </body>
-      </html>
-    `);
-    receiptWindow.document.close();
+
+    const doc = receiptWindow.document;
+    doc.title = `${voucher.type} Receipt`;
+    const style = doc.createElement('style');
+    style.textContent = [
+      'body { font-family: Arial, sans-serif; margin: 32px; color: #111827; }',
+      '.receipt { border: 1px solid #d1d5db; border-radius: 12px; padding: 24px; }',
+      'h1 { margin: 0 0 16px; font-size: 24px; }',
+      'p { margin: 8px 0; font-size: 14px; }',
+    ].join('\n');
+    doc.head.append(style);
+
+    const receipt = doc.createElement('div');
+    receipt.className = 'receipt';
+    const title = doc.createElement('h1');
+    title.textContent = profile.name;
+    receipt.append(title);
+    buildVoucherReceiptText(voucher).split('\n').forEach((line) => {
+      const paragraph = doc.createElement('p');
+      paragraph.textContent = line;
+      receipt.append(paragraph);
+    });
+    doc.body.append(receipt);
+    receiptWindow.setTimeout(() => receiptWindow.print(), 50);
   };
 
   const answerAiQuestion = (event) => {
     event.preventDefault();
+    if (!requireSensitiveAccess('AI assistant')) {
+      return;
+    }
     const rateLimit = canRunRateLimitedAction(`ai:${authUser?.uid || 'guest'}`, { limit: 20, windowMs: 60_000 });
     if (!rateLimit.allowed) {
       setAiAnswer(rateLimit.message);
@@ -1965,7 +2109,25 @@ export default function VoiceExpenseTrackerPreview() {
           </nav>
         </header>
 
-        {LEGAL_PAGE_IDS.includes(authView) ? (
+        {authView === 'verify-email' ? (
+          <section className="auth-page">
+            <div className="auth-card">
+              <span className="security-mode live">Verification required</span>
+              <h1>Verify your email to continue</h1>
+              <p>
+                We sent a verification link to <strong>{authUser?.email}</strong>. Production dashboards and sensitive
+                business actions stay locked until the account email is verified.
+              </p>
+              {secureError && <div className="notice error">{secureError}</div>}
+              <button className="saas-primary-button full" type="button" onClick={resendVerificationEmail}>
+                Resend Verification Email
+              </button>
+              <button className="saas-google-button" type="button" onClick={logout}>
+                Logout
+              </button>
+            </div>
+          </section>
+        ) : LEGAL_PAGE_IDS.includes(authView) ? (
           <LegalPage page={authView} onBack={() => setAuthView('landing')} />
         ) : authView === 'landing' ? (
           <>
@@ -2086,7 +2248,7 @@ export default function VoiceExpenseTrackerPreview() {
           <section className="auth-page">
             <div className="auth-card">
               <span className={`security-mode ${firebaseEnabled ? 'live' : 'demo'}`}>
-                {firebaseEnabled ? 'Firebase secure mode' : 'Local demo mode'}
+                {firebaseEnabled ? 'Firebase secure mode' : ALLOW_DEMO_AUTH ? 'Local demo mode' : 'Firebase required'}
               </span>
               <span className="saas-kicker">{authView === 'login' ? 'Welcome back' : 'Create account'}</span>
               <h1>{authView === 'login' ? 'Login to your dashboard' : 'Start managing your business'}</h1>
@@ -2107,7 +2269,7 @@ export default function VoiceExpenseTrackerPreview() {
                 {authView === 'login' && (
                   <div className="auth-row">
                     <label><input type="checkbox" /> Remember me</label>
-                    <button type="button">Forgot password?</button>
+                    <button type="button" disabled={!firebaseEnabled}>Forgot password?</button>
                   </div>
                 )}
                 <button className="saas-primary-button full" type="submit" disabled={authLoading}>
@@ -2126,6 +2288,37 @@ export default function VoiceExpenseTrackerPreview() {
             </div>
           </section>
         )}
+      </main>
+    );
+  }
+
+  if (!authUser || !hasVerifiedAccess) {
+    return (
+      <main className="saas-public-shell">
+        <header className="saas-nav">
+          <a className="saas-logo" href="#home" onClick={logout}>
+            <img src={profile.logo} alt="" />
+            <span>Voice Business Tracker</span>
+          </a>
+        </header>
+        <section className="auth-page">
+          <div className="auth-card">
+            <span className="security-mode live">Protected route</span>
+            <h1>{authUser ? 'Email verification required' : 'Login required'}</h1>
+            <p>
+              Production dashboard access is blocked until Firebase authentication is active and the signed-in email is
+              verified.
+            </p>
+            {authUser && (
+              <button className="saas-primary-button full" type="button" onClick={resendVerificationEmail}>
+                Resend Verification Email
+              </button>
+            )}
+            <button className="saas-google-button" type="button" onClick={logout}>
+              Back to Login
+            </button>
+          </div>
+        </section>
       </main>
     );
   }
@@ -2534,6 +2727,9 @@ export default function VoiceExpenseTrackerPreview() {
               products={readSavedArray('erpProducts')}
               vouchers={vouchers}
               partySummary={partySummary}
+              authUser={authUser}
+              firebaseEnabled={firebaseEnabled}
+              onResendVerification={resendVerificationEmail}
               onStatus={setStatus}
               onCloudSnapshot={saveCloudDataSnapshot}
             />
