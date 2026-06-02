@@ -17,6 +17,7 @@ let firebaseProjectLogged = false;
 const CLOUD_COLLECTIONS = new Set([
   'transactions',
   'customers',
+  'suppliers',
   'inventory',
   'reports',
   'settings',
@@ -340,6 +341,38 @@ export async function saveCloudRecord(uid, collectionName, id, data) {
   );
 
   console.info('[Firestore write success]', {
+    currentFirebaseUserUid: context.authInstance.currentUser?.uid || null,
+    requestedUid: uid,
+    path,
+  });
+  return true;
+}
+
+export async function deleteCloudRecord(uid, collectionName, id) {
+  const context = await getFirebaseContext();
+  if (!context || !uid || !collectionName || !id || !CLOUD_COLLECTIONS.has(collectionName)) {
+    console.error('[Firestore delete blocked]', {
+      requestedUid: uid || null,
+      currentFirebaseUserUid: context?.authInstance?.currentUser?.uid || null,
+      collectionName,
+      documentId: id,
+      path: uid && collectionName && id ? `users/${uid}/${collectionName}/${id}` : null,
+    });
+    return false;
+  }
+
+  const path = `users/${uid}/${collectionName}/${id}`;
+  console.info('[Firestore delete start]', {
+    currentFirebaseUserUid: context.authInstance.currentUser?.uid || null,
+    requestedUid: uid,
+    path,
+  });
+
+  await context.firestore.deleteDoc(
+    context.firestore.doc(context.db, 'users', uid, collectionName, id)
+  );
+
+  console.info('[Firestore delete success]', {
     currentFirebaseUserUid: context.authInstance.currentUser?.uid || null,
     requestedUid: uid,
     path,

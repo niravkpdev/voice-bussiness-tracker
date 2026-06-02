@@ -113,9 +113,13 @@ export default function Phase2ERP({
   cashBalance,
   netProfit,
   cloudCustomers,
+  cloudSuppliers,
   cloudInventory,
+  cloudUserId,
+  peopleLoading,
   onStatus,
   onCloudRecord,
+  onCloudDelete,
   onCloudSnapshot,
 }) {
   const [products, setProducts] = useState(() => readArray(PRODUCT_KEY));
@@ -125,6 +129,9 @@ export default function Phase2ERP({
   const [suppliers, setSuppliers] = useState(() => readArray(SUPPLIER_KEY));
   const [businesses, setBusinesses] = useState(() => readArray(BUSINESS_KEY));
   const [notifications, setNotifications] = useState(() => readArray(NOTIFICATION_KEY));
+  const [peopleTab, setPeopleTab] = useState(activeTab === 'suppliers' ? 'suppliers' : 'customers');
+  const [peopleSearch, setPeopleSearch] = useState('');
+  const [editingPerson, setEditingPerson] = useState(null);
   const [cloudSettings, setCloudSettings] = useState(() =>
     readObject(CLOUD_BACKUP_KEY, { connected: false, email: '', autoBackup: false, lastBackup: '' })
   );
@@ -154,10 +161,20 @@ export default function Phase2ERP({
     }
   }, [cloudInventory]);
   useEffect(() => {
-    if (Array.isArray(cloudCustomers) && cloudCustomers.length > 0) {
+    if (Array.isArray(cloudCustomers)) {
       setCustomers(cloudCustomers);
     }
   }, [cloudCustomers]);
+  useEffect(() => {
+    if (Array.isArray(cloudSuppliers)) {
+      setSuppliers(cloudSuppliers);
+    }
+  }, [cloudSuppliers]);
+  useEffect(() => {
+    setPeopleTab(activeTab === 'suppliers' ? 'suppliers' : 'customers');
+    setPeopleSearch('');
+    setEditingPerson(null);
+  }, [activeTab]);
   useEffect(() => {
     onCloudSnapshot?.('phase2_erp_updated');
   }, [products, stockTxns, invoices, customers, suppliers, businesses, notifications, cloudSettings]);
@@ -354,56 +371,121 @@ export default function Phase2ERP({
     onStatus('Stock updated');
   };
 
-  const saveCustomer = (event) => {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const customer = {
-      id: createId('cus'),
-      businessId: activeBusinessId,
-      name: sanitizeText(form.get('name'), 120),
-      mobile: sanitizeText(form.get('mobile'), 24),
-      email: sanitizeEmail(form.get('email')),
-      address: sanitizeText(form.get('address'), 240),
-      gst: sanitizeText(form.get('gst'), 32),
-    };
-    if (!customer.name) return;
-    if (customer.email && !validateEmail(customer.email)) {
-      onStatus('Enter valid customer email');
-      return;
-    }
-    if (!validatePhone(customer.mobile)) {
-      onStatus('Enter valid customer mobile');
-      return;
-    }
-    setCustomers([customer, ...customers]);
-    onCloudRecord?.('customers', customer.id, {
-      ...customer,
-      customerId: customer.id,
-      outstanding: 0,
-    }).catch(() => {});
-    event.currentTarget.reset();
-    onStatus('Customer saved');
+  const contactPhone = (person) => person.phone || person.mobile || '';
+
+  const personMatchesSearch = (person) => {
+    const query = peopleSearch.trim().toLowerCase();
+    if (!query) return true;
+    return [person.name, contactPhone(person), person.email, person.address, person.gst, person.notes]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(query));
   };
 
-  const saveSupplier = (event) => {
+  const savePerson = async (event, kind) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const supplier = {
-      id: createId('sup'),
-      businessId: activeBusinessId,
-      name: sanitizeText(form.get('name'), 120),
-      mobile: sanitizeText(form.get('mobile'), 24),
-      address: sanitizeText(form.get('address'), 240),
-      gst: sanitizeText(form.get('gst'), 32),
-    };
-    if (!supplier.name) return;
-    if (!validatePhone(supplier.mobile)) {
-      onStatus('Enter valid supplier mobile');
+    const isCustomer = kind === 'customer';
+    const current = editingPerson?.type === kind ? editingPerson : null;
+    const id = current?.id || createId(isCustomer ? 'cus' : 'sup');
+    const name = sanitizeText(form.get('name'), 120);
+    const phone = sanitizeText(form.get('phone'), 24);
+    const email = sanitizeEmail(form.get('email'));
+    const openingBalance = normalizeAmount(form.get('openingBalance'));
+    const amountField = isCustomer ? 'outstandingAmount' : 'payableAmount';
+    const amountValue = normalizeAmount(form.get(amountField));
+    const collectionName = isCustomer ? 'customers' : 'suppliers';
+    const path = cloudUserId ? `users/${cloudUserId}/${collectionName}/${id}` : `${collectionName}/${id}`;
+
+    if (!name) {
+      onStatus(`${isCustomer ? 'Customer' : 'Supplier'} name required`);
       return;
     }
-    setSuppliers([supplier, ...suppliers]);
-    event.currentTarget.reset();
-    onStatus('Supplier saved');
+    if (email && !validateEmail(email)) {
+      onStatus('Enter valid email');
+      return;
+    }
+    if (!validatePhone(phone)) {
+      onStatus(`Enter valid ${isCustomer ? 'customer' : 'supplier'} phone`);
+      return;
+    }
+
+    const person = {
+      id,
+      [isCustomer ? 'customerId' : 'supplierId']: id,
+      businessId: activeBusinessId,
+      name,
+      phone,
+      mobile: phone,
+      email,
+      address: sanitizeText(form.get('address'), 240),
+      gst: sanitizeText(form.get('gst'), 32),
+      openingBalance,
+      [amountField]: amountValue,
+      type: kind,
+      notes: sanitizeText(form.get('notes'), 500),
+      createdAt: current?.createdAt || new Date().toISOString(),
+    };
+
+    console.info('FIRESTORE_PATH_USED', { feature: `${kind}_save`, path });
+    if (isCustomer) {
+      console.info('CUSTOMER_SAVE_START', { path, customerId: id, isUpdate: Boolean(current) });
+    }
+
+    try {
+      const saved = await onCloudRecord?.(collectionName, id, person);
+      if (!saved) {
+        throw new Error(`Firestore save failed for ${path}`);
+      }
+
+      if (isCustomer) {
+        setCustomers((items) => [person, ...items.filter((item) => item.id !== id)]);
+        console.info(current ? 'CUSTOMER_UPDATE_SUCCESS' : 'CUSTOMER_SAVE_SUCCESS', { path, customerId: id });
+      } else {
+        setSuppliers((items) => [person, ...items.filter((item) => item.id !== id)]);
+        console.info(current ? 'SUPPLIER_UPDATE_SUCCESS' : 'SUPPLIER_SAVE_SUCCESS', { path, supplierId: id });
+      }
+      setEditingPerson(null);
+      event.currentTarget.reset();
+      onStatus(`${isCustomer ? 'Customer' : 'Supplier'} ${current ? 'updated' : 'saved'}`);
+    } catch (error) {
+      onStatus(error.message || `${isCustomer ? 'Customer' : 'Supplier'} save failed`);
+    }
+  };
+
+  const editPerson = (person, kind) => {
+    setPeopleTab(kind === 'supplier' ? 'suppliers' : 'customers');
+    setEditingPerson({ ...person, type: kind });
+  };
+
+  const deletePerson = async (person, kind) => {
+    const isCustomer = kind === 'customer';
+    if (!confirm(`Delete ${isCustomer ? 'customer' : 'supplier'} "${person.name}"?`)) {
+      return;
+    }
+
+    const collectionName = isCustomer ? 'customers' : 'suppliers';
+    const path = cloudUserId ? `users/${cloudUserId}/${collectionName}/${person.id}` : `${collectionName}/${person.id}`;
+    console.info('FIRESTORE_PATH_USED', { feature: `${kind}_delete`, path });
+
+    try {
+      const deleted = await onCloudDelete?.(collectionName, person.id);
+      if (!deleted) {
+        throw new Error(`Firestore delete failed for ${path}`);
+      }
+      if (isCustomer) {
+        setCustomers((items) => items.filter((item) => item.id !== person.id));
+        console.info('CUSTOMER_DELETE_SUCCESS', { path, customerId: person.id });
+      } else {
+        setSuppliers((items) => items.filter((item) => item.id !== person.id));
+        console.info('SUPPLIER_DELETE_SUCCESS', { path, supplierId: person.id });
+      }
+      if (editingPerson?.id === person.id) {
+        setEditingPerson(null);
+      }
+      onStatus(`${isCustomer ? 'Customer' : 'Supplier'} deleted`);
+    } catch (error) {
+      onStatus(error.message || `${isCustomer ? 'Customer' : 'Supplier'} delete failed`);
+    }
   };
 
   const addInvoiceLine = () => {
@@ -864,51 +946,140 @@ export default function Phase2ERP({
   }
 
   if (activeTab === 'crm' || activeTab === 'suppliers') {
-    const isCustomer = activeTab === 'crm';
-    const list = isCustomer ? scopedCustomers : scopedSuppliers;
-    const saveHandler = isCustomer ? saveCustomer : saveSupplier;
+    const isCustomer = peopleTab === 'customers';
+    const list = (isCustomer ? scopedCustomers : scopedSuppliers).filter(personMatchesSearch);
+    const formKind = isCustomer ? 'customer' : 'supplier';
+    const currentEdit = editingPerson?.type === formKind ? editingPerson : null;
     return (
       <section className="phase2-stack fade-in" id={activeTab}>
-        <div className="erp-hero"><div><span className="eyebrow">{isCustomer ? 'Customer CRM' : 'Supplier Management'}</span><h2>{isCustomer ? 'Customer profiles, ledger actions, and invoice history' : 'Supplier profiles, purchase trends, and outstanding'}</h2></div></div>
+        <div className="erp-hero"><div><span className="eyebrow">People Management</span><h2>Customer and supplier profiles synced to Firestore</h2></div></div>
+        <div className="analytics-filter">
+          <button className={peopleTab === 'customers' ? 'active' : ''} type="button" onClick={() => { setPeopleTab('customers'); setEditingPerson(null); }}>
+            Customers
+          </button>
+          <button className={peopleTab === 'suppliers' ? 'active' : ''} type="button" onClick={() => { setPeopleTab('suppliers'); setEditingPerson(null); }}>
+            Suppliers
+          </button>
+        </div>
         <section className="content-grid">
           <article className="panel">
-            <h2>{isCustomer ? 'Add Customer' : 'Add Supplier'}</h2>
-            <form onSubmit={saveHandler}>
+            <h2>{currentEdit ? `Edit ${isCustomer ? 'Customer' : 'Supplier'}` : `Add ${isCustomer ? 'Customer' : 'Supplier'}`}</h2>
+            <form onSubmit={(event) => savePerson(event, formKind)} key={`${formKind}-${currentEdit?.id || 'new'}`}>
               <div className="form-grid">
-                <input name="name" placeholder="Name" />
-                <input name="mobile" placeholder="Mobile" />
-                {isCustomer && <input name="email" placeholder="Email" />}
-                <input name="gst" placeholder="GST Number" />
-                <div className="wide-field"><textarea name="address" placeholder="Address" /></div>
+                <input name="name" defaultValue={currentEdit?.name || ''} placeholder="Name" />
+                <input name="phone" defaultValue={contactPhone(currentEdit || {})} placeholder="Phone" />
+                <input name="email" type="email" defaultValue={currentEdit?.email || ''} placeholder="Email" />
+                <input name="gst" defaultValue={currentEdit?.gst || ''} placeholder="GST Number" />
+                <input name="openingBalance" type="number" defaultValue={currentEdit?.openingBalance || ''} placeholder="Opening balance" />
+                {isCustomer ? (
+                  <input name="outstandingAmount" type="number" defaultValue={currentEdit?.outstandingAmount ?? currentEdit?.outstanding ?? ''} placeholder="Outstanding amount" />
+                ) : (
+                  <input name="payableAmount" type="number" defaultValue={currentEdit?.payableAmount || ''} placeholder="Payable amount" />
+                )}
+                <div className="wide-field"><textarea name="address" defaultValue={currentEdit?.address || ''} placeholder="Address" /></div>
+                <div className="wide-field"><textarea name="notes" defaultValue={currentEdit?.notes || ''} placeholder="Notes" /></div>
               </div>
-              <button className="manual-button" type="submit">Save {isCustomer ? 'Customer' : 'Supplier'}</button>
+              <div className="inline-actions">
+                <button className="manual-button" type="submit">
+                  {currentEdit ? `Update ${isCustomer ? 'Customer' : 'Supplier'}` : `Save ${isCustomer ? 'Customer' : 'Supplier'}`}
+                </button>
+                {currentEdit && (
+                  <button className="secondary-button compact-button" type="button" onClick={() => setEditingPerson(null)}>
+                    Cancel
+                  </button>
+                )}
+              </div>
             </form>
           </article>
           <article className="panel">
             <h2>{isCustomer ? 'Customer Dashboard' : 'Supplier Dashboard'}</h2>
             <div className="summary-grid report-summary">
-              <div className="summary-card"><span>Total Profiles</span><strong>{list.length}</strong></div>
+              <div className="summary-card"><span>Total Profiles</span><strong>{isCustomer ? scopedCustomers.length : scopedSuppliers.length}</strong></div>
               <div className="summary-card"><span>Invoices</span><strong>{isCustomer ? scopedInvoices.length : vouchers.filter((v) => v.type === 'Purchase').length}</strong></div>
-              <div className="summary-card"><span>Outstanding</span><strong>{formatCurrency(isCustomer ? invoiceTotals.outstanding : partySummary.filter((p) => p.group === 'Sundry Creditors').reduce((sum, p) => sum + Math.abs(p.outstandingAmount), 0))}</strong></div>
+              <div className="summary-card"><span>{isCustomer ? 'Outstanding' : 'Payable'}</span><strong>{formatCurrency(isCustomer ? scopedCustomers.reduce((sum, item) => sum + (Number(item.outstandingAmount ?? item.outstanding) || 0), 0) : scopedSuppliers.reduce((sum, item) => sum + (Number(item.payableAmount) || 0), 0))}</strong></div>
               <div className="summary-card"><span>Last Transaction</span><strong>{scopedInvoices[0]?.date || 'None'}</strong></div>
             </div>
           </article>
         </section>
         <section className="panel">
-          <h2>{isCustomer ? 'Customers' : 'Suppliers'}</h2>
-          <div className="compact-list">
-            {list.map((item) => (
+          <div className="section-header">
+            <div>
+              <h2>{isCustomer ? 'Customers' : 'Suppliers'}</h2>
+              <p className="panel-hint">
+                {isCustomer ? 'Loaded from users/{uid}/customers' : 'Loaded from users/{uid}/suppliers'}
+              </p>
+            </div>
+            <input
+              aria-label={`Search ${isCustomer ? 'customers' : 'suppliers'}`}
+              value={peopleSearch}
+              onChange={(event) => setPeopleSearch(event.target.value)}
+              placeholder={`Search ${isCustomer ? 'customers' : 'suppliers'}`}
+            />
+          </div>
+          {peopleLoading && <div className="notice">Loading {isCustomer ? 'customers' : 'suppliers'} from Firestore...</div>}
+          {list.length === 0 && !peopleLoading ? (
+            <div className="empty-state">
+              {isCustomer ? 'No customers yet. Add your first customer.' : 'No suppliers yet. Add your first supplier.'}
+            </div>
+          ) : (
+            <>
+              <div className="people-table-wrap">
+                <table className="statement-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Phone</th>
+                      <th>Email</th>
+                      <th>{isCustomer ? 'Outstanding' : 'Payable'}</th>
+                      <th>Address</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {list.map((item) => (
+                      <tr key={item.id}>
+                        <td><strong>{item.name}</strong></td>
+                        <td>{contactPhone(item) || '-'}</td>
+                        <td>{item.email || '-'}</td>
+                        <td>{formatCurrency(isCustomer ? item.outstandingAmount ?? item.outstanding ?? 0 : item.payableAmount || 0)}</td>
+                        <td>{item.address || '-'}</td>
+                        <td>
+                          <div className="voucher-actions">
+                            <button className="share-entry-button" type="button" onClick={() => editPerson(item, formKind)}>Edit</button>
+                            <button className="delete-entry-button" type="button" onClick={() => deletePerson(item, formKind)}>Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="compact-list people-card-list">
+                {list.map((item) => (
               <article className="compact-item" key={item.id}>
-                <div><strong>{item.name}</strong><p>{item.mobile} {item.gst ? `· GST ${item.gst}` : ''}</p></div>
+                <div>
+                  <strong>{item.name}</strong>
+                  <p>{contactPhone(item)} {item.email ? `· ${item.email}` : ''} {item.gst ? `· GST ${item.gst}` : ''}</p>
+                  <p>{item.address || 'No address'} {item.notes ? `· ${item.notes}` : ''}</p>
+                  <p>
+                    {isCustomer
+                      ? `Outstanding: ${formatCurrency(item.outstandingAmount ?? item.outstanding ?? 0)}`
+                      : `Payable: ${formatCurrency(item.payableAmount || 0)}`}
+                  </p>
+                </div>
                 <div className="voucher-actions">
-                  <a className="share-entry-button" href={`tel:${item.mobile}`}>Call</a>
-                  <a className="share-entry-button" href={`https://wa.me/${String(item.mobile).replace(/\D/g, '')}`} target="_blank" rel="noreferrer">WhatsApp</a>
+                  <button className="share-entry-button" type="button" onClick={() => editPerson(item, formKind)}>Edit</button>
+                  <a className="share-entry-button" href={`tel:${contactPhone(item)}`}>Call</a>
+                  <a className="share-entry-button" href={`https://wa.me/${String(contactPhone(item)).replace(/\D/g, '')}`} target="_blank" rel="noreferrer">WhatsApp</a>
                   <a className="share-entry-button" href="#party-statement">Ledger</a>
                   <button className="share-entry-button" type="button" onClick={() => window.print()}>Statement</button>
+                  <button className="delete-entry-button" type="button" onClick={() => deletePerson(item, formKind)}>Delete</button>
                 </div>
               </article>
-            ))}
-          </div>
+                ))}
+              </div>
+            </>
+          )}
         </section>
       </section>
     );

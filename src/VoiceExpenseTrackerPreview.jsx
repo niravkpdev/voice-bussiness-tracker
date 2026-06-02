@@ -35,6 +35,7 @@ import Phase3Ops from './Phase3Ops.jsx';
 import { LegalPage, LEGAL_PAGE_IDS } from './LegalPages.jsx';
 import {
   createFirebaseAccount,
+  deleteCloudRecord,
   getFirebaseAuthErrorMessage,
   isFirebaseConfigured,
   listenToFirebaseAuth,
@@ -746,7 +747,9 @@ export default function VoiceExpenseTrackerPreview() {
   const [ledgers, setLedgers] = useState([]);
   const [vouchers, setVouchers] = useState([]);
   const [cloudCustomers, setCloudCustomers] = useState([]);
+  const [cloudSuppliers, setCloudSuppliers] = useState([]);
   const [cloudInventory, setCloudInventory] = useState([]);
+  const [peopleLoading, setPeopleLoading] = useState(false);
   const [manualType, setManualType] = useState('Expense');
   const [manualAmount, setManualAmount] = useState('');
   const [manualText, setManualText] = useState('');
@@ -897,16 +900,39 @@ export default function VoiceExpenseTrackerPreview() {
         uid: scopedUser.uid,
       });
       setTransactionsLoading(true);
-      const [transactions, customers, inventory, profileSettings] = await Promise.all([
+      setPeopleLoading(true);
+      const [transactions, customers, suppliers, inventory, profileSettings] = await Promise.all([
         loadCloudCollection(scopedUser.uid, 'transactions').catch(() => []),
         loadCloudCollection(scopedUser.uid, 'customers').catch(() => []),
+        loadCloudCollection(scopedUser.uid, 'suppliers').catch(() => []),
         loadCloudCollection(scopedUser.uid, 'inventory').catch(() => []),
         loadUserProfileSettings(scopedUser.uid).catch(() => null),
       ]);
       cloudTransactions = transactions;
       cloudProfile = profileSettings;
       setCloudCustomers(customers);
+      setCloudSuppliers(suppliers);
       setCloudInventory(inventory);
+      console.info('FIRESTORE_PATH_USED', {
+        feature: 'customers_load',
+        path: `users/${scopedUser.uid}/customers`,
+        uid: scopedUser.uid,
+      });
+      console.info('CUSTOMER_LOAD_SUCCESS', {
+        path: `users/${scopedUser.uid}/customers`,
+        uid: scopedUser.uid,
+        count: customers.length,
+      });
+      console.info('FIRESTORE_PATH_USED', {
+        feature: 'suppliers_load',
+        path: `users/${scopedUser.uid}/suppliers`,
+        uid: scopedUser.uid,
+      });
+      console.info('SUPPLIER_LOAD_SUCCESS', {
+        path: `users/${scopedUser.uid}/suppliers`,
+        uid: scopedUser.uid,
+        count: suppliers.length,
+      });
       console.info('DASHBOARD_TRANSACTIONS_LOADED', {
         path: transactionPath,
         uid: scopedUser.uid,
@@ -921,6 +947,7 @@ export default function VoiceExpenseTrackerPreview() {
 
     hydrateWorkspace({ cloudTransactions, cloudProfile });
     setTransactionsLoading(false);
+    setPeopleLoading(false);
   };
 
   const saveAuthenticatedCloudRecord = (collectionName, id, data) => {
@@ -933,6 +960,17 @@ export default function VoiceExpenseTrackerPreview() {
       userId: authUser.uid,
     }).catch((error) => {
       setSecureError(publicSafeError(error, 'Cloud data save failed. Please try again.'));
+      throw error;
+    });
+  };
+
+  const deleteAuthenticatedCloudRecord = (collectionName, id) => {
+    if (!firebaseEnabled || !authUser?.uid) {
+      return Promise.resolve(false);
+    }
+
+    return deleteCloudRecord(authUser.uid, collectionName, id).catch((error) => {
+      setSecureError(publicSafeError(error, 'Cloud data delete failed. Please try again.'));
       throw error;
     });
   };
@@ -1125,8 +1163,10 @@ export default function VoiceExpenseTrackerPreview() {
     setLedgers([]);
     setVouchers([]);
     setCloudCustomers([]);
+    setCloudSuppliers([]);
     setCloudInventory([]);
     setTransactionsLoading(false);
+    setPeopleLoading(false);
     setStatementLedgerId('');
     setVoucherPartyId('');
     setSecureError('');
@@ -3058,9 +3098,13 @@ export default function VoiceExpenseTrackerPreview() {
               cashBalance={cashInHand}
               netProfit={monthlyNetProfit}
               cloudCustomers={cloudCustomers}
+              cloudSuppliers={cloudSuppliers}
               cloudInventory={cloudInventory}
+              cloudUserId={authUser?.uid}
+              peopleLoading={peopleLoading}
               onStatus={setStatus}
               onCloudRecord={saveAuthenticatedCloudRecord}
+              onCloudDelete={deleteAuthenticatedCloudRecord}
               onCloudSnapshot={saveCloudDataSnapshot}
             />
           )}

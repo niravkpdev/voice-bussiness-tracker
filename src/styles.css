@@ -2616,6 +2616,10 @@ body.dark .badge-purchase { background: #2a1900; color: #fcd34d; }
   margin-top: 18px;
 }
 
+.people-card-list {
+  display: none;
+}
+
 .svg-chart-container {
   height: 100%;
 }
@@ -2646,6 +2650,14 @@ body.dark .badge-purchase { background: #2a1900; color: #fcd34d; }
   .dashboard-stats-grid,
   .charts-grid-layout {
     grid-template-columns: 1fr;
+  }
+
+  .people-table-wrap {
+    display: none;
+  }
+
+  .people-card-list {
+    display: grid;
   }
 
   .stat-card-modern {

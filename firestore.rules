@@ -93,18 +93,52 @@ service cloud.firestore {
           && hasOwner(userId)
           && request.resource.data.keys().hasOnly([
             'id', 'customerId', 'ownerUid', 'ownerId', 'userId', 'businessId',
-            'name', 'mobile', 'email', 'address', 'gst', 'outstanding',
-            'updatedAt'
+            'name', 'phone', 'mobile', 'email', 'address', 'gst',
+            'openingBalance', 'outstandingAmount', 'outstanding', 'type',
+            'notes', 'createdAt', 'updatedAt'
           ])
           && safeText('id', 80)
           && safeText('customerId', 80)
           && safeText('businessId', 80)
           && safeText('name', 120)
+          && safeText('phone', 24)
           && safeText('mobile', 24)
           && safeText('email', 180)
           && safeText('address', 240)
           && safeText('gst', 32)
+          && safeText('type', 20)
+          && safeText('notes', 500)
+          && safeText('createdAt', 40)
+          && safeNumber('openingBalance', -100000000, 100000000)
+          && safeNumber('outstandingAmount', -100000000, 100000000)
           && safeNumber('outstanding', -100000000, 100000000)
+          && safeUpdatedAt();
+      }
+
+      match /suppliers/{documentId} {
+        allow read, delete: if isOwner(userId) && ownsExisting(userId);
+        allow create, update: if isOwner(userId)
+          && hasOwner(userId)
+          && request.resource.data.keys().hasOnly([
+            'id', 'supplierId', 'ownerUid', 'ownerId', 'userId', 'businessId',
+            'name', 'phone', 'mobile', 'email', 'address', 'gst',
+            'openingBalance', 'payableAmount', 'type', 'notes', 'createdAt',
+            'updatedAt'
+          ])
+          && safeText('id', 80)
+          && safeText('supplierId', 80)
+          && safeText('businessId', 80)
+          && safeText('name', 120)
+          && safeText('phone', 24)
+          && safeText('mobile', 24)
+          && safeText('email', 180)
+          && safeText('address', 240)
+          && safeText('gst', 32)
+          && safeText('type', 20)
+          && safeText('notes', 500)
+          && safeText('createdAt', 40)
+          && safeNumber('openingBalance', -100000000, 100000000)
+          && safeNumber('payableAmount', -100000000, 100000000)
           && safeUpdatedAt();
       }
 
