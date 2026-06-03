@@ -33,6 +33,10 @@ export function isFirebaseConfigured() {
   return Boolean(firebaseConfig.apiKey && firebaseConfig.authDomain && firebaseConfig.projectId && firebaseConfig.appId);
 }
 
+export function getFirebaseProjectId() {
+  return firebaseConfig.projectId || '';
+}
+
 async function loadFirebaseModules() {
   if (!firebaseModulesPromise) {
     firebaseModulesPromise = Promise.all([
@@ -249,14 +253,32 @@ async function commitFirestoreRestWrite(context, path, data, transformFields = [
 
   if (!response.ok) {
     const body = await response.text().catch(() => '');
-    const error = new Error(body || `Firestore REST write failed with HTTP ${response.status}`);
-    error.code = `firestore/rest-${response.status}`;
+    let parsedError = null;
+    try {
+      parsedError = body ? JSON.parse(body) : null;
+    } catch {
+      parsedError = null;
+    }
+    const googleError = parsedError?.error || {};
+    const reason = googleError.details?.find((detail) => detail?.reason)?.reason || '';
+    const code = reason === 'CONSUMER_INVALID'
+      ? 'firestore/consumer-invalid'
+      : `firestore/rest-${response.status}`;
+    const message = reason === 'CONSUMER_INVALID'
+      ? `Cloud Firestore API is not enabled or project id is wrong for Firebase project "${firebaseConfig.projectId}". Enable firestore.googleapis.com and confirm Vercel Firebase env variables.`
+      : googleError.message || body || `Firestore REST write failed with HTTP ${response.status}`;
+    const error = new Error(message);
+    error.code = code;
+    error.googleStatus = googleError.status || null;
+    error.googleReason = reason || null;
     console.error('FIRESTORE_REST_FALLBACK_ERROR', {
       path,
       uid: user.uid,
       projectId: firebaseConfig.projectId || null,
       code: error.code,
       message: error.message,
+      googleStatus: error.googleStatus,
+      googleReason: error.googleReason,
     });
     throw error;
   }

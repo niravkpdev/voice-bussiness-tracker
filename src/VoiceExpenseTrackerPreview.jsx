@@ -37,6 +37,7 @@ import {
   createFirebaseAccount,
   deleteCloudRecord,
   getFirebaseAuthErrorMessage,
+  getFirebaseProjectId,
   isFirebaseConfigured,
   listenToFirebaseAuth,
   loadCloudCollection,
@@ -3943,6 +3944,8 @@ export default function VoiceExpenseTrackerPreview() {
               </div>
               <div className="notice">
                 This writes exactly to <code>{`users/${authUser?.uid || 'uid'}/debug/test`}</code> with message "hello firestore".
+                <br />
+                Firebase project: <code>{getFirebaseProjectId() || 'not configured'}</code>
               </div>
               <button
                 className="manual-button"

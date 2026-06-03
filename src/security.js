@@ -81,6 +81,18 @@ export function canRunRateLimitedAction(actionKey, { limit = 12, windowMs = 60_0
 export function publicSafeError(error, fallback = 'Something went wrong. Please try again.') {
   const message = String(error?.message || fallback);
 
+  if (error?.code === 'firestore/consumer-invalid' || /CONSUMER_INVALID|firestore\.googleapis\.com/i.test(message)) {
+    return 'Cloud Firestore API is not enabled or Firebase project id is wrong. Enable Cloud Firestore API for this Firebase project and check Vercel Firebase environment variables.';
+  }
+
+  if (error?.code === 'firestore/rest-403' || /PERMISSION_DENIED/i.test(message)) {
+    return 'Firestore permission denied. Check Firestore API, Firebase project id, App Check enforcement, and Firestore security rules.';
+  }
+
+  if (error?.code === 'firestore/write-timeout') {
+    return 'Firestore write timed out. Check Firestore API access, network, App Check, and Firebase rules.';
+  }
+
   if (/api[_ -]?key|token|secret|credential|password/i.test(message)) {
     return fallback;
   }
