@@ -22,7 +22,7 @@ let supabaseClient;
 let projectLogged = false;
 
 export function isFirebaseConfigured() {
-  return Boolean(supabaseConfig.url && supabaseConfig.anonKey);
+  return Boolean(getSupabaseConfigError() === '');
 }
 
 export function getFirebaseProjectId() {
@@ -33,7 +33,38 @@ export function getFirebaseProjectId() {
   }
 }
 
+function getSupabaseConfigError() {
+  if (!supabaseConfig.url || !supabaseConfig.anonKey) {
+    return 'Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY.';
+  }
+
+  try {
+    const parsed = new URL(supabaseConfig.url);
+    if (parsed.protocol !== 'https:' || !parsed.hostname.endsWith('.supabase.co')) {
+      return 'VITE_SUPABASE_URL must look like https://your-project-ref.supabase.co.';
+    }
+  } catch {
+    return 'VITE_SUPABASE_URL is not a valid URL.';
+  }
+
+  if (!String(supabaseConfig.anonKey).startsWith('ey')) {
+    return 'VITE_SUPABASE_ANON_KEY must be the anon public JWT key from Supabase Project Settings > API.';
+  }
+
+  return '';
+}
+
 function getSupabaseClient() {
+  const configError = getSupabaseConfigError();
+  if (configError) {
+    if (!supabaseConfig.url && !supabaseConfig.anonKey) {
+      return null;
+    }
+    const error = new Error(configError);
+    error.code = 'supabase/config-invalid';
+    throw error;
+  }
+
   if (!isFirebaseConfigured()) {
     return null;
   }
@@ -173,6 +204,7 @@ export function getFirebaseAuthErrorMessage(error, fallback = 'Authentication fa
   const code = String(error?.code || mapAuthError(error)).toLowerCase();
   const message = String(error?.message || '').toLowerCase();
   const messages = {
+    'supabase/config-invalid': error?.message || 'Supabase environment variables are invalid. Check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel.',
     'auth/invalid-email': 'Enter a valid email.',
     'auth/missing-email': 'Please enter your email address.',
     'auth/user-disabled': 'This account has been disabled. Contact support.',
@@ -190,6 +222,14 @@ export function getFirebaseAuthErrorMessage(error, fallback = 'Authentication fa
 
   if (message.includes('invalid login credentials')) {
     return messages['auth/invalid-credential'];
+  }
+
+  if (message.includes('invalid api key') || message.includes('jwt')) {
+    return 'Supabase anon key is invalid. Copy the anon public key from Supabase Project Settings > API and redeploy Vercel.';
+  }
+
+  if (message.includes('failed to fetch') || message.includes('networkerror')) {
+    return 'Could not reach Supabase. Check VITE_SUPABASE_URL, Vercel deployment env vars, and internet connection.';
   }
 
   return messages[code] || fallback;
@@ -421,15 +461,27 @@ export async function signOutFirebase() {
 }
 
 export async function listenToFirebaseAuth(onUser, onError) {
-  const client = getSupabaseClient();
-  if (!client) {
+  let client;
+  try {
+    client = getSupabaseClient();
+    if (!client) {
+      return () => {};
+    }
+  } catch (error) {
+    onError?.(error);
     return () => {};
   }
 
   client.auth.getSession().then(({ data }) => {
     const user = data?.session?.user;
     onUser(user ? userPayload(user) : null);
-  }).catch(onError);
+  }).catch((error) => {
+    if (/session.*missing|auth session missing/i.test(error?.message || '')) {
+      onUser(null);
+      return;
+    }
+    onError?.(error);
+  });
 
   const { data } = client.auth.onAuthStateChange((_event, session) => {
     try {
