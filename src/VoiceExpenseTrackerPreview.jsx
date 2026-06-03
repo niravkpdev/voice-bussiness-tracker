@@ -753,6 +753,17 @@ export default function VoiceExpenseTrackerPreview() {
   const [cloudCustomers, setCloudCustomers] = useState([]);
   const [cloudSuppliers, setCloudSuppliers] = useState([]);
   const [cloudInventory, setCloudInventory] = useState([]);
+  const [cloudStockTransactions, setCloudStockTransactions] = useState([]);
+  const [cloudInvoices, setCloudInvoices] = useState([]);
+  const [cloudOrders, setCloudOrders] = useState([]);
+  const [cloudEmployees, setCloudEmployees] = useState([]);
+  const [cloudAttendance, setCloudAttendance] = useState([]);
+  const [cloudPayments, setCloudPayments] = useState([]);
+  const [cloudAuditLogs, setCloudAuditLogs] = useState([]);
+  const [cloudSubscription, setCloudSubscription] = useState(null);
+  const [cloudSecurity, setCloudSecurity] = useState(null);
+  const [cloudDevices, setCloudDevices] = useState([]);
+  const [cloudOfflineQueue, setCloudOfflineQueue] = useState([]);
   const [peopleLoading, setPeopleLoading] = useState(false);
   const [manualType, setManualType] = useState('Expense');
   const [manualAmount, setManualAmount] = useState('');
@@ -906,11 +917,39 @@ export default function VoiceExpenseTrackerPreview() {
       });
       setTransactionsLoading(true);
       setPeopleLoading(true);
-      const [transactions, customers, suppliers, inventory, profileSettings] = await Promise.all([
+      const [
+        transactions,
+        customers,
+        suppliers,
+        inventory,
+        stockTransactions,
+        invoices,
+        orders,
+        employees,
+        attendance,
+        payments,
+        auditLogs,
+        subscriptionRows,
+        securityRows,
+        devices,
+        offlineQueue,
+        profileSettings,
+      ] = await Promise.all([
         loadCloudCollection(scopedUser.uid, 'transactions').catch(() => []),
         loadCloudCollection(scopedUser.uid, 'customers').catch(() => []),
         loadCloudCollection(scopedUser.uid, 'suppliers').catch(() => []),
         loadCloudCollection(scopedUser.uid, 'inventory').catch(() => []),
+        loadCloudCollection(scopedUser.uid, 'stock_transactions').catch(() => []),
+        loadCloudCollection(scopedUser.uid, 'invoices').catch(() => []),
+        loadCloudCollection(scopedUser.uid, 'orders').catch(() => []),
+        loadCloudCollection(scopedUser.uid, 'employees').catch(() => []),
+        loadCloudCollection(scopedUser.uid, 'attendance').catch(() => []),
+        loadCloudCollection(scopedUser.uid, 'payments').catch(() => []),
+        loadCloudCollection(scopedUser.uid, 'audit_logs').catch(() => []),
+        loadCloudCollection(scopedUser.uid, 'subscriptions').catch(() => []),
+        loadCloudCollection(scopedUser.uid, 'security_settings').catch(() => []),
+        loadCloudCollection(scopedUser.uid, 'devices').catch(() => []),
+        loadCloudCollection(scopedUser.uid, 'offline_queue').catch(() => []),
         loadUserProfileSettings(scopedUser.uid).catch(() => null),
       ]);
       cloudTransactions = transactions;
@@ -918,6 +957,17 @@ export default function VoiceExpenseTrackerPreview() {
       setCloudCustomers(customers);
       setCloudSuppliers(suppliers);
       setCloudInventory(inventory);
+      setCloudStockTransactions(stockTransactions);
+      setCloudInvoices(invoices);
+      setCloudOrders(orders);
+      setCloudEmployees(employees);
+      setCloudAttendance(attendance);
+      setCloudPayments(payments);
+      setCloudAuditLogs(auditLogs);
+      setCloudSubscription(subscriptionRows.find((item) => item.id === 'current') || null);
+      setCloudSecurity(securityRows.find((item) => item.id === 'current') || null);
+      setCloudDevices(devices);
+      setCloudOfflineQueue(offlineQueue);
       console.info('FIRESTORE_PATH_USED', {
         feature: 'customers_load',
         path: `users/${scopedUser.uid}/customers`,
@@ -947,6 +997,15 @@ export default function VoiceExpenseTrackerPreview() {
         path: transactionPath,
         uid: scopedUser.uid,
         count: transactions.length,
+      });
+      console.info('SUPABASE_MODULES_LOADED', {
+        uid: scopedUser.uid,
+        invoices: invoices.length,
+        stockTransactions: stockTransactions.length,
+        orders: orders.length,
+        employees: employees.length,
+        attendance: attendance.length,
+        payments: payments.length,
       });
     }
 
@@ -1174,6 +1233,17 @@ export default function VoiceExpenseTrackerPreview() {
     setCloudCustomers([]);
     setCloudSuppliers([]);
     setCloudInventory([]);
+    setCloudStockTransactions([]);
+    setCloudInvoices([]);
+    setCloudOrders([]);
+    setCloudEmployees([]);
+    setCloudAttendance([]);
+    setCloudPayments([]);
+    setCloudAuditLogs([]);
+    setCloudSubscription(null);
+    setCloudSecurity(null);
+    setCloudDevices([]);
+    setCloudOfflineQueue([]);
     setTransactionsLoading(false);
     setPeopleLoading(false);
     setStatementLedgerId('');
@@ -3121,6 +3191,8 @@ export default function VoiceExpenseTrackerPreview() {
               cloudCustomers={cloudCustomers}
               cloudSuppliers={cloudSuppliers}
               cloudInventory={cloudInventory}
+              cloudStockTransactions={cloudStockTransactions}
+              cloudInvoices={cloudInvoices}
               cloudUserId={authUser?.uid}
               peopleLoading={peopleLoading}
               onStatus={setStatus}
@@ -3144,15 +3216,26 @@ export default function VoiceExpenseTrackerPreview() {
             <Phase3Ops
               activeTab={activeTab}
               profile={profile}
-              invoices={readSavedArray('erpInvoices')}
-              customers={readSavedArray('erpCustomers')}
-              products={readSavedArray('erpProducts')}
+              invoices={cloudInvoices}
+              customers={cloudCustomers}
+              products={cloudInventory}
               vouchers={vouchers}
               partySummary={partySummary}
               authUser={authUser}
               firebaseEnabled={firebaseEnabled}
+              cloudOrders={cloudOrders}
+              cloudEmployees={cloudEmployees}
+              cloudAttendance={cloudAttendance}
+              cloudPayments={cloudPayments}
+              cloudAuditLogs={cloudAuditLogs}
+              cloudSubscription={cloudSubscription}
+              cloudSecurity={cloudSecurity}
+              cloudDevices={cloudDevices}
+              cloudOfflineQueue={cloudOfflineQueue}
               onResendVerification={resendVerificationEmail}
               onStatus={setStatus}
+              onCloudRecord={saveAuthenticatedCloudRecord}
+              onCloudDelete={deleteAuthenticatedCloudRecord}
               onCloudSnapshot={saveCloudDataSnapshot}
             />
           )}

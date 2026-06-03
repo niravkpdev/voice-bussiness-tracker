@@ -57,6 +57,17 @@ transactions
 customers
 suppliers
 inventory
+stock_transactions
+invoices
+orders
+employees
+attendance
+payments
+audit_logs
+subscriptions
+security_settings
+devices
+offline_queue
 reports
 settings
 debug_tests
@@ -145,6 +156,14 @@ After adding inventory:
 inventory
 ```
 
+After adding an order or employee:
+
+```txt
+orders
+employees
+attendance
+```
+
 ## 9. App Data Mapping
 
 The app keeps the same logical structure:
@@ -154,6 +173,13 @@ users/{uid}/transactions/{transactionId} -> transactions table
 users/{uid}/customers/{customerId} -> customers table
 users/{uid}/suppliers/{supplierId} -> suppliers table
 users/{uid}/inventory/{itemId} -> inventory table
+users/{uid}/stock_transactions/{stockTransactionId} -> stock_transactions table
+users/{uid}/invoices/{invoiceId} -> invoices table
+users/{uid}/orders/{orderId} -> orders table
+users/{uid}/employees/{employeeId} -> employees table
+users/{uid}/attendance/{attendanceId} -> attendance table
+users/{uid}/payments/{paymentId} -> payments table
+users/{uid}/audit_logs/{auditLogId} -> audit_logs table
 users/{uid}/settings/profile -> settings table, id = profile
 users/{uid}/debug/test -> debug_tests table, id = test
 ```

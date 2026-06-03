@@ -96,8 +96,19 @@ export default function Phase3Ops({
   partySummary,
   authUser,
   firebaseEnabled,
+  cloudOrders,
+  cloudEmployees,
+  cloudAttendance,
+  cloudPayments,
+  cloudAuditLogs,
+  cloudSubscription,
+  cloudSecurity,
+  cloudDevices,
+  cloudOfflineQueue,
   onResendVerification,
   onStatus,
+  onCloudRecord,
+  onCloudDelete,
   onCloudSnapshot,
 }) {
   const [orders, setOrders] = useState(() => readArray(ORDER_KEY));
@@ -138,6 +149,33 @@ export default function Phase3Ops({
   useEffect(() => writeObject(SECURITY_KEY, security), [security]);
   useEffect(() => writeArray(DEVICE_KEY, devices), [devices]);
   useEffect(() => {
+    if (Array.isArray(cloudOrders)) setOrders(cloudOrders);
+  }, [cloudOrders]);
+  useEffect(() => {
+    if (Array.isArray(cloudEmployees)) setEmployees(cloudEmployees);
+  }, [cloudEmployees]);
+  useEffect(() => {
+    if (Array.isArray(cloudAttendance)) setAttendance(cloudAttendance);
+  }, [cloudAttendance]);
+  useEffect(() => {
+    if (Array.isArray(cloudPayments)) setPayments(cloudPayments);
+  }, [cloudPayments]);
+  useEffect(() => {
+    if (Array.isArray(cloudAuditLogs)) setAuditLogs(cloudAuditLogs);
+  }, [cloudAuditLogs]);
+  useEffect(() => {
+    if (cloudSubscription) setSubscription({ plan: 'Free', invoicesLimit: 25, usersLimit: 1, aiEnabled: true, ...cloudSubscription });
+  }, [cloudSubscription]);
+  useEffect(() => {
+    if (cloudSecurity) setSecurity((current) => ({ ...current, ...cloudSecurity }));
+  }, [cloudSecurity]);
+  useEffect(() => {
+    if (Array.isArray(cloudDevices) && cloudDevices.length > 0) setDevices(cloudDevices);
+  }, [cloudDevices]);
+  useEffect(() => {
+    if (Array.isArray(cloudOfflineQueue)) setOfflineQueue(cloudOfflineQueue);
+  }, [cloudOfflineQueue]);
+  useEffect(() => {
     onCloudSnapshot?.('phase3_ops_updated');
   }, [orders, employees, attendance, auditLogs, payments, offlineQueue, subscription, security, devices]);
 
@@ -153,17 +191,39 @@ export default function Phase3Ops({
     ...pendingCollections.slice(0, 3).map((party) => `${party.name} owes ${formatCurrency(party.outstandingAmount)}`),
   ], [pendingCollections, products, unpaidInvoices]);
 
-  const logAudit = (action, area) => {
-    setAuditLogs([{ id: createId('aud'), action, area, user: 'Owner', date: new Date().toLocaleString() }, ...auditLogs].slice(0, 100));
+  const persistRecord = async (tableName, record, fallbackMessage = 'Cloud save failed') => {
+    if (!firebaseEnabled || !authUser?.uid) {
+      throw new Error('Sign in with Supabase before saving production data.');
+    }
+    const saved = await onCloudRecord?.(tableName, record.id, record);
+    if (!saved) {
+      throw new Error(fallbackMessage);
+    }
+    return true;
   };
 
-  const queueOfflineAction = (type, payload) => {
+  const logAudit = async (action, area) => {
+    const log = { id: createId('aud'), action, area, user: 'Owner', date: new Date().toLocaleString() };
+    try {
+      await persistRecord('audit_logs', log, 'Audit log save failed');
+    } catch (error) {
+      onStatus(error?.message || 'Audit log save failed');
+    }
+    setAuditLogs([log, ...auditLogs].slice(0, 100));
+  };
+
+  const queueOfflineAction = async (type, payload) => {
     const entry = { id: createId('queue'), type, payload, date: new Date().toLocaleString(), synced: navigator.onLine };
-    setOfflineQueue([entry, ...offlineQueue]);
-    onStatus(navigator.onLine ? 'Action saved and ready for sync' : 'Offline action queued');
+    try {
+      await persistRecord('offline_queue', entry, 'Offline queue save failed');
+      setOfflineQueue([entry, ...offlineQueue]);
+      onStatus(navigator.onLine ? 'Action saved to Supabase' : 'Offline marker saved to Supabase');
+    } catch (error) {
+      onStatus(error?.message || 'Offline queue save failed');
+    }
   };
 
-  const saveOrder = (event) => {
+  const saveOrder = async (event) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const order = {
@@ -181,24 +241,37 @@ export default function Phase3Ops({
       onStatus('Enter valid customer and mobile for order');
       return;
     }
+    try {
+      await persistRecord('orders', order, 'Order save failed');
+    } catch (error) {
+      onStatus(error?.message || 'Order save failed');
+      return;
+    }
     setOrders([order, ...orders]);
-    queueOfflineAction('order-created', order);
-    logAudit(`Created ${order.orderNo}`, 'Orders');
+    await queueOfflineAction('order-created', order);
+    await logAudit(`Created ${order.orderNo}`, 'Orders');
     event.currentTarget.reset();
   };
 
-  const advanceOrder = (order) => {
+  const advanceOrder = async (order) => {
     const currentIndex = ORDER_STAGES.indexOf(order.status);
     const nextStatus = ORDER_STAGES[Math.min(currentIndex + 1, ORDER_STAGES.length - 1)];
-    setOrders(orders.map((item) => item.id === order.id ? {
-      ...item,
+    const updatedOrder = {
+      ...order,
       status: nextStatus,
-      timeline: [{ status: nextStatus, date: new Date().toLocaleString(), note: 'Status updated' }, ...item.timeline],
-    } : item));
-    logAudit(`Updated ${order.orderNo} to ${nextStatus}`, 'Orders');
+      timeline: [{ status: nextStatus, date: new Date().toLocaleString(), note: 'Status updated' }, ...(order.timeline || [])],
+    };
+    try {
+      await persistRecord('orders', updatedOrder, 'Order status update failed');
+    } catch (error) {
+      onStatus(error?.message || 'Order status update failed');
+      return;
+    }
+    setOrders(orders.map((item) => item.id === order.id ? updatedOrder : item));
+    await logAudit(`Updated ${order.orderNo} to ${nextStatus}`, 'Orders');
   };
 
-  const saveEmployee = (event) => {
+  const saveEmployee = async (event) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const employee = {
@@ -213,27 +286,65 @@ export default function Phase3Ops({
       onStatus('Enter valid employee name and mobile');
       return;
     }
+    try {
+      await persistRecord('employees', employee, 'Employee save failed');
+    } catch (error) {
+      onStatus(error?.message || 'Employee save failed');
+      return;
+    }
     setEmployees([employee, ...employees]);
-    logAudit(`Added employee ${employee.name}`, 'Employees');
+    await logAudit(`Added employee ${employee.name}`, 'Employees');
     event.currentTarget.reset();
   };
 
-  const markAttendance = (employee, status) => {
-    setAttendance([{ id: createId('att'), employeeId: employee.id, name: employee.name, status, date: today() }, ...attendance]);
-    logAudit(`Marked ${employee.name} ${status}`, 'Attendance');
+  const markAttendance = async (employee, status) => {
+    const attendanceEntry = { id: createId('att'), employeeId: employee.id, name: employee.name, status, date: today() };
+    try {
+      await persistRecord('attendance', attendanceEntry, 'Attendance save failed');
+    } catch (error) {
+      onStatus(error?.message || 'Attendance save failed');
+      return;
+    }
+    setAttendance([attendanceEntry, ...attendance]);
+    await logAudit(`Marked ${employee.name} ${status}`, 'Attendance');
   };
 
-  const recordPayment = (invoice) => {
+  const recordPayment = async (invoice) => {
     const amount = invoice.balance || invoice.total || 0;
     const payment = { id: createId('pay'), invoiceId: invoice.id, invoiceNo: invoice.invoiceNo, amount, date: today(), mode: 'UPI', status: 'Marked Paid' };
+    try {
+      await persistRecord('payments', payment, 'Payment save failed');
+    } catch (error) {
+      onStatus(error?.message || 'Payment save failed');
+      return;
+    }
     setPayments([payment, ...payments]);
-    logAudit(`Marked payment for ${invoice.invoiceNo}`, 'Payments');
-    onStatus('Payment recorded locally. Provider webhook required for automatic bank confirmation.');
+    await logAudit(`Marked payment for ${invoice.invoiceNo}`, 'Payments');
+    onStatus('Payment recorded in Supabase. Provider webhook required for automatic bank confirmation.');
   };
 
-  const saveSecurity = (key, value) => {
-    setSecurity({ ...security, [key]: value });
-    logAudit(`Security setting changed: ${key}`, 'Security');
+  const saveSecurity = async (key, value) => {
+    const nextSecurity = { ...security, id: 'current', [key]: value };
+    try {
+      await persistRecord('security_settings', nextSecurity, 'Security setting save failed');
+    } catch (error) {
+      onStatus(error?.message || 'Security setting save failed');
+      return;
+    }
+    setSecurity(nextSecurity);
+    await logAudit(`Security setting changed: ${key}`, 'Security');
+  };
+
+  const saveSubscriptionPlan = async (plan) => {
+    const nextSubscription = { ...subscription, id: 'current', plan };
+    try {
+      await persistRecord('subscriptions', nextSubscription, 'Subscription save failed');
+    } catch (error) {
+      onStatus(error?.message || 'Subscription save failed');
+      return;
+    }
+    setSubscription(nextSubscription);
+    await logAudit(`Subscription plan changed to ${plan}`, 'Subscriptions');
   };
 
   const exportPrivacyData = () => {
@@ -436,7 +547,7 @@ export default function Phase3Ops({
           {plans.map(([plan, details]) => (
             <article className={`phase3-card ${subscription.plan === plan ? 'selected-plan' : ''}`} key={plan}>
               <strong>{plan}</strong><p>{details}</p>
-              <button className="secondary-button compact-button" type="button" onClick={() => setSubscription({ ...subscription, plan })}>Select Plan</button>
+              <button className="secondary-button compact-button" type="button" onClick={() => saveSubscriptionPlan(plan)}>Select Plan</button>
             </article>
           ))}
         </div>

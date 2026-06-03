@@ -115,6 +115,8 @@ export default function Phase2ERP({
   cloudCustomers,
   cloudSuppliers,
   cloudInventory,
+  cloudStockTransactions,
+  cloudInvoices,
   cloudUserId,
   peopleLoading,
   onStatus,
@@ -156,10 +158,20 @@ export default function Phase2ERP({
   useEffect(() => writeArray(NOTIFICATION_KEY, notifications), [notifications]);
   useEffect(() => writeObject(CLOUD_BACKUP_KEY, cloudSettings), [cloudSettings]);
   useEffect(() => {
-    if (Array.isArray(cloudInventory) && cloudInventory.length > 0) {
+    if (Array.isArray(cloudInventory)) {
       setProducts(cloudInventory);
     }
   }, [cloudInventory]);
+  useEffect(() => {
+    if (Array.isArray(cloudStockTransactions)) {
+      setStockTxns(cloudStockTransactions);
+    }
+  }, [cloudStockTransactions]);
+  useEffect(() => {
+    if (Array.isArray(cloudInvoices)) {
+      setInvoices(cloudInvoices);
+    }
+  }, [cloudInvoices]);
   useEffect(() => {
     if (Array.isArray(cloudCustomers)) {
       setCustomers(cloudCustomers);
@@ -364,6 +376,7 @@ export default function Phase2ERP({
       return { ...product, currentStock: Math.max(0, nextStock) };
     });
     const updatedProduct = updatedProducts.find((product) => product.id === productId);
+    const stockEntry = { id: createId('stk'), businessId: activeBusinessId, productId, type, qty, note: sanitizeText(form.get('note'), 180), date: today() };
     if (updatedProduct) {
       try {
         const saved = await onCloudRecord?.('inventory', updatedProduct.id, {
@@ -373,16 +386,17 @@ export default function Phase2ERP({
         if (!saved) {
           throw new Error('Stock update failed');
         }
+        const stockSaved = await onCloudRecord?.('stock_transactions', stockEntry.id, stockEntry);
+        if (!stockSaved) {
+          throw new Error('Stock transaction save failed');
+        }
       } catch (error) {
         onStatus(error?.message || 'Stock update failed');
         return;
       }
     }
     setProducts(updatedProducts);
-    setStockTxns([
-      { id: createId('stk'), businessId: activeBusinessId, productId, type, qty, note: sanitizeText(form.get('note'), 180), date: today() },
-      ...stockTxns,
-    ]);
+    setStockTxns([stockEntry, ...stockTxns]);
     event.currentTarget.reset();
     onStatus('Stock updated');
   };
@@ -563,7 +577,6 @@ export default function Phase2ERP({
       paid,
       balance: total - paid,
     };
-    setInvoices(editingInvoiceId ? invoices.map((item) => (item.id === editingInvoiceId ? invoice : item)) : [invoice, ...invoices]);
     const productsAfterInvoice = products.map((product) => {
       const sold = invoice.lines.filter((line) => line.productId === product.id).reduce((sum, line) => sum + line.qty, 0);
       return sold ? { ...product, currentStock: Math.max(0, product.currentStock - sold) } : product;
@@ -571,6 +584,10 @@ export default function Phase2ERP({
     const affectedProducts = productsAfterInvoice
       .filter((product) => invoice.lines.some((line) => line.productId === product.id));
     try {
+      const invoiceSaved = await onCloudRecord?.('invoices', invoice.id, invoice);
+      if (!invoiceSaved) {
+        throw new Error('Invoice save failed');
+      }
       await Promise.all(affectedProducts.map(async (product) => {
         const saved = await onCloudRecord?.('inventory', product.id, {
           ...product,
@@ -581,16 +598,17 @@ export default function Phase2ERP({
         }
       }));
     } catch (error) {
-      onStatus(error?.message || 'Invoice stock update failed');
+      onStatus(error?.message || 'Invoice save failed');
       return;
     }
+    setInvoices(editingInvoiceId ? invoices.map((item) => (item.id === editingInvoiceId ? invoice : item)) : [invoice, ...invoices]);
     setProducts(productsAfterInvoice);
     if (invoice.dueDate < today() && invoice.status !== 'Paid') {
       addNotification('Overdue invoice risk', `${invoice.invoiceNo} is due on ${invoice.dueDate}.`, 'Invoice');
     }
     setInvoiceDraft({ customerId: '', status: 'Unpaid', dueDate: today(), terms: TERMS, lines: [] });
     setEditingInvoiceId('');
-    onStatus('Invoice saved');
+    onStatus('Invoice saved to Supabase');
   };
 
   const editInvoice = (invoice) => {
@@ -605,9 +623,17 @@ export default function Phase2ERP({
     onStatus(`Editing ${invoice.invoiceNo}`);
   };
 
-  const deleteInvoice = (invoiceId) => {
-    setInvoices(invoices.filter((invoice) => invoice.id !== invoiceId));
-    onStatus('Invoice deleted');
+  const deleteInvoice = async (invoiceId) => {
+    try {
+      const deleted = await onCloudDelete?.('invoices', invoiceId);
+      if (!deleted) {
+        throw new Error('Invoice delete failed');
+      }
+      setInvoices(invoices.filter((invoice) => invoice.id !== invoiceId));
+      onStatus('Invoice deleted');
+    } catch (error) {
+      onStatus(error?.message || 'Invoice delete failed');
+    }
   };
 
   const customerName = (customerId) => scopedCustomers.find((customer) => customer.id === customerId)?.name || 'Customer';
