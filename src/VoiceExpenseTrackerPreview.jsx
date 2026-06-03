@@ -794,6 +794,7 @@ export default function VoiceExpenseTrackerPreview() {
   });
   const sidebarSectionRefs = useRef({});
   const hasVerifiedAccess = !REQUIRE_VERIFIED_EMAIL || Boolean(authUser?.emailVerified);
+  const canViewFirestoreDebug = import.meta.env.DEV || authUser?.role === 'Owner';
 
   const requireSensitiveAccess = (actionName = 'this action') => {
     if (!authUser) {
@@ -2707,7 +2708,10 @@ export default function VoiceExpenseTrackerPreview() {
           </div>
         </div>
         <nav className="side-nav" aria-label="ERP sections">
-          {SIDEBAR_SECTIONS.map((section) => {
+          {SIDEBAR_SECTIONS.map((section) => ({
+            ...section,
+            items: section.items.filter(([tab]) => tab !== 'firestore-test' || canViewFirestoreDebug),
+          })).filter((section) => section.items.length > 0).map((section) => {
             const isExpanded = expandedSidebarSection === section.id;
             const hasActiveItem = section.items.some(([tab]) => tab === activeTab);
 
@@ -2794,7 +2798,7 @@ export default function VoiceExpenseTrackerPreview() {
 
           {offline && (
             <div className="notice warning">
-              You are offline. Entries will stay available locally and can sync when the connection returns.
+              You are offline. Production business entries need Firebase, so reconnect before saving new data.
             </div>
           )}
 
@@ -3928,7 +3932,7 @@ export default function VoiceExpenseTrackerPreview() {
             </section>
           )}
 
-          {activeTab === 'firestore-test' && (
+          {activeTab === 'firestore-test' && canViewFirestoreDebug && (
             <section className="panel fade-in" id="firestore-test">
               <div className="section-header">
                 <div>

@@ -90,7 +90,7 @@ export function publicSafeError(error, fallback = 'Something went wrong. Please 
   }
 
   if (error?.code === 'firestore/write-timeout') {
-    return 'Firestore write timed out. Check Firestore API access, network, App Check, and Firebase rules.';
+    return 'Firestore write timed out. Please check Firebase project, API, rules, or env variables.';
   }
 
   if (/api[_ -]?key|token|secret|credential|password/i.test(message)) {

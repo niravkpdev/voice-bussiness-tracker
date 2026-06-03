@@ -10,9 +10,7 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
-let analyticsStarted = false;
 let firebaseModulesPromise;
-let appCheckStarted = false;
 let firebaseProjectLogged = false;
 let firestoreDb;
 const CLOUD_COLLECTIONS = new Set([
@@ -24,10 +22,8 @@ const CLOUD_COLLECTIONS = new Set([
   'settings',
 ]);
 
-const appCheckSiteKey = import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY;
-const appCheckEnabled = import.meta.env.VITE_FIREBASE_APPCHECK_ENABLED === 'true';
 const FIRESTORE_TIMEOUT_MS = 10_000;
-const FIRESTORE_TIMEOUT_MESSAGE = 'Firestore write timed out. Check Firebase rules/API permissions.';
+const FIRESTORE_TIMEOUT_MESSAGE = 'Firestore write timed out. Please check Firebase project, API, rules, or env variables.';
 
 export function isFirebaseConfigured() {
   return Boolean(firebaseConfig.apiKey && firebaseConfig.authDomain && firebaseConfig.projectId && firebaseConfig.appId);
@@ -43,9 +39,7 @@ async function loadFirebaseModules() {
       import('firebase/app'),
       import('firebase/auth'),
       import('firebase/firestore'),
-      import('firebase/analytics'),
-      import('firebase/app-check'),
-    ]).then(([app, auth, firestore, analytics, appCheck]) => ({ app, auth, firestore, analytics, appCheck }));
+    ]).then(([app, auth, firestore]) => ({ app, auth, firestore }));
   }
 
   return firebaseModulesPromise;
@@ -59,29 +53,12 @@ async function getFirebaseContext() {
   const modules = await loadFirebaseModules();
   const app = modules.app.getApps().length ? modules.app.getApp() : modules.app.initializeApp(firebaseConfig);
 
-  if (!appCheckStarted && appCheckEnabled && appCheckSiteKey && typeof window !== 'undefined') {
-    modules.appCheck.initializeAppCheck(app, {
-      provider: new modules.appCheck.ReCaptchaV3Provider(appCheckSiteKey),
-      isTokenAutoRefreshEnabled: true,
-    });
-    appCheckStarted = true;
-  }
-
   const auth = modules.auth.getAuth(app);
   const db = getConfiguredFirestore(modules, app);
 
   if (!firebaseProjectLogged) {
     console.info('FIREBASE_PROJECT_ID', { projectId: firebaseConfig.projectId || null });
     firebaseProjectLogged = true;
-  }
-
-  if (!analyticsStarted && firebaseConfig.measurementId) {
-    modules.analytics.isSupported().then((supported) => {
-      if (supported) {
-        modules.analytics.getAnalytics(app);
-        analyticsStarted = true;
-      }
-    }).catch(() => {});
   }
 
   return { ...modules, appInstance: app, authInstance: auth, db };
@@ -121,6 +98,9 @@ function firestoreTimeoutError(meta) {
     path: meta.path,
     uid: meta.uid,
     projectId: firebaseConfig.projectId || null,
+    authDomain: firebaseConfig.authDomain || null,
+    currentFirebaseUserUid: meta.currentFirebaseUserUid || null,
+    requestedUid: meta.uid || null,
     operation: meta.operation,
   });
   return error;
@@ -143,6 +123,31 @@ function withFirestoreTimeout(promise, meta) {
 
 function isFirestoreTimeout(error) {
   return error?.code === 'firestore/write-timeout';
+}
+
+function firestoreLogBase(context, uid, path) {
+  return {
+    projectId: firebaseConfig.projectId || null,
+    authDomain: firebaseConfig.authDomain || null,
+    currentFirebaseUserUid: context?.authInstance?.currentUser?.uid || null,
+    requestedUid: uid || null,
+    path,
+  };
+}
+
+async function verifyFirestoreDocument(context, uid, path, docRef, operation = 'getDoc:verifyRecord') {
+  const snapshot = await withFirestoreTimeout(
+    context.firestore.getDoc(docRef),
+    { path, uid, currentFirebaseUserUid: context.authInstance.currentUser?.uid || null, operation }
+  );
+
+  if (!snapshot.exists()) {
+    const error = new Error(`Firestore write verification failed: document not found at ${path}`);
+    error.code = 'firestore/verification-failed';
+    throw error;
+  }
+
+  return snapshot;
 }
 
 function encodeFirestoreValue(value) {
@@ -219,6 +224,7 @@ async function commitFirestoreRestWrite(context, path, data, transformFields = [
     path,
     uid: user.uid,
     projectId: firebaseConfig.projectId || null,
+    authDomain: firebaseConfig.authDomain || null,
   });
 
   const response = await withFirestoreTimeout(
@@ -248,7 +254,7 @@ async function commitFirestoreRestWrite(context, path, data, transformFields = [
         ],
       }),
     }),
-    { path, uid: user.uid, operation: 'rest:commit' }
+    { path, uid: user.uid, currentFirebaseUserUid: user.uid, operation: 'rest:commit' }
   );
 
   if (!response.ok) {
@@ -275,6 +281,7 @@ async function commitFirestoreRestWrite(context, path, data, transformFields = [
       path,
       uid: user.uid,
       projectId: firebaseConfig.projectId || null,
+      authDomain: firebaseConfig.authDomain || null,
       code: error.code,
       message: error.message,
       googleStatus: error.googleStatus,
@@ -287,6 +294,7 @@ async function commitFirestoreRestWrite(context, path, data, transformFields = [
     path,
     uid: user.uid,
     projectId: firebaseConfig.projectId || null,
+    authDomain: firebaseConfig.authDomain || null,
   });
   return true;
 }
@@ -463,6 +471,7 @@ export async function runFirestoreDebugTest() {
     uid: uid || null,
     path,
     projectId: firebaseConfig.projectId || null,
+    authDomain: firebaseConfig.authDomain || null,
   });
 
   try {
@@ -470,16 +479,17 @@ export async function runFirestoreDebugTest() {
       throw new Error('No authenticated Firebase user is available for Firestore debug test.');
     }
 
+    const docRef = context.firestore.doc(context.db, 'users', uid, 'debug', 'test');
     try {
       await withFirestoreTimeout(
         context.firestore.setDoc(
-          context.firestore.doc(context.db, 'users', uid, 'debug', 'test'),
+          docRef,
           {
             message: 'hello firestore',
             createdAt: context.firestore.serverTimestamp(),
           }
         ),
-        { path, uid, operation: 'setDoc:debugTest' }
+        { path, uid, currentFirebaseUserUid: uid, operation: 'setDoc:debugTest' }
       );
     } catch (error) {
       if (!isFirestoreTimeout(error)) {
@@ -488,17 +498,32 @@ export async function runFirestoreDebugTest() {
       await commitFirestoreRestWrite(context, path, { message: 'hello firestore' }, ['createdAt']);
     }
 
+    await verifyFirestoreDocument(context, uid, path, docRef, 'getDoc:debugTestVerify');
+
     console.info('DEBUG_FIRESTORE_TEST_SUCCESS', {
       uid,
       path,
       projectId: firebaseConfig.projectId || null,
+      authDomain: firebaseConfig.authDomain || null,
+      verified: true,
     });
     return { ok: true, uid, path };
   } catch (error) {
+    if (isFirestoreTimeout(error)) {
+      console.error('DEBUG_FIRESTORE_TEST_TIMEOUT', {
+        uid: uid || null,
+        path,
+        projectId: firebaseConfig.projectId || null,
+        authDomain: firebaseConfig.authDomain || null,
+        code: error?.code || null,
+        message: error?.message || String(error),
+      });
+    }
     console.error('DEBUG_FIRESTORE_TEST_ERROR', error?.code || null, error?.message || String(error), {
       uid: uid || null,
       path,
       projectId: firebaseConfig.projectId || null,
+      authDomain: firebaseConfig.authDomain || null,
     });
     throw error;
   }
@@ -550,20 +575,21 @@ export async function saveUserProfile(uid, profile) {
     return false;
   }
 
-  const path = `users/${uid}`;
+  const path = `users/${uid}/settings/profile`;
   try {
     const profilePayload = { ...profile };
+    const docRef = context.firestore.doc(context.db, 'users', uid, 'settings', 'profile');
     try {
       await withFirestoreTimeout(
         context.firestore.setDoc(
-          context.firestore.doc(context.db, 'users', uid),
+          docRef,
           {
             ...profilePayload,
             updatedAt: context.firestore.serverTimestamp(),
           },
           { merge: true }
         ),
-        { path, uid, operation: 'setDoc:userProfile' }
+        { path, uid, currentFirebaseUserUid: context.authInstance.currentUser?.uid || null, operation: 'setDoc:userProfile' }
       );
     } catch (error) {
       if (!isFirestoreTimeout(error)) {
@@ -571,12 +597,14 @@ export async function saveUserProfile(uid, profile) {
       }
       await commitFirestoreRestWrite(context, path, profilePayload, ['updatedAt']);
     }
+    await verifyFirestoreDocument(context, uid, path, docRef, 'getDoc:verifyUserProfile');
     return true;
   } catch (error) {
     console.error('FIRESTORE_WRITE_ERROR', {
       currentFirebaseUserUid: context.authInstance.currentUser?.uid || null,
       requestedUid: uid,
       projectId: firebaseConfig.projectId || null,
+      authDomain: firebaseConfig.authDomain || null,
       path,
       code: error?.code || null,
       message: error?.message || String(error),
@@ -597,6 +625,7 @@ export async function saveCloudRecord(uid, collectionName, id, data) {
       requestedUid: uid || null,
       currentFirebaseUserUid: context?.authInstance?.currentUser?.uid || null,
       projectId: firebaseConfig.projectId || null,
+      authDomain: firebaseConfig.authDomain || null,
       collectionName,
       documentId: id,
       path: uid && collectionName && id ? `users/${uid}/${collectionName}/${id}` : null,
@@ -613,6 +642,7 @@ export async function saveCloudRecord(uid, collectionName, id, data) {
       requestedUid: uid,
       currentFirebaseUserUid: null,
       projectId: firebaseConfig.projectId || null,
+      authDomain: firebaseConfig.authDomain || null,
       collectionName,
       documentId: id,
       path: `users/${uid}/${collectionName}/${id}`,
@@ -628,6 +658,7 @@ export async function saveCloudRecord(uid, collectionName, id, data) {
       requestedUid: uid,
       currentFirebaseUserUid: currentUid,
       projectId: firebaseConfig.projectId || null,
+      authDomain: firebaseConfig.authDomain || null,
       collectionName,
       documentId: id,
       path: `users/${uid}/${collectionName}/${id}`,
@@ -644,10 +675,21 @@ export async function saveCloudRecord(uid, collectionName, id, data) {
     updatedAt: '[serverTimestamp]',
   };
 
+  console.info('FIRESTORE_PATH_USED', {
+    projectId: firebaseConfig.projectId || null,
+    authDomain: firebaseConfig.authDomain || null,
+    currentFirebaseUserUid: currentUid,
+    requestedUid: uid,
+    collectionName,
+    documentId: id,
+    path,
+  });
+
   console.info('FIRESTORE_WRITE_START', {
     currentFirebaseUserUid: currentUid,
     requestedUid: uid,
     projectId: firebaseConfig.projectId || null,
+    authDomain: firebaseConfig.authDomain || null,
     path,
     operation: 'setDoc',
     payload,
@@ -669,7 +711,7 @@ export async function saveCloudRecord(uid, collectionName, id, data) {
           },
           { merge: true }
         ),
-        { path, uid, operation: 'setDoc:record' }
+        { path, uid, currentFirebaseUserUid: currentUid, operation: 'setDoc:record' }
       );
     } catch (error) {
       if (!isFirestoreTimeout(error)) {
@@ -678,12 +720,16 @@ export async function saveCloudRecord(uid, collectionName, id, data) {
       await commitFirestoreRestWrite(context, path, recordPayload, ['updatedAt']);
     }
 
+    await verifyFirestoreDocument(context, uid, path, docRef, 'getDoc:verifyRecord');
+
     console.info('FIRESTORE_WRITE_SUCCESS', {
       currentFirebaseUserUid: currentUid,
       requestedUid: uid,
       projectId: firebaseConfig.projectId || null,
+      authDomain: firebaseConfig.authDomain || null,
       path,
       operation: 'setDoc:record',
+      verified: true,
     });
     return true;
   } catch (error) {
@@ -691,6 +737,7 @@ export async function saveCloudRecord(uid, collectionName, id, data) {
       currentFirebaseUserUid: currentUid,
       requestedUid: uid,
       projectId: firebaseConfig.projectId || null,
+      authDomain: firebaseConfig.authDomain || null,
       collectionName,
       documentId: id,
       path,
@@ -707,6 +754,8 @@ export async function deleteCloudRecord(uid, collectionName, id) {
     console.error('[Firestore delete blocked]', {
       requestedUid: uid || null,
       currentFirebaseUserUid: context?.authInstance?.currentUser?.uid || null,
+      projectId: firebaseConfig.projectId || null,
+      authDomain: firebaseConfig.authDomain || null,
       collectionName,
       documentId: id,
       path: uid && collectionName && id ? `users/${uid}/${collectionName}/${id}` : null,
@@ -718,6 +767,8 @@ export async function deleteCloudRecord(uid, collectionName, id) {
   console.info('[Firestore delete start]', {
     currentFirebaseUserUid: context.authInstance.currentUser?.uid || null,
     requestedUid: uid,
+    projectId: firebaseConfig.projectId || null,
+    authDomain: firebaseConfig.authDomain || null,
     path,
   });
 
@@ -726,12 +777,14 @@ export async function deleteCloudRecord(uid, collectionName, id) {
       context.firestore.deleteDoc(
         context.firestore.doc(context.db, 'users', uid, collectionName, id)
       ),
-      { path, uid, operation: 'deleteDoc:record' }
+      { path, uid, currentFirebaseUserUid: context.authInstance.currentUser?.uid || null, operation: 'deleteDoc:record' }
     );
 
     console.info('[Firestore delete success]', {
       currentFirebaseUserUid: context.authInstance.currentUser?.uid || null,
       requestedUid: uid,
+      projectId: firebaseConfig.projectId || null,
+      authDomain: firebaseConfig.authDomain || null,
       path,
     });
     return true;
@@ -760,7 +813,12 @@ export async function loadCloudCollection(uid, collectionName) {
     context.firestore.getDocs(
       context.firestore.collection(context.db, 'users', uid, collectionName)
     ),
-    { path: `users/${uid}/${collectionName}`, uid, operation: 'getDocs:collection' }
+    {
+      path: `users/${uid}/${collectionName}`,
+      uid,
+      currentFirebaseUserUid: context.authInstance.currentUser?.uid || null,
+      operation: 'getDocs:collection',
+    }
   );
 
   return snapshot.docs.map((docSnapshot) => ({
@@ -783,7 +841,12 @@ export async function loadUserProfileSettings(uid) {
     context.firestore.getDoc(
       context.firestore.doc(context.db, 'users', uid, 'settings', 'profile')
     ),
-    { path: `users/${uid}/settings/profile`, uid, operation: 'getDoc:userProfileSettings' }
+    {
+      path: `users/${uid}/settings/profile`,
+      uid,
+      currentFirebaseUserUid: context.authInstance.currentUser?.uid || null,
+      operation: 'getDoc:userProfileSettings',
+    }
   );
 
   return snapshot.exists() ? snapshot.data() : null;
