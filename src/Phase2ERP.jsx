@@ -450,7 +450,7 @@ export default function Phase2ERP({
     try {
       const saved = await onCloudRecord?.(collectionName, id, person);
       if (!saved) {
-        throw new Error(`Firestore save failed for ${path}`);
+        throw new Error(`Supabase save failed for ${path}`);
       }
 
       if (isCustomer) {
@@ -485,9 +485,9 @@ export default function Phase2ERP({
 
     try {
       const deleted = await onCloudDelete?.(collectionName, person.id);
-      if (!deleted) {
-        throw new Error(`Firestore delete failed for ${path}`);
-      }
+    if (!deleted) {
+      throw new Error(`Supabase delete failed for ${path}`);
+    }
       if (isCustomer) {
         setCustomers((items) => items.filter((item) => item.id !== person.id));
         console.info('CUSTOMER_DELETE_SUCCESS', { path, customerId: person.id });
@@ -976,7 +976,7 @@ export default function Phase2ERP({
     const currentEdit = editingPerson?.type === formKind ? editingPerson : null;
     return (
       <section className="phase2-stack fade-in" id={activeTab}>
-        <div className="erp-hero"><div><span className="eyebrow">People Management</span><h2>Customer and supplier profiles synced to Firestore</h2></div></div>
+        <div className="erp-hero"><div><span className="eyebrow">People Management</span><h2>Customer and supplier profiles synced to Supabase</h2></div></div>
         <div className="analytics-filter">
           <button className={peopleTab === 'customers' ? 'active' : ''} type="button" onClick={() => { setPeopleTab('customers'); setEditingPerson(null); }}>
             Customers
@@ -1040,7 +1040,7 @@ export default function Phase2ERP({
               placeholder={`Search ${isCustomer ? 'customers' : 'suppliers'}`}
             />
           </div>
-          {peopleLoading && <div className="notice">Loading {isCustomer ? 'customers' : 'suppliers'} from Firestore...</div>}
+          {peopleLoading && <div className="notice">Loading {isCustomer ? 'customers' : 'suppliers'} from Supabase...</div>}
           {list.length === 0 && !peopleLoading ? (
             <div className="empty-state">
               {isCustomer ? 'No customers yet. Add your first customer.' : 'No suppliers yet. Add your first supplier.'}

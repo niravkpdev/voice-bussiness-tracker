@@ -93,6 +93,14 @@ export function publicSafeError(error, fallback = 'Something went wrong. Please 
     return 'Firestore write timed out. Please check Firebase project, API, rules, or env variables.';
   }
 
+  if (error?.code === 'supabase/write-timeout') {
+    return 'Supabase write timed out. Please check Supabase URL, anon key, RLS policies, or network.';
+  }
+
+  if (/row-level security|violates row-level security|permission denied/i.test(message)) {
+    return 'Supabase permission denied. Check Row Level Security policies and make sure you are logged in.';
+  }
+
   if (/api[_ -]?key|token|secret|credential|password/i.test(message)) {
     return fallback;
   }

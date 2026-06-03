@@ -201,7 +201,7 @@ const SIDEBAR_SECTIONS = [
       ['security-center', 'Security'],
       ['profile-settings', 'Profile'],
       ['app-settings', 'Settings'],
-      ['firestore-test', 'Firestore Test'],
+      ['firestore-test', 'Database Test'],
     ],
   },
 ];
@@ -1023,7 +1023,7 @@ export default function VoiceExpenseTrackerPreview() {
 
         await applyAuthenticatedUser(firebaseUser);
         if (firebaseUser?.emailVerified) {
-          setStatus('Secure Firebase login active');
+          setStatus('Secure Supabase login active');
         } else {
           setAuthNotice('Verification email sent. Please check your inbox or spam folder.');
           setVerificationCooldown(authView === 'register' ? 60 : 0);
@@ -1033,8 +1033,8 @@ export default function VoiceExpenseTrackerPreview() {
       }
 
       if (!ALLOW_DEMO_AUTH) {
-        setSecureError('Production authentication is not configured. Add Firebase environment variables before launch.');
-        setStatus('Firebase authentication required');
+        setSecureError('Production authentication is not configured. Add Supabase environment variables before launch.');
+        setStatus('Supabase authentication required');
         return;
       }
 
@@ -1049,8 +1049,8 @@ export default function VoiceExpenseTrackerPreview() {
         mode: 'demo',
       };
       await applyAuthenticatedUser(nextUser, { restoreCloud: false });
-      setSecureError('Firebase is not configured yet, so this session is running in local demo mode.');
-      setStatus('Demo mode active. Configure Firebase env variables for production login.');
+      setSecureError('Supabase is not configured yet, so this session is running in local demo mode.');
+      setStatus('Demo mode active. Configure Supabase env variables for production login.');
     } catch (error) {
       const message = getFirebaseAuthErrorMessage(error, 'Login failed. Please check your details and try again.');
       setSecureError(message);
@@ -1069,14 +1069,18 @@ export default function VoiceExpenseTrackerPreview() {
     try {
       if (firebaseEnabled) {
         const firebaseUser = await signInFirebaseGoogle();
+        if (!firebaseUser) {
+          setStatus('Redirecting to Google sign-in');
+          return;
+        }
         await applyAuthenticatedUser(firebaseUser);
         setStatus('Signed in with Google');
         return;
       }
 
       if (!ALLOW_DEMO_AUTH) {
-        setSecureError('Production Google login requires Firebase configuration.');
-        setStatus('Firebase authentication required');
+        setSecureError('Production Google login requires Supabase configuration.');
+        setStatus('Supabase authentication required');
         return;
       }
 
@@ -1092,8 +1096,8 @@ export default function VoiceExpenseTrackerPreview() {
         mode: 'demo',
       };
       await applyAuthenticatedUser(nextUser, { restoreCloud: false });
-      setSecureError('Firebase is not configured yet, so Google login is running in local demo mode.');
-      setStatus('Google login simulated. Configure Firebase for production OAuth.');
+      setSecureError('Supabase is not configured yet, so Google login is running in local demo mode.');
+      setStatus('Google login simulated. Configure Supabase for production OAuth.');
     } catch (error) {
       const message = getFirebaseAuthErrorMessage(error, 'Google login failed. Please try again.');
       setSecureError(message);
@@ -1120,8 +1124,8 @@ export default function VoiceExpenseTrackerPreview() {
     }
 
     if (!firebaseEnabled) {
-      setSecureError('Password reset requires Firebase authentication to be configured.');
-      setStatus('Firebase authentication required');
+      setSecureError('Password reset requires Supabase authentication to be configured.');
+      setStatus('Supabase authentication required');
       return;
     }
 
@@ -1205,12 +1209,12 @@ export default function VoiceExpenseTrackerPreview() {
 
   const runDebugFirestoreTest = async () => {
     setSecureError('');
-    setStatus('Running Firestore test...');
+    setStatus('Running database test...');
     try {
       const result = await runFirestoreDebugTest();
-      setStatus(`Firestore test wrote ${result.path}`);
+      setStatus(`Database test wrote ${result.path}`);
     } catch (error) {
-      const message = publicSafeError(error, 'Firestore test failed. Check console for DEBUG_FIRESTORE_TEST_ERROR.');
+      const message = publicSafeError(error, 'Database test failed. Check console for DEBUG_FIRESTORE_TEST_ERROR.');
       setSecureError(message);
       setStatus(message);
     }
@@ -1297,7 +1301,7 @@ export default function VoiceExpenseTrackerPreview() {
           await applyAuthenticatedUser(user);
         } else {
           if (import.meta.env.DEV) {
-            console.info('[Firebase auth state]', { user: null });
+            console.info('[Supabase auth state]', { user: null });
           }
           setAuthUser(null);
           if (import.meta.env.PROD) {
@@ -1311,13 +1315,13 @@ export default function VoiceExpenseTrackerPreview() {
         if (!active) {
           return;
         }
-        setSecureError(getFirebaseAuthErrorMessage(error, 'Firebase authentication is unavailable.'));
+        setSecureError(getFirebaseAuthErrorMessage(error, 'Supabase authentication is unavailable.'));
         setAuthLoading(false);
       }
     ).then((handler) => {
       unsubscribe = handler;
     }).catch((error) => {
-      setSecureError(getFirebaseAuthErrorMessage(error, 'Firebase authentication is unavailable.'));
+      setSecureError(getFirebaseAuthErrorMessage(error, 'Supabase authentication is unavailable.'));
       setAuthLoading(false);
     });
 
@@ -1569,7 +1573,7 @@ export default function VoiceExpenseTrackerPreview() {
       try {
         const saved = await saveCloudRecord(authUser.uid, 'transactions', voucher.id, transactionPayload);
         if (!saved) {
-          throw new Error(`Firestore write returned false for ${firestorePath}`);
+          throw new Error(`Supabase write returned false for ${firestorePath}`);
         }
         console.info('[Transaction save success]', {
           currentFirebaseUserUid: authUser.uid,
@@ -1592,7 +1596,7 @@ export default function VoiceExpenseTrackerPreview() {
           });
           return nextVouchers;
         });
-        setStatus('Transaction saved to Firestore');
+        setStatus('Transaction saved to Supabase');
         return true;
       } catch (error) {
         const message = publicSafeError(error, 'Cloud transaction save failed. Please try again.');
@@ -1612,7 +1616,7 @@ export default function VoiceExpenseTrackerPreview() {
       saveVoucher(voucher);
       refreshVouchers();
       console.info('[Transaction saved in development storage]', {
-        reason: 'No Firebase user is available in local development.',
+        reason: 'No Supabase user is available in local development.',
         transactionId: voucher.id,
         payload: voucher,
       });
@@ -1620,8 +1624,8 @@ export default function VoiceExpenseTrackerPreview() {
       return true;
     }
 
-    setSecureError('Sign in with Firebase before saving production transactions.');
-    setStatus('Firebase sign-in required');
+    setSecureError('Sign in with Supabase before saving production transactions.');
+    setStatus('Supabase sign-in required');
     return false;
   };
 
@@ -2176,9 +2180,9 @@ export default function VoiceExpenseTrackerPreview() {
       version: 2,
       exportedAt: new Date().toISOString(),
       storageLocation: {
-        type: import.meta.env.PROD ? 'Firebase-backed in-memory export' : 'Browser localStorage development export',
+        type: import.meta.env.PROD ? 'Supabase-backed in-memory export' : 'Browser localStorage development export',
         origin: window.location.origin,
-        deviceScope: import.meta.env.PROD ? 'Current authenticated Firebase session' : 'This browser on this device',
+        deviceScope: import.meta.env.PROD ? 'Current authenticated Supabase session' : 'This browser on this device',
       },
       data: {
         businessLogs: logs,
@@ -2592,7 +2596,7 @@ export default function VoiceExpenseTrackerPreview() {
           <section className="auth-page">
             <div className="auth-card">
               <span className={`security-mode ${firebaseEnabled ? 'live' : 'demo'}`}>
-                {firebaseEnabled ? 'Firebase secure mode' : ALLOW_DEMO_AUTH ? 'Local demo mode' : 'Firebase required'}
+                {firebaseEnabled ? 'Supabase secure mode' : ALLOW_DEMO_AUTH ? 'Local demo mode' : 'Supabase required'}
               </span>
               <span className="saas-kicker">
                 {authView === 'reset-password' ? 'Account recovery' : authView === 'login' ? 'Welcome back' : 'Create account'}
@@ -2680,7 +2684,7 @@ export default function VoiceExpenseTrackerPreview() {
             <span className="security-mode live">Protected route</span>
             <h1>{authUser ? 'Email verification required' : 'Login required'}</h1>
             <p>
-              Production dashboard access is blocked until Firebase authentication is active and the signed-in email is
+              Production dashboard access is blocked until Supabase authentication is active and the signed-in email is
               verified.
             </p>
             {authUser && (
@@ -2757,7 +2761,7 @@ export default function VoiceExpenseTrackerPreview() {
             <strong>{status}</strong>
             <div className="runtime-badges">
               <span className={`runtime-pill ${firebaseEnabled ? 'live' : 'demo'}`}>
-                {firebaseEnabled ? 'Firebase protected' : 'Local demo'}
+                {firebaseEnabled ? 'Supabase protected' : 'Local demo'}
               </span>
               <span className={`runtime-pill ${offline ? 'offline' : 'online'}`}>
                 {offline ? 'Offline' : 'Online'}
@@ -2798,7 +2802,7 @@ export default function VoiceExpenseTrackerPreview() {
 
           {offline && (
             <div className="notice warning">
-              You are offline. Production business entries need Firebase, so reconnect before saving new data.
+              You are offline. Production business entries need Supabase, so reconnect before saving new data.
             </div>
           )}
 
@@ -2830,7 +2834,7 @@ export default function VoiceExpenseTrackerPreview() {
 
               {transactionsLoading && (
                 <div className="notice">
-                  Loading dashboard transactions from Firestore...
+                  Loading dashboard transactions from Supabase...
                 </div>
               )}
 
@@ -2941,7 +2945,7 @@ export default function VoiceExpenseTrackerPreview() {
                 <section className="panel dashboard-recent-panel">
                   <div className="section-header">
                     <div>
-                      <span className="eyebrow">Firestore synced</span>
+                      <span className="eyebrow">Supabase synced</span>
                       <h2>Recent Vouchers</h2>
                     </div>
                     <a className="secondary-button compact-link" href="#day-book">Open Day Book</a>
@@ -3691,7 +3695,7 @@ export default function VoiceExpenseTrackerPreview() {
               )}
               {transactionsLoading && (
                 <div className="notice" style={{ marginTop: '16px' }}>
-                  Loading day book transactions from Firestore...
+                  Loading day book transactions from Supabase...
                 </div>
               )}
               <div className="activity-list" style={{ marginTop: '20px' }}>
@@ -3937,19 +3941,19 @@ export default function VoiceExpenseTrackerPreview() {
               <div className="section-header">
                 <div>
                   <span className="eyebrow">Temporary Debug</span>
-                  <h2>Firestore Test</h2>
+                  <h2>Database Test</h2>
                   <p className="panel-hint">
-                    Direct Firebase setDoc test for the signed-in user. No app business logic is used.
+                    Direct Supabase write and read-back test for the signed-in user. No app business logic is used.
                   </p>
                 </div>
                 <span className={`runtime-pill ${firebaseEnabled ? 'live' : 'demo'}`}>
-                  {firebaseEnabled ? 'Firebase configured' : 'Firebase missing'}
+                  {firebaseEnabled ? 'Supabase configured' : 'Supabase missing'}
                 </span>
               </div>
               <div className="notice">
-                This writes exactly to <code>{`users/${authUser?.uid || 'uid'}/debug/test`}</code> with message "hello firestore".
+                This writes to the Supabase <code>debug_tests</code> table for <code>{`users/${authUser?.uid || 'uid'}/debug/test`}</code>.
                 <br />
-                Firebase project: <code>{getFirebaseProjectId() || 'not configured'}</code>
+                Supabase project: <code>{getFirebaseProjectId() || 'not configured'}</code>
               </div>
               <button
                 className="manual-button"
@@ -3957,7 +3961,7 @@ export default function VoiceExpenseTrackerPreview() {
                 onClick={runDebugFirestoreTest}
                 disabled={!authUser || !firebaseEnabled}
               >
-                Run Firestore Test
+                Run Database Test
               </button>
             </section>
           )}

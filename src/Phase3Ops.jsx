@@ -481,7 +481,7 @@ export default function Phase3Ops({
             <div className="phase3-grid">
               <article className="phase3-card">
                 <strong>Email Verification</strong>
-                <p>{authUser?.emailVerified ? 'Verified email access is active.' : 'Production sensitive actions require a verified Firebase email.'}</p>
+                <p>{authUser?.emailVerified ? 'Verified email access is active.' : 'Production sensitive actions require a verified Supabase email.'}</p>
                 {!authUser?.emailVerified && (
                   <button className="secondary-button compact-button" type="button" onClick={onResendVerification}>
                     Resend Verification
@@ -490,11 +490,11 @@ export default function Phase3Ops({
               </article>
               <article className="phase3-card">
                 <strong>MFA Readiness</strong>
-                <p>{security.twoFactor ? 'MFA option enabled in account policy settings.' : 'Enable MFA in Firebase Authentication before public launch.'}</p>
+                <p>{security.twoFactor ? 'MFA option enabled in account policy settings.' : 'Enable MFA in Supabase Auth before public launch.'}</p>
               </article>
               <article className="phase3-card">
-                <strong>Firebase App Check</strong>
-                <p>{firebaseEnabled ? 'Client is Firebase-ready. Enforce App Check in Firebase console for Firestore, Storage, and Functions.' : 'Firebase is not configured in this environment.'}</p>
+                <strong>Supabase RLS</strong>
+                <p>{firebaseEnabled ? 'Client is Supabase-ready. Row Level Security keeps every user scoped to their own business rows.' : 'Supabase is not configured in this environment.'}</p>
               </article>
             </div>
             {controls.map(([key, label]) => (

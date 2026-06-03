@@ -1,19 +1,12 @@
+import { createClient } from '@supabase/supabase-js';
 import { sanitizeEmail, sanitizeText } from './security.js';
 
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
+const supabaseConfig = {
+  url: import.meta.env.VITE_SUPABASE_URL,
+  anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY,
 };
 
-let firebaseModulesPromise;
-let firebaseProjectLogged = false;
-let firestoreDb;
-const CLOUD_COLLECTIONS = new Set([
+const CLOUD_TABLES = new Set([
   'transactions',
   'customers',
   'suppliers',
@@ -22,97 +15,73 @@ const CLOUD_COLLECTIONS = new Set([
   'settings',
 ]);
 
-const FIRESTORE_TIMEOUT_MS = 10_000;
-const FIRESTORE_TIMEOUT_MESSAGE = 'Firestore write timed out. Please check Firebase project, API, rules, or env variables.';
+const CLOUD_TIMEOUT_MS = 10_000;
+const CLOUD_TIMEOUT_MESSAGE = 'Supabase write timed out. Please check Supabase project, RLS policies, API keys, or env variables.';
+
+let supabaseClient;
+let projectLogged = false;
 
 export function isFirebaseConfigured() {
-  return Boolean(firebaseConfig.apiKey && firebaseConfig.authDomain && firebaseConfig.projectId && firebaseConfig.appId);
+  return Boolean(supabaseConfig.url && supabaseConfig.anonKey);
 }
 
 export function getFirebaseProjectId() {
-  return firebaseConfig.projectId || '';
-}
-
-async function loadFirebaseModules() {
-  if (!firebaseModulesPromise) {
-    firebaseModulesPromise = Promise.all([
-      import('firebase/app'),
-      import('firebase/auth'),
-      import('firebase/firestore'),
-    ]).then(([app, auth, firestore]) => ({ app, auth, firestore }));
+  try {
+    return supabaseConfig.url ? new URL(supabaseConfig.url).hostname : '';
+  } catch {
+    return supabaseConfig.url || '';
   }
-
-  return firebaseModulesPromise;
 }
 
-async function getFirebaseContext() {
+function getSupabaseClient() {
   if (!isFirebaseConfigured()) {
     return null;
   }
 
-  const modules = await loadFirebaseModules();
-  const app = modules.app.getApps().length ? modules.app.getApp() : modules.app.initializeApp(firebaseConfig);
-
-  const auth = modules.auth.getAuth(app);
-  const db = getConfiguredFirestore(modules, app);
-
-  if (!firebaseProjectLogged) {
-    console.info('FIREBASE_PROJECT_ID', { projectId: firebaseConfig.projectId || null });
-    firebaseProjectLogged = true;
+  if (!supabaseClient) {
+    supabaseClient = createClient(supabaseConfig.url, supabaseConfig.anonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+      },
+    });
   }
 
-  return { ...modules, appInstance: app, authInstance: auth, db };
+  if (!projectLogged) {
+    console.info('SUPABASE_PROJECT', {
+      url: supabaseConfig.url || null,
+      host: getFirebaseProjectId() || null,
+    });
+    projectLogged = true;
+  }
+
+  return supabaseClient;
 }
 
-function getConfiguredFirestore(modules, app) {
-  if (firestoreDb) {
-    return firestoreDb;
-  }
-
-  try {
-    firestoreDb = modules.firestore.initializeFirestore(app, {
-      experimentalForceLongPolling: true,
-      useFetchStreams: false,
-      ignoreUndefinedProperties: true,
-    });
-    console.info('FIRESTORE_TRANSPORT_MODE', {
-      mode: 'force-long-polling',
-      useFetchStreams: false,
-    });
-  } catch (error) {
-    firestoreDb = modules.firestore.getFirestore(app);
-    console.info('FIRESTORE_TRANSPORT_MODE', {
-      mode: 'existing-firestore-instance',
-      code: error?.code || null,
-      message: error?.message || String(error),
-    });
-  }
-
-  return firestoreDb;
+function normalizeFirebaseEmail(email) {
+  return sanitizeEmail(email).toLowerCase().trim();
 }
 
-function firestoreTimeoutError(meta) {
-  const error = new Error(FIRESTORE_TIMEOUT_MESSAGE);
-  error.code = 'firestore/write-timeout';
+function cloudTimeoutError(meta) {
+  const error = new Error(CLOUD_TIMEOUT_MESSAGE);
+  error.code = 'supabase/write-timeout';
   console.error('FIRESTORE_WRITE_TIMEOUT', {
-    path: meta.path,
-    uid: meta.uid,
-    projectId: firebaseConfig.projectId || null,
-    authDomain: firebaseConfig.authDomain || null,
+    projectId: getFirebaseProjectId() || null,
+    authDomain: supabaseConfig.url || null,
     currentFirebaseUserUid: meta.currentFirebaseUserUid || null,
     requestedUid: meta.uid || null,
-    operation: meta.operation,
+    path: meta.path || null,
+    operation: meta.operation || null,
   });
   return error;
 }
 
-function withFirestoreTimeout(promise, meta) {
+function withCloudTimeout(promise, meta) {
   let timer;
   const timeout = new Promise((_, reject) => {
     const setTimer = typeof window !== 'undefined' ? window.setTimeout : setTimeout;
-    timer = setTimer(() => {
-      reject(firestoreTimeoutError(meta));
-    }, FIRESTORE_TIMEOUT_MS);
+    timer = setTimer(() => reject(cloudTimeoutError(meta)), CLOUD_TIMEOUT_MS);
   });
 
   return Promise.race([promise, timeout]).finally(() => {
@@ -121,203 +90,88 @@ function withFirestoreTimeout(promise, meta) {
   });
 }
 
-function isFirestoreTimeout(error) {
-  return error?.code === 'firestore/write-timeout';
-}
-
-function firestoreLogBase(context, uid, path) {
-  return {
-    projectId: firebaseConfig.projectId || null,
-    authDomain: firebaseConfig.authDomain || null,
-    currentFirebaseUserUid: context?.authInstance?.currentUser?.uid || null,
-    requestedUid: uid || null,
-    path,
-  };
-}
-
-async function verifyFirestoreDocument(context, uid, path, docRef, operation = 'getDoc:verifyRecord') {
-  const snapshot = await withFirestoreTimeout(
-    context.firestore.getDoc(docRef),
-    { path, uid, currentFirebaseUserUid: context.authInstance.currentUser?.uid || null, operation }
-  );
-
-  if (!snapshot.exists()) {
-    const error = new Error(`Firestore write verification failed: document not found at ${path}`);
-    error.code = 'firestore/verification-failed';
+async function getCurrentSupabaseUser(client = getSupabaseClient()) {
+  if (!client) {
+    return null;
+  }
+  const { data, error } = await client.auth.getUser();
+  if (error) {
+    if (/session.*missing|auth session missing/i.test(error.message || '')) {
+      return null;
+    }
     throw error;
   }
-
-  return snapshot;
-}
-
-function encodeFirestoreValue(value) {
-  if (value === null) {
-    return { nullValue: null };
-  }
-
-  if (Array.isArray(value)) {
-    return {
-      arrayValue: {
-        values: value
-          .filter((item) => item !== undefined)
-          .map((item) => encodeFirestoreValue(item)),
-      },
-    };
-  }
-
-  if (typeof value === 'object') {
-    return {
-      mapValue: {
-        fields: encodeFirestoreFields(value),
-      },
-    };
-  }
-
-  if (typeof value === 'boolean') {
-    return { booleanValue: value };
-  }
-
-  if (typeof value === 'number') {
-    if (Number.isInteger(value) && Number.isSafeInteger(value)) {
-      return { integerValue: String(value) };
-    }
-    return { doubleValue: Number.isFinite(value) ? value : 0 };
-  }
-
-  return { stringValue: String(value ?? '') };
-}
-
-function encodeFirestoreFields(data) {
-  return Object.entries(data || {})
-    .filter(([, value]) => value !== undefined)
-    .reduce((fields, [key, value]) => {
-      fields[key] = encodeFirestoreValue(value);
-      return fields;
-    }, {});
-}
-
-function firestoreDocumentName(path) {
-  const encodedPath = String(path)
-    .split('/')
-    .map((segment) => encodeURIComponent(segment))
-    .join('/');
-  return `projects/${firebaseConfig.projectId}/databases/(default)/documents/${encodedPath}`;
-}
-
-async function commitFirestoreRestWrite(context, path, data, transformFields = []) {
-  const user = context?.authInstance?.currentUser;
-  if (!user) {
-    throw new Error('No authenticated Firebase user is available for Firestore REST write.');
-  }
-
-  const transformSet = new Set(transformFields);
-  const updateData = Object.entries(data || {}).reduce((cleaned, [key, value]) => {
-    if (value !== undefined && !transformSet.has(key)) {
-      cleaned[key] = value;
-    }
-    return cleaned;
-  }, {});
-  const fieldPaths = Object.keys(updateData);
-  const url = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents:commit`;
-
-  console.info('FIRESTORE_REST_FALLBACK_START', {
-    path,
-    uid: user.uid,
-    projectId: firebaseConfig.projectId || null,
-    authDomain: firebaseConfig.authDomain || null,
-  });
-
-  const response = await withFirestoreTimeout(
-    fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${await user.getIdToken()}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        writes: [
-          {
-            update: {
-              name: firestoreDocumentName(path),
-              fields: encodeFirestoreFields(updateData),
-            },
-            ...(fieldPaths.length ? { updateMask: { fieldPaths } } : {}),
-            ...(transformFields.length
-              ? {
-                  updateTransforms: transformFields.map((fieldPath) => ({
-                    fieldPath,
-                    setToServerValue: 'REQUEST_TIME',
-                  })),
-                }
-              : {}),
-          },
-        ],
-      }),
-    }),
-    { path, uid: user.uid, currentFirebaseUserUid: user.uid, operation: 'rest:commit' }
-  );
-
-  if (!response.ok) {
-    const body = await response.text().catch(() => '');
-    let parsedError = null;
-    try {
-      parsedError = body ? JSON.parse(body) : null;
-    } catch {
-      parsedError = null;
-    }
-    const googleError = parsedError?.error || {};
-    const reason = googleError.details?.find((detail) => detail?.reason)?.reason || '';
-    const code = reason === 'CONSUMER_INVALID'
-      ? 'firestore/consumer-invalid'
-      : `firestore/rest-${response.status}`;
-    const message = reason === 'CONSUMER_INVALID'
-      ? `Cloud Firestore API is not enabled or project id is wrong for Firebase project "${firebaseConfig.projectId}". Enable firestore.googleapis.com and confirm Vercel Firebase env variables.`
-      : googleError.message || body || `Firestore REST write failed with HTTP ${response.status}`;
-    const error = new Error(message);
-    error.code = code;
-    error.googleStatus = googleError.status || null;
-    error.googleReason = reason || null;
-    console.error('FIRESTORE_REST_FALLBACK_ERROR', {
-      path,
-      uid: user.uid,
-      projectId: firebaseConfig.projectId || null,
-      authDomain: firebaseConfig.authDomain || null,
-      code: error.code,
-      message: error.message,
-      googleStatus: error.googleStatus,
-      googleReason: error.googleReason,
-    });
-    throw error;
-  }
-
-  console.info('FIRESTORE_REST_FALLBACK_SUCCESS', {
-    path,
-    uid: user.uid,
-    projectId: firebaseConfig.projectId || null,
-    authDomain: firebaseConfig.authDomain || null,
-  });
-  return true;
+  return data?.user || null;
 }
 
 function userPayload(user, extra = {}) {
+  const metadata = user?.user_metadata || {};
   return {
-    uid: user.uid,
-    email: sanitizeEmail(user.email || extra.email || ''),
-    ownerName: sanitizeText(user.displayName || extra.ownerName || 'Business Owner', 120),
-    businessName: sanitizeText(extra.businessName || 'Voice Business Tracker', 140),
-    role: extra.role || 'Owner',
-    provider: user.providerData?.[0]?.providerId || extra.provider || 'email',
-    emailVerified: Boolean(user.emailVerified),
+    uid: user?.id || extra.uid || '',
+    email: sanitizeEmail(user?.email || extra.email || ''),
+    ownerName: sanitizeText(metadata.ownerName || extra.ownerName || 'Business Owner', 120),
+    businessName: sanitizeText(metadata.businessName || extra.businessName || 'Voice Business Tracker', 140),
+    role: metadata.role || extra.role || 'Owner',
+    provider: user?.app_metadata?.provider || extra.provider || 'email',
+    emailVerified: Boolean(user?.email_confirmed_at || user?.confirmed_at),
     loginAt: new Date().toISOString(),
   };
 }
 
-function normalizeFirebaseEmail(email) {
-  return sanitizeEmail(email).toLowerCase().trim();
+function rowToAppRecord(row) {
+  if (!row) {
+    return null;
+  }
+  const data = row.data && typeof row.data === 'object' ? row.data : {};
+  return {
+    ...data,
+    id: data.id || row.id,
+    userId: row.user_id,
+    ownerUid: row.user_id,
+    createdAt: data.createdAt || row.created_at,
+    updatedAt: data.updatedAt || row.updated_at,
+  };
+}
+
+function buildRow(uid, id, data) {
+  return {
+    id,
+    user_id: uid,
+    data: {
+      ...data,
+      id: data?.id || id,
+      userId: uid,
+      ownerUid: uid,
+      updatedAt: new Date().toISOString(),
+    },
+    updated_at: new Date().toISOString(),
+  };
+}
+
+function pathFor(uid, tableName, id = '') {
+  if (tableName === 'settings') {
+    return `users/${uid}/settings/${id || 'profile'}`;
+  }
+  if (tableName === 'debug_tests') {
+    return `users/${uid}/debug/${id || 'test'}`;
+  }
+  return `users/${uid}/${tableName}${id ? `/${id}` : ''}`;
+}
+
+function mapAuthError(error) {
+  const code = String(error?.code || error?.name || '').toLowerCase();
+  const message = String(error?.message || '').toLowerCase();
+  if (message.includes('invalid login credentials')) return 'auth/invalid-credential';
+  if (message.includes('email not confirmed')) return 'auth/email-not-verified';
+  if (message.includes('already registered') || message.includes('already exists')) return 'auth/email-already-in-use';
+  if (message.includes('password')) return 'auth/weak-password';
+  if (message.includes('invalid email')) return 'auth/invalid-email';
+  return code || 'auth/error';
 }
 
 export function getFirebaseAuthErrorMessage(error, fallback = 'Authentication failed. Please try again.') {
-  const code = String(error?.code || '').toLowerCase();
+  const code = String(error?.code || mapAuthError(error)).toLowerCase();
+  const message = String(error?.message || '').toLowerCase();
   const messages = {
     'auth/invalid-email': 'Enter a valid email.',
     'auth/missing-email': 'Please enter your email address.',
@@ -331,190 +185,211 @@ export function getFirebaseAuthErrorMessage(error, fallback = 'Authentication fa
     'auth/network-request-failed': 'Network error. Check your internet.',
     'auth/popup-closed-by-user': 'Google login was closed before completion.',
     'auth/requires-recent-login': 'Please login again before doing this action.',
+    'auth/email-not-verified': 'Please verify your email before logging in.',
   };
+
+  if (message.includes('invalid login credentials')) {
+    return messages['auth/invalid-credential'];
+  }
 
   return messages[code] || fallback;
 }
 
 export async function createFirebaseAccount({ email, password, ownerName, businessName }) {
-  const context = await getFirebaseContext();
-  if (!context) {
+  const client = getSupabaseClient();
+  if (!client) {
     return null;
   }
 
   const normalizedEmail = normalizeFirebaseEmail(email);
-  if (import.meta.env.DEV) {
-    console.info('[Firebase auth register start]', { email: normalizedEmail });
-  }
-
-  const credential = await context.auth.createUserWithEmailAndPassword(
-    context.authInstance,
-    normalizedEmail,
-    password
-  );
-  console.info('REGISTER_SUCCESS', { uid: credential.user.uid });
-  await context.auth.updateProfile(credential.user, {
-    displayName: sanitizeText(ownerName || businessName || 'Business Owner', 120),
+  console.info('[Supabase auth register start]', { email: normalizedEmail });
+  const { data, error } = await client.auth.signUp({
+    email: normalizedEmail,
+    password,
+    options: {
+      data: {
+        ownerName: sanitizeText(ownerName || 'Business Owner', 120),
+        businessName: sanitizeText(businessName || 'Voice Business Tracker', 140),
+        role: 'Owner',
+      },
+    },
   });
-  await context.auth.sendEmailVerification(context.authInstance.currentUser || credential.user);
-  console.info('EMAIL_VERIFICATION_SENT', { uid: credential.user.uid, email: normalizedEmail });
-  await credential.user.reload();
 
-  const currentUser = context.authInstance.currentUser || credential.user;
-  const payload = userPayload(currentUser, { email: normalizedEmail, ownerName, businessName });
-  await saveUserProfile(payload.uid, payload);
-  if (import.meta.env.DEV) {
-    console.info('[Firebase auth register success]', { uid: payload.uid, email: payload.email });
+  if (error) {
+    error.code = mapAuthError(error);
+    throw error;
   }
+
+  const user = data?.user;
+  if (!user) {
+    throw new Error('Supabase did not return a registered user.');
+  }
+
+  console.info('REGISTER_SUCCESS', { uid: user.id });
+  console.info('EMAIL_VERIFICATION_SENT', { uid: user.id, email: normalizedEmail });
+  const payload = userPayload(user, { email: normalizedEmail, ownerName, businessName });
+  if (data?.session) {
+    await saveUserProfile(payload.uid, payload);
+  }
+  console.info('[Supabase auth register success]', { uid: payload.uid, email: payload.email });
   return payload;
 }
 
 export async function signInFirebaseAccount({ email, password }) {
-  const context = await getFirebaseContext();
-  if (!context) {
+  const client = getSupabaseClient();
+  if (!client) {
     return null;
   }
 
   const normalizedEmail = normalizeFirebaseEmail(email);
-  if (import.meta.env.DEV) {
-    console.info('[Firebase auth login start]', { email: normalizedEmail });
+  console.info('[Supabase auth login start]', { email: normalizedEmail });
+  const { data, error } = await client.auth.signInWithPassword({
+    email: normalizedEmail,
+    password,
+  });
+
+  if (error) {
+    error.code = mapAuthError(error);
+    throw error;
   }
 
-  const credential = await context.auth.signInWithEmailAndPassword(
-    context.authInstance,
-    normalizedEmail,
-    password
-  );
-  await credential.user.reload();
-  const currentUser = context.authInstance.currentUser || credential.user;
-  const payload = userPayload(currentUser, { email: normalizedEmail });
+  const user = data?.user;
+  if (!user) {
+    throw new Error('Supabase did not return a logged-in user.');
+  }
+
+  const payload = userPayload(user, { email: normalizedEmail });
   await saveUserProfile(payload.uid, payload);
   console.info('LOGIN_SUCCESS', { uid: payload.uid, emailVerified: payload.emailVerified });
-  if (import.meta.env.DEV) {
-    console.info('[Firebase auth login success]', { uid: payload.uid, email: payload.email });
-  }
+  console.info('[Supabase auth login success]', { uid: payload.uid, email: payload.email });
   return payload;
 }
 
 export async function signInFirebaseGoogle() {
-  const context = await getFirebaseContext();
-  if (!context) {
+  const client = getSupabaseClient();
+  if (!client) {
     return null;
   }
 
-  const provider = new context.auth.GoogleAuthProvider();
-  const credential = await context.auth.signInWithPopup(context.authInstance, provider);
-  const payload = userPayload(credential.user, { provider: 'Google' });
-  await saveUserProfile(payload.uid, payload);
-  return payload;
+  const { error } = await client.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+    },
+  });
+  if (error) {
+    error.code = mapAuthError(error);
+    throw error;
+  }
+  return null;
 }
 
 export async function sendCurrentUserEmailVerification() {
-  const context = await getFirebaseContext();
-  const user = context?.authInstance?.currentUser;
-  if (!context || !user) {
+  const client = getSupabaseClient();
+  const user = await getCurrentSupabaseUser(client);
+  if (!client || !user?.email) {
     return false;
   }
 
-  await context.auth.sendEmailVerification(user);
-  console.info('EMAIL_VERIFICATION_SENT', { uid: user.uid, email: normalizeFirebaseEmail(user.email || '') });
+  const { error } = await client.auth.resend({
+    type: 'signup',
+    email: normalizeFirebaseEmail(user.email),
+  });
+  if (error) {
+    error.code = mapAuthError(error);
+    throw error;
+  }
+  console.info('EMAIL_VERIFICATION_SENT', { uid: user.id, email: normalizeFirebaseEmail(user.email) });
   return true;
 }
 
 export async function reloadCurrentFirebaseUser() {
-  const context = await getFirebaseContext();
-  const user = context?.authInstance?.currentUser;
-  if (!context || !user) {
-    return null;
-  }
-
-  await user.reload();
-  const currentUser = context.authInstance.currentUser || user;
-  return userPayload(currentUser);
+  const user = await getCurrentSupabaseUser();
+  return user ? userPayload(user) : null;
 }
 
 export async function sendFirebasePasswordReset(email) {
-  const context = await getFirebaseContext();
-  if (!context) {
+  const client = getSupabaseClient();
+  if (!client) {
     return false;
   }
 
   const normalizedEmail = normalizeFirebaseEmail(email);
-  if (import.meta.env.DEV) {
-    console.info('PASSWORD_RESET_START', { email: normalizedEmail });
-  }
+  console.info('PASSWORD_RESET_START', { email: normalizedEmail });
+  const { error } = await client.auth.resetPasswordForEmail(normalizedEmail, {
+    redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+  });
 
-  try {
-    await context.auth.sendPasswordResetEmail(context.authInstance, normalizedEmail);
-    if (import.meta.env.DEV) {
-      console.info('PASSWORD_RESET_SUCCESS', { email: normalizedEmail });
-    }
-  } catch (error) {
-    if (import.meta.env.DEV) {
-      console.error('PASSWORD_RESET_ERROR', {
-        code: error?.code || null,
-        message: error?.message || '',
-      });
-    }
+  if (error) {
+    console.error('PASSWORD_RESET_ERROR', {
+      code: mapAuthError(error),
+      message: error?.message || '',
+    });
+    error.code = mapAuthError(error);
     throw error;
   }
+
+  console.info('PASSWORD_RESET_SUCCESS', { email: normalizedEmail });
   return true;
 }
 
 export async function runFirestoreDebugTest() {
-  const context = await getFirebaseContext();
-  const user = context?.authInstance?.currentUser;
-  const uid = user?.uid;
-  const path = uid ? `users/${uid}/debug/test` : null;
+  const client = getSupabaseClient();
+  const user = await getCurrentSupabaseUser(client);
+  const uid = user?.id;
+  const path = uid ? pathFor(uid, 'debug_tests', 'test') : null;
 
   console.info('DEBUG_FIRESTORE_TEST_START', {
     uid: uid || null,
     path,
-    projectId: firebaseConfig.projectId || null,
-    authDomain: firebaseConfig.authDomain || null,
+    projectId: getFirebaseProjectId() || null,
+    authDomain: supabaseConfig.url || null,
   });
 
   try {
-    if (!context || !user || !uid) {
-      throw new Error('No authenticated Firebase user is available for Firestore debug test.');
+    if (!client || !user || !uid) {
+      throw new Error('No authenticated Supabase user is available for database debug test.');
     }
 
-    const docRef = context.firestore.doc(context.db, 'users', uid, 'debug', 'test');
-    try {
-      await withFirestoreTimeout(
-        context.firestore.setDoc(
-          docRef,
-          {
-            message: 'hello firestore',
-            createdAt: context.firestore.serverTimestamp(),
-          }
-        ),
-        { path, uid, currentFirebaseUserUid: uid, operation: 'setDoc:debugTest' }
-      );
-    } catch (error) {
-      if (!isFirestoreTimeout(error)) {
-        throw error;
-      }
-      await commitFirestoreRestWrite(context, path, { message: 'hello firestore' }, ['createdAt']);
-    }
+    const row = {
+      id: 'test',
+      user_id: uid,
+      message: 'hello firestore',
+      created_at: new Date().toISOString(),
+    };
+    await withCloudTimeout(
+      client.from('debug_tests').upsert(row, { onConflict: 'user_id,id' }),
+      { path, uid, currentFirebaseUserUid: uid, operation: 'upsert:debugTest' }
+    ).then(({ error }) => {
+      if (error) throw error;
+    });
 
-    await verifyFirestoreDocument(context, uid, path, docRef, 'getDoc:debugTestVerify');
+    const { data, error } = await withCloudTimeout(
+      client.from('debug_tests').select('*').eq('user_id', uid).eq('id', 'test').single(),
+      { path, uid, currentFirebaseUserUid: uid, operation: 'select:debugTestVerify' }
+    );
+    if (error) throw error;
+    if (!data) {
+      const verificationError = new Error(`Supabase debug verification failed: row not found at ${path}`);
+      verificationError.code = 'supabase/verification-failed';
+      throw verificationError;
+    }
 
     console.info('DEBUG_FIRESTORE_TEST_SUCCESS', {
       uid,
       path,
-      projectId: firebaseConfig.projectId || null,
-      authDomain: firebaseConfig.authDomain || null,
+      projectId: getFirebaseProjectId() || null,
+      authDomain: supabaseConfig.url || null,
       verified: true,
     });
     return { ok: true, uid, path };
   } catch (error) {
-    if (isFirestoreTimeout(error)) {
+    if (error?.code === 'supabase/write-timeout') {
       console.error('DEBUG_FIRESTORE_TEST_TIMEOUT', {
         uid: uid || null,
         path,
-        projectId: firebaseConfig.projectId || null,
-        authDomain: firebaseConfig.authDomain || null,
+        projectId: getFirebaseProjectId() || null,
+        authDomain: supabaseConfig.url || null,
         code: error?.code || null,
         message: error?.message || String(error),
       });
@@ -522,130 +397,92 @@ export async function runFirestoreDebugTest() {
     console.error('DEBUG_FIRESTORE_TEST_ERROR', error?.code || null, error?.message || String(error), {
       uid: uid || null,
       path,
-      projectId: firebaseConfig.projectId || null,
-      authDomain: firebaseConfig.authDomain || null,
+      projectId: getFirebaseProjectId() || null,
+      authDomain: supabaseConfig.url || null,
     });
     throw error;
   }
 }
 
 export async function signOutFirebase() {
-  const context = await getFirebaseContext();
-  if (!context) {
+  const client = getSupabaseClient();
+  if (!client) {
     return;
   }
 
-  if (import.meta.env.DEV) {
-    console.info('[Firebase auth logout start]', { uid: context.authInstance.currentUser?.uid || null });
+  const user = await getCurrentSupabaseUser(client).catch(() => null);
+  console.info('[Supabase auth logout start]', { uid: user?.id || null });
+  const { error } = await client.auth.signOut();
+  if (error) {
+    error.code = mapAuthError(error);
+    throw error;
   }
-  await context.auth.signOut(context.authInstance);
-  if (import.meta.env.DEV) {
-    console.info('[Firebase auth logout success]');
-  }
+  console.info('[Supabase auth logout success]');
 }
 
 export async function listenToFirebaseAuth(onUser, onError) {
-  const context = await getFirebaseContext();
-  if (!context) {
+  const client = getSupabaseClient();
+  if (!client) {
     return () => {};
   }
 
-  return context.auth.onAuthStateChanged(
-    context.authInstance,
-    async (user) => {
-      try {
-        if (!user) {
-          onUser(null);
-          return;
-        }
+  client.auth.getSession().then(({ data }) => {
+    const user = data?.session?.user;
+    onUser(user ? userPayload(user) : null);
+  }).catch(onError);
 
-        await user.reload();
-        onUser(userPayload(context.authInstance.currentUser || user));
-      } catch (error) {
-        onError?.(error);
-      }
-    },
-    onError
-  );
+  const { data } = client.auth.onAuthStateChange((_event, session) => {
+    try {
+      onUser(session?.user ? userPayload(session.user) : null);
+    } catch (error) {
+      onError?.(error);
+    }
+  });
+
+  return () => data?.subscription?.unsubscribe();
 }
 
 export async function saveUserProfile(uid, profile) {
-  const context = await getFirebaseContext();
-  if (!context || !uid) {
-    return false;
-  }
-
-  const path = `users/${uid}/settings/profile`;
-  try {
-    const profilePayload = { ...profile };
-    const docRef = context.firestore.doc(context.db, 'users', uid, 'settings', 'profile');
-    try {
-      await withFirestoreTimeout(
-        context.firestore.setDoc(
-          docRef,
-          {
-            ...profilePayload,
-            updatedAt: context.firestore.serverTimestamp(),
-          },
-          { merge: true }
-        ),
-        { path, uid, currentFirebaseUserUid: context.authInstance.currentUser?.uid || null, operation: 'setDoc:userProfile' }
-      );
-    } catch (error) {
-      if (!isFirestoreTimeout(error)) {
-        throw error;
-      }
-      await commitFirestoreRestWrite(context, path, profilePayload, ['updatedAt']);
-    }
-    await verifyFirestoreDocument(context, uid, path, docRef, 'getDoc:verifyUserProfile');
-    return true;
-  } catch (error) {
-    console.error('FIRESTORE_WRITE_ERROR', {
-      currentFirebaseUserUid: context.authInstance.currentUser?.uid || null,
-      requestedUid: uid,
-      projectId: firebaseConfig.projectId || null,
-      authDomain: firebaseConfig.authDomain || null,
-      path,
-      code: error?.code || null,
-      message: error?.message || String(error),
-    });
-    throw error;
-  }
+  return saveCloudRecord(uid, 'settings', 'profile', profile);
 }
 
-export async function saveCloudRecord(uid, collectionName, id, data) {
-  const context = await getFirebaseContext();
-  if (!context || !uid || !collectionName || !id || !CLOUD_COLLECTIONS.has(collectionName)) {
-    const error = new Error(!context
-      ? 'Firebase is not configured or could not initialize.'
-      : !CLOUD_COLLECTIONS.has(collectionName)
-        ? 'Collection is not allowed for cloud writes.'
-        : 'Missing uid, collection name, or document id.');
+export async function saveCloudRecord(uid, tableName, id, data) {
+  const client = getSupabaseClient();
+  const user = await getCurrentSupabaseUser(client);
+  const allowed = CLOUD_TABLES.has(tableName);
+  const path = uid && tableName && id ? pathFor(uid, tableName, id) : null;
+
+  if (!client || !uid || !tableName || !id || !allowed) {
+    const error = new Error(!client
+      ? 'Supabase is not configured or could not initialize.'
+      : !allowed
+        ? 'Table is not allowed for cloud writes.'
+        : 'Missing uid, table name, or document id.');
     console.error('FIRESTORE_WRITE_ERROR', {
+      projectId: getFirebaseProjectId() || null,
+      authDomain: supabaseConfig.url || null,
+      currentFirebaseUserUid: user?.id || null,
       requestedUid: uid || null,
-      currentFirebaseUserUid: context?.authInstance?.currentUser?.uid || null,
-      projectId: firebaseConfig.projectId || null,
-      authDomain: firebaseConfig.authDomain || null,
-      collectionName,
+      collectionName: tableName,
       documentId: id,
-      path: uid && collectionName && id ? `users/${uid}/${collectionName}/${id}` : null,
+      path,
       code: error.code || null,
       message: error.message,
     });
     throw error;
   }
 
-  const currentUid = context.authInstance.currentUser?.uid || null;
+  const currentUid = user?.id || null;
   if (!currentUid) {
-    const error = new Error('No authenticated Firebase user is available for Firestore write.');
+    const error = new Error('No authenticated Supabase user is available for database write.');
     console.error('FIRESTORE_WRITE_ERROR', {
-      requestedUid: uid,
+      projectId: getFirebaseProjectId() || null,
+      authDomain: supabaseConfig.url || null,
       currentFirebaseUserUid: null,
-      projectId: firebaseConfig.projectId || null,
-      authDomain: firebaseConfig.authDomain || null,
-      collectionName,
+      requestedUid: uid,
+      collectionName: tableName,
       documentId: id,
-      path: `users/${uid}/${collectionName}/${id}`,
+      path,
       code: error.code || null,
       message: error.message,
     });
@@ -653,92 +490,76 @@ export async function saveCloudRecord(uid, collectionName, id, data) {
   }
 
   if (currentUid !== uid) {
-    const error = new Error('Authenticated Firebase uid does not match requested Firestore owner uid.');
+    const error = new Error('Authenticated Supabase uid does not match requested database owner uid.');
     console.error('FIRESTORE_WRITE_ERROR', {
-      requestedUid: uid,
+      projectId: getFirebaseProjectId() || null,
+      authDomain: supabaseConfig.url || null,
       currentFirebaseUserUid: currentUid,
-      projectId: firebaseConfig.projectId || null,
-      authDomain: firebaseConfig.authDomain || null,
-      collectionName,
+      requestedUid: uid,
+      collectionName: tableName,
       documentId: id,
-      path: `users/${uid}/${collectionName}/${id}`,
+      path,
       code: error.code || null,
       message: error.message,
     });
     throw error;
   }
 
-  const path = `users/${uid}/${collectionName}/${id}`;
-  const payload = {
-    ...data,
-    ownerUid: uid,
-    updatedAt: '[serverTimestamp]',
-  };
-
+  const row = buildRow(uid, id, data);
   console.info('FIRESTORE_PATH_USED', {
-    projectId: firebaseConfig.projectId || null,
-    authDomain: firebaseConfig.authDomain || null,
+    projectId: getFirebaseProjectId() || null,
+    authDomain: supabaseConfig.url || null,
     currentFirebaseUserUid: currentUid,
     requestedUid: uid,
-    collectionName,
+    collectionName: tableName,
     documentId: id,
     path,
   });
-
   console.info('FIRESTORE_WRITE_START', {
+    projectId: getFirebaseProjectId() || null,
+    authDomain: supabaseConfig.url || null,
     currentFirebaseUserUid: currentUid,
     requestedUid: uid,
-    projectId: firebaseConfig.projectId || null,
-    authDomain: firebaseConfig.authDomain || null,
     path,
-    operation: 'setDoc',
-    payload,
+    operation: 'upsert',
+    payload: row.data,
   });
 
   try {
-    const recordPayload = {
-      ...data,
-      ownerUid: uid,
-    };
-    const docRef = context.firestore.doc(context.db, 'users', uid, collectionName, id);
-    try {
-      await withFirestoreTimeout(
-        context.firestore.setDoc(
-          docRef,
-          {
-            ...recordPayload,
-            updatedAt: context.firestore.serverTimestamp(),
-          },
-          { merge: true }
-        ),
-        { path, uid, currentFirebaseUserUid: currentUid, operation: 'setDoc:record' }
-      );
-    } catch (error) {
-      if (!isFirestoreTimeout(error)) {
-        throw error;
-      }
-      await commitFirestoreRestWrite(context, path, recordPayload, ['updatedAt']);
+    const { error } = await withCloudTimeout(
+      client.from(tableName).upsert(row, { onConflict: 'user_id,id' }),
+      { path, uid, currentFirebaseUserUid: currentUid, operation: `upsert:${tableName}` }
+    );
+    if (error) throw error;
+
+    const { data: savedRow, error: verifyError } = await withCloudTimeout(
+      client.from(tableName).select('*').eq('user_id', uid).eq('id', id).single(),
+      { path, uid, currentFirebaseUserUid: currentUid, operation: `select:${tableName}:verify` }
+    );
+    if (verifyError) throw verifyError;
+    if (!savedRow) {
+      const error = new Error(`Supabase write verification failed: row not found at ${path}`);
+      error.code = 'supabase/verification-failed';
+      throw error;
     }
 
-    await verifyFirestoreDocument(context, uid, path, docRef, 'getDoc:verifyRecord');
-
     console.info('FIRESTORE_WRITE_SUCCESS', {
+      projectId: getFirebaseProjectId() || null,
+      authDomain: supabaseConfig.url || null,
       currentFirebaseUserUid: currentUid,
       requestedUid: uid,
-      projectId: firebaseConfig.projectId || null,
-      authDomain: firebaseConfig.authDomain || null,
       path,
-      operation: 'setDoc:record',
+      operation: 'upsert',
       verified: true,
     });
     return true;
   } catch (error) {
     console.error('FIRESTORE_WRITE_ERROR', {
+      projectId: getFirebaseProjectId() || null,
+      authDomain: supabaseConfig.url || null,
       currentFirebaseUserUid: currentUid,
       requestedUid: uid,
-      projectId: firebaseConfig.projectId || null,
-      authDomain: firebaseConfig.authDomain || null,
-      collectionName,
+      collectionName: tableName,
       documentId: id,
       path,
       code: error?.code || null,
@@ -748,83 +569,53 @@ export async function saveCloudRecord(uid, collectionName, id, data) {
   }
 }
 
-export async function deleteCloudRecord(uid, collectionName, id) {
-  const context = await getFirebaseContext();
-  if (!context || !uid || !collectionName || !id || !CLOUD_COLLECTIONS.has(collectionName)) {
-    console.error('[Firestore delete blocked]', {
-      requestedUid: uid || null,
-      currentFirebaseUserUid: context?.authInstance?.currentUser?.uid || null,
-      projectId: firebaseConfig.projectId || null,
-      authDomain: firebaseConfig.authDomain || null,
-      collectionName,
-      documentId: id,
-      path: uid && collectionName && id ? `users/${uid}/${collectionName}/${id}` : null,
-    });
+export async function deleteCloudRecord(uid, tableName, id) {
+  const client = getSupabaseClient();
+  const user = await getCurrentSupabaseUser(client);
+  if (!client || !uid || !tableName || !id || !CLOUD_TABLES.has(tableName)) {
     return false;
   }
 
-  const path = `users/${uid}/${collectionName}/${id}`;
-  console.info('[Firestore delete start]', {
-    currentFirebaseUserUid: context.authInstance.currentUser?.uid || null,
+  const path = pathFor(uid, tableName, id);
+  console.info('[Supabase delete start]', {
+    projectId: getFirebaseProjectId() || null,
+    authDomain: supabaseConfig.url || null,
+    currentFirebaseUserUid: user?.id || null,
     requestedUid: uid,
-    projectId: firebaseConfig.projectId || null,
-    authDomain: firebaseConfig.authDomain || null,
     path,
   });
 
-  try {
-    await withFirestoreTimeout(
-      context.firestore.deleteDoc(
-        context.firestore.doc(context.db, 'users', uid, collectionName, id)
-      ),
-      { path, uid, currentFirebaseUserUid: context.authInstance.currentUser?.uid || null, operation: 'deleteDoc:record' }
-    );
+  const { error } = await withCloudTimeout(
+    client.from(tableName).delete().eq('user_id', uid).eq('id', id),
+    { path, uid, currentFirebaseUserUid: user?.id || null, operation: `delete:${tableName}` }
+  );
+  if (error) throw error;
 
-    console.info('[Firestore delete success]', {
-      currentFirebaseUserUid: context.authInstance.currentUser?.uid || null,
-      requestedUid: uid,
-      projectId: firebaseConfig.projectId || null,
-      authDomain: firebaseConfig.authDomain || null,
-      path,
-    });
-    return true;
-  } catch (error) {
-    console.error('FIRESTORE_WRITE_ERROR', {
-      currentFirebaseUserUid: context.authInstance.currentUser?.uid || null,
-      requestedUid: uid,
-      projectId: firebaseConfig.projectId || null,
-      collectionName,
-      documentId: id,
-      path,
-      code: error?.code || null,
-      message: error?.message || String(error),
-    });
-    throw error;
-  }
+  console.info('[Supabase delete success]', {
+    projectId: getFirebaseProjectId() || null,
+    authDomain: supabaseConfig.url || null,
+    currentFirebaseUserUid: user?.id || null,
+    requestedUid: uid,
+    path,
+  });
+  return true;
 }
 
-export async function loadCloudCollection(uid, collectionName) {
-  const context = await getFirebaseContext();
-  if (!context || !uid || !CLOUD_COLLECTIONS.has(collectionName)) {
+export async function loadCloudCollection(uid, tableName) {
+  const client = getSupabaseClient();
+  const user = await getCurrentSupabaseUser(client);
+  if (!client || !uid || !CLOUD_TABLES.has(tableName)) {
     return [];
   }
 
-  const snapshot = await withFirestoreTimeout(
-    context.firestore.getDocs(
-      context.firestore.collection(context.db, 'users', uid, collectionName)
-    ),
-    {
-      path: `users/${uid}/${collectionName}`,
-      uid,
-      currentFirebaseUserUid: context.authInstance.currentUser?.uid || null,
-      operation: 'getDocs:collection',
-    }
+  const path = pathFor(uid, tableName);
+  const { data, error } = await withCloudTimeout(
+    client.from(tableName).select('*').eq('user_id', uid).order('updated_at', { ascending: false }),
+    { path, uid, currentFirebaseUserUid: user?.id || null, operation: `select:${tableName}` }
   );
+  if (error) throw error;
 
-  return snapshot.docs.map((docSnapshot) => ({
-    id: docSnapshot.id,
-    ...docSnapshot.data(),
-  }));
+  return (data || []).map(rowToAppRecord).filter(Boolean);
 }
 
 export async function saveUserProfileSettings(uid, profile) {
@@ -832,22 +623,17 @@ export async function saveUserProfileSettings(uid, profile) {
 }
 
 export async function loadUserProfileSettings(uid) {
-  const context = await getFirebaseContext();
-  if (!context || !uid) {
+  const client = getSupabaseClient();
+  const user = await getCurrentSupabaseUser(client);
+  if (!client || !uid) {
     return null;
   }
 
-  const snapshot = await withFirestoreTimeout(
-    context.firestore.getDoc(
-      context.firestore.doc(context.db, 'users', uid, 'settings', 'profile')
-    ),
-    {
-      path: `users/${uid}/settings/profile`,
-      uid,
-      currentFirebaseUserUid: context.authInstance.currentUser?.uid || null,
-      operation: 'getDoc:userProfileSettings',
-    }
+  const path = pathFor(uid, 'settings', 'profile');
+  const { data, error } = await withCloudTimeout(
+    client.from('settings').select('*').eq('user_id', uid).eq('id', 'profile').maybeSingle(),
+    { path, uid, currentFirebaseUserUid: user?.id || null, operation: 'select:settings:profile' }
   );
-
-  return snapshot.exists() ? snapshot.data() : null;
+  if (error) throw error;
+  return rowToAppRecord(data);
 }

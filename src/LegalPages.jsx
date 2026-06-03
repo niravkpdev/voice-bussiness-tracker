@@ -5,11 +5,11 @@ const LEGAL_COPY = {
     updated: 'Last updated: June 1, 2026',
     sections: [
       ['Microphone Permission', 'The microphone is used only when you tap the voice button. Speech is converted into a transcript so the app can prepare a transaction review screen. Voice input is not recorded continuously.'],
-      ['Business Data Storage', 'Your business entries, invoices, ledgers, inventory, customers, suppliers, and reports may be stored in Firebase Firestore under your user account when Firebase is configured. Demo mode stores data locally in your browser.'],
+      ['Business Data Storage', 'Your business entries, invoices, ledgers, inventory, customers, suppliers, and reports may be stored in Supabase under your user account when Supabase is configured. Demo mode is limited to local development.'],
       ['AI Processing', 'Voice transcripts and business questions may be processed by an AI parser to extract transaction fields and generate business insights. Do not speak or enter secrets such as passwords, OTPs, bank PINs, or private keys.'],
       ['User Account Data', 'We collect account identifiers such as name, email, business name, login provider, and role so protected business data can be linked to the correct user.'],
-      ['Data Deletion', 'Users can request deletion from the Data Deletion Request page or by emailing support. After identity verification, account-linked production data should be removed from Firestore and backups according to the deletion workflow configured by the business owner.'],
-      ['Security', 'Cloud data is designed to be stored in user-specific collections with Firestore Security Rules that allow access only to the authenticated owner.'],
+      ['Data Deletion', 'Users can request deletion from the Data Deletion Request page or by emailing support. After identity verification, account-linked production data should be removed from Supabase and backups according to the deletion workflow configured by the business owner.'],
+      ['Security', 'Cloud data is designed to be stored in user-specific rows with Supabase Row Level Security policies that allow access only to the authenticated owner.'],
     ],
   },
   'terms-conditions': {
@@ -21,7 +21,7 @@ const LEGAL_COPY = {
       ['No Professional Advice', 'AI insights, GST summaries, profit calculations, and recommendations are informational and are not legal, tax, audit, or accounting advice.'],
       ['User Responsibility', 'You must keep login credentials secure, review generated transactions before saving, and ensure business data is accurate.'],
       ['Acceptable Use', 'Do not use the app to store illegal content, attack systems, bypass security rules, or process data without permission.'],
-      ['Availability', 'Offline mode and local backups are provided for convenience, but production businesses should configure Firebase backup and export their data regularly.'],
+      ['Availability', 'Offline mode and local backups are provided for development convenience, but production businesses should use Supabase-backed data and export their data regularly.'],
     ],
   },
   'contact-us': {
@@ -51,7 +51,7 @@ const LEGAL_COPY = {
     updated: 'Manage Your Business with Voice Commands',
     sections: [
       ['Purpose', 'Voice Business Tracker helps Indian small businesses record transactions, track inventory, manage customers, create invoices, review reports, and understand business health through a simple voice-first workflow.'],
-      ['Platform', 'The app is designed as a mobile-first PWA with Firebase-ready authentication, Firestore data storage, offline-friendly local cache, PDF exports, and Play Store readiness foundations.'],
+      ['Platform', 'The app is designed as a mobile-first PWA with Supabase-ready authentication, RLS-protected database storage, PDF exports, and Play Store readiness foundations.'],
       ['Company Contact', 'Support: trinetr1901@gmail.com / +918488943771'],
     ],
   },
