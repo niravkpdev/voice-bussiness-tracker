@@ -162,8 +162,34 @@ function userPayload(user, extra = {}) {
     role: metadata.role || extra.role || 'Owner',
     provider: user?.app_metadata?.provider || extra.provider || 'email',
     emailVerified: Boolean(user?.email_confirmed_at || user?.confirmed_at),
+    confirmationSentAt: user?.confirmation_sent_at || extra.confirmationSentAt || '',
+    confirmedAt: user?.email_confirmed_at || user?.confirmed_at || extra.confirmedAt || '',
+    lastSignInAt: user?.last_sign_in_at || extra.lastSignInAt || '',
+    sessionState: extra.sessionState || 'unknown',
     loginAt: new Date().toISOString(),
   };
+}
+
+function authRedirectTo() {
+  if (typeof window === 'undefined') {
+    return undefined;
+  }
+  return new URL('/react.html', window.location.origin).toString();
+}
+
+function redactAuthResponse(value) {
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map(redactAuthResponse);
+  }
+  return Object.fromEntries(Object.entries(value).map(([key, entry]) => {
+    if (/token|jwt/i.test(key)) {
+      return [key, entry ? '[redacted]' : entry];
+    }
+    return [key, redactAuthResponse(entry)];
+  }));
 }
 
 function rowToAppRecord(row) {
@@ -212,6 +238,7 @@ function mapAuthError(error) {
   if (message.includes('invalid login credentials')) return 'auth/invalid-credential';
   if (message.includes('email not confirmed')) return 'auth/email-not-verified';
   if (message.includes('already registered') || message.includes('already exists')) return 'auth/email-already-in-use';
+  if (message.includes('security purposes') || message.includes('rate limit') || message.includes('too many')) return 'auth/too-many-requests';
   if (message.includes('password')) return 'auth/weak-password';
   if (message.includes('invalid email')) return 'auth/invalid-email';
   return code || 'auth/error';
@@ -241,6 +268,14 @@ export function getFirebaseAuthErrorMessage(error, fallback = 'Authentication fa
     return messages['auth/invalid-credential'];
   }
 
+  if (message.includes('already registered') || message.includes('already exists')) {
+    return messages['auth/email-already-in-use'];
+  }
+
+  if (message.includes('security purposes') || message.includes('rate limit') || message.includes('too many')) {
+    return messages['auth/too-many-requests'];
+  }
+
   if (message.includes('invalid api key') || message.includes('jwt')) {
     return 'Supabase anon key is invalid. Copy the anon public key from Supabase Project Settings > API and redeploy Vercel.';
   }
@@ -259,11 +294,13 @@ export async function createFirebaseAccount({ email, password, ownerName, busine
   }
 
   const normalizedEmail = normalizeFirebaseEmail(email);
-  console.info('[Supabase auth register start]', { email: normalizedEmail });
-  const { data, error } = await client.auth.signUp({
+  const emailRedirectTo = authRedirectTo();
+  console.info('[Supabase auth register start]', { email: normalizedEmail, emailRedirectTo });
+  const signUpResponse = await client.auth.signUp({
     email: normalizedEmail,
     password,
     options: {
+      emailRedirectTo,
       data: {
         ownerName: sanitizeText(ownerName || 'Business Owner', 120),
         businessName: sanitizeText(businessName || 'Voice Business Tracker', 140),
@@ -271,9 +308,22 @@ export async function createFirebaseAccount({ email, password, ownerName, busine
       },
     },
   });
+  const { data, error } = signUpResponse;
+  console.info('SUPABASE_SIGNUP_RESPONSE', redactAuthResponse({
+    data,
+    error,
+    emailRedirectTo,
+  }));
 
   if (error) {
     error.code = mapAuthError(error);
+    console.error('SUPABASE_SIGNUP_ERROR', {
+      code: error.code,
+      message: error.message,
+      status: error.status || null,
+      email: normalizedEmail,
+      emailRedirectTo,
+    });
     throw error;
   }
 
@@ -282,13 +332,35 @@ export async function createFirebaseAccount({ email, password, ownerName, busine
     throw new Error('Supabase did not return a registered user.');
   }
 
-  console.info('REGISTER_SUCCESS', { uid: user.id });
-  console.info('EMAIL_VERIFICATION_SENT', { uid: user.id, email: normalizedEmail });
-  const payload = userPayload(user, { email: normalizedEmail, ownerName, businessName });
+  const alreadyExistsUnconfirmedLikely = Array.isArray(user.identities) && user.identities.length === 0 && !user.email_confirmed_at;
+  console.info('REGISTER_SUCCESS', {
+    uid: user.id,
+    email: normalizedEmail,
+    emailVerified: Boolean(user.email_confirmed_at || user.confirmed_at),
+    confirmationSentAt: user.confirmation_sent_at || null,
+    alreadyExistsUnconfirmedLikely,
+  });
+  console.info('EMAIL_VERIFICATION_SENT', { uid: user.id, email: normalizedEmail, emailRedirectTo });
+  const payload = userPayload(user, {
+    email: normalizedEmail,
+    ownerName,
+    businessName,
+    sessionState: data?.session ? 'active' : 'verification-required',
+  });
+  payload.confirmationSentAt = user.confirmation_sent_at || '';
+  payload.lastAuthActionAt = new Date().toISOString();
+  payload.emailRedirectTo = emailRedirectTo || '';
+  payload.alreadyExistsUnconfirmedLikely = alreadyExistsUnconfirmedLikely;
   if (data?.session) {
     await saveUserProfile(payload.uid, payload);
   }
-  console.info('[Supabase auth register success]', { uid: payload.uid, email: payload.email });
+  console.info('[Supabase auth register success]', {
+    uid: payload.uid,
+    email: payload.email,
+    emailVerified: payload.emailVerified,
+    sessionState: payload.sessionState,
+    alreadyExistsUnconfirmedLikely,
+  });
   return payload;
 }
 
@@ -300,13 +372,21 @@ export async function signInFirebaseAccount({ email, password }) {
 
   const normalizedEmail = normalizeFirebaseEmail(email);
   console.info('[Supabase auth login start]', { email: normalizedEmail });
-  const { data, error } = await client.auth.signInWithPassword({
+  const signInResponse = await client.auth.signInWithPassword({
     email: normalizedEmail,
     password,
   });
+  const { data, error } = signInResponse;
+  console.info('SUPABASE_SIGNIN_RESPONSE', redactAuthResponse({ data, error }));
 
   if (error) {
     error.code = mapAuthError(error);
+    console.error('SUPABASE_SIGNIN_ERROR', {
+      code: error.code,
+      message: error.message,
+      status: error.status || null,
+      email: normalizedEmail,
+    });
     throw error;
   }
 
@@ -315,7 +395,7 @@ export async function signInFirebaseAccount({ email, password }) {
     throw new Error('Supabase did not return a logged-in user.');
   }
 
-  const payload = userPayload(user, { email: normalizedEmail });
+  const payload = userPayload(user, { email: normalizedEmail, sessionState: data?.session ? 'active' : 'missing-session' });
   await saveUserProfile(payload.uid, payload);
   console.info('LOGIN_SUCCESS', { uid: payload.uid, emailVerified: payload.emailVerified });
   console.info('[Supabase auth login success]', { uid: payload.uid, email: payload.email });
@@ -341,23 +421,58 @@ export async function signInFirebaseGoogle() {
   return null;
 }
 
-export async function sendCurrentUserEmailVerification() {
+export async function sendCurrentUserEmailVerification(emailOverride = '') {
   const client = getSupabaseClient();
   const user = await getCurrentSupabaseUser(client);
-  if (!client || !user?.email) {
-    return false;
-  }
-
-  const { error } = await client.auth.resend({
-    type: 'signup',
-    email: normalizeFirebaseEmail(user.email),
-  });
-  if (error) {
-    error.code = mapAuthError(error);
+  const email = normalizeFirebaseEmail(user?.email || emailOverride);
+  if (!client || !email) {
+    const error = new Error('No email is available for verification resend.');
+    error.code = 'auth/missing-email';
     throw error;
   }
-  console.info('EMAIL_VERIFICATION_SENT', { uid: user.id, email: normalizeFirebaseEmail(user.email) });
-  return true;
+
+  const emailRedirectTo = authRedirectTo();
+  console.info('SUPABASE_RESEND_VERIFICATION_START', {
+    uid: user?.id || null,
+    email,
+    emailRedirectTo,
+    sessionState: user ? 'active' : 'missing-session-email-only',
+  });
+  const resendResponse = await client.auth.resend({
+    type: 'signup',
+    email,
+    options: {
+      emailRedirectTo,
+    },
+  });
+  const { data, error } = resendResponse;
+  console.info('SUPABASE_RESEND_VERIFICATION_RESPONSE', redactAuthResponse({
+    data,
+    error,
+    email,
+    emailRedirectTo,
+  }));
+  if (error) {
+    error.code = mapAuthError(error);
+    console.error('SUPABASE_RESEND_VERIFICATION_ERROR', {
+      code: error.code,
+      message: error.message,
+      status: error.status || null,
+      email,
+      emailRedirectTo,
+    });
+    throw error;
+  }
+  const lastResendAt = new Date().toISOString();
+  console.info('EMAIL_VERIFICATION_SENT', { uid: user?.id || null, email, emailRedirectTo, lastResendAt });
+  return {
+    ok: true,
+    uid: user?.id || '',
+    email,
+    emailRedirectTo,
+    lastResendAt,
+    sessionState: user ? 'active' : 'missing-session-email-only',
+  };
 }
 
 export async function reloadCurrentFirebaseUser() {
@@ -496,9 +611,10 @@ export async function listenToFirebaseAuth(onUser, onError) {
     return () => {};
   }
 
-  client.auth.getSession().then(({ data }) => {
+  client.auth.getSession().then(({ data, error }) => {
+    console.info('SUPABASE_GET_SESSION_RESPONSE', redactAuthResponse({ data, error }));
     const user = data?.session?.user;
-    onUser(user ? userPayload(user) : null);
+    onUser(user ? userPayload(user, { sessionState: 'active' }) : null);
   }).catch((error) => {
     if (/session.*missing|auth session missing/i.test(error?.message || '')) {
       onUser(null);
@@ -507,9 +623,10 @@ export async function listenToFirebaseAuth(onUser, onError) {
     onError?.(error);
   });
 
-  const { data } = client.auth.onAuthStateChange((_event, session) => {
+  const { data } = client.auth.onAuthStateChange((event, session) => {
     try {
-      onUser(session?.user ? userPayload(session.user) : null);
+      console.info('SUPABASE_AUTH_STATE_CHANGE', redactAuthResponse({ event, session }));
+      onUser(session?.user ? userPayload(session.user, { sessionState: session ? 'active' : 'missing-session' }) : null);
     } catch (error) {
       onError?.(error);
     }

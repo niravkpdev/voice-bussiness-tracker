@@ -743,6 +743,18 @@ export default function VoiceExpenseTrackerPreview() {
   const [secureError, setSecureError] = useState('');
   const [authNotice, setAuthNotice] = useState('');
   const [verificationCooldown, setVerificationCooldown] = useState(0);
+  const [verificationResending, setVerificationResending] = useState(false);
+  const [authDebugInfo, setAuthDebugInfo] = useState({
+    email: '',
+    uid: '',
+    emailVerified: false,
+    confirmationSentAt: '',
+    confirmedAt: '',
+    lastResendAt: '',
+    sessionState: 'unknown',
+    emailRedirectTo: '',
+    lastAuthActionAt: '',
+  });
   const [offline, setOffline] = useState(() => typeof navigator !== 'undefined' && !navigator.onLine);
   const [firebaseEnabled] = useState(() => isFirebaseConfigured());
   const [transcript, setTranscript] = useState('Click start and speak your expense...');
@@ -810,6 +822,18 @@ export default function VoiceExpenseTrackerPreview() {
   const sidebarSectionRefs = useRef({});
   const hasVerifiedAccess = !REQUIRE_VERIFIED_EMAIL || Boolean(authUser?.emailVerified);
   const canViewFirestoreDebug = import.meta.env.DEV || authUser?.role === 'Owner';
+
+  const mergeAuthDebugInfo = (next = {}) => {
+    setAuthDebugInfo((current) => ({
+      ...current,
+      ...next,
+      email: next.email || current.email || authUser?.email || '',
+      uid: next.uid || current.uid || authUser?.uid || '',
+      emailVerified: typeof next.emailVerified === 'boolean'
+        ? next.emailVerified
+        : Boolean(current.emailVerified || authUser?.emailVerified),
+    }));
+  };
 
   const requireSensitiveAccess = (actionName = 'this action') => {
     if (!authUser) {
@@ -1298,11 +1322,23 @@ export default function VoiceExpenseTrackerPreview() {
           ? await signInFirebaseAccount({ email, password })
           : await createFirebaseAccount({ email, password, ownerName, businessName });
 
+        mergeAuthDebugInfo({
+          email: firebaseUser?.email || email,
+          uid: firebaseUser?.uid || '',
+          emailVerified: Boolean(firebaseUser?.emailVerified),
+          confirmationSentAt: firebaseUser?.confirmationSentAt || '',
+          confirmedAt: firebaseUser?.confirmedAt || '',
+          sessionState: firebaseUser?.sessionState || 'unknown',
+          emailRedirectTo: firebaseUser?.emailRedirectTo || '',
+          lastAuthActionAt: firebaseUser?.lastAuthActionAt || new Date().toISOString(),
+        });
         await applyAuthenticatedUser(firebaseUser);
         if (firebaseUser?.emailVerified) {
           setStatus('Secure Supabase login active');
         } else {
-          setAuthNotice('Verification email sent. Please check your inbox or spam folder.');
+          setAuthNotice(firebaseUser?.alreadyExistsUnconfirmedLikely
+            ? 'This email may already be registered but not verified. Click Resend Verification Email, then check Inbox, Spam, and Promotions folders.'
+            : 'Verification email sent. Check Inbox, Spam, and Promotions folders.');
           setVerificationCooldown(authView === 'register' ? 60 : 0);
           setStatus('Email verification required');
         }
@@ -1470,6 +1506,17 @@ export default function VoiceExpenseTrackerPreview() {
     setVoucherPartyId('');
     setSecureError('');
     setAuthNotice('');
+    setAuthDebugInfo({
+      email: '',
+      uid: '',
+      emailVerified: false,
+      confirmationSentAt: '',
+      confirmedAt: '',
+      lastResendAt: '',
+      sessionState: 'signed-out',
+      emailRedirectTo: '',
+      lastAuthActionAt: new Date().toISOString(),
+    });
     setStatus('Logged out');
     setAuthView('login');
   };
@@ -1481,18 +1528,35 @@ export default function VoiceExpenseTrackerPreview() {
 
     try {
       setAuthLoading(true);
+      setVerificationResending(true);
       setSecureError('');
-      const sent = await sendCurrentUserEmailVerification();
-      if (sent) {
-        setAuthNotice('Verification email sent. Please check your inbox or spam folder.');
+      const result = await sendCurrentUserEmailVerification(authUser?.email || authDebugInfo.email);
+      if (result?.ok) {
+        mergeAuthDebugInfo({
+          email: result.email || authUser?.email || authDebugInfo.email,
+          uid: result.uid || authUser?.uid || authDebugInfo.uid,
+          lastResendAt: result.lastResendAt,
+          sessionState: result.sessionState || authDebugInfo.sessionState,
+          emailRedirectTo: result.emailRedirectTo || authDebugInfo.emailRedirectTo,
+          lastAuthActionAt: result.lastResendAt,
+        });
+        setAuthNotice('Verification email sent. Check Inbox, Spam, and Promotions folders.');
         setVerificationCooldown(60);
         setStatus('Verification email sent');
       } else {
         setStatus('Sign in again to send verification email');
       }
     } catch (error) {
-      setSecureError(getFirebaseAuthErrorMessage(error, 'Could not send verification email.'));
+      const message = getFirebaseAuthErrorMessage(error, error?.message || 'Could not send verification email.');
+      console.error('RESEND_VERIFICATION_UI_ERROR', {
+        code: error?.code || null,
+        message: error?.message || String(error),
+        email: authUser?.email || authDebugInfo.email || '',
+      });
+      setSecureError(message);
+      setStatus(message);
     } finally {
+      setVerificationResending(false);
       setAuthLoading(false);
     }
   };
@@ -1522,13 +1586,30 @@ export default function VoiceExpenseTrackerPreview() {
       }
 
       if (refreshedUser.emailVerified) {
+        mergeAuthDebugInfo({
+          email: refreshedUser.email,
+          uid: refreshedUser.uid,
+          emailVerified: true,
+          confirmedAt: refreshedUser.confirmedAt || new Date().toISOString(),
+          confirmationSentAt: refreshedUser.confirmationSentAt || authDebugInfo.confirmationSentAt,
+          sessionState: refreshedUser.sessionState || 'active',
+          lastAuthActionAt: new Date().toISOString(),
+        });
         await applyAuthenticatedUser(refreshedUser);
         setAuthNotice('');
         setStatus('Email verified');
         return;
       }
 
-      setAuthNotice('Email is not verified yet. Please check your inbox or spam folder.');
+      mergeAuthDebugInfo({
+        email: refreshedUser.email,
+        uid: refreshedUser.uid,
+        emailVerified: false,
+        confirmationSentAt: refreshedUser.confirmationSentAt || authDebugInfo.confirmationSentAt,
+        sessionState: refreshedUser.sessionState || 'active',
+        lastAuthActionAt: new Date().toISOString(),
+      });
+      setAuthNotice('Email is not verified yet. Please check Inbox, Spam, and Promotions folders.');
       setStatus('Email verification pending');
     } catch (error) {
       setSecureError(getFirebaseAuthErrorMessage(error, 'Could not check email verification.'));
@@ -1588,11 +1669,25 @@ export default function VoiceExpenseTrackerPreview() {
           return;
         }
         if (user) {
+          mergeAuthDebugInfo({
+            email: user.email || '',
+            uid: user.uid || '',
+            emailVerified: Boolean(user.emailVerified),
+            confirmationSentAt: user.confirmationSentAt || authDebugInfo.confirmationSentAt,
+            confirmedAt: user.confirmedAt || '',
+            sessionState: user.sessionState || 'active',
+            lastAuthActionAt: new Date().toISOString(),
+          });
           await applyAuthenticatedUser(user);
         } else {
           if (import.meta.env.DEV) {
             console.info('[Supabase auth state]', { user: null });
           }
+          mergeAuthDebugInfo({
+            sessionState: 'signed-out',
+            emailVerified: false,
+            lastAuthActionAt: new Date().toISOString(),
+          });
           setAuthUser(null);
           if (import.meta.env.PROD) {
             localStorage.removeItem(AUTH_KEY);
@@ -2857,11 +2952,24 @@ export default function VoiceExpenseTrackerPreview() {
               </p>
               {authNotice && <div className="notice">{authNotice}</div>}
               {secureError && <div className="notice error">{secureError}</div>}
+              <div className="auth-debug-panel">
+                <strong>Verification Debug</strong>
+                <dl>
+                  <div><dt>Email</dt><dd>{authDebugInfo.email || authUser?.email || 'Not available'}</dd></div>
+                  <div><dt>User ID</dt><dd>{authDebugInfo.uid || authUser?.uid || 'Not available'}</dd></div>
+                  <div><dt>Email confirmed</dt><dd>{authDebugInfo.emailVerified || authUser?.emailVerified ? 'Yes' : 'No'}</dd></div>
+                  <div><dt>Confirmation sent</dt><dd>{authDebugInfo.confirmationSentAt || 'Unknown'}</dd></div>
+                  <div><dt>Confirmed at</dt><dd>{authDebugInfo.confirmedAt || 'Not confirmed yet'}</dd></div>
+                  <div><dt>Last resend</dt><dd>{authDebugInfo.lastResendAt || 'Not resent yet'}</dd></div>
+                  <div><dt>Session</dt><dd>{authDebugInfo.sessionState || 'unknown'}</dd></div>
+                  <div><dt>Redirect URL</dt><dd>{authDebugInfo.emailRedirectTo || `${window.location.origin}/react.html`}</dd></div>
+                </dl>
+              </div>
               <button
                 className="saas-primary-button full"
                 type="button"
                 onClick={checkEmailVerification}
-                disabled={authLoading}
+                disabled={authLoading || verificationResending}
               >
                 {authLoading ? 'Checking...' : 'I verified my email'}
               </button>
@@ -2869,9 +2977,9 @@ export default function VoiceExpenseTrackerPreview() {
                 className="saas-google-button"
                 type="button"
                 onClick={resendVerificationEmail}
-                disabled={authLoading || verificationCooldown > 0}
+                disabled={authLoading || verificationResending || verificationCooldown > 0}
               >
-                {verificationCooldown > 0 ? `Resend in ${verificationCooldown}s` : 'Resend Verification Email'}
+                {verificationResending ? 'Sending...' : verificationCooldown > 0 ? `Resend in ${verificationCooldown}s` : 'Resend Verification Email'}
               </button>
               <button className="saas-google-button" type="button" onClick={logout}>
                 Logout
@@ -3091,8 +3199,13 @@ export default function VoiceExpenseTrackerPreview() {
               verified.
             </p>
             {authUser && (
-              <button className="saas-primary-button full" type="button" onClick={resendVerificationEmail}>
-                Resend Verification Email
+              <button
+                className="saas-primary-button full"
+                type="button"
+                onClick={resendVerificationEmail}
+                disabled={authLoading || verificationResending || verificationCooldown > 0}
+              >
+                {verificationResending ? 'Sending...' : verificationCooldown > 0 ? `Resend in ${verificationCooldown}s` : 'Resend Verification Email'}
               </button>
             )}
             <button className="saas-google-button" type="button" onClick={logout}>

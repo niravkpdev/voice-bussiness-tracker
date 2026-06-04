@@ -3373,6 +3373,47 @@ body {
   color: #b91c1c;
 }
 
+.auth-debug-panel {
+  margin: 18px 0;
+  padding: 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.9);
+  color: var(--text-main);
+  text-align: left;
+}
+
+.auth-debug-panel strong {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.auth-debug-panel dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.auth-debug-panel div {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.45fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.auth-debug-panel dt {
+  color: var(--text-muted);
+  font-weight: 800;
+}
+
+.auth-debug-panel dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+}
+
 .mobile-bottom-nav {
   display: none;
 }
