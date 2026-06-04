@@ -172,8 +172,10 @@ create table if not exists public.settings (
 create table if not exists public.debug_tests (
   id text not null,
   user_id uuid not null references auth.users(id) on delete cascade,
-  message text not null,
+  message text not null default 'hello firestore',
+  data jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
   primary key (user_id, id)
 );
 
@@ -197,6 +199,9 @@ alter table public.notifications enable row level security;
 alter table public.reports enable row level security;
 alter table public.settings enable row level security;
 alter table public.debug_tests enable row level security;
+
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on all tables in schema public to authenticated;
 
 drop policy if exists "Users manage own transactions" on public.transactions;
 drop policy if exists "Users manage own customers" on public.customers;

@@ -184,6 +184,23 @@ export default function Phase3Ops({
 
   const unpaidInvoices = useMemo(() => invoices.filter((invoice) => invoice.status !== 'Paid'), [invoices]);
   const payrollTotal = useMemo(() => employees.reduce((sum, employee) => sum + (Number(employee.salary) || 0), 0), [employees]);
+  const validEmployeeIds = useMemo(() => new Set(employees.map((employee) => employee.id)), [employees]);
+  const validAttendance = useMemo(
+    () => attendance.filter((entry) => validEmployeeIds.has(entry.employeeId)),
+    [attendance, validEmployeeIds]
+  );
+  const todayAttendance = useMemo(
+    () => validAttendance.filter((entry) => entry.date === today()),
+    [validAttendance]
+  );
+  const attendanceByEmployeeToday = useMemo(() => {
+    const map = new Map();
+    todayAttendance.forEach((entry) => {
+      map.set(entry.employeeId, entry);
+    });
+    return map;
+  }, [todayAttendance]);
+  const attendanceStatusLabel = (status) => (status === 'Present' ? 'P' : status === 'Absent' ? 'A' : '-');
   const pendingCollections = useMemo(
     () => partySummary.filter((party) => party.group === 'Sundry Debtors' && party.outstandingAmount > 0),
     [partySummary]
@@ -312,14 +329,25 @@ export default function Phase3Ops({
   };
 
   const markAttendance = async (employee, status) => {
-    const attendanceEntry = { id: createId('att'), employeeId: employee.id, name: employee.name, status, date: today() };
+    const date = today();
+    const existing = attendance.find((entry) => entry.employeeId === employee.id && entry.date === date);
+    const attendanceEntry = {
+      ...(existing || {}),
+      id: existing?.id || `att-${employee.id}-${date}`,
+      employeeId: employee.id,
+      name: employee.name,
+      status,
+      date,
+      createdAt: existing?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
     try {
       await persistRecord('attendance', attendanceEntry, 'Attendance save failed');
     } catch (error) {
       onStatus(error?.message || 'Attendance save failed');
       return;
     }
-    setAttendance([attendanceEntry, ...attendance]);
+    setAttendance((items) => [attendanceEntry, ...items.filter((entry) => entry.id !== attendanceEntry.id)]);
     await logAudit(`Marked ${employee.name} ${status}`, 'Attendance');
   };
 
@@ -390,10 +418,15 @@ export default function Phase3Ops({
   };
 
   const deleteEmployee = async (employee) => {
+    const employeeAttendance = attendance.filter((entry) => entry.employeeId === employee.id);
     const deleted = await deleteRecord('employees', employee.id, employee.name || 'employee', setEmployees, () => {
       if (editingEmployee?.id === employee.id) setEditingEmployee(null);
+      setAttendance((items) => items.filter((entry) => entry.employeeId !== employee.id));
     });
-    if (deleted) await logAudit(`Deleted employee ${employee.name}`, 'Employees');
+    if (deleted) {
+      await Promise.all(employeeAttendance.map((entry) => onCloudDelete?.('attendance', entry.id).catch(() => false)));
+      await logAudit(`Deleted employee ${employee.name}`, 'Employees');
+    }
   };
 
   const deletePayment = async (payment) => {
@@ -626,8 +659,12 @@ export default function Phase3Ops({
             <div className="summary-grid report-summary">
               <div className="summary-card"><span>Employees</span><strong>{employees.length}</strong></div>
               <div className="summary-card"><span>Salary</span><strong>{formatCurrency(payrollTotal)}</strong></div>
-              <div className="summary-card"><span>Attendance</span><strong>{attendance.filter((a) => a.date === today()).length}</strong></div>
+              <div className="summary-card"><span>Attendance</span><strong>{todayAttendance.length}</strong></div>
               <div className="summary-card"><span>Advances</span><strong>{formatCurrency(employees.reduce((s, e) => s + (Number(e.advance) || 0), 0))}</strong></div>
+            </div>
+            <div className="attendance-status-grid">
+              <span>Present: {todayAttendance.filter((entry) => entry.status === 'Present').length}</span>
+              <span>Absent: {todayAttendance.filter((entry) => entry.status === 'Absent').length}</span>
             </div>
           </article>
         </section>
@@ -635,7 +672,13 @@ export default function Phase3Ops({
           <div className="compact-list">
             {employees.map((employee) => (
               <article className="compact-item" key={employee.id}>
-                <div><strong>{employee.name}</strong><p>{employee.role} · Salary {formatCurrency(employee.salary)} · Advance {formatCurrency(employee.advance)}</p></div>
+                <div>
+                  <strong>{employee.name}</strong>
+                  <p>{employee.role} · Salary {formatCurrency(employee.salary)} · Advance {formatCurrency(employee.advance)}</p>
+                  <span className={`attendance-pill ${attendanceByEmployeeToday.get(employee.id)?.status === 'Absent' ? 'absent' : attendanceByEmployeeToday.get(employee.id)?.status === 'Present' ? 'present' : ''}`}>
+                    {attendanceStatusLabel(attendanceByEmployeeToday.get(employee.id)?.status)} today
+                  </span>
+                </div>
                 <div className="voucher-actions">
                   <button className="share-entry-button" type="button" onClick={() => markAttendance(employee, 'Present')}>Present</button>
                   <button className="share-entry-button" type="button" onClick={() => markAttendance(employee, 'Absent')}>Absent</button>

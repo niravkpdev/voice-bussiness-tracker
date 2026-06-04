@@ -412,7 +412,14 @@ export async function runFirestoreDebugTest() {
       id: 'test',
       user_id: uid,
       message: 'hello firestore',
-      created_at: new Date().toISOString(),
+      data: {
+        id: 'test',
+        message: 'hello firestore',
+        testValue: 'supabase debug ok',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      updated_at: new Date().toISOString(),
     };
     await withCloudTimeout(
       client.from('debug_tests').upsert(row, { onConflict: 'user_id,id' }),

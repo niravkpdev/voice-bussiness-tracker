@@ -1228,6 +1228,30 @@ export default function Phase2ERP({
   }
 
   if (activeTab === 'notifications') {
+    const openAlertAction = (item) => {
+      const title = String(item.title || '').toLowerCase();
+      if (title.includes('gst')) {
+        window.location.hash = 'gst';
+        onStatus('Opening GST Center');
+        return;
+      }
+      if (title.includes('backup')) {
+        window.location.hash = 'cloud-backup';
+        onStatus('Opening Cloud Backup');
+        return;
+      }
+      if (title.includes('stock')) {
+        window.location.hash = 'inventory';
+        onStatus('Opening Inventory');
+        return;
+      }
+      if (title.includes('invoice')) {
+        window.location.hash = 'invoices';
+        onStatus('Opening Invoices');
+        return;
+      }
+      onStatus(`${item.title}: ${item.body || 'No extra details available.'}`);
+    };
     const derivedAlerts = [
       ...erpAI.lowStock.slice(0, 5).map((product) => ({ title: 'Low Stock Alert', body: `${product.name}: ${product.currentStock} ${product.unit}` })),
       ...erpAI.overdue.slice(0, 5).map((invoice) => ({ title: 'Overdue Invoice Alert', body: `${invoice.invoiceNo}: ${formatCurrency(invoice.balance || invoice.total)}` })),
@@ -1240,7 +1264,15 @@ export default function Phase2ERP({
         <section className="panel">
           <div className="compact-list">
             {[...derivedAlerts, ...notifications].map((item, index) => (
-              <article className="compact-item" key={`${item.title}-${index}`}><div><strong>{item.title}</strong><p>{item.body}</p></div><span className="status-pill draft">{item.type || 'Auto'}</span></article>
+              <button
+                className="compact-item clickable-alert"
+                key={`${item.title}-${index}`}
+                type="button"
+                onClick={() => openAlertAction(item)}
+                aria-label={`Open ${item.title}`}
+              >
+                <div><strong>{item.title}</strong><p>{item.body}</p></div><span className="status-pill draft">{item.type || 'Auto'}</span>
+              </button>
             ))}
           </div>
         </section>
