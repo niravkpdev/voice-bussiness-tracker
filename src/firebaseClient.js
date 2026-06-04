@@ -177,6 +177,13 @@ function authRedirectTo() {
   return new URL('/react.html', window.location.origin).toString();
 }
 
+function passwordRecoveryRedirectTo() {
+  if (typeof window === 'undefined') {
+    return undefined;
+  }
+  return new URL('/react.html?auth=recovery', window.location.origin).toString();
+}
+
 function redactAuthResponse(value) {
   if (!value || typeof value !== 'object') {
     return value;
@@ -487,9 +494,10 @@ export async function sendFirebasePasswordReset(email) {
   }
 
   const normalizedEmail = normalizeFirebaseEmail(email);
-  console.info('PASSWORD_RESET_START', { email: normalizedEmail });
+  const redirectTo = passwordRecoveryRedirectTo();
+  console.info('PASSWORD_RESET_START', { email: normalizedEmail, redirectTo });
   const { error } = await client.auth.resetPasswordForEmail(normalizedEmail, {
-    redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+    redirectTo,
   });
 
   if (error) {
@@ -501,7 +509,29 @@ export async function sendFirebasePasswordReset(email) {
     throw error;
   }
 
-  console.info('PASSWORD_RESET_SUCCESS', { email: normalizedEmail });
+  console.info('PASSWORD_RESET_SUCCESS', { email: normalizedEmail, redirectTo });
+  return true;
+}
+
+export async function updateCurrentUserPassword(newPassword) {
+  const client = getSupabaseClient();
+  if (!client) {
+    return false;
+  }
+
+  console.info('PASSWORD_UPDATE_START');
+  const { data, error } = await client.auth.updateUser({ password: String(newPassword || '') });
+  console.info('SUPABASE_PASSWORD_UPDATE_RESPONSE', redactAuthResponse({ data, error }));
+  if (error) {
+    console.error('PASSWORD_UPDATE_ERROR', {
+      code: mapAuthError(error),
+      message: error?.message || '',
+      status: error?.status || null,
+    });
+    error.code = mapAuthError(error);
+    throw error;
+  }
+  console.info('PASSWORD_UPDATE_SUCCESS', { uid: data?.user?.id || null });
   return true;
 }
 
@@ -614,7 +644,8 @@ export async function listenToFirebaseAuth(onUser, onError) {
   client.auth.getSession().then(({ data, error }) => {
     console.info('SUPABASE_GET_SESSION_RESPONSE', redactAuthResponse({ data, error }));
     const user = data?.session?.user;
-    onUser(user ? userPayload(user, { sessionState: 'active' }) : null);
+    const isRecoveryUrl = typeof window !== 'undefined' && /[?&]auth=recovery\b/.test(window.location.search || '');
+    onUser(user ? userPayload(user, { sessionState: isRecoveryUrl ? 'password-recovery' : 'active' }) : null);
   }).catch((error) => {
     if (/session.*missing|auth session missing/i.test(error?.message || '')) {
       onUser(null);
@@ -626,7 +657,8 @@ export async function listenToFirebaseAuth(onUser, onError) {
   const { data } = client.auth.onAuthStateChange((event, session) => {
     try {
       console.info('SUPABASE_AUTH_STATE_CHANGE', redactAuthResponse({ event, session }));
-      onUser(session?.user ? userPayload(session.user, { sessionState: session ? 'active' : 'missing-session' }) : null);
+      const sessionState = event === 'PASSWORD_RECOVERY' ? 'password-recovery' : session ? 'active' : 'missing-session';
+      onUser(session?.user ? userPayload(session.user, { sessionState }) : null);
     } catch (error) {
       onError?.(error);
     }

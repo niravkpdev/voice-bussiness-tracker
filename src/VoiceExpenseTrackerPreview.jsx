@@ -53,6 +53,7 @@ import {
   signInFirebaseAccount,
   signInFirebaseGoogle,
   signOutFirebase,
+  updateCurrentUserPassword,
 } from './firebaseClient.js';
 import {
   canRunRateLimitedAction,
@@ -116,6 +117,11 @@ const MATERIAL_LEDGER_ID = 'ledger-material';
 const DEFAULT_EXPENSE_LEDGER_ID = 'ledger-misc-expense';
 const APP_TABS = [
   'dashboard',
+  'company-setup',
+  'masters',
+  'vouchers-hub',
+  'accounting-ledgers',
+  'reports-hub',
   'ai-assistant',
   'inventory',
   'invoices',
@@ -152,9 +158,20 @@ const SIDEBAR_SECTIONS = [
     label: 'Overview',
     items: [
       ['dashboard', 'Dashboard'],
+      ['company-setup', 'Company Setup'],
       ['ai-assistant', 'AI Insights'],
       ['analytics', 'Analytics'],
       ['notifications', 'Notifications'],
+    ],
+  },
+  {
+    id: 'tally-structure',
+    label: 'Business Structure',
+    items: [
+      ['masters', 'Masters'],
+      ['vouchers-hub', 'Vouchers'],
+      ['accounting-ledgers', 'Accounting Ledgers'],
+      ['reports-hub', 'Reports Hub'],
     ],
   },
   {
@@ -1467,6 +1484,57 @@ export default function VoiceExpenseTrackerPreview() {
     }
   };
 
+  const completePasswordRecovery = async (event) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const newPassword = String(form.get('newPassword') || '');
+    const confirmPassword = String(form.get('confirmPassword') || '');
+
+    if (!validatePassword(newPassword)) {
+      setSecureError('Password must be at least 8 characters.');
+      setStatus('Enter a stronger password');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setSecureError('New password and confirm password must match.');
+      setStatus('Passwords do not match');
+      return;
+    }
+
+    setAuthLoading(true);
+    setSecureError('');
+    setAuthNotice('');
+    try {
+      await updateCurrentUserPassword(newPassword);
+      await signOutFirebase();
+      localStorage.removeItem(AUTH_KEY);
+      clearStorageScope();
+      window.history.replaceState({}, document.title, '/react.html');
+      setAuthUser(null);
+      setAuthDebugInfo({
+        email: '',
+        uid: '',
+        emailVerified: false,
+        confirmationSentAt: '',
+        confirmedAt: '',
+        lastResendAt: '',
+        sessionState: 'signed-out',
+        emailRedirectTo: '',
+        lastAuthActionAt: new Date().toISOString(),
+      });
+      setAuthNotice('Password updated successfully. Please login again.');
+      setStatus('Password updated successfully');
+      setAuthView('login');
+    } catch (error) {
+      const message = getFirebaseAuthErrorMessage(error, error?.message || 'Password reset link is expired or invalid. Please request a new reset link.');
+      setSecureError(message);
+      setStatus(message);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
   const logout = async () => {
     if (import.meta.env.DEV) {
       console.info('[Auth logout requested]', { uid: authUser?.uid || null, firebaseEnabled });
@@ -1678,6 +1746,14 @@ export default function VoiceExpenseTrackerPreview() {
             sessionState: user.sessionState || 'active',
             lastAuthActionAt: new Date().toISOString(),
           });
+          if (user.sessionState === 'password-recovery') {
+            setAuthUser(user);
+            setAuthView('new-password');
+            setAuthNotice('Create a new password to finish account recovery.');
+            setStatus('Password recovery session active');
+            setAuthLoading(false);
+            return;
+          }
           await applyAuthenticatedUser(user);
         } else {
           if (import.meta.env.DEV) {
@@ -2983,6 +3059,28 @@ export default function VoiceExpenseTrackerPreview() {
               </button>
               <button className="saas-google-button" type="button" onClick={logout}>
                 Logout
+              </button>
+            </div>
+          </section>
+        ) : authView === 'new-password' ? (
+          <section className="auth-page">
+            <div className="auth-card">
+              <span className="security-mode live">Password recovery</span>
+              <h1>Create new password</h1>
+              <p>Enter a new password for <strong>{authUser?.email || authDebugInfo.email || 'your account'}</strong>.</p>
+              {authNotice && <div className="notice">{authNotice}</div>}
+              {secureError && <div className="notice error">{secureError}</div>}
+              <form onSubmit={completePasswordRecovery}>
+                <label className="field-label" htmlFor="new-password">New Password</label>
+                <input id="new-password" name="newPassword" type="password" minLength="8" autoComplete="new-password" placeholder="Minimum 8 characters" />
+                <label className="field-label" htmlFor="confirm-password">Confirm New Password</label>
+                <input id="confirm-password" name="confirmPassword" type="password" minLength="8" autoComplete="new-password" placeholder="Repeat new password" />
+                <button className="saas-primary-button full" type="submit" disabled={authLoading}>
+                  {authLoading ? 'Updating...' : 'Update Password'}
+                </button>
+              </form>
+              <button className="saas-google-button" type="button" onClick={logout} disabled={authLoading}>
+                Cancel and Login
               </button>
             </div>
           </section>
@@ -4350,6 +4448,143 @@ export default function VoiceExpenseTrackerPreview() {
             </section>
           )}
 
+          {activeTab === 'company-setup' && (
+            <section className="phase2-stack fade-in" id="company-setup">
+              <div className="erp-hero">
+                <div>
+                  <span className="eyebrow">Company / Business Setup</span>
+                  <h2>Modern accounting foundation for your business</h2>
+                </div>
+                <div className="erp-hero-actions"><strong>{profile.name}</strong><span>{profile.gstin || 'GST not set'}</span></div>
+              </div>
+              <section className="content-grid">
+                <article className="panel">
+                  <h2>Business Identity</h2>
+                  <div className="account-detail-grid">
+                    <div><dt>Business name</dt><dd>{profile.name}</dd></div>
+                    <div><dt>Owner name</dt><dd>{profile.owner}</dd></div>
+                    <div><dt>GST number</dt><dd>{profile.gstin || 'Not provided'}</dd></div>
+                    <div><dt>Address</dt><dd>{profile.address || 'Not provided'}</dd></div>
+                    <div><dt>Financial year</dt><dd>April to March</dd></div>
+                    <div><dt>Currency</dt><dd>INR</dd></div>
+                    <div><dt>Business type</dt><dd>{profile.tagline || 'Small business'}</dd></div>
+                  </div>
+                  <div className="inline-actions">
+                    <a className="manual-button compact-link" href="#profile-settings">Edit Profile</a>
+                    <button className="secondary-button compact-button" type="button" onClick={downloadFullBackup}>Backup / Export</button>
+                  </div>
+                </article>
+                <article className="panel">
+                  <h2>Accounting Readiness</h2>
+                  <div className="summary-grid report-summary">
+                    <div className="summary-card"><span>Ledgers</span><strong>{ledgers.length}</strong></div>
+                    <div className="summary-card"><span>Vouchers</span><strong>{vouchers.length}</strong></div>
+                    <div className="summary-card"><span>Customers</span><strong>{cloudCustomers.length}</strong></div>
+                    <div className="summary-card"><span>Suppliers</span><strong>{cloudSuppliers.length}</strong></div>
+                  </div>
+                </article>
+              </section>
+            </section>
+          )}
+
+          {activeTab === 'masters' && (
+            <section className="phase2-stack fade-in" id="masters">
+              <div className="erp-hero"><div><span className="eyebrow">Masters</span><h2>Customers, suppliers, items, ledgers, tax, and payment setup</h2></div></div>
+              <div className="tally-module-grid">
+                {[
+                  ['Customers', 'Customer profiles and receivables', 'crm', cloudCustomers.length],
+                  ['Suppliers', 'Supplier profiles and payables', 'suppliers', cloudSuppliers.length],
+                  ['Employees', 'Staff, salary, attendance', 'employees', cloudEmployees.length],
+                  ['Products / Inventory Items', 'Stock items and price master', 'inventory', cloudInventory.length],
+                  ['Ledgers', 'Cash, bank, parties, expenses', 'party-statement', ledgers.length],
+                  ['Expense Categories', 'Expense and purchase ledgers', 'voucher-entry', expenseLedgers.length],
+                  ['Payment Modes', 'Cash, bank and UPI flows', 'upi-payments', cashLedgers.length],
+                  ['Tax / GST Rates', 'GST reports and summaries', 'gst', 'GST'],
+                ].map(([title, body, href, count]) => (
+                  <a className="tally-module-card" href={`#${href}`} key={title}>
+                    <strong>{title}</strong><p>{body}</p><span>{count}</span>
+                  </a>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {activeTab === 'vouchers-hub' && (
+            <section className="phase2-stack fade-in" id="vouchers-hub">
+              <div className="erp-hero"><div><span className="eyebrow">Vouchers / Transactions</span><h2>Simple entry screens with accounting-friendly debit and credit structure</h2></div></div>
+              <div className="tally-module-grid">
+                {[
+                  ['Sales Voucher', 'Credit sale with customer ledger', 'voucher-entry'],
+                  ['Purchase Voucher', 'Credit purchase with supplier ledger', 'voucher-entry'],
+                  ['Payment Voucher', 'Cash or bank payment / expense', 'voucher-entry'],
+                  ['Receipt Voucher', 'Cash or bank receipt / income', 'voucher-entry'],
+                  ['Expense Voucher', 'Daily expenses and categories', 'voucher-entry'],
+                  ['Contra Voucher', 'Cash and bank movement foundation', 'voucher-entry'],
+                  ['Journal Voucher', 'Manual adjustment foundation', 'voucher-entry'],
+                  ['Salary Voucher', 'Employee payroll foundation', 'employees'],
+                  ['Advance Voucher', 'Employee advance tracking', 'employees'],
+                ].map(([title, body, href]) => (
+                  <a className="tally-module-card" href={`#${href}`} key={title}>
+                    <strong>{title}</strong><p>{body}</p><span>Open</span>
+                  </a>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {activeTab === 'accounting-ledgers' && (
+            <section className="phase2-stack fade-in" id="accounting-ledgers">
+              <div className="erp-hero"><div><span className="eyebrow">Accounting / Ledger System</span><h2>Debit-credit ledgers powering customers, suppliers, cash, bank, income, and expense reports</h2></div></div>
+              <section className="content-grid">
+                <article className="panel">
+                  <h2>Ledger Groups</h2>
+                  <div className="compact-list">
+                    {['Cash-in-hand', 'Bank Accounts', 'Sales Accounts', 'Purchase Accounts', 'Indirect Expenses', 'Sundry Debtors', 'Sundry Creditors'].map((group) => (
+                      <article className="compact-item" key={group}><strong>{group}</strong><span className="status-pill draft">{ledgers.filter((ledger) => ledger.group === group).length}</span></article>
+                    ))}
+                  </div>
+                </article>
+                <article className="panel">
+                  <h2>Ledger Reports</h2>
+                  <div className="tally-quick-links">
+                    <a href="#party-statement">Customer ledger</a>
+                    <a href="#party-statement">Supplier ledger</a>
+                    <a href="#reports">Expense ledger</a>
+                    <a href="#reports">Payment ledger</a>
+                    <a href="#reports">Cash / Bank ledger</a>
+                  </div>
+                </article>
+              </section>
+            </section>
+          )}
+
+          {activeTab === 'reports-hub' && (
+            <section className="phase2-stack fade-in" id="reports-hub">
+              <div className="erp-hero"><div><span className="eyebrow">Reports</span><h2>Tally-like reports for daily operations, GST, ledgers, payroll, and inventory</h2></div></div>
+              <div className="tally-module-grid">
+                {[
+                  ['Day Book', 'Daily voucher register', 'day-book'],
+                  ['Sales Report', 'Sales and receipt analysis', 'reports'],
+                  ['Purchase Report', 'Purchase and supplier movement', 'reports'],
+                  ['Expense Report', 'Expense categories and payments', 'reports'],
+                  ['Profit & Loss', 'Income minus expenses', 'reports'],
+                  ['Balance Summary', 'Assets, liabilities and balances', 'reports'],
+                  ['Cash / Bank Summary', 'Cash and bank movements', 'reports'],
+                  ['GST Summary', 'GST reserve and taxable values', 'gst'],
+                  ['Outstanding Receivables', 'Customer dues', 'party-statement'],
+                  ['Outstanding Payables', 'Supplier dues', 'party-statement'],
+                  ['Salary Report', 'Payroll totals', 'employees'],
+                  ['Attendance Report', 'Present/absent summary', 'employees'],
+                  ['Inventory Stock Report', 'Stock value and low stock', 'inventory'],
+                ].map(([title, body, href]) => (
+                  <a className="tally-module-card" href={`#${href}`} key={title}>
+                    <strong>{title}</strong><p>{body}</p><span>View</span>
+                  </a>
+                ))}
+              </div>
+            </section>
+          )}
+
           {activeTab === 'profile-settings' && (
             <section className="panel profile-editor fade-in" id="profile-settings">
               <div className="section-header">
@@ -4422,6 +4657,36 @@ export default function VoiceExpenseTrackerPreview() {
                   </button>
                 </div>
               </form>
+              <section className="account-status-card">
+                <div className="section-header">
+                  <div>
+                    <h2>Supabase Account</h2>
+                    <p className="panel-hint">Current authenticated user for secure cloud sync and RLS ownership.</p>
+                  </div>
+                  <span className={`runtime-pill ${authUser?.emailVerified ? 'online' : 'warning'}`}>
+                    {authUser?.emailVerified ? 'Email verified' : 'Not verified'}
+                  </span>
+                </div>
+                <dl className="account-detail-grid">
+                  <div><dt>Logged in email</dt><dd><a href={`mailto:${authUser?.email || profile.email}`}>{authUser?.email || profile.email || 'Not available'}</a></dd></div>
+                  <div><dt>User ID</dt><dd>{authUser?.uid || 'Not available'}</dd></div>
+                  <div><dt>Account status</dt><dd>{authUser?.emailVerified ? 'Email verified' : 'Email not verified'}</dd></div>
+                  <div><dt>Last sign-in</dt><dd>{authUser?.lastSignInAt || authUser?.loginAt || 'Not available'}</dd></div>
+                </dl>
+                <div className="inline-actions">
+                  <button className="secondary-button compact-button" type="button" onClick={() => setAuthView('reset-password')}>
+                    Change Password
+                  </button>
+                  {!authUser?.emailVerified && (
+                    <button className="secondary-button compact-button" type="button" onClick={resendVerificationEmail} disabled={authLoading || verificationResending || verificationCooldown > 0}>
+                      {verificationCooldown > 0 ? `Resend in ${verificationCooldown}s` : 'Resend Verification'}
+                    </button>
+                  )}
+                  <button className="warning-button compact-button" type="button" onClick={logout}>
+                    Logout
+                  </button>
+                </div>
+              </section>
             </section>
           )}
 
@@ -4449,6 +4714,15 @@ export default function VoiceExpenseTrackerPreview() {
                     <option value="hi-IN">Hindi (India)</option>
                     <option value="gu-IN">Gujarati (India)</option>
                   </select>
+                </article>
+                <article className="settings-card">
+                  <h3>Logged-in Account</h3>
+                  <p><strong>{authUser?.email || 'No email available'}</strong></p>
+                  <p className="panel-hint">User ID: {authUser?.uid || 'Not available'}</p>
+                  <p className="panel-hint">Status: {authUser?.emailVerified ? 'Email verified' : 'Email not verified'}</p>
+                  <button className="secondary-button compact-button" type="button" onClick={() => { window.location.hash = 'profile-settings'; }}>
+                    Open Profile
+                  </button>
                 </article>
                 <article className="settings-card">
                   <h3>Data Safety & Backups</h3>

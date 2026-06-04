@@ -3414,6 +3414,105 @@ body {
   font-size: 0.82rem;
 }
 
+.account-status-card {
+  margin-top: 22px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border-color);
+}
+
+.account-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0 0;
+}
+
+.account-detail-grid > div {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--soft-bg);
+}
+
+.account-detail-grid dt {
+  color: var(--text-muted);
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.account-detail-grid dd {
+  margin: 0;
+  color: var(--text-main);
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.tally-module-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.tally-module-card {
+  display: grid;
+  gap: 8px;
+  min-height: 150px;
+  padding: 18px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--panel-bg);
+  color: var(--text-main);
+  text-decoration: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.tally-module-card:hover,
+.tally-module-card:focus-visible {
+  border-color: var(--saas-primary);
+  box-shadow: 0 12px 28px rgba(79, 70, 229, 0.13);
+  transform: translateY(-2px);
+  outline: none;
+}
+
+.tally-module-card strong {
+  font-size: 1.02rem;
+}
+
+.tally-module-card p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.tally-module-card span {
+  align-self: end;
+  justify-self: start;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(79, 70, 229, 0.1);
+  color: var(--saas-primary);
+  font-weight: 900;
+}
+
+.tally-quick-links {
+  display: grid;
+  gap: 10px;
+}
+
+.tally-quick-links a {
+  padding: 12px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  color: var(--text-main);
+  text-decoration: none;
+  font-weight: 900;
+}
+
+.tally-quick-links a:hover {
+  border-color: var(--saas-primary);
+  color: var(--saas-primary);
+}
+
 .mobile-bottom-nav {
   display: none;
 }
