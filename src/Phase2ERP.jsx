@@ -136,6 +136,7 @@ export default function Phase2ERP({
   const [peopleTab, setPeopleTab] = useState(activeTab === 'suppliers' ? 'suppliers' : 'customers');
   const [peopleSearch, setPeopleSearch] = useState('');
   const [editingPerson, setEditingPerson] = useState(null);
+  const [editingProduct, setEditingProduct] = useState(null);
   const [cloudSettings, setCloudSettings] = useState(() =>
     readObject(CLOUD_BACKUP_KEY, { connected: false, email: '', autoBackup: false, lastBackup: '' })
   );
@@ -344,19 +345,22 @@ export default function Phase2ERP({
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const image = form.get('image');
+    const current = editingProduct;
     const product = {
-      id: createId('prd'),
-      businessId: activeBusinessId,
+      ...(current || {}),
+      id: current?.id || createId('prd'),
+      businessId: current?.businessId || activeBusinessId,
       name: sanitizeText(form.get('name'), 120),
       category: sanitizeText(form.get('category'), 80) || 'General',
       sku: sanitizeText(form.get('sku'), 60) || `SKU-${Date.now().toString().slice(-5)}`,
-      image: image?.size ? await fileToDataUrl(image) : '',
+      image: image?.size ? await fileToDataUrl(image) : current?.image || '',
       purchasePrice: normalizeAmount(form.get('purchasePrice')),
       sellingPrice: normalizeAmount(form.get('sellingPrice')),
       currentStock: normalizeAmount(form.get('currentStock')),
       minStock: normalizeAmount(form.get('minStock')),
       unit: sanitizeText(form.get('unit'), 24) || 'pcs',
-      createdAt: new Date().toISOString(),
+      createdAt: current?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
     if (!product.name) {
       onStatus('Product name required');
@@ -371,12 +375,38 @@ export default function Phase2ERP({
       if (!saved) {
         throw new Error('Inventory save failed');
       }
-      setProducts([product, ...products]);
-      await addNotification('Product added', `${product.name} added with stock ${product.currentStock}.`, 'Inventory');
+      setProducts((items) => [product, ...items.filter((item) => item.id !== product.id)]);
+      await addNotification(current ? 'Product updated' : 'Product added', `${product.name} saved with stock ${product.currentStock}.`, 'Inventory');
+      setEditingProduct(null);
       event.currentTarget.reset();
-      onStatus('Product saved');
+      onStatus(current ? 'Product updated' : 'Product saved');
     } catch (error) {
       onStatus(error?.message || 'Inventory save failed');
+    }
+  };
+
+  const editProduct = (product) => {
+    setEditingProduct(product);
+    onStatus(`Editing ${product.name}`);
+  };
+
+  const deleteProduct = async (product) => {
+    if (!confirm(`Delete product "${product.name}"?`)) {
+      return;
+    }
+
+    try {
+      const deleted = await onCloudDelete?.('inventory', product.id);
+      if (!deleted) {
+        throw new Error('Product delete failed');
+      }
+      setProducts((items) => items.filter((item) => item.id !== product.id));
+      if (editingProduct?.id === product.id) {
+        setEditingProduct(null);
+      }
+      onStatus('Product deleted');
+    } catch (error) {
+      onStatus(error?.message || 'Product delete failed');
     }
   };
 
@@ -846,26 +876,33 @@ export default function Phase2ERP({
         </div>
         <section className="content-grid">
           <article className="panel">
-            <h2>Product Master</h2>
-            <form onSubmit={saveProduct}>
+            <h2>{editingProduct ? 'Edit Product' : 'Product Master'}</h2>
+            <form onSubmit={saveProduct} key={editingProduct?.id || 'new-product'}>
               <div className="form-grid">
-                <input name="name" placeholder="Product name" />
-                <input name="category" placeholder="Category" />
-                <input name="sku" placeholder="SKU code" />
-                <select name="unit" defaultValue="pcs">
+                <input name="name" defaultValue={editingProduct?.name || ''} placeholder="Product name" />
+                <input name="category" defaultValue={editingProduct?.category || ''} placeholder="Category" />
+                <input name="sku" defaultValue={editingProduct?.sku || ''} placeholder="SKU code" />
+                <select name="unit" defaultValue={editingProduct?.unit || 'pcs'}>
                   <option value="pcs">Pieces</option>
                   <option value="kg">Kg</option>
                   <option value="ltr">Litre</option>
                   <option value="box">Box</option>
                   <option value="set">Set</option>
                 </select>
-                <input name="purchasePrice" type="number" placeholder="Purchase price" />
-                <input name="sellingPrice" type="number" placeholder="Selling price" />
-                <input name="currentStock" type="number" placeholder="Current stock" />
-                <input name="minStock" type="number" placeholder="Minimum stock" />
+                <input name="purchasePrice" type="number" defaultValue={editingProduct?.purchasePrice ?? ''} placeholder="Purchase price" />
+                <input name="sellingPrice" type="number" defaultValue={editingProduct?.sellingPrice ?? ''} placeholder="Selling price" />
+                <input name="currentStock" type="number" defaultValue={editingProduct?.currentStock ?? ''} placeholder="Current stock" />
+                <input name="minStock" type="number" defaultValue={editingProduct?.minStock ?? ''} placeholder="Minimum stock" />
                 <div className="wide-field"><input name="image" type="file" accept="image/*" /></div>
               </div>
-              <button className="manual-button" type="submit">Save Product</button>
+              <div className="inline-actions">
+                <button className="manual-button" type="submit">{editingProduct ? 'Update Product' : 'Save Product'}</button>
+                {editingProduct && (
+                  <button className="secondary-button compact-button" type="button" onClick={() => setEditingProduct(null)}>
+                    Cancel
+                  </button>
+                )}
+              </div>
             </form>
           </article>
           <article className="panel">
@@ -895,7 +932,7 @@ export default function Phase2ERP({
           <h2>Inventory List</h2>
           <div className="erp-table-wrap">
             <table className="statement-table">
-              <thead><tr><th>Product</th><th>Category</th><th>SKU</th><th>Stock</th><th>Purchase</th><th>Selling</th><th>Value</th></tr></thead>
+              <thead><tr><th>Product</th><th>Category</th><th>SKU</th><th>Stock</th><th>Purchase</th><th>Selling</th><th>Value</th><th>Actions</th></tr></thead>
               <tbody>
                 {scopedProducts.map((product) => (
                   <tr key={product.id}>
@@ -906,6 +943,12 @@ export default function Phase2ERP({
                     <td>{formatCurrency(product.purchasePrice)}</td>
                     <td>{formatCurrency(product.sellingPrice)}</td>
                     <td>{formatCurrency(product.currentStock * product.purchasePrice)}</td>
+                    <td>
+                      <div className="voucher-actions">
+                        <button className="share-entry-button" type="button" onClick={() => editProduct(product)}>Edit</button>
+                        <button className="delete-entry-button" type="button" onClick={() => deleteProduct(product)}>Delete</button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

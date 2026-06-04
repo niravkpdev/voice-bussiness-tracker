@@ -3292,10 +3292,34 @@ body {
 .topbar-link.primary,
 .side-nav .sidebar-section-panel a.active {
   background: var(--saas-primary);
+  color: #ffffff;
 }
 
 .manual-button {
   background: var(--saas-primary);
+  color: #ffffff;
+}
+
+.manual-button:hover,
+.topbar-link.primary:hover,
+.side-nav .sidebar-section-panel a.active:hover {
+  background: #3730a3;
+  color: #ffffff;
+}
+
+.manual-button:disabled,
+.manual-button[aria-disabled="true"] {
+  background: #94a3b8;
+  color: #ffffff;
+  cursor: not-allowed;
+}
+
+.secondary-button.compact-link {
+  color: #ffffff;
+}
+
+.secondary-button.compact-link:hover {
+  color: #ffffff;
 }
 
 .mobile-bottom-nav {

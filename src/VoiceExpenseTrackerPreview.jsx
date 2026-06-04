@@ -783,6 +783,7 @@ export default function VoiceExpenseTrackerPreview() {
   const [voucherExpenseId, setVoucherExpenseId] = useState(DEFAULT_EXPENSE_LEDGER_ID);
   const [useExpenseInsteadOfSupplier, setUseExpenseInsteadOfSupplier] = useState(true);
   const [useSalesInsteadOfParty, setUseSalesInsteadOfParty] = useState(true);
+  const [editingVoucher, setEditingVoucher] = useState(null);
 
   const [statementLedgerId, setStatementLedgerId] = useState('');
   const [newPartyName, setNewPartyName] = useState('');
@@ -1945,6 +1946,40 @@ export default function VoiceExpenseTrackerPreview() {
     return saved ? voucher : null;
   };
 
+  const buildEditedVoucher = ({ type, amount, narration, date }) => {
+    let lines;
+    if (type === 'Receipt') {
+      const creditLedgerId = useSalesInsteadOfParty ? SALES_LEDGER_ID : voucherPartyId || SALES_LEDGER_ID;
+      lines = buildReceiptLines(amount, voucherCashId, creditLedgerId);
+    } else if (type === 'Payment') {
+      const debitLedgerId = useExpenseInsteadOfSupplier ? voucherExpenseId : voucherPartyId || voucherExpenseId;
+      lines = buildPaymentLines(amount, debitLedgerId, voucherCashId);
+    } else if (type === 'Sales') {
+      if (!voucherPartyId || useSalesInsteadOfParty) {
+        throw new Error('Select a customer party for credit sale');
+      }
+      lines = buildCreditSaleLines(amount, voucherPartyId, SALES_LEDGER_ID);
+    } else if (type === 'Purchase') {
+      if (!voucherPartyId || useExpenseInsteadOfSupplier) {
+        throw new Error('Select a supplier party for credit purchase');
+      }
+      lines = buildCreditPurchaseLines(amount, voucherExpenseId || MATERIAL_LEDGER_ID, voucherPartyId);
+    }
+
+    return {
+      ...editingVoucher,
+      id: editingVoucher.id,
+      type,
+      amount,
+      narration,
+      date,
+      lines,
+      source: editingVoucher.source || 'manual',
+      createdAt: editingVoucher.createdAt || editingVoucher.dateTime || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  };
+
   const saveVoucherEntry = async (event) => {
     event.preventDefault();
 
@@ -1967,7 +2002,15 @@ export default function VoiceExpenseTrackerPreview() {
 
     try {
       let savedVoucher = null;
-      if (voucherType === 'Receipt') {
+      if (editingVoucher) {
+        const voucher = buildEditedVoucher({
+          type: voucherType,
+          amount,
+          narration,
+          date: voucherDate,
+        });
+        savedVoucher = await persistVoucher(voucher) ? voucher : null;
+      } else if (voucherType === 'Receipt') {
         const creditLedgerId = useSalesInsteadOfParty
           ? SALES_LEDGER_ID
           : voucherPartyId || SALES_LEDGER_ID;
@@ -2032,6 +2075,7 @@ export default function VoiceExpenseTrackerPreview() {
       }
       setVoucherAmount('');
       setVoucherNarration('');
+      setEditingVoucher(null);
     } catch (error) {
       setStatus(error.message);
     }
@@ -2252,10 +2296,80 @@ export default function VoiceExpenseTrackerPreview() {
     setStatus('Entry deleted');
   };
 
-  const removeVoucher = (voucherId) => {
-    deleteVoucher(voucherId);
-    refreshVouchers();
-    setStatus('Voucher deleted');
+  const editVoucher = (voucher) => {
+    const debitLine = (voucher.lines || []).find((line) => Number(line.debit) > 0);
+    const creditLine = (voucher.lines || []).find((line) => Number(line.credit) > 0);
+    setEditingVoucher(voucher);
+    setVoucherType(voucher.type || 'Receipt');
+    setVoucherDate(voucher.date || new Date().toISOString().slice(0, 10));
+    setVoucherAmount(String(voucher.amount || ''));
+    setVoucherNarration(voucher.narration || '');
+
+    if (voucher.type === 'Receipt') {
+      setVoucherCashId(debitLine?.ledgerId || CASH_LEDGER_ID);
+      if (creditLine?.ledgerId && creditLine.ledgerId !== SALES_LEDGER_ID) {
+        setUseSalesInsteadOfParty(false);
+        setVoucherPartyId(creditLine.ledgerId);
+      } else {
+        setUseSalesInsteadOfParty(true);
+        setVoucherPartyId('');
+      }
+    } else if (voucher.type === 'Payment') {
+      setVoucherCashId(creditLine?.ledgerId || CASH_LEDGER_ID);
+      if (debitLine?.ledgerId && supplierParties.some((party) => party.id === debitLine.ledgerId)) {
+        setUseExpenseInsteadOfSupplier(false);
+        setVoucherPartyId(debitLine.ledgerId);
+      } else {
+        setUseExpenseInsteadOfSupplier(true);
+        setVoucherExpenseId(debitLine?.ledgerId || DEFAULT_EXPENSE_LEDGER_ID);
+      }
+    } else if (voucher.type === 'Sales') {
+      setUseSalesInsteadOfParty(false);
+      setVoucherPartyId(debitLine?.ledgerId || '');
+    } else if (voucher.type === 'Purchase') {
+      setUseExpenseInsteadOfSupplier(false);
+      setVoucherExpenseId(debitLine?.ledgerId || MATERIAL_LEDGER_ID);
+      setVoucherPartyId(creditLine?.ledgerId || '');
+    }
+    setActiveTab('voucher-entry');
+    window.location.hash = 'voucher-entry';
+    setStatus(`Editing ${voucher.type} voucher`);
+  };
+
+  const removeVoucher = async (voucherId) => {
+    if (!confirm('Delete this voucher?')) {
+      return;
+    }
+
+    if (authUser?.uid) {
+      try {
+        const deleted = await deleteCloudRecord(authUser.uid, 'transactions', voucherId);
+        if (!deleted) {
+          throw new Error('Voucher delete failed');
+        }
+        setVouchers((items) => items.filter((voucher) => voucher.id !== voucherId));
+        if (editingVoucher?.id === voucherId) {
+          setEditingVoucher(null);
+        }
+        setStatus('Voucher deleted');
+        return;
+      } catch (error) {
+        const message = publicSafeError(error, 'Voucher delete failed');
+        setSecureError(message);
+        setStatus(message);
+        return;
+      }
+    }
+
+    if (import.meta.env.DEV) {
+      deleteVoucher(voucherId);
+      refreshVouchers();
+      setStatus('Development voucher deleted locally');
+      return;
+    }
+
+    setSecureError('Sign in with Supabase before deleting production transactions.');
+    setStatus('Supabase sign-in required');
   };
 
   const saveManualEntry = async (event) => {
@@ -3464,7 +3578,7 @@ export default function VoiceExpenseTrackerPreview() {
           {activeTab === 'voucher-entry' && (
             <section className="content-grid fade-in" id="voucher-entry">
               <article className="panel">
-                <h2>Voucher Entry</h2>
+                <h2>{editingVoucher ? 'Edit Voucher' : 'Voucher Entry'}</h2>
                 <p className="panel-hint">
                   Receipt / Payment = cash. Sales / Purchase = credit (party khata). Every voucher balances debit and
                   credit.
@@ -3664,9 +3778,24 @@ export default function VoiceExpenseTrackerPreview() {
                       />
                     </div>
                   </div>
-                  <button className="manual-button" type="submit">
-                    Save {voucherType} Voucher
-                  </button>
+                  <div className="inline-actions">
+                    <button className="manual-button" type="submit">
+                      {editingVoucher ? 'Update' : 'Save'} {voucherType} Voucher
+                    </button>
+                    {editingVoucher && (
+                      <button
+                        className="secondary-button compact-button"
+                        type="button"
+                        onClick={() => {
+                          setEditingVoucher(null);
+                          setVoucherAmount('');
+                          setVoucherNarration('');
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
                 </form>
               </article>
 
@@ -4019,6 +4148,9 @@ export default function VoiceExpenseTrackerPreview() {
                       <div className="voucher-actions">
                         <button className="share-entry-button" type="button" onClick={() => shareVoucher(voucher)}>
                           Share
+                        </button>
+                        <button className="share-entry-button" type="button" onClick={() => editVoucher(voucher)}>
+                          Edit
                         </button>
                         <button className="share-entry-button" type="button" onClick={() => shareVoucherToWhatsApp(voucher)}>
                           WhatsApp

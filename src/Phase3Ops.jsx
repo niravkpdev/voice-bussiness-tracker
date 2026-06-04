@@ -117,6 +117,9 @@ export default function Phase3Ops({
   const [auditLogs, setAuditLogs] = useState(() => readArray(AUDIT_KEY));
   const [payments, setPayments] = useState(() => readArray(PAYMENT_KEY));
   const [offlineQueue, setOfflineQueue] = useState(() => readArray(OFFLINE_QUEUE_KEY));
+  const [editingOrder, setEditingOrder] = useState(null);
+  const [editingEmployee, setEditingEmployee] = useState(null);
+  const [editingPayment, setEditingPayment] = useState(null);
   const [subscription, setSubscription] = useState(() =>
     readObject(SUBSCRIPTION_KEY, { plan: 'Free', invoicesLimit: 25, usersLimit: 1, aiEnabled: true })
   );
@@ -226,16 +229,20 @@ export default function Phase3Ops({
   const saveOrder = async (event) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    const current = editingOrder;
     const order = {
-      id: createId('ord'),
-      orderNo: `ORD-${String(orders.length + 1).padStart(4, '0')}`,
+      ...(current || {}),
+      id: current?.id || createId('ord'),
+      orderNo: current?.orderNo || `ORD-${String(orders.length + 1).padStart(4, '0')}`,
       customer: sanitizeText(form.get('customer'), 120),
       mobile: sanitizeText(form.get('mobile'), 24),
       details: sanitizeText(form.get('details'), 300),
       amount: normalizeAmount(form.get('amount')),
-      status: 'New Order',
+      status: current?.status || 'New Order',
       deliveryDate: form.get('deliveryDate') || today(),
-      timeline: [{ status: 'New Order', date: new Date().toLocaleString(), note: 'Order created' }],
+      timeline: current?.timeline || [{ status: 'New Order', date: new Date().toLocaleString(), note: 'Order created' }],
+      createdAt: current?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
     if (!order.customer || !validatePhone(order.mobile)) {
       onStatus('Enter valid customer and mobile for order');
@@ -247,9 +254,10 @@ export default function Phase3Ops({
       onStatus(error?.message || 'Order save failed');
       return;
     }
-    setOrders([order, ...orders]);
-    await queueOfflineAction('order-created', order);
-    await logAudit(`Created ${order.orderNo}`, 'Orders');
+    setOrders((items) => [order, ...items.filter((item) => item.id !== order.id)]);
+    await queueOfflineAction(current ? 'order-updated' : 'order-created', order);
+    await logAudit(`${current ? 'Updated' : 'Created'} ${order.orderNo}`, 'Orders');
+    setEditingOrder(null);
     event.currentTarget.reset();
   };
 
@@ -260,6 +268,7 @@ export default function Phase3Ops({
       ...order,
       status: nextStatus,
       timeline: [{ status: nextStatus, date: new Date().toLocaleString(), note: 'Status updated' }, ...(order.timeline || [])],
+      updatedAt: new Date().toISOString(),
     };
     try {
       await persistRecord('orders', updatedOrder, 'Order status update failed');
@@ -274,13 +283,17 @@ export default function Phase3Ops({
   const saveEmployee = async (event) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    const current = editingEmployee;
     const employee = {
-      id: createId('emp'),
+      ...(current || {}),
+      id: current?.id || createId('emp'),
       name: sanitizeText(form.get('name'), 120),
       mobile: sanitizeText(form.get('mobile'), 24),
       role: sanitizeText(form.get('role'), 80),
       salary: normalizeAmount(form.get('salary')),
       advance: normalizeAmount(form.get('advance')),
+      createdAt: current?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
     if (!employee.name || !validatePhone(employee.mobile)) {
       onStatus('Enter valid employee name and mobile');
@@ -292,8 +305,9 @@ export default function Phase3Ops({
       onStatus(error?.message || 'Employee save failed');
       return;
     }
-    setEmployees([employee, ...employees]);
-    await logAudit(`Added employee ${employee.name}`, 'Employees');
+    setEmployees((items) => [employee, ...items.filter((item) => item.id !== employee.id)]);
+    await logAudit(`${current ? 'Updated' : 'Added'} employee ${employee.name}`, 'Employees');
+    setEditingEmployee(null);
     event.currentTarget.reset();
   };
 
@@ -321,6 +335,72 @@ export default function Phase3Ops({
     setPayments([payment, ...payments]);
     await logAudit(`Marked payment for ${invoice.invoiceNo}`, 'Payments');
     onStatus('Payment recorded in Supabase. Provider webhook required for automatic bank confirmation.');
+  };
+
+  const savePaymentEdit = async (event) => {
+    event.preventDefault();
+    if (!editingPayment) {
+      return;
+    }
+    const form = new FormData(event.currentTarget);
+    const payment = {
+      ...editingPayment,
+      amount: normalizeAmount(form.get('amount')),
+      date: form.get('date') || today(),
+      mode: sanitizeText(form.get('mode'), 40) || 'UPI',
+      status: sanitizeText(form.get('status'), 80) || 'Marked Paid',
+      updatedAt: new Date().toISOString(),
+    };
+    try {
+      await persistRecord('payments', payment, 'Payment update failed');
+    } catch (error) {
+      onStatus(error?.message || 'Payment update failed');
+      return;
+    }
+    setPayments((items) => [payment, ...items.filter((item) => item.id !== payment.id)]);
+    setEditingPayment(null);
+    await logAudit(`Updated payment ${payment.invoiceNo || payment.id}`, 'Payments');
+    onStatus('Payment updated');
+  };
+
+  const deleteRecord = async (tableName, id, label, setter, afterDelete) => {
+    if (!confirm(`Delete ${label}?`)) {
+      return false;
+    }
+    try {
+      const deleted = await onCloudDelete?.(tableName, id);
+      if (!deleted) {
+        throw new Error(`${label} delete failed`);
+      }
+      setter((items) => items.filter((item) => item.id !== id));
+      afterDelete?.();
+      onStatus(`${label} deleted`);
+      return true;
+    } catch (error) {
+      onStatus(error?.message || `${label} delete failed`);
+      return false;
+    }
+  };
+
+  const deleteOrder = async (order) => {
+    const deleted = await deleteRecord('orders', order.id, order.orderNo || 'order', setOrders, () => {
+      if (editingOrder?.id === order.id) setEditingOrder(null);
+    });
+    if (deleted) await logAudit(`Deleted ${order.orderNo}`, 'Orders');
+  };
+
+  const deleteEmployee = async (employee) => {
+    const deleted = await deleteRecord('employees', employee.id, employee.name || 'employee', setEmployees, () => {
+      if (editingEmployee?.id === employee.id) setEditingEmployee(null);
+    });
+    if (deleted) await logAudit(`Deleted employee ${employee.name}`, 'Employees');
+  };
+
+  const deletePayment = async (payment) => {
+    const deleted = await deleteRecord('payments', payment.id, payment.invoiceNo || 'payment', setPayments, () => {
+      if (editingPayment?.id === payment.id) setEditingPayment(null);
+    });
+    if (deleted) await logAudit(`Deleted payment ${payment.invoiceNo || payment.id}`, 'Payments');
   };
 
   const saveSecurity = async (key, value) => {
@@ -419,7 +499,7 @@ export default function Phase3Ops({
           {unpaidInvoices.slice(0, 6).map((invoice) => {
             const uri = encodeUpi({ pa: profile.upiId || 'business@upi', pn: profile.name, am: invoice.balance || invoice.total, tn: invoice.invoiceNo });
             return (
-              <article className="panel payment-card" key={invoice.id}>
+          <article className="panel payment-card" key={invoice.id}>
                 <div className="section-header"><div><h2>{invoice.invoiceNo}</h2><p className="panel-hint">{formatCurrency(invoice.balance || invoice.total)} pending</p></div><QrGrid value={uri} /></div>
                 <div className="inline-actions">
                   <a className="manual-button restore-label" href={uri}>Pay Now</a>
@@ -428,6 +508,32 @@ export default function Phase3Ops({
               </article>
             );
           })}
+        </section>
+        <section className="panel">
+          <h2>{editingPayment ? 'Edit Payment' : 'Payment History'}</h2>
+          {editingPayment && (
+            <form onSubmit={savePaymentEdit} className="form-grid" key={editingPayment.id}>
+              <input name="amount" type="number" defaultValue={editingPayment.amount || ''} placeholder="Amount" />
+              <input name="date" type="date" defaultValue={editingPayment.date || today()} />
+              <input name="mode" defaultValue={editingPayment.mode || 'UPI'} placeholder="Mode" />
+              <input name="status" defaultValue={editingPayment.status || 'Marked Paid'} placeholder="Status" />
+              <div className="inline-actions wide-field">
+                <button className="manual-button" type="submit">Update Payment</button>
+                <button className="secondary-button compact-button" type="button" onClick={() => setEditingPayment(null)}>Cancel</button>
+              </div>
+            </form>
+          )}
+          <div className="compact-list">
+            {payments.length ? payments.map((payment) => (
+              <article className="compact-item" key={payment.id}>
+                <div><strong>{payment.invoiceNo || payment.id}</strong><p>{formatCurrency(payment.amount)} · {payment.mode} · {payment.date} · {payment.status}</p></div>
+                <div className="voucher-actions">
+                  <button className="share-entry-button" type="button" onClick={() => setEditingPayment(payment)}>Edit</button>
+                  <button className="delete-entry-button" type="button" onClick={() => deletePayment(payment)}>Delete</button>
+                </div>
+              </article>
+            )) : <div className="empty-state">No payments recorded yet.</div>}
+          </div>
         </section>
       </section>
     );
@@ -439,16 +545,19 @@ export default function Phase3Ops({
         <div className="phase3-hero"><div><span className="eyebrow">Order Management</span><h2>Production workflow, delivery timeline, and customer visibility</h2></div></div>
         <section className="content-grid">
           <article className="panel">
-            <h2>Create Order</h2>
-            <form onSubmit={saveOrder}>
+            <h2>{editingOrder ? 'Edit Order' : 'Create Order'}</h2>
+            <form onSubmit={saveOrder} key={editingOrder?.id || 'new-order'}>
               <div className="form-grid">
-                <input name="customer" placeholder="Customer name" />
-                <input name="mobile" placeholder="Mobile" />
-                <input name="amount" type="number" placeholder="Order amount" />
-                <input name="deliveryDate" type="date" defaultValue={today()} />
-                <div className="wide-field"><textarea name="details" placeholder="Order details" /></div>
+                <input name="customer" defaultValue={editingOrder?.customer || ''} placeholder="Customer name" />
+                <input name="mobile" defaultValue={editingOrder?.mobile || ''} placeholder="Mobile" />
+                <input name="amount" type="number" defaultValue={editingOrder?.amount ?? ''} placeholder="Order amount" />
+                <input name="deliveryDate" type="date" defaultValue={editingOrder?.deliveryDate || today()} />
+                <div className="wide-field"><textarea name="details" defaultValue={editingOrder?.details || ''} placeholder="Order details" /></div>
               </div>
-              <button className="manual-button" type="submit">Create Order</button>
+              <div className="inline-actions">
+                <button className="manual-button" type="submit">{editingOrder ? 'Update Order' : 'Create Order'}</button>
+                {editingOrder && <button className="secondary-button compact-button" type="button" onClick={() => setEditingOrder(null)}>Cancel</button>}
+              </div>
             </form>
           </article>
           <article className="panel">
@@ -463,7 +572,9 @@ export default function Phase3Ops({
                 <div><strong>{order.orderNo} · {order.customer}</strong><p>{order.status} · Delivery {order.deliveryDate} · {formatCurrency(order.amount)}</p><p>{order.timeline[0]?.date}: {order.timeline[0]?.note}</p></div>
                 <div className="voucher-actions">
                   <button className="share-entry-button" type="button" onClick={() => advanceOrder(order)}>Next Stage</button>
+                  <button className="share-entry-button" type="button" onClick={() => setEditingOrder(order)}>Edit</button>
                   <a className="share-entry-button" href={whatsappUrl(order.mobile, `Your order ${order.orderNo} status: ${order.status}`)} target="_blank" rel="noreferrer">Update Customer</a>
+                  <button className="delete-entry-button" type="button" onClick={() => deleteOrder(order)}>Delete</button>
                 </div>
               </article>
             ))}
@@ -495,16 +606,19 @@ export default function Phase3Ops({
         <div className="phase3-hero"><div><span className="eyebrow">Employee Management</span><h2>Employee database, attendance, salary, advance tracking, and payroll</h2></div><strong>{formatCurrency(payrollTotal)} payroll</strong></div>
         <section className="content-grid">
           <article className="panel">
-            <h2>Add Employee</h2>
-            <form onSubmit={saveEmployee}>
+            <h2>{editingEmployee ? 'Edit Employee' : 'Add Employee'}</h2>
+            <form onSubmit={saveEmployee} key={editingEmployee?.id || 'new-employee'}>
               <div className="form-grid">
-                <input name="name" placeholder="Employee name" />
-                <input name="mobile" placeholder="Mobile" />
-                <select name="role">{ROLES.map((role) => <option key={role}>{role}</option>)}</select>
-                <input name="salary" type="number" placeholder="Monthly salary" />
-                <input name="advance" type="number" placeholder="Advance paid" />
+                <input name="name" defaultValue={editingEmployee?.name || ''} placeholder="Employee name" />
+                <input name="mobile" defaultValue={editingEmployee?.mobile || ''} placeholder="Mobile" />
+                <select name="role" defaultValue={editingEmployee?.role || ROLES[0]}>{ROLES.map((role) => <option key={role}>{role}</option>)}</select>
+                <input name="salary" type="number" defaultValue={editingEmployee?.salary ?? ''} placeholder="Monthly salary" />
+                <input name="advance" type="number" defaultValue={editingEmployee?.advance ?? ''} placeholder="Advance paid" />
               </div>
-              <button className="manual-button" type="submit">Save Employee</button>
+              <div className="inline-actions">
+                <button className="manual-button" type="submit">{editingEmployee ? 'Update Employee' : 'Save Employee'}</button>
+                {editingEmployee && <button className="secondary-button compact-button" type="button" onClick={() => setEditingEmployee(null)}>Cancel</button>}
+              </div>
             </form>
           </article>
           <article className="panel">
@@ -525,6 +639,8 @@ export default function Phase3Ops({
                 <div className="voucher-actions">
                   <button className="share-entry-button" type="button" onClick={() => markAttendance(employee, 'Present')}>Present</button>
                   <button className="share-entry-button" type="button" onClick={() => markAttendance(employee, 'Absent')}>Absent</button>
+                  <button className="share-entry-button" type="button" onClick={() => setEditingEmployee(employee)}>Edit</button>
+                  <button className="delete-entry-button" type="button" onClick={() => deleteEmployee(employee)}>Delete</button>
                 </div>
               </article>
             ))}
