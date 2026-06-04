@@ -117,6 +117,8 @@ export default function Phase2ERP({
   cloudInventory,
   cloudStockTransactions,
   cloudInvoices,
+  cloudBusinesses,
+  cloudNotifications,
   cloudUserId,
   peopleLoading,
   onStatus,
@@ -182,6 +184,16 @@ export default function Phase2ERP({
       setSuppliers(cloudSuppliers);
     }
   }, [cloudSuppliers]);
+  useEffect(() => {
+    if (Array.isArray(cloudBusinesses)) {
+      setBusinesses(cloudBusinesses);
+    }
+  }, [cloudBusinesses]);
+  useEffect(() => {
+    if (Array.isArray(cloudNotifications)) {
+      setNotifications(cloudNotifications);
+    }
+  }, [cloudNotifications]);
   useEffect(() => {
     setPeopleTab(activeTab === 'suppliers' ? 'suppliers' : 'customers');
     setPeopleSearch('');
@@ -315,9 +327,17 @@ export default function Phase2ERP({
     value: product.soldQty * product.sellingPrice,
   })), [erpAI.bestProducts]);
 
-  const addNotification = (title, body, type = 'System') => {
-    const next = [{ id: createId('ntf'), title, body, type, date: new Date().toLocaleString(), read: false }, ...notifications].slice(0, 50);
-    setNotifications(next);
+  const addNotification = async (title, body, type = 'System') => {
+    const notification = { id: createId('ntf'), title, body, type, date: new Date().toISOString(), read: false };
+    try {
+      const saved = await onCloudRecord?.('notifications', notification.id, notification);
+      if (!saved) {
+        throw new Error('Notification save failed');
+      }
+      setNotifications((items) => [notification, ...items.filter((item) => item.id !== notification.id)].slice(0, 50));
+    } catch (error) {
+      onStatus(error?.message || 'Notification save failed');
+    }
   };
 
   const saveProduct = async (event) => {
@@ -352,7 +372,7 @@ export default function Phase2ERP({
         throw new Error('Inventory save failed');
       }
       setProducts([product, ...products]);
-      addNotification('Product added', `${product.name} added with stock ${product.currentStock}.`, 'Inventory');
+      await addNotification('Product added', `${product.name} added with stock ${product.currentStock}.`, 'Inventory');
       event.currentTarget.reset();
       onStatus('Product saved');
     } catch (error) {
@@ -604,7 +624,7 @@ export default function Phase2ERP({
     setInvoices(editingInvoiceId ? invoices.map((item) => (item.id === editingInvoiceId ? invoice : item)) : [invoice, ...invoices]);
     setProducts(productsAfterInvoice);
     if (invoice.dueDate < today() && invoice.status !== 'Paid') {
-      addNotification('Overdue invoice risk', `${invoice.invoiceNo} is due on ${invoice.dueDate}.`, 'Invoice');
+      await addNotification('Overdue invoice risk', `${invoice.invoiceNo} is due on ${invoice.dueDate}.`, 'Invoice');
     }
     setInvoiceDraft({ customerId: '', status: 'Unpaid', dueDate: today(), terms: TERMS, lines: [] });
     setEditingInvoiceId('');
@@ -747,15 +767,29 @@ export default function Phase2ERP({
     win.setTimeout(() => win.print(), 50);
   };
 
-  const addBusiness = (event) => {
+  const addBusiness = async (event) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const business = { id: createId('biz'), name: form.get('name').trim(), type: form.get('type').trim() };
+    const business = {
+      id: createId('biz'),
+      name: sanitizeText(form.get('name'), 140),
+      type: sanitizeText(form.get('type'), 80) || 'Business',
+      createdAt: new Date().toISOString(),
+    };
     if (!business.name) return;
-    setBusinesses([business, ...businesses]);
-    setActiveBusinessId(business.id);
-    writeScopedString('activeBusinessId', business.id);
-    event.currentTarget.reset();
+    try {
+      const saved = await onCloudRecord?.('businesses', business.id, business);
+      if (!saved) {
+        throw new Error('Business save failed');
+      }
+      setBusinesses([business, ...businesses.filter((item) => item.id !== business.id)]);
+      setActiveBusinessId(business.id);
+      writeScopedString('activeBusinessId', business.id);
+      event.currentTarget.reset();
+      onStatus('Business saved');
+    } catch (error) {
+      onStatus(error?.message || 'Business save failed');
+    }
   };
 
   const switchBusiness = (businessId) => {

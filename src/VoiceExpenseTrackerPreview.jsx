@@ -36,6 +36,7 @@ import { LegalPage, LEGAL_PAGE_IDS } from './LegalPages.jsx';
 import {
   createFirebaseAccount,
   deleteCloudRecord,
+  getFirebaseAuthDomain,
   getFirebaseAuthErrorMessage,
   getFirebaseProjectId,
   isFirebaseConfigured,
@@ -764,6 +765,8 @@ export default function VoiceExpenseTrackerPreview() {
   const [cloudSecurity, setCloudSecurity] = useState(null);
   const [cloudDevices, setCloudDevices] = useState([]);
   const [cloudOfflineQueue, setCloudOfflineQueue] = useState([]);
+  const [cloudBusinesses, setCloudBusinesses] = useState([]);
+  const [cloudNotifications, setCloudNotifications] = useState([]);
   const [peopleLoading, setPeopleLoading] = useState(false);
   const [manualType, setManualType] = useState('Expense');
   const [manualAmount, setManualAmount] = useState('');
@@ -917,57 +920,137 @@ export default function VoiceExpenseTrackerPreview() {
       });
       setTransactionsLoading(true);
       setPeopleLoading(true);
+      const loadModuleCollection = async (tableName) => {
+        try {
+          const rows = await loadCloudCollection(scopedUser.uid, tableName);
+          return { ok: true, tableName, rows };
+        } catch (error) {
+          console.error('SUPABASE_MODULE_LOAD_ERROR', {
+            tableName,
+            projectId: getFirebaseProjectId(),
+            authDomain: getFirebaseAuthDomain() || null,
+            uid: scopedUser.uid,
+            code: error?.code || null,
+            message: error?.message || String(error),
+          });
+          return { ok: false, tableName, rows: [], error };
+        }
+      };
+      const loadProfileSettings = async () => {
+        try {
+          const profileRows = await loadUserProfileSettings(scopedUser.uid);
+          return { ok: true, profileRows };
+        } catch (error) {
+          console.error('SUPABASE_MODULE_LOAD_ERROR', {
+            tableName: 'settings',
+            projectId: getFirebaseProjectId(),
+            authDomain: getFirebaseAuthDomain() || null,
+            uid: scopedUser.uid,
+            code: error?.code || null,
+            message: error?.message || String(error),
+          });
+          return { ok: false, profileRows: null, error };
+        }
+      };
       const [
-        transactions,
-        customers,
-        suppliers,
-        inventory,
-        stockTransactions,
-        invoices,
-        orders,
-        employees,
-        attendance,
-        payments,
-        auditLogs,
-        subscriptionRows,
-        securityRows,
-        devices,
-        offlineQueue,
-        profileSettings,
+        transactionsResult,
+        customersResult,
+        suppliersResult,
+        inventoryResult,
+        stockTransactionsResult,
+        invoicesResult,
+        ordersResult,
+        employeesResult,
+        attendanceResult,
+        paymentsResult,
+        auditLogsResult,
+        subscriptionRowsResult,
+        securityRowsResult,
+        devicesResult,
+        offlineQueueResult,
+        businessesResult,
+        notificationsResult,
+        profileSettingsResult,
       ] = await Promise.all([
-        loadCloudCollection(scopedUser.uid, 'transactions').catch(() => []),
-        loadCloudCollection(scopedUser.uid, 'customers').catch(() => []),
-        loadCloudCollection(scopedUser.uid, 'suppliers').catch(() => []),
-        loadCloudCollection(scopedUser.uid, 'inventory').catch(() => []),
-        loadCloudCollection(scopedUser.uid, 'stock_transactions').catch(() => []),
-        loadCloudCollection(scopedUser.uid, 'invoices').catch(() => []),
-        loadCloudCollection(scopedUser.uid, 'orders').catch(() => []),
-        loadCloudCollection(scopedUser.uid, 'employees').catch(() => []),
-        loadCloudCollection(scopedUser.uid, 'attendance').catch(() => []),
-        loadCloudCollection(scopedUser.uid, 'payments').catch(() => []),
-        loadCloudCollection(scopedUser.uid, 'audit_logs').catch(() => []),
-        loadCloudCollection(scopedUser.uid, 'subscriptions').catch(() => []),
-        loadCloudCollection(scopedUser.uid, 'security_settings').catch(() => []),
-        loadCloudCollection(scopedUser.uid, 'devices').catch(() => []),
-        loadCloudCollection(scopedUser.uid, 'offline_queue').catch(() => []),
-        loadUserProfileSettings(scopedUser.uid).catch(() => null),
+        loadModuleCollection('transactions'),
+        loadModuleCollection('customers'),
+        loadModuleCollection('suppliers'),
+        loadModuleCollection('inventory'),
+        loadModuleCollection('stock_transactions'),
+        loadModuleCollection('invoices'),
+        loadModuleCollection('orders'),
+        loadModuleCollection('employees'),
+        loadModuleCollection('attendance'),
+        loadModuleCollection('payments'),
+        loadModuleCollection('audit_logs'),
+        loadModuleCollection('subscriptions'),
+        loadModuleCollection('security_settings'),
+        loadModuleCollection('devices'),
+        loadModuleCollection('offline_queue'),
+        loadModuleCollection('businesses'),
+        loadModuleCollection('notifications'),
+        loadProfileSettings(),
       ]);
-      cloudTransactions = transactions;
-      cloudProfile = profileSettings;
-      setCloudCustomers(customers);
-      setCloudSuppliers(suppliers);
-      setCloudInventory(inventory);
-      setCloudStockTransactions(stockTransactions);
-      setCloudInvoices(invoices);
-      setCloudOrders(orders);
-      setCloudEmployees(employees);
-      setCloudAttendance(attendance);
-      setCloudPayments(payments);
-      setCloudAuditLogs(auditLogs);
-      setCloudSubscription(subscriptionRows.find((item) => item.id === 'current') || null);
-      setCloudSecurity(securityRows.find((item) => item.id === 'current') || null);
-      setCloudDevices(devices);
-      setCloudOfflineQueue(offlineQueue);
+      const transactions = transactionsResult.ok ? transactionsResult.rows : [];
+      const customers = customersResult.ok ? customersResult.rows : cloudCustomers;
+      const suppliers = suppliersResult.ok ? suppliersResult.rows : cloudSuppliers;
+      const inventory = inventoryResult.ok ? inventoryResult.rows : cloudInventory;
+      const stockTransactions = stockTransactionsResult.ok ? stockTransactionsResult.rows : cloudStockTransactions;
+      const invoices = invoicesResult.ok ? invoicesResult.rows : cloudInvoices;
+      const orders = ordersResult.ok ? ordersResult.rows : cloudOrders;
+      const employees = employeesResult.ok ? employeesResult.rows : cloudEmployees;
+      const attendance = attendanceResult.ok ? attendanceResult.rows : cloudAttendance;
+      const payments = paymentsResult.ok ? paymentsResult.rows : cloudPayments;
+      const auditLogs = auditLogsResult.ok ? auditLogsResult.rows : cloudAuditLogs;
+      const subscriptionRows = subscriptionRowsResult.ok ? subscriptionRowsResult.rows : [];
+      const securityRows = securityRowsResult.ok ? securityRowsResult.rows : [];
+      const devices = devicesResult.ok ? devicesResult.rows : cloudDevices;
+      const offlineQueue = offlineQueueResult.ok ? offlineQueueResult.rows : cloudOfflineQueue;
+      const businesses = businessesResult.ok ? businessesResult.rows : cloudBusinesses;
+      const notifications = notificationsResult.ok ? notificationsResult.rows : cloudNotifications;
+      const failedLoads = [
+        transactionsResult,
+        customersResult,
+        suppliersResult,
+        inventoryResult,
+        stockTransactionsResult,
+        invoicesResult,
+        ordersResult,
+        employeesResult,
+        attendanceResult,
+        paymentsResult,
+        auditLogsResult,
+        subscriptionRowsResult,
+        securityRowsResult,
+        devicesResult,
+        offlineQueueResult,
+        businessesResult,
+        notificationsResult,
+      ].filter((result) => !result.ok);
+      if (failedLoads.length) {
+        const firstFailure = failedLoads[0];
+        const message = `Supabase table load failed for ${firstFailure.tableName}. Run the latest supabase-schema.sql and refresh.`;
+        setSecureError(message);
+        setStatus(message);
+      }
+      cloudTransactions = transactionsResult.ok ? transactions : null;
+      cloudProfile = profileSettingsResult.ok ? profileSettingsResult.profileRows : null;
+      if (customersResult.ok) setCloudCustomers(customers);
+      if (suppliersResult.ok) setCloudSuppliers(suppliers);
+      if (inventoryResult.ok) setCloudInventory(inventory);
+      if (stockTransactionsResult.ok) setCloudStockTransactions(stockTransactions);
+      if (invoicesResult.ok) setCloudInvoices(invoices);
+      if (ordersResult.ok) setCloudOrders(orders);
+      if (employeesResult.ok) setCloudEmployees(employees);
+      if (attendanceResult.ok) setCloudAttendance(attendance);
+      if (paymentsResult.ok) setCloudPayments(payments);
+      if (auditLogsResult.ok) setCloudAuditLogs(auditLogs);
+      if (subscriptionRowsResult.ok) setCloudSubscription(subscriptionRows.find((item) => item.id === 'current') || null);
+      if (securityRowsResult.ok) setCloudSecurity(securityRows.find((item) => item.id === 'current') || null);
+      if (devicesResult.ok) setCloudDevices(devices);
+      if (offlineQueueResult.ok) setCloudOfflineQueue(offlineQueue);
+      if (businessesResult.ok) setCloudBusinesses(businesses);
+      if (notificationsResult.ok) setCloudNotifications(notifications);
       console.info('FIRESTORE_PATH_USED', {
         feature: 'customers_load',
         path: `users/${scopedUser.uid}/customers`,
@@ -1006,6 +1089,8 @@ export default function VoiceExpenseTrackerPreview() {
         employees: employees.length,
         attendance: attendance.length,
         payments: payments.length,
+        businesses: businesses.length,
+        notifications: notifications.length,
       });
     }
 
@@ -1014,29 +1099,161 @@ export default function VoiceExpenseTrackerPreview() {
     setPeopleLoading(false);
   };
 
-  const saveAuthenticatedCloudRecord = (collectionName, id, data) => {
-    if (!firebaseEnabled || !authUser?.uid) {
-      return Promise.resolve(false);
-    }
-
-    return saveCloudRecord(authUser.uid, collectionName, id, {
-      ...data,
-      userId: authUser.uid,
-    }).catch((error) => {
-      setSecureError(publicSafeError(error, 'Cloud data save failed. Please try again.'));
-      throw error;
-    });
+  const mergeCloudListRecord = (setter, id, data) => {
+    const record = { ...data, id };
+    setter((items) => [record, ...(items || []).filter((item) => item.id !== id)]);
   };
 
-  const deleteAuthenticatedCloudRecord = (collectionName, id) => {
+  const removeCloudListRecord = (setter, id) => {
+    setter((items) => (items || []).filter((item) => item.id !== id));
+  };
+
+  const updateCloudRecordCache = (collectionName, id, data) => {
+    switch (collectionName) {
+      case 'customers':
+        mergeCloudListRecord(setCloudCustomers, id, data);
+        break;
+      case 'suppliers':
+        mergeCloudListRecord(setCloudSuppliers, id, data);
+        break;
+      case 'inventory':
+        mergeCloudListRecord(setCloudInventory, id, data);
+        break;
+      case 'stock_transactions':
+        mergeCloudListRecord(setCloudStockTransactions, id, data);
+        break;
+      case 'invoices':
+        mergeCloudListRecord(setCloudInvoices, id, data);
+        break;
+      case 'orders':
+        mergeCloudListRecord(setCloudOrders, id, data);
+        break;
+      case 'employees':
+        mergeCloudListRecord(setCloudEmployees, id, data);
+        break;
+      case 'attendance':
+        mergeCloudListRecord(setCloudAttendance, id, data);
+        break;
+      case 'payments':
+        mergeCloudListRecord(setCloudPayments, id, data);
+        break;
+      case 'audit_logs':
+        mergeCloudListRecord(setCloudAuditLogs, id, data);
+        break;
+      case 'subscriptions':
+        setCloudSubscription({ ...data, id });
+        break;
+      case 'security_settings':
+        setCloudSecurity({ ...data, id });
+        break;
+      case 'devices':
+        mergeCloudListRecord(setCloudDevices, id, data);
+        break;
+      case 'offline_queue':
+        mergeCloudListRecord(setCloudOfflineQueue, id, data);
+        break;
+      case 'businesses':
+        mergeCloudListRecord(setCloudBusinesses, id, data);
+        break;
+      case 'notifications':
+        mergeCloudListRecord(setCloudNotifications, id, data);
+        break;
+      default:
+        break;
+    }
+  };
+
+  const removeCloudRecordCache = (collectionName, id) => {
+    switch (collectionName) {
+      case 'customers':
+        removeCloudListRecord(setCloudCustomers, id);
+        break;
+      case 'suppliers':
+        removeCloudListRecord(setCloudSuppliers, id);
+        break;
+      case 'inventory':
+        removeCloudListRecord(setCloudInventory, id);
+        break;
+      case 'stock_transactions':
+        removeCloudListRecord(setCloudStockTransactions, id);
+        break;
+      case 'invoices':
+        removeCloudListRecord(setCloudInvoices, id);
+        break;
+      case 'orders':
+        removeCloudListRecord(setCloudOrders, id);
+        break;
+      case 'employees':
+        removeCloudListRecord(setCloudEmployees, id);
+        break;
+      case 'attendance':
+        removeCloudListRecord(setCloudAttendance, id);
+        break;
+      case 'payments':
+        removeCloudListRecord(setCloudPayments, id);
+        break;
+      case 'audit_logs':
+        removeCloudListRecord(setCloudAuditLogs, id);
+        break;
+      case 'subscriptions':
+        setCloudSubscription(null);
+        break;
+      case 'security_settings':
+        setCloudSecurity(null);
+        break;
+      case 'devices':
+        removeCloudListRecord(setCloudDevices, id);
+        break;
+      case 'offline_queue':
+        removeCloudListRecord(setCloudOfflineQueue, id);
+        break;
+      case 'businesses':
+        removeCloudListRecord(setCloudBusinesses, id);
+        break;
+      case 'notifications':
+        removeCloudListRecord(setCloudNotifications, id);
+        break;
+      default:
+        break;
+    }
+  };
+
+  const saveAuthenticatedCloudRecord = async (collectionName, id, data) => {
     if (!firebaseEnabled || !authUser?.uid) {
-      return Promise.resolve(false);
+      return false;
     }
 
-    return deleteCloudRecord(authUser.uid, collectionName, id).catch((error) => {
+    try {
+      const payload = {
+        ...data,
+        userId: authUser.uid,
+      };
+      const saved = await saveCloudRecord(authUser.uid, collectionName, id, payload);
+      if (saved) {
+        updateCloudRecordCache(collectionName, id, payload);
+      }
+      return saved;
+    } catch (error) {
+      setSecureError(publicSafeError(error, 'Cloud data save failed. Please try again.'));
+      throw error;
+    }
+  };
+
+  const deleteAuthenticatedCloudRecord = async (collectionName, id) => {
+    if (!firebaseEnabled || !authUser?.uid) {
+      return false;
+    }
+
+    try {
+      const deleted = await deleteCloudRecord(authUser.uid, collectionName, id);
+      if (deleted) {
+        removeCloudRecordCache(collectionName, id);
+      }
+      return deleted;
+    } catch (error) {
       setSecureError(publicSafeError(error, 'Cloud data delete failed. Please try again.'));
       throw error;
-    });
+    }
   };
 
   const saveCloudDataSnapshot = (reason = 'autosave') => {
@@ -1244,6 +1461,8 @@ export default function VoiceExpenseTrackerPreview() {
     setCloudSecurity(null);
     setCloudDevices([]);
     setCloudOfflineQueue([]);
+    setCloudBusinesses([]);
+    setCloudNotifications([]);
     setTransactionsLoading(false);
     setPeopleLoading(false);
     setStatementLedgerId('');
@@ -3193,6 +3412,8 @@ export default function VoiceExpenseTrackerPreview() {
               cloudInventory={cloudInventory}
               cloudStockTransactions={cloudStockTransactions}
               cloudInvoices={cloudInvoices}
+              cloudBusinesses={cloudBusinesses}
+              cloudNotifications={cloudNotifications}
               cloudUserId={authUser?.uid}
               peopleLoading={peopleLoading}
               onStatus={setStatus}

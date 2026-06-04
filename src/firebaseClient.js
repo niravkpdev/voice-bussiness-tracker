@@ -22,6 +22,8 @@ const CLOUD_TABLES = new Set([
   'security_settings',
   'devices',
   'offline_queue',
+  'businesses',
+  'notifications',
   'reports',
   'settings',
 ]);
@@ -42,6 +44,10 @@ export function getFirebaseProjectId() {
   } catch {
     return supabaseConfig.url || '';
   }
+}
+
+export function getFirebaseAuthDomain() {
+  return supabaseConfig.url || '';
 }
 
 function getSupabaseConfigError() {
@@ -672,11 +678,60 @@ export async function loadCloudCollection(uid, tableName) {
   }
 
   const path = pathFor(uid, tableName);
-  const { data, error } = await withCloudTimeout(
-    client.from(tableName).select('*').eq('user_id', uid).order('updated_at', { ascending: false }),
-    { path, uid, currentFirebaseUserUid: user?.id || null, operation: `select:${tableName}` }
-  );
-  if (error) throw error;
+  console.info('SUPABASE_LOAD_START', {
+    projectId: getFirebaseProjectId() || null,
+    authDomain: supabaseConfig.url || null,
+    currentFirebaseUserUid: user?.id || null,
+    requestedUid: uid,
+    tableName,
+    path,
+  });
+
+  let data;
+  let error;
+  try {
+    const result = await withCloudTimeout(
+      client.from(tableName).select('*').eq('user_id', uid).order('updated_at', { ascending: false }),
+      { path, uid, currentFirebaseUserUid: user?.id || null, operation: `select:${tableName}` }
+    );
+    data = result.data;
+    error = result.error;
+  } catch (caughtError) {
+    console.error('SUPABASE_LOAD_ERROR', {
+      projectId: getFirebaseProjectId() || null,
+      authDomain: supabaseConfig.url || null,
+      currentFirebaseUserUid: user?.id || null,
+      requestedUid: uid,
+      tableName,
+      path,
+      code: caughtError?.code || null,
+      message: caughtError?.message || String(caughtError),
+    });
+    throw caughtError;
+  }
+  if (error) {
+    console.error('SUPABASE_LOAD_ERROR', {
+      projectId: getFirebaseProjectId() || null,
+      authDomain: supabaseConfig.url || null,
+      currentFirebaseUserUid: user?.id || null,
+      requestedUid: uid,
+      tableName,
+      path,
+      code: error?.code || null,
+      message: error?.message || String(error),
+    });
+    throw error;
+  }
+
+  console.info('SUPABASE_LOAD_SUCCESS', {
+    projectId: getFirebaseProjectId() || null,
+    authDomain: supabaseConfig.url || null,
+    currentFirebaseUserUid: user?.id || null,
+    requestedUid: uid,
+    tableName,
+    path,
+    count: (data || []).length,
+  });
 
   return (data || []).map(rowToAppRecord).filter(Boolean);
 }
