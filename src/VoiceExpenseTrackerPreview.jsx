@@ -167,7 +167,7 @@ const APP_TABS = [
   'support',
   ...LEGAL_PAGE_IDS,
 ];
-const SIDEBAR_SECTIONS = [
+const navigationConfig = [
   {
     id: 'overview',
     label: 'Overview',
@@ -240,6 +240,7 @@ const SIDEBAR_SECTIONS = [
     ],
   },
 ];
+const SIDEBAR_SECTIONS = navigationConfig;
 
 function getSpeechRecognition() {
   return window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -3408,7 +3409,7 @@ export default function VoiceExpenseTrackerPreview() {
         <div className="sidebar-brand">
           <img className="sidebar-logo" src={profile.logo} alt="" />
           <div>
-            <strong>{profile.name}</strong>
+            <strong>Voice Business Tracker</strong>
             <span>Business Console</span>
           </div>
           <button className="drawer-close-button" type="button" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)}>
@@ -3469,9 +3470,9 @@ export default function VoiceExpenseTrackerPreview() {
           })}
         </nav>
         <div className="sidebar-support">
-          <span>Support</span>
-          <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
-          <a href={`tel:${SUPPORT_PHONE}`}>{SUPPORT_PHONE}</a>
+          <strong>Need Help?</strong>
+          <span>Contact our support team for any assistance.</span>
+          <a className="sidebar-support-button" href="#support">Contact Support</a>
         </div>
       </aside>
 
@@ -3541,28 +3542,9 @@ export default function VoiceExpenseTrackerPreview() {
             <section className="erp-dashboard fade-in" id="dashboard">
               <div className="dashboard-command-center">
                 <div className="dashboard-welcome-card">
-                  <div className="brand-header">
-                    <img className="brand-logo" src={profile.logo} alt="Business logo" />
-                    <div>
-                      <span className="eyebrow">Welcome back</span>
-                      <h1>{profile.name}</h1>
-                      <p>{profile.tagline}</p>
-                      <div className="profile-meta">
-                        <span>GSTIN: {profile.gstin || 'Not Provided'}</span>
-                        <span>Owner: {profile.owner}</span>
-                        <span>{new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="dashboard-command-tools">
-                  <label className="dashboard-search">
-                    <span>⌕</span>
-                    <input type="search" placeholder="Search business..." aria-label="Search dashboard" />
-                  </label>
-                  <input type="date" defaultValue={new Date().toISOString().slice(0, 10)} aria-label="Dashboard date selector" />
-                  <a className="icon-command-button" href="#notifications" aria-label="Notifications">●</a>
-                  <a className="profile-avatar" href="#profile-settings" aria-label="Profile">{(authUser?.email || profile.owner || 'U').slice(0, 1).toUpperCase()}</a>
+                  <span className="eyebrow">Welcome back</span>
+                  <h1>Welcome back, {profile.owner || 'Admin'}!</h1>
+                  <p>Here's what's happening with your business today.</p>
                 </div>
               </div>
 
@@ -3616,18 +3598,6 @@ export default function VoiceExpenseTrackerPreview() {
                 </article>
               </div>
 
-              <div className="quick-action-console">
-                {[
-                  ['Add Sale', 'voucher-entry'],
-                  ['Add Expense', 'voucher-entry'],
-                  ['Add Customer', 'crm'],
-                  ['Add Supplier', 'suppliers'],
-                  ['Create Invoice', 'invoices'],
-                ].map(([label, href]) => (
-                  <a className="quick-action-tile" href={`#${href}`} key={label}>{label}</a>
-                ))}
-              </div>
-
               {vouchers.length === 0 && (
                 <div className="empty-state-panel">
                   <strong>No transactions yet</strong>
@@ -3651,6 +3621,29 @@ export default function VoiceExpenseTrackerPreview() {
                   </div>
                   <MiniBarChart data={getLast6MonthsData(vouchers)} valueKey="sales" barColor="#8b5cf6" title="Monthly Sales" />
                   <ProfitTrendChart data={getLast6MonthsData(vouchers)} />
+                </section>
+                <section className="dashboard-glass-panel quick-actions-panel">
+                  <div className="section-header">
+                    <div>
+                      <span className="eyebrow">Fast entries</span>
+                      <h2>Quick Actions</h2>
+                    </div>
+                  </div>
+                  <div className="quick-action-console">
+                    {[
+                      ['Add Sale', 'voucher-entry', '▣'],
+                      ['Add Expense', 'voucher-entry', '▤'],
+                      ['Add Customer', 'crm', '☉'],
+                      ['Add Supplier', 'suppliers', '◎'],
+                      ['Create Invoice', 'invoices', '▧'],
+                    ].map(([label, href, icon]) => (
+                      <a className="quick-action-tile" href={`#${href}`} key={label}>
+                        <span>{icon}</span>
+                        <strong>{label}</strong>
+                        <b>›</b>
+                      </a>
+                    ))}
+                  </div>
                 </section>
                 <section className="dashboard-glass-panel">
                   <div className="section-header">
@@ -4906,9 +4899,9 @@ export default function VoiceExpenseTrackerPreview() {
 
       <nav className="mobile-bottom-nav" aria-label="Mobile navigation">
         <a className={activeTab === 'dashboard' ? 'active' : ''} href="#dashboard">Home</a>
-        <a className={activeTab === 'voice-bookkeeper' ? 'active' : ''} href="#voice-bookkeeper">Voice</a>
-        <a className={activeTab === 'invoices' ? 'active' : ''} href="#invoices">Invoices</a>
-        <a className={activeTab === 'analytics' ? 'active' : ''} href="#analytics">Reports</a>
+        <a className={activeTab === 'voucher-entry' ? 'active' : ''} href="#voucher-entry">Add</a>
+        <a className={activeTab === 'day-book' ? 'active' : ''} href="#day-book">Search</a>
+        <a className={activeTab === 'profile-settings' ? 'active' : ''} href="#profile-settings">Profile</a>
       </nav>
 
       {/* Floating Microphone Action Button */}
