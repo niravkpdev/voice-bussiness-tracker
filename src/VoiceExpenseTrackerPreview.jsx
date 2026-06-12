@@ -172,71 +172,71 @@ const navigationConfig = [
     id: 'overview',
     label: 'Overview',
     icon: '⌂',
-    items: [
-      ['dashboard', 'Dashboard', '⌂'],
-      ['company-setup', 'Company Setup', '▣'],
-      ['ai-assistant', 'AI Insights', '✣'],
-      ['analytics', 'Analytics', '⌁'],
-      ['notifications', 'Notifications', '◌'],
+    children: [
+      { id: 'dashboard', path: '#dashboard', tab: 'dashboard', label: 'Dashboard', icon: '⌂' },
+      { id: 'company-setup', path: '#company-setup', tab: 'company-setup', label: 'Company Setup', icon: '▣' },
+      { id: 'ai-insights', path: '#ai-assistant', tab: 'ai-assistant', label: 'AI Insights', icon: '✣' },
+      { id: 'analytics', path: '#analytics', tab: 'analytics', label: 'Analytics', icon: '⌁' },
+      { id: 'notifications', path: '#notifications', tab: 'notifications', label: 'Notifications', icon: '◌' },
     ],
   },
   {
     id: 'tally-structure',
     label: 'Business Structure',
     icon: '◇',
-    items: [
-      ['company-setup', 'Company Master', '▦'],
-      ['businesses', 'Branches', '⌖'],
-      ['businesses', 'Departments', '☷'],
-      ['inventory', 'Products / Services', '⬡'],
-      ['inventory', 'Units', '◇'],
-      ['masters', 'Categories', '◈'],
-      ['inventory', 'Warehouses', '▤'],
+    children: [
+      { id: 'company-master', path: '#company-setup', tab: 'company-setup', label: 'Company Master', icon: '▦' },
+      { id: 'branches', path: '#businesses', tab: 'businesses', label: 'Branches', icon: '⌖' },
+      { id: 'departments', path: '#businesses', tab: 'businesses', label: 'Departments', icon: '☷' },
+      { id: 'products-services', path: '#inventory', tab: 'inventory', label: 'Products / Services', icon: '⬡' },
+      { id: 'units', path: '#inventory', tab: 'inventory', label: 'Units', icon: '◇' },
+      { id: 'categories', path: '#masters', tab: 'masters', label: 'Categories', icon: '◈' },
+      { id: 'warehouses', path: '#inventory', tab: 'inventory', label: 'Warehouses', icon: '▤' },
     ],
   },
   {
     id: 'erp',
     label: 'ERP Modules',
     icon: '▦',
-    items: [
-      ['voucher-entry', 'Sales', '▿'],
-      ['voucher-entry', 'Purchase', '▵'],
-      ['inventory', 'Inventory', '⬢'],
-      ['accounting-ledgers', 'Accounting', '▤'],
-      ['day-book', 'Banking', '▥'],
+    children: [
+      { id: 'sales', path: '#voucher-entry', tab: 'voucher-entry', label: 'Sales', icon: '▿' },
+      { id: 'purchase', path: '#voucher-entry', tab: 'voucher-entry', label: 'Purchase', icon: '▵' },
+      { id: 'inventory', path: '#inventory', tab: 'inventory', label: 'Inventory', icon: '⬢' },
+      { id: 'accounting', path: '#accounting-ledgers', tab: 'accounting-ledgers', label: 'Accounting', icon: '▤' },
+      { id: 'banking', path: '#day-book', tab: 'day-book', label: 'Banking', icon: '▥' },
     ],
   },
   {
     id: 'people',
     label: 'People & Ledger',
     icon: '◉',
-    items: [
-      ['crm', 'Customers', '☉'],
-      ['suppliers', 'Suppliers', '◎'],
-      ['employees', 'Employees', '♙'],
-      ['party-statement', 'Ledger', '▣'],
+    children: [
+      { id: 'customers', path: '#crm', tab: 'crm', label: 'Customers', icon: '☉' },
+      { id: 'suppliers', path: '#suppliers', tab: 'suppliers', label: 'Suppliers', icon: '◎' },
+      { id: 'employees', path: '#employees', tab: 'employees', label: 'Employees', icon: '♙' },
+      { id: 'ledger', path: '#party-statement', tab: 'party-statement', label: 'Ledger', icon: '▣' },
     ],
   },
   {
     id: 'automation',
     label: 'Automation',
     icon: '⚡',
-    items: [
-      ['mobile-app', 'Workflows', '⎇'],
-      ['notifications', 'Reminders', '◷'],
-      ['whatsapp-automation', 'Automations', '⚡'],
+    children: [
+      { id: 'workflows', path: '#mobile-app', tab: 'mobile-app', label: 'Workflows', icon: '⎇' },
+      { id: 'reminders', path: '#notifications', tab: 'notifications', label: 'Reminders', icon: '◷' },
+      { id: 'automations', path: '#whatsapp-automation', tab: 'whatsapp-automation', label: 'Automations', icon: '⚡' },
     ],
   },
   {
     id: 'admin',
     label: 'Admin & Security',
     icon: '◈',
-    items: [
-      ['security-center', 'Users & Roles', '☷'],
-      ['security-center', 'Permissions', '◇'],
-      ['reports-hub', 'Audit Logs', '▱'],
-      ['app-settings', 'System Settings', '⚙'],
-      ['database-test', 'Database Test', '◉'],
+    children: [
+      { id: 'users-roles', path: '#security-center', tab: 'security-center', label: 'Users & Roles', icon: '☷' },
+      { id: 'permissions', path: '#security-center', tab: 'security-center', label: 'Permissions', icon: '◇' },
+      { id: 'audit-logs', path: '#reports-hub', tab: 'reports-hub', label: 'Audit Logs', icon: '▱' },
+      { id: 'system-settings', path: '#app-settings', tab: 'app-settings', label: 'System Settings', icon: '⚙' },
+      { id: 'database-test', path: '#database-test', tab: 'database-test', label: 'Database Test', icon: '◉', debugOnly: true },
     ],
   },
 ];
@@ -851,17 +851,17 @@ export default function VoiceExpenseTrackerPreview() {
   const [activeReportTab, setActiveReportTab] = useState('pnl');
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
   const [openSidebarSections, setOpenSidebarSections] = useState(() => {
-    const section = SIDEBAR_SECTIONS.find((group) => group.items.some(([tab]) => tab === activeTab));
-    return new Set([section?.id || 'overview']);
+    const openByDefault = ['overview', 'tally-structure', 'erp', 'people', 'automation', 'admin'];
+    return new Set(openByDefault);
   });
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const sidebarSectionRefs = useRef({});
   const hasVerifiedAccess = !REQUIRE_VERIFIED_EMAIL || Boolean(authUser?.emailVerified);
   const canViewDatabaseDebug = import.meta.env.DEV || authUser?.role === 'Owner';
   const canViewAuthDebug = import.meta.env.DEV || import.meta.env.VITE_DEBUG_AUTH === 'true';
-  const activeSidebarSection = SIDEBAR_SECTIONS.find((group) => group.items.some(([tab]) => tab === activeTab));
-  const activeSidebarItem = activeSidebarSection?.items.find(([tab]) => tab === activeTab);
-  const activePageTitle = activeSidebarItem?.[1] || 'Dashboard';
+  const activeSidebarSection = SIDEBAR_SECTIONS.find((group) => group.children.some((child) => child.tab === activeTab));
+  const activeSidebarItem = activeSidebarSection?.children.find((child) => child.tab === activeTab);
+  const activePageTitle = activeSidebarItem?.label || 'Dashboard';
 
   const mergeAuthDebugInfo = (next = {}) => {
     setAuthDebugInfo((current) => ({
@@ -896,7 +896,7 @@ export default function VoiceExpenseTrackerPreview() {
       const hash = window.location.hash.slice(1);
       if (hash && APP_TABS.includes(hash)) {
         setActiveTab(hash);
-        const section = SIDEBAR_SECTIONS.find((group) => group.items.some(([tab]) => tab === hash));
+        const section = SIDEBAR_SECTIONS.find((group) => group.children.some((child) => child.tab === hash));
         if (section) {
           setOpenSidebarSections((current) => new Set([...current, section.id]));
         }
@@ -908,7 +908,7 @@ export default function VoiceExpenseTrackerPreview() {
   }, []);
 
   useEffect(() => {
-    const section = SIDEBAR_SECTIONS.find((group) => group.items.some(([tab]) => tab === activeTab));
+    const section = SIDEBAR_SECTIONS.find((group) => group.children.some((child) => child.tab === activeTab));
     const sectionNode = section ? sidebarSectionRefs.current[section.id] : null;
     if (!sectionNode) {
       return;
@@ -3432,10 +3432,10 @@ export default function VoiceExpenseTrackerPreview() {
         <nav className="side-nav" aria-label="ERP sections">
           {SIDEBAR_SECTIONS.map((section) => ({
             ...section,
-            items: section.items.filter(([tab]) => tab !== 'database-test' || canViewDatabaseDebug),
-          })).filter((section) => section.items.length > 0).map((section) => {
+            children: section.children.filter((child) => !child.debugOnly || canViewDatabaseDebug),
+          })).filter((section) => section.children.length > 0).map((section) => {
             const isExpanded = openSidebarSections.has(section.id);
-            const hasActiveItem = section.items.some(([tab]) => tab === activeTab);
+            const hasActiveItem = section.children.some((child) => child.tab === activeTab);
 
             return (
               <div
@@ -3457,14 +3457,21 @@ export default function VoiceExpenseTrackerPreview() {
                   </span>
                   <span className="sidebar-chevron">›</span>
                 </button>
-                <div className="sidebar-section-panel">
-                  {section.items.map(([tab, label, itemIcon]) => (
-                    <a href={`#${tab}`} className={activeTab === tab ? 'active' : ''} key={`${section.id}-${tab}-${label}`} onClick={() => setMobileNavOpen(false)}>
-                      <span className="sidebar-item-icon">{itemIcon || '•'}</span>
-                      <span>{label}</span>
-                    </a>
-                  ))}
-                </div>
+                {isExpanded && (
+                  <div className="sidebar-children">
+                    {section.children.map((child) => (
+                      <a
+                        href={child.path}
+                        className={activeTab === child.tab ? 'active' : ''}
+                        key={child.id}
+                        onClick={() => setMobileNavOpen(false)}
+                      >
+                        <span className="sidebar-item-icon">{child.icon || '•'}</span>
+                        <span>{child.label}</span>
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}
