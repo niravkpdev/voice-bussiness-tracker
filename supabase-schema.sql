@@ -172,12 +172,88 @@ create table if not exists public.settings (
 create table if not exists public.debug_tests (
   id text not null,
   user_id uuid not null references auth.users(id) on delete cascade,
-  message text not null default 'hello firestore',
+  message text not null default 'hello supabase',
   data jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   primary key (user_id, id)
 );
+
+do $$
+declare
+  table_name text;
+begin
+  foreach table_name in array array[
+    'transactions',
+    'customers',
+    'suppliers',
+    'inventory',
+    'stock_transactions',
+    'invoices',
+    'orders',
+    'employees',
+    'attendance',
+    'payments',
+    'audit_logs',
+    'subscriptions',
+    'security_settings',
+    'devices',
+    'offline_queue',
+    'businesses',
+    'notifications',
+    'reports',
+    'settings'
+  ]
+  loop
+    begin
+      execute format(
+        'alter table public.%I add constraint %I check (length(trim(id)) > 0) not valid',
+        table_name,
+        table_name || '_id_not_blank'
+      );
+    exception when duplicate_object then
+      null;
+    end;
+  end loop;
+end $$;
+
+do $$
+declare
+  table_name text;
+begin
+  foreach table_name in array array[
+    'transactions',
+    'customers',
+    'suppliers',
+    'inventory',
+    'stock_transactions',
+    'invoices',
+    'orders',
+    'employees',
+    'attendance',
+    'payments',
+    'audit_logs',
+    'subscriptions',
+    'security_settings',
+    'devices',
+    'offline_queue',
+    'businesses',
+    'notifications',
+    'reports',
+    'settings'
+  ]
+  loop
+    begin
+      execute format(
+        'alter table public.%I add constraint %I check (jsonb_typeof(data) = ''object'') not valid',
+        table_name,
+        table_name || '_data_must_be_object'
+      );
+    exception when duplicate_object then
+      null;
+    end;
+  end loop;
+end $$;
 
 alter table public.transactions enable row level security;
 alter table public.customers enable row level security;
@@ -283,3 +359,4 @@ for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "Users manage own debug tests" on public.debug_tests
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+

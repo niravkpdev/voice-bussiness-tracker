@@ -1,4 +1,4 @@
-const CACHE_NAME = 'voice-business-tracker-v4';
+const CACHE_NAME = 'voice-business-tracker-v5';
 const APP_SHELL = [
   '/',
   '/react.html',
@@ -33,8 +33,8 @@ self.addEventListener('fetch', (event) => {
   }
 
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const network = fetch(event.request)
+    caches.match(event.request).then((cached) =>
+      fetch(event.request)
         .then((response) => {
           if (response.ok) {
             const clone = response.clone();
@@ -42,10 +42,8 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => cached || caches.match('/react.html'));
-
-      return cached || network;
-    })
+        .catch(() => cached || caches.match('/react.html'))
+    )
   );
 });
 

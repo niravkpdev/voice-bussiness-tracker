@@ -12,6 +12,13 @@ const NOTIFICATION_KEY = 'erpNotifications';
 const CLOUD_BACKUP_KEY = 'erpCloudBackupSettings';
 const TERMS =
   'Goods once sold will not be returned. Payment is due as per invoice terms. This is a computer generated invoice.';
+const SHOULD_DEBUG_DATABASE = import.meta.env.DEV || import.meta.env.VITE_DEBUG_DATABASE === 'true';
+
+function debugDatabase(...args) {
+  if (SHOULD_DEBUG_DATABASE) {
+    console.info(...args);
+  }
+}
 
 function readArray(key) {
   try {
@@ -506,9 +513,9 @@ export default function Phase2ERP({
       createdAt: current?.createdAt || new Date().toISOString(),
     };
 
-    console.info('FIRESTORE_PATH_USED', { feature: `${kind}_save`, path });
+    debugDatabase('SUPABASE_PATH_USED', { feature: `${kind}_save`, path });
     if (isCustomer) {
-      console.info('CUSTOMER_SAVE_START', { path, customerId: id, isUpdate: Boolean(current) });
+      debugDatabase('CUSTOMER_SAVE_START', { path, customerId: id, isUpdate: Boolean(current) });
     }
 
     try {
@@ -519,10 +526,10 @@ export default function Phase2ERP({
 
       if (isCustomer) {
         setCustomers((items) => [person, ...items.filter((item) => item.id !== id)]);
-        console.info(current ? 'CUSTOMER_UPDATE_SUCCESS' : 'CUSTOMER_SAVE_SUCCESS', { path, customerId: id });
+        debugDatabase(current ? 'CUSTOMER_UPDATE_SUCCESS' : 'CUSTOMER_SAVE_SUCCESS', { path, customerId: id });
       } else {
         setSuppliers((items) => [person, ...items.filter((item) => item.id !== id)]);
-        console.info(current ? 'SUPPLIER_UPDATE_SUCCESS' : 'SUPPLIER_SAVE_SUCCESS', { path, supplierId: id });
+        debugDatabase(current ? 'SUPPLIER_UPDATE_SUCCESS' : 'SUPPLIER_SAVE_SUCCESS', { path, supplierId: id });
       }
       setEditingPerson(null);
       event.currentTarget.reset();
@@ -545,7 +552,7 @@ export default function Phase2ERP({
 
     const collectionName = isCustomer ? 'customers' : 'suppliers';
     const path = cloudUserId ? `users/${cloudUserId}/${collectionName}/${person.id}` : `${collectionName}/${person.id}`;
-    console.info('FIRESTORE_PATH_USED', { feature: `${kind}_delete`, path });
+    debugDatabase('SUPABASE_PATH_USED', { feature: `${kind}_delete`, path });
 
     try {
       const deleted = await onCloudDelete?.(collectionName, person.id);
@@ -554,10 +561,10 @@ export default function Phase2ERP({
     }
       if (isCustomer) {
         setCustomers((items) => items.filter((item) => item.id !== person.id));
-        console.info('CUSTOMER_DELETE_SUCCESS', { path, customerId: person.id });
+        debugDatabase('CUSTOMER_DELETE_SUCCESS', { path, customerId: person.id });
       } else {
         setSuppliers((items) => items.filter((item) => item.id !== person.id));
-        console.info('SUPPLIER_DELETE_SUCCESS', { path, supplierId: person.id });
+        debugDatabase('SUPPLIER_DELETE_SUCCESS', { path, supplierId: person.id });
       }
       if (editingPerson?.id === person.id) {
         setEditingPerson(null);

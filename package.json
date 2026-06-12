@@ -3,7 +3,9 @@
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "production:check": "npm run build"
+    "smoke": "npm run build",
+    "security:audit": "npm audit --audit-level=moderate",
+    "production:check": "npm run smoke && npm run security:audit"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.86.0",

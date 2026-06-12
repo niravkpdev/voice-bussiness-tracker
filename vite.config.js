@@ -17,6 +17,17 @@ export default defineConfig({
       input: {
         react: resolve(process.cwd(), 'react.html'),
       },
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/@supabase')) {
+            return 'supabase';
+          }
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
+            return 'vendor';
+          }
+          return undefined;
+        },
+      },
     },
   },
 });

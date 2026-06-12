@@ -104,7 +104,7 @@ Never expose the Supabase service role key in the browser.
 
 1. Open Vercel project.
 2. Go to **Settings > Environment Variables**.
-3. Remove old Firebase values if you are no longer using them.
+3. Remove any old backend values that do not belong to this Supabase setup.
 4. Add the Supabase values.
 5. Redeploy.
 6. Hard refresh the browser or open the app in incognito.
@@ -118,11 +118,11 @@ Never expose the Supabase service role key in the browser.
 5. You should see:
 
 ```txt
-DEBUG_FIRESTORE_TEST_START
-DEBUG_FIRESTORE_TEST_SUCCESS
+DEBUG_SUPABASE_TEST_START
+DEBUG_SUPABASE_TEST_SUCCESS
 ```
 
-The log names still contain `FIRESTORE` for backward compatibility with the existing app debugging, but the write is now going to Supabase.
+The debug test writes directly to Supabase and verifies the row can be read back.
 
 ## 8. Confirm In Supabase
 
@@ -135,7 +135,7 @@ After debug success:
 ```txt
 id: test
 user_id: your logged-in user id
-message: hello firestore
+message: hello supabase
 ```
 
 After adding a customer:
@@ -197,9 +197,9 @@ Run `supabase-schema.sql` and confirm RLS policies exist.
 Check browser console for:
 
 ```txt
-FIRESTORE_WRITE_START
-FIRESTORE_WRITE_SUCCESS
-FIRESTORE_WRITE_ERROR
+SUPABASE_WRITE_START
+SUPABASE_WRITE_SUCCESS
+SUPABASE_WRITE_ERROR
 ```
 
 Also confirm:
@@ -213,6 +213,7 @@ VITE_SUPABASE_ANON_KEY
 
 Check **Authentication > Providers > Email** and whether email confirmation is required.
 
-### App still says old Firebase bundle
+### App still says old backend bundle
 
 Redeploy Vercel and hard refresh. Old cached JavaScript can keep running until the browser refreshes.
+

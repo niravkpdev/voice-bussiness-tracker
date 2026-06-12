@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import {
   LEDGERS_KEY,
   VOUCHERS_KEY,
@@ -30,31 +30,29 @@ import {
   getDailyAndMonthlyStats,
   getPartySummary,
 } from './accounting';
-import Phase2ERP from './Phase2ERP.jsx';
-import Phase3Ops from './Phase3Ops.jsx';
 import { LegalPage, LEGAL_PAGE_IDS } from './LegalPages.jsx';
 import {
-  createFirebaseAccount,
+  createSupabaseAccount,
   deleteCloudRecord,
-  getFirebaseAuthDomain,
-  getFirebaseAuthErrorMessage,
-  getFirebaseProjectId,
-  isFirebaseConfigured,
-  listenToFirebaseAuth,
+  getSupabaseUrl,
+  getSupabaseAuthErrorMessage,
+  getSupabaseProjectHost,
+  isSupabaseConfigured,
+  listenToSupabaseAuth,
   loadCloudCollection,
   loadUserProfileSettings,
-  reloadCurrentFirebaseUser,
-  runFirestoreDebugTest,
+  reloadCurrentSupabaseUser,
+  runSupabaseDebugTest,
   saveCloudRecord,
   saveUserProfile,
   saveUserProfileSettings,
   sendCurrentUserEmailVerification,
-  sendFirebasePasswordReset,
-  signInFirebaseAccount,
-  signInFirebaseGoogle,
-  signOutFirebase,
+  sendSupabasePasswordReset,
+  signInSupabaseAccount,
+  signInSupabaseGoogle,
+  signOutSupabase,
   updateCurrentUserPassword,
-} from './firebaseClient.js';
+} from './supabaseClient.js';
 import {
   canRunRateLimitedAction,
   normalizeAmount,
@@ -74,6 +72,9 @@ import {
   writeScopedString,
 } from './storageScope.js';
 import { mapVoiceTypeToAccounting, parseReliableVoiceCommand } from './voiceParser.js';
+
+const Phase2ERP = lazy(() => import('./Phase2ERP.jsx'));
+const Phase3Ops = lazy(() => import('./Phase3Ops.jsx'));
 
 const STORAGE_KEY = 'businessLogs';
 const PROFILE_KEY = 'businessProfile';
@@ -95,6 +96,20 @@ const SUPPORT_EMAIL = 'trinetr1901@gmail.com';
 const SUPPORT_PHONE = '+918488943771';
 const ALLOW_DEMO_AUTH = import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEMO_AUTH !== 'false';
 const REQUIRE_VERIFIED_EMAIL = import.meta.env.PROD;
+const SHOULD_DEBUG_DATABASE = import.meta.env.DEV || import.meta.env.VITE_DEBUG_DATABASE === 'true';
+
+function debugInfo(...args) {
+  if (SHOULD_DEBUG_DATABASE) {
+    console.info(...args);
+  }
+}
+
+function debugError(...args) {
+  if (SHOULD_DEBUG_DATABASE) {
+    console.error(...args);
+  }
+}
+
 const FEATURE_CARDS = [
   ['Voice Transactions', 'Add expenses, sales, customers, and inventory using natural commands.'],
   ['Expense Tracking', 'Capture daily expenses instantly with categories and notes.'],
@@ -148,7 +163,7 @@ const APP_TABS = [
   'party-statement',
   'profile-settings',
   'app-settings',
-  'firestore-test',
+  'database-test',
   'support',
   ...LEGAL_PAGE_IDS,
 ];
@@ -219,7 +234,7 @@ const SIDEBAR_SECTIONS = [
       ['security-center', 'Security'],
       ['profile-settings', 'Profile'],
       ['app-settings', 'Settings'],
-      ['firestore-test', 'Database Test'],
+      ['database-test', 'Database Test'],
     ],
   },
 ];
@@ -773,7 +788,7 @@ export default function VoiceExpenseTrackerPreview() {
     lastAuthActionAt: '',
   });
   const [offline, setOffline] = useState(() => typeof navigator !== 'undefined' && !navigator.onLine);
-  const [firebaseEnabled] = useState(() => isFirebaseConfigured());
+  const [supabaseEnabled] = useState(() => isSupabaseConfigured());
   const [transcript, setTranscript] = useState('Click start and speak your expense...');
   const [status, setStatus] = useState('Idle');
   const [language, setLanguage] = useState('en-IN');
@@ -838,7 +853,7 @@ export default function VoiceExpenseTrackerPreview() {
   });
   const sidebarSectionRefs = useRef({});
   const hasVerifiedAccess = !REQUIRE_VERIFIED_EMAIL || Boolean(authUser?.emailVerified);
-  const canViewFirestoreDebug = import.meta.env.DEV || authUser?.role === 'Owner';
+  const canViewDatabaseDebug = import.meta.env.DEV || authUser?.role === 'Owner';
 
   const mergeAuthDebugInfo = (next = {}) => {
     setAuthDebugInfo((current) => ({
@@ -953,9 +968,9 @@ export default function VoiceExpenseTrackerPreview() {
 
     let cloudTransactions = null;
     let cloudProfile = null;
-    if (restoreCloud && firebaseEnabled && scopedUser.uid) {
+    if (restoreCloud && supabaseEnabled && scopedUser.uid) {
       const transactionPath = `users/${scopedUser.uid}/transactions`;
-      console.info('FIRESTORE_PATH_USED', {
+      debugInfo('SUPABASE_PATH_USED', {
         feature: 'transactions_load',
         path: transactionPath,
         uid: scopedUser.uid,
@@ -967,10 +982,10 @@ export default function VoiceExpenseTrackerPreview() {
           const rows = await loadCloudCollection(scopedUser.uid, tableName);
           return { ok: true, tableName, rows };
         } catch (error) {
-          console.error('SUPABASE_MODULE_LOAD_ERROR', {
+          debugError('SUPABASE_MODULE_LOAD_ERROR', {
             tableName,
-            projectId: getFirebaseProjectId(),
-            authDomain: getFirebaseAuthDomain() || null,
+            projectId: getSupabaseProjectHost(),
+            authDomain: getSupabaseUrl() || null,
             uid: scopedUser.uid,
             code: error?.code || null,
             message: error?.message || String(error),
@@ -983,10 +998,10 @@ export default function VoiceExpenseTrackerPreview() {
           const profileRows = await loadUserProfileSettings(scopedUser.uid);
           return { ok: true, profileRows };
         } catch (error) {
-          console.error('SUPABASE_MODULE_LOAD_ERROR', {
+          debugError('SUPABASE_MODULE_LOAD_ERROR', {
             tableName: 'settings',
-            projectId: getFirebaseProjectId(),
-            authDomain: getFirebaseAuthDomain() || null,
+            projectId: getSupabaseProjectHost(),
+            authDomain: getSupabaseUrl() || null,
             uid: scopedUser.uid,
             code: error?.code || null,
             message: error?.message || String(error),
@@ -1093,37 +1108,37 @@ export default function VoiceExpenseTrackerPreview() {
       if (offlineQueueResult.ok) setCloudOfflineQueue(offlineQueue);
       if (businessesResult.ok) setCloudBusinesses(businesses);
       if (notificationsResult.ok) setCloudNotifications(notifications);
-      console.info('FIRESTORE_PATH_USED', {
+      debugInfo('SUPABASE_PATH_USED', {
         feature: 'customers_load',
         path: `users/${scopedUser.uid}/customers`,
         uid: scopedUser.uid,
       });
-      console.info('CUSTOMER_LOAD_SUCCESS', {
+      debugInfo('CUSTOMER_LOAD_SUCCESS', {
         path: `users/${scopedUser.uid}/customers`,
         uid: scopedUser.uid,
         count: customers.length,
       });
-      console.info('FIRESTORE_PATH_USED', {
+      debugInfo('SUPABASE_PATH_USED', {
         feature: 'suppliers_load',
         path: `users/${scopedUser.uid}/suppliers`,
         uid: scopedUser.uid,
       });
-      console.info('SUPPLIER_LOAD_SUCCESS', {
+      debugInfo('SUPPLIER_LOAD_SUCCESS', {
         path: `users/${scopedUser.uid}/suppliers`,
         uid: scopedUser.uid,
         count: suppliers.length,
       });
-      console.info('DASHBOARD_TRANSACTIONS_LOADED', {
+      debugInfo('DASHBOARD_TRANSACTIONS_LOADED', {
         path: transactionPath,
         uid: scopedUser.uid,
         count: transactions.length,
       });
-      console.info('DAYBOOK_TRANSACTIONS_LOADED', {
+      debugInfo('DAYBOOK_TRANSACTIONS_LOADED', {
         path: transactionPath,
         uid: scopedUser.uid,
         count: transactions.length,
       });
-      console.info('SUPABASE_MODULES_LOADED', {
+      debugInfo('SUPABASE_MODULES_LOADED', {
         uid: scopedUser.uid,
         invoices: invoices.length,
         stockTransactions: stockTransactions.length,
@@ -1261,7 +1276,7 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const saveAuthenticatedCloudRecord = async (collectionName, id, data) => {
-    if (!firebaseEnabled || !authUser?.uid) {
+    if (!supabaseEnabled || !authUser?.uid) {
       return false;
     }
 
@@ -1282,7 +1297,7 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const deleteAuthenticatedCloudRecord = async (collectionName, id) => {
-    if (!firebaseEnabled || !authUser?.uid) {
+    if (!supabaseEnabled || !authUser?.uid) {
       return false;
     }
 
@@ -1299,7 +1314,7 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const saveCloudDataSnapshot = (reason = 'autosave') => {
-    if (!firebaseEnabled || !authUser?.uid) {
+    if (!supabaseEnabled || !authUser?.uid) {
       return;
     }
 
@@ -1332,28 +1347,28 @@ export default function VoiceExpenseTrackerPreview() {
 
     try {
       if (import.meta.env.DEV) {
-        console.info('[Auth form submit]', { mode: authView, email, firebaseEnabled });
+        debugInfo('[Auth form submit]', { mode: authView, email, supabaseEnabled });
       }
-      if (firebaseEnabled) {
-        const firebaseUser = authView === 'login'
-          ? await signInFirebaseAccount({ email, password })
-          : await createFirebaseAccount({ email, password, ownerName, businessName });
+      if (supabaseEnabled) {
+        const supabaseUser = authView === 'login'
+          ? await signInSupabaseAccount({ email, password })
+          : await createSupabaseAccount({ email, password, ownerName, businessName });
 
         mergeAuthDebugInfo({
-          email: firebaseUser?.email || email,
-          uid: firebaseUser?.uid || '',
-          emailVerified: Boolean(firebaseUser?.emailVerified),
-          confirmationSentAt: firebaseUser?.confirmationSentAt || '',
-          confirmedAt: firebaseUser?.confirmedAt || '',
-          sessionState: firebaseUser?.sessionState || 'unknown',
-          emailRedirectTo: firebaseUser?.emailRedirectTo || '',
-          lastAuthActionAt: firebaseUser?.lastAuthActionAt || new Date().toISOString(),
+          email: supabaseUser?.email || email,
+          uid: supabaseUser?.uid || '',
+          emailVerified: Boolean(supabaseUser?.emailVerified),
+          confirmationSentAt: supabaseUser?.confirmationSentAt || '',
+          confirmedAt: supabaseUser?.confirmedAt || '',
+          sessionState: supabaseUser?.sessionState || 'unknown',
+          emailRedirectTo: supabaseUser?.emailRedirectTo || '',
+          lastAuthActionAt: supabaseUser?.lastAuthActionAt || new Date().toISOString(),
         });
-        await applyAuthenticatedUser(firebaseUser);
-        if (firebaseUser?.emailVerified) {
+        await applyAuthenticatedUser(supabaseUser);
+        if (supabaseUser?.emailVerified) {
           setStatus('Secure Supabase login active');
         } else {
-          setAuthNotice(firebaseUser?.alreadyExistsUnconfirmedLikely
+          setAuthNotice(supabaseUser?.alreadyExistsUnconfirmedLikely
             ? 'This email may already be registered but not verified. Click Resend Verification Email, then check Inbox, Spam, and Promotions folders.'
             : 'Verification email sent. Check Inbox, Spam, and Promotions folders.');
           setVerificationCooldown(authView === 'register' ? 60 : 0);
@@ -1382,7 +1397,7 @@ export default function VoiceExpenseTrackerPreview() {
       setSecureError('Supabase is not configured yet, so this session is running in local demo mode.');
       setStatus('Demo mode active. Configure Supabase env variables for production login.');
     } catch (error) {
-      const message = getFirebaseAuthErrorMessage(error, 'Login failed. Please check your details and try again.');
+      const message = getSupabaseAuthErrorMessage(error, 'Login failed. Please check your details and try again.');
       setSecureError(message);
       setAuthNotice('');
       setStatus(message);
@@ -1397,13 +1412,13 @@ export default function VoiceExpenseTrackerPreview() {
     setAuthNotice('');
 
     try {
-      if (firebaseEnabled) {
-        const firebaseUser = await signInFirebaseGoogle();
-        if (!firebaseUser) {
+      if (supabaseEnabled) {
+        const supabaseUser = await signInSupabaseGoogle();
+        if (!supabaseUser) {
           setStatus('Redirecting to Google sign-in');
           return;
         }
-        await applyAuthenticatedUser(firebaseUser);
+        await applyAuthenticatedUser(supabaseUser);
         setStatus('Signed in with Google');
         return;
       }
@@ -1429,7 +1444,7 @@ export default function VoiceExpenseTrackerPreview() {
       setSecureError('Supabase is not configured yet, so Google login is running in local demo mode.');
       setStatus('Google login simulated. Configure Supabase for production OAuth.');
     } catch (error) {
-      const message = getFirebaseAuthErrorMessage(error, 'Google login failed. Please try again.');
+      const message = getSupabaseAuthErrorMessage(error, 'Google login failed. Please try again.');
       setSecureError(message);
       setAuthNotice('');
       setStatus(message);
@@ -1453,7 +1468,7 @@ export default function VoiceExpenseTrackerPreview() {
       return;
     }
 
-    if (!firebaseEnabled) {
+    if (!supabaseEnabled) {
       setSecureError('Password reset requires Supabase authentication to be configured.');
       setStatus('Supabase authentication required');
       return;
@@ -1465,9 +1480,9 @@ export default function VoiceExpenseTrackerPreview() {
 
     try {
       if (import.meta.env.DEV) {
-        console.info('[Auth password reset submit]', { email });
+        debugInfo('[Auth password reset submit]', { email });
       }
-      const sent = await sendFirebasePasswordReset(email);
+      const sent = await sendSupabasePasswordReset(email);
       if (sent) {
         setStatus('Password reset email sent');
         setSecureError('');
@@ -1475,7 +1490,7 @@ export default function VoiceExpenseTrackerPreview() {
         setAuthView('login');
       }
     } catch (error) {
-      const message = getFirebaseAuthErrorMessage(error, 'Could not send password reset email. Please try again.');
+      const message = getSupabaseAuthErrorMessage(error, 'Could not send password reset email. Please try again.');
       setSecureError(message);
       setAuthNotice('');
       setStatus(message);
@@ -1507,7 +1522,7 @@ export default function VoiceExpenseTrackerPreview() {
     setAuthNotice('');
     try {
       await updateCurrentUserPassword(newPassword);
-      await signOutFirebase();
+      await signOutSupabase();
       localStorage.removeItem(AUTH_KEY);
       clearStorageScope();
       window.history.replaceState({}, document.title, '/react.html');
@@ -1527,7 +1542,7 @@ export default function VoiceExpenseTrackerPreview() {
       setStatus('Password updated successfully');
       setAuthView('login');
     } catch (error) {
-      const message = getFirebaseAuthErrorMessage(error, error?.message || 'Password reset link is expired or invalid. Please request a new reset link.');
+      const message = getSupabaseAuthErrorMessage(error, error?.message || 'Password reset link is expired or invalid. Please request a new reset link.');
       setSecureError(message);
       setStatus(message);
     } finally {
@@ -1537,12 +1552,12 @@ export default function VoiceExpenseTrackerPreview() {
 
   const logout = async () => {
     if (import.meta.env.DEV) {
-      console.info('[Auth logout requested]', { uid: authUser?.uid || null, firebaseEnabled });
+      debugInfo('[Auth logout requested]', { uid: authUser?.uid || null, supabaseEnabled });
     }
-    if (firebaseEnabled) {
-      await signOutFirebase().catch((error) => {
+    if (supabaseEnabled) {
+      await signOutSupabase().catch((error) => {
         if (import.meta.env.DEV) {
-          console.error('[Auth logout error]', error);
+          debugError('[Auth logout error]', error);
         }
       });
     }
@@ -1615,8 +1630,8 @@ export default function VoiceExpenseTrackerPreview() {
         setStatus('Sign in again to send verification email');
       }
     } catch (error) {
-      const message = getFirebaseAuthErrorMessage(error, error?.message || 'Could not send verification email.');
-      console.error('RESEND_VERIFICATION_UI_ERROR', {
+      const message = getSupabaseAuthErrorMessage(error, error?.message || 'Could not send verification email.');
+      debugError('RESEND_VERIFICATION_UI_ERROR', {
         code: error?.code || null,
         message: error?.message || String(error),
         email: authUser?.email || authDebugInfo.email || '',
@@ -1629,14 +1644,14 @@ export default function VoiceExpenseTrackerPreview() {
     }
   };
 
-  const runDebugFirestoreTest = async () => {
+  const runDebugSupabaseTest = async () => {
     setSecureError('');
     setStatus('Running database test...');
     try {
-      const result = await runFirestoreDebugTest();
+      const result = await runSupabaseDebugTest();
       setStatus(`Database test wrote ${result.path}`);
     } catch (error) {
-      const message = publicSafeError(error, 'Database test failed. Check console for DEBUG_FIRESTORE_TEST_ERROR.');
+      const message = publicSafeError(error, 'Database test failed. Check Supabase RLS policies and signed-in session.');
       setSecureError(message);
       setStatus(message);
     }
@@ -1646,7 +1661,7 @@ export default function VoiceExpenseTrackerPreview() {
     try {
       setAuthLoading(true);
       setSecureError('');
-      const refreshedUser = await reloadCurrentFirebaseUser();
+      const refreshedUser = await reloadCurrentSupabaseUser();
       if (!refreshedUser) {
         setSecureError('Please login again before checking verification.');
         setStatus('Login required');
@@ -1680,7 +1695,7 @@ export default function VoiceExpenseTrackerPreview() {
       setAuthNotice('Email is not verified yet. Please check Inbox, Spam, and Promotions folders.');
       setStatus('Email verification pending');
     } catch (error) {
-      setSecureError(getFirebaseAuthErrorMessage(error, 'Could not check email verification.'));
+      setSecureError(getSupabaseAuthErrorMessage(error, 'Could not check email verification.'));
     } finally {
       setAuthLoading(false);
     }
@@ -1726,12 +1741,12 @@ export default function VoiceExpenseTrackerPreview() {
     let unsubscribe = () => {};
     let active = true;
 
-    if (!firebaseEnabled) {
+    if (!supabaseEnabled) {
       return () => {};
     }
 
     setAuthLoading(true);
-    listenToFirebaseAuth(
+    listenToSupabaseAuth(
       async (user) => {
         if (!active) {
           return;
@@ -1757,7 +1772,7 @@ export default function VoiceExpenseTrackerPreview() {
           await applyAuthenticatedUser(user);
         } else {
           if (import.meta.env.DEV) {
-            console.info('[Supabase auth state]', { user: null });
+            debugInfo('[Supabase auth state]', { user: null });
           }
           mergeAuthDebugInfo({
             sessionState: 'signed-out',
@@ -1776,13 +1791,13 @@ export default function VoiceExpenseTrackerPreview() {
         if (!active) {
           return;
         }
-        setSecureError(getFirebaseAuthErrorMessage(error, 'Supabase authentication is unavailable.'));
+        setSecureError(getSupabaseAuthErrorMessage(error, 'Supabase authentication is unavailable.'));
         setAuthLoading(false);
       }
     ).then((handler) => {
       unsubscribe = handler;
     }).catch((error) => {
-      setSecureError(getFirebaseAuthErrorMessage(error, 'Supabase authentication is unavailable.'));
+      setSecureError(getSupabaseAuthErrorMessage(error, 'Supabase authentication is unavailable.'));
       setAuthLoading(false);
     });
 
@@ -1790,7 +1805,7 @@ export default function VoiceExpenseTrackerPreview() {
       active = false;
       unsubscribe();
     };
-  }, [firebaseEnabled]);
+  }, [supabaseEnabled]);
   const partyLedgers = useMemo(() => getPartyLedgers(ledgers), [ledgers]);
   const customerParties = useMemo(
     () => partyLedgers.filter((ledger) => ledger.group === 'Sundry Debtors'),
@@ -2017,16 +2032,16 @@ export default function VoiceExpenseTrackerPreview() {
         transactionId: voucher.id,
         userId: authUser.uid,
       };
-      const firestorePath = `users/${authUser.uid}/transactions/${voucher.id}`;
+      const supabasePath = `users/${authUser.uid}/transactions/${voucher.id}`;
 
-      console.info('[Transaction save request]', {
-        currentFirebaseUserUid: authUser.uid,
-        path: firestorePath,
+      debugInfo('[Transaction save request]', {
+        currentSupabaseUserUid: authUser.uid,
+        path: supabasePath,
         payload: transactionPayload,
       });
-      console.info('FIRESTORE_PATH_USED', {
+      debugInfo('SUPABASE_PATH_USED', {
         feature: 'transaction_write',
-        path: firestorePath,
+        path: supabasePath,
         uid: authUser.uid,
         transactionId: voucher.id,
       });
@@ -2034,22 +2049,22 @@ export default function VoiceExpenseTrackerPreview() {
       try {
         const saved = await saveCloudRecord(authUser.uid, 'transactions', voucher.id, transactionPayload);
         if (!saved) {
-          throw new Error(`Supabase write returned false for ${firestorePath}`);
+          throw new Error(`Supabase write returned false for ${supabasePath}`);
         }
-        console.info('[Transaction save success]', {
-          currentFirebaseUserUid: authUser.uid,
-          path: firestorePath,
+        debugInfo('[Transaction save success]', {
+          currentSupabaseUserUid: authUser.uid,
+          path: supabasePath,
           transactionId: voucher.id,
         });
         setVouchers((current) => {
           const nextVouchers = sortVouchersNewestFirst([voucher, ...current.filter((item) => item.id !== voucher.id)]);
-          console.info('DASHBOARD_TRANSACTIONS_LOADED', {
+          debugInfo('DASHBOARD_TRANSACTIONS_LOADED', {
             reason: 'transaction_saved',
             path: `users/${authUser.uid}/transactions`,
             uid: authUser.uid,
             count: nextVouchers.length,
           });
-          console.info('DAYBOOK_TRANSACTIONS_LOADED', {
+          debugInfo('DAYBOOK_TRANSACTIONS_LOADED', {
             reason: 'transaction_saved',
             path: `users/${authUser.uid}/transactions`,
             uid: authUser.uid,
@@ -2061,9 +2076,9 @@ export default function VoiceExpenseTrackerPreview() {
         return true;
       } catch (error) {
         const message = publicSafeError(error, 'Cloud transaction save failed. Please try again.');
-        console.error('[Transaction save error]', {
-          currentFirebaseUserUid: authUser.uid,
-          path: firestorePath,
+        debugError('[Transaction save error]', {
+          currentSupabaseUserUid: authUser.uid,
+          path: supabasePath,
           payload: transactionPayload,
           error,
         });
@@ -2076,7 +2091,7 @@ export default function VoiceExpenseTrackerPreview() {
     if (import.meta.env.DEV) {
       saveVoucher(voucher);
       refreshVouchers();
-      console.info('[Transaction saved in development storage]', {
+      debugInfo('[Transaction saved in development storage]', {
         reason: 'No Supabase user is available in local development.',
         transactionId: voucher.id,
         payload: voucher,
@@ -3085,7 +3100,9 @@ export default function VoiceExpenseTrackerPreview() {
             </div>
           </section>
         ) : LEGAL_PAGE_IDS.includes(authView) ? (
-          <LegalPage page={authView} onBack={() => setAuthView('landing')} />
+          <Suspense fallback={<div className="panel skeleton-panel">Loading legal page...</div>}>
+            <LegalPage page={authView} onBack={() => setAuthView('landing')} />
+          </Suspense>
         ) : authView === 'landing' ? (
           <>
             <section className="saas-hero" id="home">
@@ -3204,8 +3221,8 @@ export default function VoiceExpenseTrackerPreview() {
         ) : (
           <section className="auth-page">
             <div className="auth-card">
-              <span className={`security-mode ${firebaseEnabled ? 'live' : 'demo'}`}>
-                {firebaseEnabled ? 'Supabase secure mode' : ALLOW_DEMO_AUTH ? 'Local demo mode' : 'Supabase required'}
+              <span className={`security-mode ${supabaseEnabled ? 'live' : 'demo'}`}>
+                {supabaseEnabled ? 'Supabase secure mode' : ALLOW_DEMO_AUTH ? 'Local demo mode' : 'Supabase required'}
               </span>
               <span className="saas-kicker">
                 {authView === 'reset-password' ? 'Account recovery' : authView === 'login' ? 'Welcome back' : 'Create account'}
@@ -3223,7 +3240,7 @@ export default function VoiceExpenseTrackerPreview() {
                 <form onSubmit={resetPassword}>
                   <label className="field-label" htmlFor="reset-email">Registered Email</label>
                   <input id="reset-email" name="email" type="email" placeholder="owner@business.com" autoComplete="email" />
-                  <button className="saas-primary-button full" type="submit" disabled={authLoading || !firebaseEnabled}>
+                  <button className="saas-primary-button full" type="submit" disabled={authLoading || !supabaseEnabled}>
                     {authLoading ? 'Sending...' : 'Send Reset Link'}
                   </button>
                   <button className="saas-google-button" type="button" onClick={() => setAuthView('login')} disabled={authLoading}>
@@ -3247,7 +3264,7 @@ export default function VoiceExpenseTrackerPreview() {
                 {authView === 'login' && (
                   <div className="auth-row">
                     <label><input type="checkbox" /> Remember me</label>
-                    <button type="button" onClick={() => setAuthView('reset-password')} disabled={!firebaseEnabled}>
+                    <button type="button" onClick={() => setAuthView('reset-password')} disabled={!supabaseEnabled}>
                       Forgot password?
                     </button>
                   </div>
@@ -3328,7 +3345,7 @@ export default function VoiceExpenseTrackerPreview() {
         <nav className="side-nav" aria-label="ERP sections">
           {SIDEBAR_SECTIONS.map((section) => ({
             ...section,
-            items: section.items.filter(([tab]) => tab !== 'firestore-test' || canViewFirestoreDebug),
+            items: section.items.filter(([tab]) => tab !== 'database-test' || canViewDatabaseDebug),
           })).filter((section) => section.items.length > 0).map((section) => {
             const isExpanded = expandedSidebarSection === section.id;
             const hasActiveItem = section.items.some(([tab]) => tab === activeTab);
@@ -3374,8 +3391,8 @@ export default function VoiceExpenseTrackerPreview() {
             <span className="eyebrow">Professional Business Tracker</span>
             <strong>{status}</strong>
             <div className="runtime-badges">
-              <span className={`runtime-pill ${firebaseEnabled ? 'live' : 'demo'}`}>
-                {firebaseEnabled ? 'Supabase protected' : 'Local demo'}
+              <span className={`runtime-pill ${supabaseEnabled ? 'live' : 'demo'}`}>
+                {supabaseEnabled ? 'Supabase protected' : 'Local demo'}
               </span>
               <span className={`runtime-pill ${offline ? 'offline' : 'online'}`}>
                 {offline ? 'Offline' : 'Online'}
@@ -3421,7 +3438,9 @@ export default function VoiceExpenseTrackerPreview() {
           )}
 
           {LEGAL_PAGE_IDS.includes(activeTab) && (
-            <LegalPage page={activeTab} onBack={() => { window.location.hash = 'app-settings'; }} />
+            <Suspense fallback={<div className="panel skeleton-panel">Loading legal page...</div>}>
+              <LegalPage page={activeTab} onBack={() => { window.location.hash = 'app-settings'; }} />
+            </Suspense>
           )}
           
           {activeTab === 'dashboard' && (
@@ -3724,28 +3743,30 @@ export default function VoiceExpenseTrackerPreview() {
             'notifications',
             'analytics',
           ].includes(activeTab) && (
-            <Phase2ERP
-              activeTab={activeTab}
-              profile={profile}
-              vouchers={vouchers}
-              ledgers={ledgers}
-              partySummary={partySummary}
-              cashBalance={cashInHand}
-              netProfit={monthlyNetProfit}
-              cloudCustomers={cloudCustomers}
-              cloudSuppliers={cloudSuppliers}
-              cloudInventory={cloudInventory}
-              cloudStockTransactions={cloudStockTransactions}
-              cloudInvoices={cloudInvoices}
-              cloudBusinesses={cloudBusinesses}
-              cloudNotifications={cloudNotifications}
-              cloudUserId={authUser?.uid}
-              peopleLoading={peopleLoading}
-              onStatus={setStatus}
-              onCloudRecord={saveAuthenticatedCloudRecord}
-              onCloudDelete={deleteAuthenticatedCloudRecord}
-              onCloudSnapshot={saveCloudDataSnapshot}
-            />
+            <Suspense fallback={<div className="panel skeleton-panel">Loading ERP module...</div>}>
+              <Phase2ERP
+                activeTab={activeTab}
+                profile={profile}
+                vouchers={vouchers}
+                ledgers={ledgers}
+                partySummary={partySummary}
+                cashBalance={cashInHand}
+                netProfit={monthlyNetProfit}
+                cloudCustomers={cloudCustomers}
+                cloudSuppliers={cloudSuppliers}
+                cloudInventory={cloudInventory}
+                cloudStockTransactions={cloudStockTransactions}
+                cloudInvoices={cloudInvoices}
+                cloudBusinesses={cloudBusinesses}
+                cloudNotifications={cloudNotifications}
+                cloudUserId={authUser?.uid}
+                peopleLoading={peopleLoading}
+                onStatus={setStatus}
+                onCloudRecord={saveAuthenticatedCloudRecord}
+                onCloudDelete={deleteAuthenticatedCloudRecord}
+                onCloudSnapshot={saveCloudDataSnapshot}
+              />
+            </Suspense>
           )}
 
           {[
@@ -3759,31 +3780,33 @@ export default function VoiceExpenseTrackerPreview() {
             'accountant-portal',
             'security-center',
           ].includes(activeTab) && (
-            <Phase3Ops
-              activeTab={activeTab}
-              profile={profile}
-              invoices={cloudInvoices}
-              customers={cloudCustomers}
-              products={cloudInventory}
-              vouchers={vouchers}
-              partySummary={partySummary}
-              authUser={authUser}
-              firebaseEnabled={firebaseEnabled}
-              cloudOrders={cloudOrders}
-              cloudEmployees={cloudEmployees}
-              cloudAttendance={cloudAttendance}
-              cloudPayments={cloudPayments}
-              cloudAuditLogs={cloudAuditLogs}
-              cloudSubscription={cloudSubscription}
-              cloudSecurity={cloudSecurity}
-              cloudDevices={cloudDevices}
-              cloudOfflineQueue={cloudOfflineQueue}
-              onResendVerification={resendVerificationEmail}
-              onStatus={setStatus}
-              onCloudRecord={saveAuthenticatedCloudRecord}
-              onCloudDelete={deleteAuthenticatedCloudRecord}
-              onCloudSnapshot={saveCloudDataSnapshot}
-            />
+            <Suspense fallback={<div className="panel skeleton-panel">Loading operations module...</div>}>
+              <Phase3Ops
+                activeTab={activeTab}
+                profile={profile}
+                invoices={cloudInvoices}
+                customers={cloudCustomers}
+                products={cloudInventory}
+                vouchers={vouchers}
+                partySummary={partySummary}
+                authUser={authUser}
+                supabaseEnabled={supabaseEnabled}
+                cloudOrders={cloudOrders}
+                cloudEmployees={cloudEmployees}
+                cloudAttendance={cloudAttendance}
+                cloudPayments={cloudPayments}
+                cloudAuditLogs={cloudAuditLogs}
+                cloudSubscription={cloudSubscription}
+                cloudSecurity={cloudSecurity}
+                cloudDevices={cloudDevices}
+                cloudOfflineQueue={cloudOfflineQueue}
+                onResendVerification={resendVerificationEmail}
+                onStatus={setStatus}
+                onCloudRecord={saveAuthenticatedCloudRecord}
+                onCloudDelete={deleteAuthenticatedCloudRecord}
+                onCloudSnapshot={saveCloudDataSnapshot}
+              />
+            </Suspense>
           )}
 
           {activeTab === 'voucher-entry' && (
@@ -4759,8 +4782,8 @@ export default function VoiceExpenseTrackerPreview() {
             </section>
           )}
 
-          {activeTab === 'firestore-test' && canViewFirestoreDebug && (
-            <section className="panel fade-in" id="firestore-test">
+          {activeTab === 'database-test' && canViewDatabaseDebug && (
+            <section className="panel fade-in" id="database-test">
               <div className="section-header">
                 <div>
                   <span className="eyebrow">Temporary Debug</span>
@@ -4769,20 +4792,20 @@ export default function VoiceExpenseTrackerPreview() {
                     Direct Supabase write and read-back test for the signed-in user. No app business logic is used.
                   </p>
                 </div>
-                <span className={`runtime-pill ${firebaseEnabled ? 'live' : 'demo'}`}>
-                  {firebaseEnabled ? 'Supabase configured' : 'Supabase missing'}
+                <span className={`runtime-pill ${supabaseEnabled ? 'live' : 'demo'}`}>
+                  {supabaseEnabled ? 'Supabase configured' : 'Supabase missing'}
                 </span>
               </div>
               <div className="notice">
                 This writes to the Supabase <code>debug_tests</code> table for <code>{`users/${authUser?.uid || 'uid'}/debug/test`}</code>.
                 <br />
-                Supabase project: <code>{getFirebaseProjectId() || 'not configured'}</code>
+                Supabase project: <code>{getSupabaseProjectHost() || 'not configured'}</code>
               </div>
               <button
                 className="manual-button"
                 type="button"
-                onClick={runDebugFirestoreTest}
-                disabled={!authUser || !firebaseEnabled}
+                onClick={runDebugSupabaseTest}
+                disabled={!authUser || !supabaseEnabled}
               >
                 Run Database Test
               </button>
@@ -5105,3 +5128,9 @@ export default function VoiceExpenseTrackerPreview() {
     </div>
   );
 }
+
+
+
+
+
+

@@ -5,6 +5,16 @@ const GLOBAL_KEYS = new Set([
   'darkMode',
 ]);
 
+function isProductionBusinessKey(key) {
+  return import.meta.env.PROD && !GLOBAL_KEYS.has(key);
+}
+
+function warnBlockedProductionStorage(action, key) {
+  if (import.meta.env.DEV) {
+    console.warn(`[storageScope] ${action} blocked for production business key`, { key });
+  }
+}
+
 function cleanScope(value) {
   return String(value || 'demo')
     .trim()
@@ -33,7 +43,8 @@ export function scopedKey(key) {
 }
 
 export function readScopedString(key) {
-  if (import.meta.env.PROD && !GLOBAL_KEYS.has(key)) {
+  if (isProductionBusinessKey(key)) {
+    warnBlockedProductionStorage('read', key);
     return null;
   }
 
@@ -46,7 +57,8 @@ export function readScopedString(key) {
 }
 
 export function writeScopedString(key, value) {
-  if (import.meta.env.PROD && !GLOBAL_KEYS.has(key)) {
+  if (isProductionBusinessKey(key)) {
+    warnBlockedProductionStorage('write', key);
     return;
   }
 
@@ -54,7 +66,8 @@ export function writeScopedString(key, value) {
 }
 
 export function removeScopedValue(key) {
-  if (import.meta.env.PROD && !GLOBAL_KEYS.has(key)) {
+  if (isProductionBusinessKey(key)) {
+    warnBlockedProductionStorage('remove', key);
     return;
   }
 

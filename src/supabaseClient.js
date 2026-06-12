@@ -33,12 +33,42 @@ const CLOUD_TIMEOUT_MESSAGE = 'Supabase write timed out. Please check Supabase p
 
 let supabaseClient;
 let projectLogged = false;
+const SHOULD_DEBUG_DATABASE = import.meta.env.DEV || import.meta.env.VITE_DEBUG_DATABASE === 'true';
 
-export function isFirebaseConfigured() {
+function sanitizeLogValue(value) {
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map(sanitizeLogValue);
+  }
+  return Object.fromEntries(Object.entries(value).map(([key, entry]) => {
+    if (/payload|data|row|token|jwt|password|secret|anonKey/i.test(key)) {
+      return [key, '[redacted]'];
+    }
+    return [key, sanitizeLogValue(entry)];
+  }));
+}
+
+function cloudInfo(...args) {
+  if (SHOULD_DEBUG_DATABASE) {
+    console.info(...args);
+  }
+}
+
+function cloudError(...args) {
+  if (SHOULD_DEBUG_DATABASE) {
+    console.error(...args);
+    return;
+  }
+  console.error(...args.map(sanitizeLogValue));
+}
+
+export function isSupabaseConfigured() {
   return Boolean(getSupabaseConfigError() === '');
 }
 
-export function getFirebaseProjectId() {
+export function getSupabaseProjectHost() {
   try {
     return supabaseConfig.url ? new URL(supabaseConfig.url).hostname : '';
   } catch {
@@ -46,7 +76,7 @@ export function getFirebaseProjectId() {
   }
 }
 
-export function getFirebaseAuthDomain() {
+export function getSupabaseUrl() {
   return supabaseConfig.url || '';
 }
 
@@ -82,7 +112,7 @@ function getSupabaseClient() {
     throw error;
   }
 
-  if (!isFirebaseConfigured()) {
+  if (!isSupabaseConfigured()) {
     return null;
   }
 
@@ -97,9 +127,9 @@ function getSupabaseClient() {
   }
 
   if (!projectLogged) {
-    console.info('SUPABASE_PROJECT', {
+    cloudInfo('SUPABASE_PROJECT', {
       url: supabaseConfig.url || null,
-      host: getFirebaseProjectId() || null,
+      host: getSupabaseProjectHost() || null,
     });
     projectLogged = true;
   }
@@ -107,17 +137,17 @@ function getSupabaseClient() {
   return supabaseClient;
 }
 
-function normalizeFirebaseEmail(email) {
+function normalizeSupabaseEmail(email) {
   return sanitizeEmail(email).toLowerCase().trim();
 }
 
 function cloudTimeoutError(meta) {
   const error = new Error(CLOUD_TIMEOUT_MESSAGE);
   error.code = 'supabase/write-timeout';
-  console.error('FIRESTORE_WRITE_TIMEOUT', {
-    projectId: getFirebaseProjectId() || null,
+  cloudError('SUPABASE_WRITE_TIMEOUT', {
+    projectId: getSupabaseProjectHost() || null,
     authDomain: supabaseConfig.url || null,
-    currentFirebaseUserUid: meta.currentFirebaseUserUid || null,
+    currentSupabaseUserUid: meta.currentSupabaseUserUid || null,
     requestedUid: meta.uid || null,
     path: meta.path || null,
     operation: meta.operation || null,
@@ -251,7 +281,7 @@ function mapAuthError(error) {
   return code || 'auth/error';
 }
 
-export function getFirebaseAuthErrorMessage(error, fallback = 'Authentication failed. Please try again.') {
+export function getSupabaseAuthErrorMessage(error, fallback = 'Authentication failed. Please try again.') {
   const code = String(error?.code || mapAuthError(error)).toLowerCase();
   const message = String(error?.message || '').toLowerCase();
   const messages = {
@@ -294,15 +324,15 @@ export function getFirebaseAuthErrorMessage(error, fallback = 'Authentication fa
   return messages[code] || fallback;
 }
 
-export async function createFirebaseAccount({ email, password, ownerName, businessName }) {
+export async function createSupabaseAccount({ email, password, ownerName, businessName }) {
   const client = getSupabaseClient();
   if (!client) {
     return null;
   }
 
-  const normalizedEmail = normalizeFirebaseEmail(email);
+  const normalizedEmail = normalizeSupabaseEmail(email);
   const emailRedirectTo = authRedirectTo();
-  console.info('[Supabase auth register start]', { email: normalizedEmail, emailRedirectTo });
+  cloudInfo('[Supabase auth register start]', { email: normalizedEmail, emailRedirectTo });
   const signUpResponse = await client.auth.signUp({
     email: normalizedEmail,
     password,
@@ -316,7 +346,7 @@ export async function createFirebaseAccount({ email, password, ownerName, busine
     },
   });
   const { data, error } = signUpResponse;
-  console.info('SUPABASE_SIGNUP_RESPONSE', redactAuthResponse({
+  cloudInfo('SUPABASE_SIGNUP_RESPONSE', redactAuthResponse({
     data,
     error,
     emailRedirectTo,
@@ -324,7 +354,7 @@ export async function createFirebaseAccount({ email, password, ownerName, busine
 
   if (error) {
     error.code = mapAuthError(error);
-    console.error('SUPABASE_SIGNUP_ERROR', {
+    cloudError('SUPABASE_SIGNUP_ERROR', {
       code: error.code,
       message: error.message,
       status: error.status || null,
@@ -340,14 +370,14 @@ export async function createFirebaseAccount({ email, password, ownerName, busine
   }
 
   const alreadyExistsUnconfirmedLikely = Array.isArray(user.identities) && user.identities.length === 0 && !user.email_confirmed_at;
-  console.info('REGISTER_SUCCESS', {
+  cloudInfo('REGISTER_SUCCESS', {
     uid: user.id,
     email: normalizedEmail,
     emailVerified: Boolean(user.email_confirmed_at || user.confirmed_at),
     confirmationSentAt: user.confirmation_sent_at || null,
     alreadyExistsUnconfirmedLikely,
   });
-  console.info('EMAIL_VERIFICATION_SENT', { uid: user.id, email: normalizedEmail, emailRedirectTo });
+  cloudInfo('EMAIL_VERIFICATION_SENT', { uid: user.id, email: normalizedEmail, emailRedirectTo });
   const payload = userPayload(user, {
     email: normalizedEmail,
     ownerName,
@@ -361,7 +391,7 @@ export async function createFirebaseAccount({ email, password, ownerName, busine
   if (data?.session) {
     await saveUserProfile(payload.uid, payload);
   }
-  console.info('[Supabase auth register success]', {
+  cloudInfo('[Supabase auth register success]', {
     uid: payload.uid,
     email: payload.email,
     emailVerified: payload.emailVerified,
@@ -371,24 +401,24 @@ export async function createFirebaseAccount({ email, password, ownerName, busine
   return payload;
 }
 
-export async function signInFirebaseAccount({ email, password }) {
+export async function signInSupabaseAccount({ email, password }) {
   const client = getSupabaseClient();
   if (!client) {
     return null;
   }
 
-  const normalizedEmail = normalizeFirebaseEmail(email);
-  console.info('[Supabase auth login start]', { email: normalizedEmail });
+  const normalizedEmail = normalizeSupabaseEmail(email);
+  cloudInfo('[Supabase auth login start]', { email: normalizedEmail });
   const signInResponse = await client.auth.signInWithPassword({
     email: normalizedEmail,
     password,
   });
   const { data, error } = signInResponse;
-  console.info('SUPABASE_SIGNIN_RESPONSE', redactAuthResponse({ data, error }));
+  cloudInfo('SUPABASE_SIGNIN_RESPONSE', redactAuthResponse({ data, error }));
 
   if (error) {
     error.code = mapAuthError(error);
-    console.error('SUPABASE_SIGNIN_ERROR', {
+    cloudError('SUPABASE_SIGNIN_ERROR', {
       code: error.code,
       message: error.message,
       status: error.status || null,
@@ -404,12 +434,12 @@ export async function signInFirebaseAccount({ email, password }) {
 
   const payload = userPayload(user, { email: normalizedEmail, sessionState: data?.session ? 'active' : 'missing-session' });
   await saveUserProfile(payload.uid, payload);
-  console.info('LOGIN_SUCCESS', { uid: payload.uid, emailVerified: payload.emailVerified });
-  console.info('[Supabase auth login success]', { uid: payload.uid, email: payload.email });
+  cloudInfo('LOGIN_SUCCESS', { uid: payload.uid, emailVerified: payload.emailVerified });
+  cloudInfo('[Supabase auth login success]', { uid: payload.uid, email: payload.email });
   return payload;
 }
 
-export async function signInFirebaseGoogle() {
+export async function signInSupabaseGoogle() {
   const client = getSupabaseClient();
   if (!client) {
     return null;
@@ -431,7 +461,7 @@ export async function signInFirebaseGoogle() {
 export async function sendCurrentUserEmailVerification(emailOverride = '') {
   const client = getSupabaseClient();
   const user = await getCurrentSupabaseUser(client);
-  const email = normalizeFirebaseEmail(user?.email || emailOverride);
+  const email = normalizeSupabaseEmail(user?.email || emailOverride);
   if (!client || !email) {
     const error = new Error('No email is available for verification resend.');
     error.code = 'auth/missing-email';
@@ -439,7 +469,7 @@ export async function sendCurrentUserEmailVerification(emailOverride = '') {
   }
 
   const emailRedirectTo = authRedirectTo();
-  console.info('SUPABASE_RESEND_VERIFICATION_START', {
+  cloudInfo('SUPABASE_RESEND_VERIFICATION_START', {
     uid: user?.id || null,
     email,
     emailRedirectTo,
@@ -453,7 +483,7 @@ export async function sendCurrentUserEmailVerification(emailOverride = '') {
     },
   });
   const { data, error } = resendResponse;
-  console.info('SUPABASE_RESEND_VERIFICATION_RESPONSE', redactAuthResponse({
+  cloudInfo('SUPABASE_RESEND_VERIFICATION_RESPONSE', redactAuthResponse({
     data,
     error,
     email,
@@ -461,7 +491,7 @@ export async function sendCurrentUserEmailVerification(emailOverride = '') {
   }));
   if (error) {
     error.code = mapAuthError(error);
-    console.error('SUPABASE_RESEND_VERIFICATION_ERROR', {
+    cloudError('SUPABASE_RESEND_VERIFICATION_ERROR', {
       code: error.code,
       message: error.message,
       status: error.status || null,
@@ -471,7 +501,7 @@ export async function sendCurrentUserEmailVerification(emailOverride = '') {
     throw error;
   }
   const lastResendAt = new Date().toISOString();
-  console.info('EMAIL_VERIFICATION_SENT', { uid: user?.id || null, email, emailRedirectTo, lastResendAt });
+  cloudInfo('EMAIL_VERIFICATION_SENT', { uid: user?.id || null, email, emailRedirectTo, lastResendAt });
   return {
     ok: true,
     uid: user?.id || '',
@@ -482,26 +512,26 @@ export async function sendCurrentUserEmailVerification(emailOverride = '') {
   };
 }
 
-export async function reloadCurrentFirebaseUser() {
+export async function reloadCurrentSupabaseUser() {
   const user = await getCurrentSupabaseUser();
   return user ? userPayload(user) : null;
 }
 
-export async function sendFirebasePasswordReset(email) {
+export async function sendSupabasePasswordReset(email) {
   const client = getSupabaseClient();
   if (!client) {
     return false;
   }
 
-  const normalizedEmail = normalizeFirebaseEmail(email);
+  const normalizedEmail = normalizeSupabaseEmail(email);
   const redirectTo = passwordRecoveryRedirectTo();
-  console.info('PASSWORD_RESET_START', { email: normalizedEmail, redirectTo });
+  cloudInfo('PASSWORD_RESET_START', { email: normalizedEmail, redirectTo });
   const { error } = await client.auth.resetPasswordForEmail(normalizedEmail, {
     redirectTo,
   });
 
   if (error) {
-    console.error('PASSWORD_RESET_ERROR', {
+    cloudError('PASSWORD_RESET_ERROR', {
       code: mapAuthError(error),
       message: error?.message || '',
     });
@@ -509,7 +539,7 @@ export async function sendFirebasePasswordReset(email) {
     throw error;
   }
 
-  console.info('PASSWORD_RESET_SUCCESS', { email: normalizedEmail, redirectTo });
+  cloudInfo('PASSWORD_RESET_SUCCESS', { email: normalizedEmail, redirectTo });
   return true;
 }
 
@@ -519,11 +549,11 @@ export async function updateCurrentUserPassword(newPassword) {
     return false;
   }
 
-  console.info('PASSWORD_UPDATE_START');
+  cloudInfo('PASSWORD_UPDATE_START');
   const { data, error } = await client.auth.updateUser({ password: String(newPassword || '') });
-  console.info('SUPABASE_PASSWORD_UPDATE_RESPONSE', redactAuthResponse({ data, error }));
+  cloudInfo('SUPABASE_PASSWORD_UPDATE_RESPONSE', redactAuthResponse({ data, error }));
   if (error) {
-    console.error('PASSWORD_UPDATE_ERROR', {
+    cloudError('PASSWORD_UPDATE_ERROR', {
       code: mapAuthError(error),
       message: error?.message || '',
       status: error?.status || null,
@@ -531,20 +561,20 @@ export async function updateCurrentUserPassword(newPassword) {
     error.code = mapAuthError(error);
     throw error;
   }
-  console.info('PASSWORD_UPDATE_SUCCESS', { uid: data?.user?.id || null });
+  cloudInfo('PASSWORD_UPDATE_SUCCESS', { uid: data?.user?.id || null });
   return true;
 }
 
-export async function runFirestoreDebugTest() {
+export async function runSupabaseDebugTest() {
   const client = getSupabaseClient();
   const user = await getCurrentSupabaseUser(client);
   const uid = user?.id;
   const path = uid ? pathFor(uid, 'debug_tests', 'test') : null;
 
-  console.info('DEBUG_FIRESTORE_TEST_START', {
+  cloudInfo('DEBUG_SUPABASE_TEST_START', {
     uid: uid || null,
     path,
-    projectId: getFirebaseProjectId() || null,
+    projectId: getSupabaseProjectHost() || null,
     authDomain: supabaseConfig.url || null,
   });
 
@@ -556,10 +586,10 @@ export async function runFirestoreDebugTest() {
     const row = {
       id: 'test',
       user_id: uid,
-      message: 'hello firestore',
+      message: 'hello supabase',
       data: {
         id: 'test',
-        message: 'hello firestore',
+        message: 'hello supabase',
         testValue: 'supabase debug ok',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -568,14 +598,14 @@ export async function runFirestoreDebugTest() {
     };
     await withCloudTimeout(
       client.from('debug_tests').upsert(row, { onConflict: 'user_id,id' }),
-      { path, uid, currentFirebaseUserUid: uid, operation: 'upsert:debugTest' }
+      { path, uid, currentSupabaseUserUid: uid, operation: 'upsert:debugTest' }
     ).then(({ error }) => {
       if (error) throw error;
     });
 
     const { data, error } = await withCloudTimeout(
       client.from('debug_tests').select('*').eq('user_id', uid).eq('id', 'test').single(),
-      { path, uid, currentFirebaseUserUid: uid, operation: 'select:debugTestVerify' }
+      { path, uid, currentSupabaseUserUid: uid, operation: 'select:debugTestVerify' }
     );
     if (error) throw error;
     if (!data) {
@@ -584,52 +614,52 @@ export async function runFirestoreDebugTest() {
       throw verificationError;
     }
 
-    console.info('DEBUG_FIRESTORE_TEST_SUCCESS', {
+    cloudInfo('DEBUG_SUPABASE_TEST_SUCCESS', {
       uid,
       path,
-      projectId: getFirebaseProjectId() || null,
+      projectId: getSupabaseProjectHost() || null,
       authDomain: supabaseConfig.url || null,
       verified: true,
     });
     return { ok: true, uid, path };
   } catch (error) {
     if (error?.code === 'supabase/write-timeout') {
-      console.error('DEBUG_FIRESTORE_TEST_TIMEOUT', {
+      cloudError('DEBUG_SUPABASE_TEST_TIMEOUT', {
         uid: uid || null,
         path,
-        projectId: getFirebaseProjectId() || null,
+        projectId: getSupabaseProjectHost() || null,
         authDomain: supabaseConfig.url || null,
         code: error?.code || null,
         message: error?.message || String(error),
       });
     }
-    console.error('DEBUG_FIRESTORE_TEST_ERROR', error?.code || null, error?.message || String(error), {
+    cloudError('DEBUG_SUPABASE_TEST_ERROR', error?.code || null, error?.message || String(error), {
       uid: uid || null,
       path,
-      projectId: getFirebaseProjectId() || null,
+      projectId: getSupabaseProjectHost() || null,
       authDomain: supabaseConfig.url || null,
     });
     throw error;
   }
 }
 
-export async function signOutFirebase() {
+export async function signOutSupabase() {
   const client = getSupabaseClient();
   if (!client) {
     return;
   }
 
   const user = await getCurrentSupabaseUser(client).catch(() => null);
-  console.info('[Supabase auth logout start]', { uid: user?.id || null });
+  cloudInfo('[Supabase auth logout start]', { uid: user?.id || null });
   const { error } = await client.auth.signOut();
   if (error) {
     error.code = mapAuthError(error);
     throw error;
   }
-  console.info('[Supabase auth logout success]');
+  cloudInfo('[Supabase auth logout success]');
 }
 
-export async function listenToFirebaseAuth(onUser, onError) {
+export async function listenToSupabaseAuth(onUser, onError) {
   let client;
   try {
     client = getSupabaseClient();
@@ -642,7 +672,7 @@ export async function listenToFirebaseAuth(onUser, onError) {
   }
 
   client.auth.getSession().then(({ data, error }) => {
-    console.info('SUPABASE_GET_SESSION_RESPONSE', redactAuthResponse({ data, error }));
+    cloudInfo('SUPABASE_GET_SESSION_RESPONSE', redactAuthResponse({ data, error }));
     const user = data?.session?.user;
     const isRecoveryUrl = typeof window !== 'undefined' && /[?&]auth=recovery\b/.test(window.location.search || '');
     onUser(user ? userPayload(user, { sessionState: isRecoveryUrl ? 'password-recovery' : 'active' }) : null);
@@ -656,7 +686,7 @@ export async function listenToFirebaseAuth(onUser, onError) {
 
   const { data } = client.auth.onAuthStateChange((event, session) => {
     try {
-      console.info('SUPABASE_AUTH_STATE_CHANGE', redactAuthResponse({ event, session }));
+      cloudInfo('SUPABASE_AUTH_STATE_CHANGE', redactAuthResponse({ event, session }));
       const sessionState = event === 'PASSWORD_RECOVERY' ? 'password-recovery' : session ? 'active' : 'missing-session';
       onUser(session?.user ? userPayload(session.user, { sessionState }) : null);
     } catch (error) {
@@ -683,10 +713,10 @@ export async function saveCloudRecord(uid, tableName, id, data) {
       : !allowed
         ? 'Table is not allowed for cloud writes.'
         : 'Missing uid, table name, or document id.');
-    console.error('FIRESTORE_WRITE_ERROR', {
-      projectId: getFirebaseProjectId() || null,
+    cloudError('SUPABASE_WRITE_ERROR', {
+      projectId: getSupabaseProjectHost() || null,
       authDomain: supabaseConfig.url || null,
-      currentFirebaseUserUid: user?.id || null,
+      currentSupabaseUserUid: user?.id || null,
       requestedUid: uid || null,
       collectionName: tableName,
       documentId: id,
@@ -700,10 +730,10 @@ export async function saveCloudRecord(uid, tableName, id, data) {
   const currentUid = user?.id || null;
   if (!currentUid) {
     const error = new Error('No authenticated Supabase user is available for database write.');
-    console.error('FIRESTORE_WRITE_ERROR', {
-      projectId: getFirebaseProjectId() || null,
+    cloudError('SUPABASE_WRITE_ERROR', {
+      projectId: getSupabaseProjectHost() || null,
       authDomain: supabaseConfig.url || null,
-      currentFirebaseUserUid: null,
+      currentSupabaseUserUid: null,
       requestedUid: uid,
       collectionName: tableName,
       documentId: id,
@@ -716,10 +746,10 @@ export async function saveCloudRecord(uid, tableName, id, data) {
 
   if (currentUid !== uid) {
     const error = new Error('Authenticated Supabase uid does not match requested database owner uid.');
-    console.error('FIRESTORE_WRITE_ERROR', {
-      projectId: getFirebaseProjectId() || null,
+    cloudError('SUPABASE_WRITE_ERROR', {
+      projectId: getSupabaseProjectHost() || null,
       authDomain: supabaseConfig.url || null,
-      currentFirebaseUserUid: currentUid,
+      currentSupabaseUserUid: currentUid,
       requestedUid: uid,
       collectionName: tableName,
       documentId: id,
@@ -731,19 +761,19 @@ export async function saveCloudRecord(uid, tableName, id, data) {
   }
 
   const row = buildRow(uid, id, data);
-  console.info('FIRESTORE_PATH_USED', {
-    projectId: getFirebaseProjectId() || null,
+  cloudInfo('SUPABASE_PATH_USED', {
+    projectId: getSupabaseProjectHost() || null,
     authDomain: supabaseConfig.url || null,
-    currentFirebaseUserUid: currentUid,
+    currentSupabaseUserUid: currentUid,
     requestedUid: uid,
     collectionName: tableName,
     documentId: id,
     path,
   });
-  console.info('FIRESTORE_WRITE_START', {
-    projectId: getFirebaseProjectId() || null,
+  cloudInfo('SUPABASE_WRITE_START', {
+    projectId: getSupabaseProjectHost() || null,
     authDomain: supabaseConfig.url || null,
-    currentFirebaseUserUid: currentUid,
+    currentSupabaseUserUid: currentUid,
     requestedUid: uid,
     path,
     operation: 'upsert',
@@ -753,13 +783,13 @@ export async function saveCloudRecord(uid, tableName, id, data) {
   try {
     const { error } = await withCloudTimeout(
       client.from(tableName).upsert(row, { onConflict: 'user_id,id' }),
-      { path, uid, currentFirebaseUserUid: currentUid, operation: `upsert:${tableName}` }
+      { path, uid, currentSupabaseUserUid: currentUid, operation: `upsert:${tableName}` }
     );
     if (error) throw error;
 
     const { data: savedRow, error: verifyError } = await withCloudTimeout(
       client.from(tableName).select('*').eq('user_id', uid).eq('id', id).single(),
-      { path, uid, currentFirebaseUserUid: currentUid, operation: `select:${tableName}:verify` }
+      { path, uid, currentSupabaseUserUid: currentUid, operation: `select:${tableName}:verify` }
     );
     if (verifyError) throw verifyError;
     if (!savedRow) {
@@ -768,10 +798,10 @@ export async function saveCloudRecord(uid, tableName, id, data) {
       throw error;
     }
 
-    console.info('FIRESTORE_WRITE_SUCCESS', {
-      projectId: getFirebaseProjectId() || null,
+    cloudInfo('SUPABASE_WRITE_SUCCESS', {
+      projectId: getSupabaseProjectHost() || null,
       authDomain: supabaseConfig.url || null,
-      currentFirebaseUserUid: currentUid,
+      currentSupabaseUserUid: currentUid,
       requestedUid: uid,
       path,
       operation: 'upsert',
@@ -779,10 +809,10 @@ export async function saveCloudRecord(uid, tableName, id, data) {
     });
     return true;
   } catch (error) {
-    console.error('FIRESTORE_WRITE_ERROR', {
-      projectId: getFirebaseProjectId() || null,
+    cloudError('SUPABASE_WRITE_ERROR', {
+      projectId: getSupabaseProjectHost() || null,
       authDomain: supabaseConfig.url || null,
-      currentFirebaseUserUid: currentUid,
+      currentSupabaseUserUid: currentUid,
       requestedUid: uid,
       collectionName: tableName,
       documentId: id,
@@ -802,24 +832,24 @@ export async function deleteCloudRecord(uid, tableName, id) {
   }
 
   const path = pathFor(uid, tableName, id);
-  console.info('[Supabase delete start]', {
-    projectId: getFirebaseProjectId() || null,
+  cloudInfo('[Supabase delete start]', {
+    projectId: getSupabaseProjectHost() || null,
     authDomain: supabaseConfig.url || null,
-    currentFirebaseUserUid: user?.id || null,
+    currentSupabaseUserUid: user?.id || null,
     requestedUid: uid,
     path,
   });
 
   const { error } = await withCloudTimeout(
     client.from(tableName).delete().eq('user_id', uid).eq('id', id),
-    { path, uid, currentFirebaseUserUid: user?.id || null, operation: `delete:${tableName}` }
+    { path, uid, currentSupabaseUserUid: user?.id || null, operation: `delete:${tableName}` }
   );
   if (error) throw error;
 
-  console.info('[Supabase delete success]', {
-    projectId: getFirebaseProjectId() || null,
+  cloudInfo('[Supabase delete success]', {
+    projectId: getSupabaseProjectHost() || null,
     authDomain: supabaseConfig.url || null,
-    currentFirebaseUserUid: user?.id || null,
+    currentSupabaseUserUid: user?.id || null,
     requestedUid: uid,
     path,
   });
@@ -834,10 +864,10 @@ export async function loadCloudCollection(uid, tableName) {
   }
 
   const path = pathFor(uid, tableName);
-  console.info('SUPABASE_LOAD_START', {
-    projectId: getFirebaseProjectId() || null,
+  cloudInfo('SUPABASE_LOAD_START', {
+    projectId: getSupabaseProjectHost() || null,
     authDomain: supabaseConfig.url || null,
-    currentFirebaseUserUid: user?.id || null,
+    currentSupabaseUserUid: user?.id || null,
     requestedUid: uid,
     tableName,
     path,
@@ -848,15 +878,15 @@ export async function loadCloudCollection(uid, tableName) {
   try {
     const result = await withCloudTimeout(
       client.from(tableName).select('*').eq('user_id', uid).order('updated_at', { ascending: false }),
-      { path, uid, currentFirebaseUserUid: user?.id || null, operation: `select:${tableName}` }
+      { path, uid, currentSupabaseUserUid: user?.id || null, operation: `select:${tableName}` }
     );
     data = result.data;
     error = result.error;
   } catch (caughtError) {
-    console.error('SUPABASE_LOAD_ERROR', {
-      projectId: getFirebaseProjectId() || null,
+    cloudError('SUPABASE_LOAD_ERROR', {
+      projectId: getSupabaseProjectHost() || null,
       authDomain: supabaseConfig.url || null,
-      currentFirebaseUserUid: user?.id || null,
+      currentSupabaseUserUid: user?.id || null,
       requestedUid: uid,
       tableName,
       path,
@@ -866,10 +896,10 @@ export async function loadCloudCollection(uid, tableName) {
     throw caughtError;
   }
   if (error) {
-    console.error('SUPABASE_LOAD_ERROR', {
-      projectId: getFirebaseProjectId() || null,
+    cloudError('SUPABASE_LOAD_ERROR', {
+      projectId: getSupabaseProjectHost() || null,
       authDomain: supabaseConfig.url || null,
-      currentFirebaseUserUid: user?.id || null,
+      currentSupabaseUserUid: user?.id || null,
       requestedUid: uid,
       tableName,
       path,
@@ -879,10 +909,10 @@ export async function loadCloudCollection(uid, tableName) {
     throw error;
   }
 
-  console.info('SUPABASE_LOAD_SUCCESS', {
-    projectId: getFirebaseProjectId() || null,
+  cloudInfo('SUPABASE_LOAD_SUCCESS', {
+    projectId: getSupabaseProjectHost() || null,
     authDomain: supabaseConfig.url || null,
-    currentFirebaseUserUid: user?.id || null,
+    currentSupabaseUserUid: user?.id || null,
     requestedUid: uid,
     tableName,
     path,
@@ -906,8 +936,12 @@ export async function loadUserProfileSettings(uid) {
   const path = pathFor(uid, 'settings', 'profile');
   const { data, error } = await withCloudTimeout(
     client.from('settings').select('*').eq('user_id', uid).eq('id', 'profile').maybeSingle(),
-    { path, uid, currentFirebaseUserUid: user?.id || null, operation: 'select:settings:profile' }
+    { path, uid, currentSupabaseUserUid: user?.id || null, operation: 'select:settings:profile' }
   );
   if (error) throw error;
   return rowToAppRecord(data);
 }
+
+
+
+

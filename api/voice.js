@@ -1,13 +1,13 @@
 const { applyEndpointRateLimits } = require('./_rateLimit.js');
 
-module.exports = function handler(request, response) {
+module.exports = async function handler(request, response) {
   if (request.method !== 'POST') {
     response.setHeader('Allow', 'POST');
     response.status(405).json({ error: 'Method not allowed' });
     return;
   }
 
-  const identity = applyEndpointRateLimits(request, response, 'voice', {
+  const identity = await applyEndpointRateLimits(request, response, 'voice', {
     ip: 30,
     user: 12,
     windowMs: 60_000,

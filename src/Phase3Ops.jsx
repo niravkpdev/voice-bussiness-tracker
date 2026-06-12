@@ -95,7 +95,7 @@ export default function Phase3Ops({
   vouchers,
   partySummary,
   authUser,
-  firebaseEnabled,
+  supabaseEnabled,
   cloudOrders,
   cloudEmployees,
   cloudAttendance,
@@ -212,7 +212,7 @@ export default function Phase3Ops({
   ], [pendingCollections, products, unpaidInvoices]);
 
   const persistRecord = async (tableName, record, fallbackMessage = 'Cloud save failed') => {
-    if (!firebaseEnabled || !authUser?.uid) {
+    if (!supabaseEnabled || !authUser?.uid) {
       throw new Error('Sign in with Supabase before saving production data.');
     }
     const saved = await onCloudRecord?.(tableName, record.id, record);
@@ -764,7 +764,7 @@ export default function Phase3Ops({
               </article>
               <article className="phase3-card">
                 <strong>Supabase RLS</strong>
-                <p>{firebaseEnabled ? 'Client is Supabase-ready. Row Level Security keeps every user scoped to their own business rows.' : 'Supabase is not configured in this environment.'}</p>
+                <p>{supabaseEnabled ? 'Client is Supabase-ready. Row Level Security keeps every user scoped to their own business rows.' : 'Supabase is not configured in this environment.'}</p>
               </article>
             </div>
             {controls.map(([key, label]) => (
@@ -799,3 +799,4 @@ function SmallUsage({ label, value, max }) {
     </div>
   );
 }
+

@@ -1,3 +1,5 @@
+const { createClient } = require('@supabase/supabase-js');
+
 const buckets = new Map();
 
 function base64UrlDecode(value) {
@@ -8,6 +10,20 @@ function base64UrlDecode(value) {
   } catch {
     return null;
   }
+}
+
+function getSupabaseServerClient() {
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return null;
+  }
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
 }
 
 function getRequestIdentity(request) {
@@ -22,14 +38,30 @@ function getRequestIdentity(request) {
   return { token, userId, ip };
 }
 
-function requireBearerToken(request, response) {
+async function requireVerifiedBearerToken(request, response) {
   const identity = getRequestIdentity(request);
   if (!identity.token) {
     response.status(401).json({ error: 'Authentication required' });
     return null;
   }
 
-  return identity;
+  const supabase = getSupabaseServerClient();
+  if (!supabase) {
+    response.status(500).json({ error: 'Supabase server auth is not configured' });
+    return null;
+  }
+
+  const { data, error } = await supabase.auth.getUser(identity.token);
+  if (error || !data?.user?.id) {
+    response.status(401).json({ error: 'Invalid or expired authentication token' });
+    return null;
+  }
+
+  return {
+    ...identity,
+    userId: data.user.id,
+    email: data.user.email || '',
+  };
 }
 
 function enforceRateLimit({ key, limit, windowMs }) {
@@ -48,8 +80,8 @@ function enforceRateLimit({ key, limit, windowMs }) {
   return { allowed: true, retryAfter: 0 };
 }
 
-function applyEndpointRateLimits(request, response, endpoint, limits) {
-  const identity = requireBearerToken(request, response);
+async function applyEndpointRateLimits(request, response, endpoint, limits) {
+  const identity = await requireVerifiedBearerToken(request, response);
   if (!identity) {
     return null;
   }
