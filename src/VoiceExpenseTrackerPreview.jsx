@@ -850,9 +850,13 @@ export default function VoiceExpenseTrackerPreview() {
   const [voiceConfirmation, setVoiceConfirmation] = useState(null);
   const [activeReportTab, setActiveReportTab] = useState('pnl');
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
-  const [openSidebarSections, setOpenSidebarSections] = useState(() => {
-    const openByDefault = ['overview', 'tally-structure', 'erp', 'people', 'automation', 'admin'];
-    return new Set(openByDefault);
+  const [openSidebarSections, setOpenSidebarSections] = useState({
+    overview: true,
+    'tally-structure': true,
+    erp: true,
+    people: true,
+    automation: true,
+    admin: true,
   });
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const sidebarSectionRefs = useRef({});
@@ -898,7 +902,10 @@ export default function VoiceExpenseTrackerPreview() {
         setActiveTab(hash);
         const section = SIDEBAR_SECTIONS.find((group) => group.children.some((child) => child.tab === hash));
         if (section) {
-          setOpenSidebarSections((current) => new Set([...current, section.id]));
+          setOpenSidebarSections((current) => ({
+            ...current,
+            [section.id]: true,
+          }));
         }
         setMobileNavOpen(false);
       }
@@ -925,13 +932,10 @@ export default function VoiceExpenseTrackerPreview() {
 
   const toggleSidebarSection = (sectionId) => {
     setOpenSidebarSections((current) => {
-      const next = new Set(current);
-      if (next.has(sectionId)) {
-        next.delete(sectionId);
-      } else {
-        next.add(sectionId);
-      }
-      return next;
+      return {
+        ...current,
+        [sectionId]: !current[sectionId],
+      };
     });
   };
 
@@ -3434,12 +3438,13 @@ export default function VoiceExpenseTrackerPreview() {
             ...section,
             children: section.children.filter((child) => !child.debugOnly || canViewDatabaseDebug),
           })).filter((section) => section.children.length > 0).map((section) => {
-            const isExpanded = openSidebarSections.has(section.id);
+            const isExpanded = Boolean(openSidebarSections[section.id]);
             const hasActiveItem = section.children.some((child) => child.tab === activeTab);
 
             return (
               <div
                 className={`sidebar-section ${isExpanded ? 'expanded' : ''} ${hasActiveItem ? 'has-active' : ''}`}
+                data-open={isExpanded ? 'true' : 'false'}
                 key={section.id}
                 ref={(node) => {
                   sidebarSectionRefs.current[section.id] = node;

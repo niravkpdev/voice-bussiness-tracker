@@ -1,4 +1,4 @@
-const CACHE_NAME = 'voice-business-tracker-v5';
+const CACHE_NAME = 'voice-business-tracker-v7';
 const APP_SHELL = [
   '/',
   '/react.html',
