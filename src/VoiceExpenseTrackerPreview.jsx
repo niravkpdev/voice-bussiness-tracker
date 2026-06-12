@@ -3266,6 +3266,13 @@ export default function VoiceExpenseTrackerPreview() {
               </h1>
               {authNotice && <div className="notice">{authNotice}</div>}
               {secureError && <div className="notice error">{secureError}</div>}
+              {authView === 'login' && (
+                <div className="notice auth-help-note">
+                  Mobile login tip: use the same verified email, keep internet on, and open the production URL in Chrome:
+                  <br />
+                  <strong>https://voice-bussiness-tracker.vercel.app/react.html</strong>
+                </div>
+              )}
               {authView === 'reset-password' ? (
                 <form onSubmit={resetPassword}>
                   <label className="field-label" htmlFor="reset-email">Registered Email</label>

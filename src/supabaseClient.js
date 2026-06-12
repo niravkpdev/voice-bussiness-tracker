@@ -259,6 +259,18 @@ function buildRow(uid, id, data) {
   };
 }
 
+async function syncUserProfileBestEffort(uid, profile) {
+  try {
+    await saveUserProfile(uid, profile);
+  } catch (error) {
+    cloudError('SUPABASE_PROFILE_SYNC_SKIPPED', {
+      uid,
+      code: error?.code || null,
+      message: error?.message || String(error),
+    });
+  }
+}
+
 function pathFor(uid, tableName, id = '') {
   if (tableName === 'settings') {
     return `users/${uid}/settings/${id || 'profile'}`;
@@ -389,7 +401,7 @@ export async function createSupabaseAccount({ email, password, ownerName, busine
   payload.emailRedirectTo = emailRedirectTo || '';
   payload.alreadyExistsUnconfirmedLikely = alreadyExistsUnconfirmedLikely;
   if (data?.session) {
-    await saveUserProfile(payload.uid, payload);
+    await syncUserProfileBestEffort(payload.uid, payload);
   }
   cloudInfo('[Supabase auth register success]', {
     uid: payload.uid,
@@ -433,7 +445,7 @@ export async function signInSupabaseAccount({ email, password }) {
   }
 
   const payload = userPayload(user, { email: normalizedEmail, sessionState: data?.session ? 'active' : 'missing-session' });
-  await saveUserProfile(payload.uid, payload);
+  await syncUserProfileBestEffort(payload.uid, payload);
   cloudInfo('LOGIN_SUCCESS', { uid: payload.uid, emailVerified: payload.emailVerified });
   cloudInfo('[Supabase auth login success]', { uid: payload.uid, email: payload.email });
   return payload;
