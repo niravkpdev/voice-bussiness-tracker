@@ -173,11 +173,11 @@ const SIDEBAR_SECTIONS = [
     label: 'Overview',
     icon: '⌂',
     items: [
-      ['dashboard', 'Dashboard'],
-      ['company-setup', 'Company Setup'],
-      ['ai-assistant', 'AI Insights'],
-      ['analytics', 'Analytics'],
-      ['notifications', 'Notifications'],
+      ['dashboard', 'Dashboard', '⌂'],
+      ['company-setup', 'Company Setup', '▣'],
+      ['ai-assistant', 'AI Insights', '✣'],
+      ['analytics', 'Analytics', '⌁'],
+      ['notifications', 'Notifications', '◌'],
     ],
   },
   {
@@ -185,10 +185,13 @@ const SIDEBAR_SECTIONS = [
     label: 'Business Structure',
     icon: '◇',
     items: [
-      ['masters', 'Masters'],
-      ['vouchers-hub', 'Vouchers'],
-      ['accounting-ledgers', 'Accounting Ledgers'],
-      ['reports-hub', 'Reports Hub'],
+      ['company-setup', 'Company Master', '▦'],
+      ['businesses', 'Branches', '⌖'],
+      ['businesses', 'Departments', '☷'],
+      ['inventory', 'Products / Services', '⬡'],
+      ['inventory', 'Units', '◇'],
+      ['masters', 'Categories', '◈'],
+      ['inventory', 'Warehouses', '▤'],
     ],
   },
   {
@@ -196,12 +199,11 @@ const SIDEBAR_SECTIONS = [
     label: 'ERP Modules',
     icon: '▦',
     items: [
-      ['inventory', 'Inventory'],
-      ['invoices', 'Invoices'],
-      ['gst', 'GST Center'],
-      ['voucher-entry', 'Voucher Entry'],
-      ['reports', 'Reports'],
-      ['day-book', 'Day Book'],
+      ['voucher-entry', 'Sales', '▿'],
+      ['voucher-entry', 'Purchase', '▵'],
+      ['inventory', 'Inventory', '⬢'],
+      ['accounting-ledgers', 'Accounting', '▤'],
+      ['day-book', 'Banking', '▥'],
     ],
   },
   {
@@ -209,12 +211,10 @@ const SIDEBAR_SECTIONS = [
     label: 'People & Ledger',
     icon: '◉',
     items: [
-      ['crm', 'Customer CRM'],
-      ['suppliers', 'Suppliers'],
-      ['party-management', 'Party Khata'],
-      ['party-statement', 'Party Statement'],
-      ['employees', 'Employees'],
-      ['accountant-portal', 'Accountant'],
+      ['crm', 'Customers', '☉'],
+      ['suppliers', 'Suppliers', '◎'],
+      ['employees', 'Employees', '♙'],
+      ['party-statement', 'Ledger', '▣'],
     ],
   },
   {
@@ -222,11 +222,9 @@ const SIDEBAR_SECTIONS = [
     label: 'Automation',
     icon: '⚡',
     items: [
-      ['mobile-app', 'Mobile App'],
-      ['whatsapp-automation', 'WhatsApp'],
-      ['upi-payments', 'UPI Payments'],
-      ['orders', 'Orders'],
-      ['voice-bookkeeper', 'Voice AI'],
+      ['mobile-app', 'Workflows', '⎇'],
+      ['notifications', 'Reminders', '◷'],
+      ['whatsapp-automation', 'Automations', '⚡'],
     ],
   },
   {
@@ -234,13 +232,11 @@ const SIDEBAR_SECTIONS = [
     label: 'Admin & Security',
     icon: '◈',
     items: [
-      ['businesses', 'Businesses'],
-      ['cloud-backup', 'Cloud Backup'],
-      ['subscriptions', 'Subscription'],
-      ['security-center', 'Security'],
-      ['profile-settings', 'Profile'],
-      ['app-settings', 'Settings'],
-      ['database-test', 'Database Test'],
+      ['security-center', 'Users & Roles', '☷'],
+      ['security-center', 'Permissions', '◇'],
+      ['reports-hub', 'Audit Logs', '▱'],
+      ['app-settings', 'System Settings', '⚙'],
+      ['database-test', 'Database Test', '◉'],
     ],
   },
 ];
@@ -3461,9 +3457,10 @@ export default function VoiceExpenseTrackerPreview() {
                   <span className="sidebar-chevron">›</span>
                 </button>
                 <div className="sidebar-section-panel">
-                  {section.items.map(([tab, label]) => (
-                    <a href={`#${tab}`} className={activeTab === tab ? 'active' : ''} key={tab} onClick={() => setMobileNavOpen(false)}>
-                      {label}
+                  {section.items.map(([tab, label, itemIcon]) => (
+                    <a href={`#${tab}`} className={activeTab === tab ? 'active' : ''} key={`${section.id}-${tab}-${label}`} onClick={() => setMobileNavOpen(false)}>
+                      <span className="sidebar-item-icon">{itemIcon || '•'}</span>
+                      <span>{label}</span>
                     </a>
                   ))}
                 </div>
