@@ -3438,7 +3438,7 @@ export default function VoiceExpenseTrackerPreview() {
             ...section,
             children: section.children.filter((child) => !child.debugOnly || canViewDatabaseDebug),
           })).filter((section) => section.children.length > 0).map((section) => {
-            const isExpanded = Boolean(openSidebarSections[section.id]);
+            const isExpanded = true;
             const hasActiveItem = section.children.some((child) => child.tab === activeTab);
 
             return (
@@ -3462,21 +3462,19 @@ export default function VoiceExpenseTrackerPreview() {
                   </span>
                   <span className="sidebar-chevron">›</span>
                 </button>
-                {isExpanded && (
-                  <div className="sidebar-children">
-                    {section.children.map((child) => (
-                      <a
-                        href={child.path}
-                        className={activeTab === child.tab ? 'active' : ''}
-                        key={child.id}
-                        onClick={() => setMobileNavOpen(false)}
-                      >
-                        <span className="sidebar-item-icon">{child.icon || '•'}</span>
-                        <span>{child.label}</span>
-                      </a>
-                    ))}
-                  </div>
-                )}
+                <div className="sidebar-children">
+                  {section.children.map((child) => (
+                    <a
+                      href={child.path}
+                      className={activeTab === child.tab ? 'active' : ''}
+                      key={child.id}
+                      onClick={() => setMobileNavOpen(false)}
+                    >
+                      <span className="sidebar-item-icon">{child.icon || '•'}</span>
+                      <span>{child.label}</span>
+                    </a>
+                  ))}
+                </div>
               </div>
             );
           })}
