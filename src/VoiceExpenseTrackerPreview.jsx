@@ -171,6 +171,7 @@ const SIDEBAR_SECTIONS = [
   {
     id: 'overview',
     label: 'Overview',
+    icon: '⌂',
     items: [
       ['dashboard', 'Dashboard'],
       ['company-setup', 'Company Setup'],
@@ -182,6 +183,7 @@ const SIDEBAR_SECTIONS = [
   {
     id: 'tally-structure',
     label: 'Business Structure',
+    icon: '◇',
     items: [
       ['masters', 'Masters'],
       ['vouchers-hub', 'Vouchers'],
@@ -192,6 +194,7 @@ const SIDEBAR_SECTIONS = [
   {
     id: 'erp',
     label: 'ERP Modules',
+    icon: '▦',
     items: [
       ['inventory', 'Inventory'],
       ['invoices', 'Invoices'],
@@ -204,6 +207,7 @@ const SIDEBAR_SECTIONS = [
   {
     id: 'people',
     label: 'People & Ledger',
+    icon: '◉',
     items: [
       ['crm', 'Customer CRM'],
       ['suppliers', 'Suppliers'],
@@ -216,6 +220,7 @@ const SIDEBAR_SECTIONS = [
   {
     id: 'automation',
     label: 'Automation',
+    icon: '⚡',
     items: [
       ['mobile-app', 'Mobile App'],
       ['whatsapp-automation', 'WhatsApp'],
@@ -227,6 +232,7 @@ const SIDEBAR_SECTIONS = [
   {
     id: 'admin',
     label: 'Admin & Security',
+    icon: '◈',
     items: [
       ['businesses', 'Businesses'],
       ['cloud-backup', 'Cloud Backup'],
@@ -847,10 +853,11 @@ export default function VoiceExpenseTrackerPreview() {
   const [voiceConfirmation, setVoiceConfirmation] = useState(null);
   const [activeReportTab, setActiveReportTab] = useState('pnl');
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
-  const [expandedSidebarSection, setExpandedSidebarSection] = useState(() => {
+  const [openSidebarSections, setOpenSidebarSections] = useState(() => {
     const section = SIDEBAR_SECTIONS.find((group) => group.items.some(([tab]) => tab === activeTab));
-    return section?.id || 'overview';
+    return new Set([section?.id || 'overview']);
   });
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const sidebarSectionRefs = useRef({});
   const hasVerifiedAccess = !REQUIRE_VERIFIED_EMAIL || Boolean(authUser?.emailVerified);
   const canViewDatabaseDebug = import.meta.env.DEV || authUser?.role === 'Owner';
@@ -891,8 +898,9 @@ export default function VoiceExpenseTrackerPreview() {
         setActiveTab(hash);
         const section = SIDEBAR_SECTIONS.find((group) => group.items.some(([tab]) => tab === hash));
         if (section) {
-          setExpandedSidebarSection(section.id);
+          setOpenSidebarSections((current) => new Set([...current, section.id]));
         }
+        setMobileNavOpen(false);
       }
     };
     window.addEventListener('hashchange', handleHashChange);
@@ -900,7 +908,8 @@ export default function VoiceExpenseTrackerPreview() {
   }, []);
 
   useEffect(() => {
-    const sectionNode = sidebarSectionRefs.current[expandedSidebarSection];
+    const section = SIDEBAR_SECTIONS.find((group) => group.items.some(([tab]) => tab === activeTab));
+    const sectionNode = section ? sidebarSectionRefs.current[section.id] : null;
     if (!sectionNode) {
       return;
     }
@@ -912,10 +921,18 @@ export default function VoiceExpenseTrackerPreview() {
         inline: 'nearest',
       });
     }, 90);
-  }, [expandedSidebarSection]);
+  }, [activeTab, openSidebarSections]);
 
   const toggleSidebarSection = (sectionId) => {
-    setExpandedSidebarSection(sectionId);
+    setOpenSidebarSections((current) => {
+      const next = new Set(current);
+      if (next.has(sectionId)) {
+        next.delete(sectionId);
+      } else {
+        next.add(sectionId);
+      }
+      return next;
+    });
   };
 
   const hydrateWorkspace = ({ cloudTransactions = null, cloudProfile = null } = {}) => {
@@ -3370,7 +3387,24 @@ export default function VoiceExpenseTrackerPreview() {
   }
 
   return (
-    <div className="app-frame">
+    <div className={`app-frame ${mobileNavOpen ? 'nav-open' : ''}`}>
+      <button
+        className="mobile-menu-button"
+        type="button"
+        aria-label="Open navigation"
+        aria-expanded={mobileNavOpen}
+        onClick={() => setMobileNavOpen(true)}
+      >
+        <span />
+        <span />
+        <span />
+      </button>
+      <button
+        className="mobile-drawer-overlay"
+        type="button"
+        aria-label="Close navigation"
+        onClick={() => setMobileNavOpen(false)}
+      />
       <aside className="sidebar" aria-label="Main menu">
         <div className="sidebar-brand">
           <img className="sidebar-logo" src={profile.logo} alt="" />
@@ -3378,13 +3412,16 @@ export default function VoiceExpenseTrackerPreview() {
             <strong>{profile.name}</strong>
             <span>Business Console</span>
           </div>
+          <button className="drawer-close-button" type="button" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)}>
+            ×
+          </button>
         </div>
         <nav className="side-nav" aria-label="ERP sections">
           {SIDEBAR_SECTIONS.map((section) => ({
             ...section,
             items: section.items.filter(([tab]) => tab !== 'database-test' || canViewDatabaseDebug),
           })).filter((section) => section.items.length > 0).map((section) => {
-            const isExpanded = expandedSidebarSection === section.id;
+            const isExpanded = openSidebarSections.has(section.id);
             const hasActiveItem = section.items.some(([tab]) => tab === activeTab);
 
             return (
@@ -3401,12 +3438,15 @@ export default function VoiceExpenseTrackerPreview() {
                   type="button"
                   onClick={() => toggleSidebarSection(section.id)}
                 >
-                  <span>{section.label}</span>
+                  <span className="sidebar-section-title">
+                    <span className="sidebar-section-icon">{section.icon}</span>
+                    <span>{section.label}</span>
+                  </span>
                   <span className="sidebar-chevron">›</span>
                 </button>
                 <div className="sidebar-section-panel">
                   {section.items.map(([tab, label]) => (
-                    <a href={`#${tab}`} className={activeTab === tab ? 'active' : ''} key={tab}>
+                    <a href={`#${tab}`} className={activeTab === tab ? 'active' : ''} key={tab} onClick={() => setMobileNavOpen(false)}>
                       {label}
                     </a>
                   ))}
@@ -3424,6 +3464,14 @@ export default function VoiceExpenseTrackerPreview() {
 
       <div className="workspace">
         <header className="topbar">
+          <button
+            className="topbar-menu-button"
+            type="button"
+            aria-label="Open navigation"
+            onClick={() => setMobileNavOpen(true)}
+          >
+            ☰
+          </button>
           <div>
             <span className="eyebrow">Professional Business Tracker</span>
             <strong>{status}</strong>
@@ -3437,7 +3485,12 @@ export default function VoiceExpenseTrackerPreview() {
               <span className="runtime-pill role">{authUser?.role || 'Guest'}</span>
             </div>
           </div>
+          <div className="topbar-search">
+            <span>⌕</span>
+            <input type="search" placeholder="Search vouchers, customers, inventory..." aria-label="Search business records" />
+          </div>
           <div className="topbar-actions">
+            <input className="topbar-date" type="date" defaultValue={new Date().toISOString().slice(0, 10)} aria-label="Dashboard date" />
             <button 
               className="topbar-link dark-mode-toggle-btn"
               onClick={() => setDarkMode(!darkMode)}
@@ -3481,18 +3534,31 @@ export default function VoiceExpenseTrackerPreview() {
           )}
           
           {activeTab === 'dashboard' && (
-            <section className="hero-panel fade-in" id="dashboard">
-              <div className="brand-header">
-                <img className="brand-logo" src={profile.logo} alt="Business logo" />
-                <div>
-                  <h1>{profile.name}</h1>
-                  <p>{profile.tagline}</p>
-                  <div className="profile-meta">
-                    <span>GSTIN: {profile.gstin || 'Not Provided'}</span>
-                    <span>Owner: {profile.owner}</span>
-                    <span>Email: {profile.email}</span>
-                    <span>Phone: {profile.phone}</span>
+            <section className="erp-dashboard fade-in" id="dashboard">
+              <div className="dashboard-command-center">
+                <div className="dashboard-welcome-card">
+                  <div className="brand-header">
+                    <img className="brand-logo" src={profile.logo} alt="Business logo" />
+                    <div>
+                      <span className="eyebrow">Welcome back</span>
+                      <h1>{profile.name}</h1>
+                      <p>{profile.tagline}</p>
+                      <div className="profile-meta">
+                        <span>GSTIN: {profile.gstin || 'Not Provided'}</span>
+                        <span>Owner: {profile.owner}</span>
+                        <span>{new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                      </div>
+                    </div>
                   </div>
+                </div>
+                <div className="dashboard-command-tools">
+                  <label className="dashboard-search">
+                    <span>⌕</span>
+                    <input type="search" placeholder="Search business..." aria-label="Search dashboard" />
+                  </label>
+                  <input type="date" defaultValue={new Date().toISOString().slice(0, 10)} aria-label="Dashboard date selector" />
+                  <a className="icon-command-button" href="#notifications" aria-label="Notifications">●</a>
+                  <a className="profile-avatar" href="#profile-settings" aria-label="Profile">{(authUser?.email || profile.owner || 'U').slice(0, 1).toUpperCase()}</a>
                 </div>
               </div>
 
@@ -3508,94 +3574,54 @@ export default function VoiceExpenseTrackerPreview() {
                 </div>
               )}
 
-              <div className="dashboard-stats-grid">
-                {/* Today's Sales */}
+              <div className="dashboard-summary-grid">
                 <article className="stat-card-modern">
                   <div className="stat-card-header">
-                    <span>Today's Sales</span>
+                    <span>Total Revenue</span>
                     <span className="stat-icon-badge text-green">₹</span>
                   </div>
-                  <strong>{formatCurrency(stats.todaySales)}</strong>
-                  <p>Today's Inflow (Sales + Cash Receipts)</p>
+                  <strong>{formatCurrency(stats.monthlySales)}</strong>
+                  <p>Monthly revenue from sales and receipts</p>
                 </article>
 
-                {/* Today's Expenses */}
                 <article className="stat-card-modern">
                   <div className="stat-card-header">
-                    <span>Today's Expenses</span>
+                    <span>Total Expenses</span>
                     <span className="stat-icon-badge text-red">₹</span>
                   </div>
-                  <strong>{formatCurrency(stats.todayExpenses)}</strong>
-                  <p>Today's Outflow (Purchases + Payments)</p>
-                </article>
-
-                {/* Monthly Sales */}
-                <article className="stat-card-modern">
-                  <div className="stat-card-header">
-                    <span>Monthly Sales</span>
-                    <span className={`growth-badge ${stats.salesGrowth >= 0 ? 'growth-up' : 'growth-down'}`}>
-                      {stats.salesGrowth >= 0 ? '↑' : '↓'} {Math.abs(stats.salesGrowth)}%
-                    </span>
-                  </div>
-                  <strong>{formatCurrency(stats.monthlySales)}</strong>
-                  <p>vs last month ({formatCurrency(stats.prevMonthlySales)})</p>
-                </article>
-
-                {/* Monthly Expenses */}
-                <article className="stat-card-modern">
-                  <div className="stat-card-header">
-                    <span>Monthly Expenses</span>
-                    <span className={`growth-badge ${stats.expenseGrowth <= 0 ? 'growth-up' : 'growth-down'}`}>
-                      {stats.expenseGrowth > 0 ? '↑' : '↓'} {Math.abs(stats.expenseGrowth)}%
-                    </span>
-                  </div>
                   <strong>{formatCurrency(stats.monthlyExpenses)}</strong>
-                  <p>vs last month ({formatCurrency(stats.prevMonthlyExpenses)})</p>
+                  <p>Purchases, payments, and expense vouchers</p>
                 </article>
 
-                {/* Net Profit */}
                 <article className="stat-card-modern">
                   <div className="stat-card-header">
                     <span>Net Profit</span>
-                    <span className={`growth-badge ${netProfitGrowth >= 0 ? 'growth-up' : 'growth-down'}`}>
-                      {netProfitGrowth >= 0 ? '↑' : '↓'} {Math.abs(netProfitGrowth)}%
-                    </span>
+                    <span className={`growth-badge ${netProfitGrowth >= 0 ? 'growth-up' : 'growth-down'}`}>{netProfitGrowth >= 0 ? '↑' : '↓'} {Math.abs(netProfitGrowth)}%</span>
                   </div>
-                  <strong className={monthlyNetProfit >= 0 ? 'text-green' : 'text-red'}>
-                    {formatCurrency(monthlyNetProfit)}
-                  </strong>
-                  <p>Monthly Sales - Expenses</p>
+                  <strong className={monthlyNetProfit >= 0 ? 'text-green' : 'text-red'}>{formatCurrency(monthlyNetProfit)}</strong>
+                  <p>Revenue minus expenses</p>
                 </article>
 
-                {/* Cash in Hand */}
                 <article className="stat-card-modern">
                   <div className="stat-card-header">
-                    <span>Cash in Hand</span>
-                    <span className="stat-icon-badge text-blue">🏦</span>
+                    <span>Total Transactions</span>
+                    <span className="stat-icon-badge text-blue">#</span>
                   </div>
-                  <strong>{formatCurrency(cashInHand)}</strong>
-                  <p>Cash + Bank Balance</p>
+                  <strong>{vouchers.length}</strong>
+                  <p>Synced vouchers in this business</p>
                 </article>
+              </div>
 
-                {/* Receivable Amount */}
-                <article className="stat-card-modern">
-                  <div className="stat-card-header">
-                    <span>Receivable Amount</span>
-                    <span className="stat-icon-badge text-amber">📥</span>
-                  </div>
-                  <strong className="text-amber">{formatCurrency(receivableTotal)}</strong>
-                  <p>Outstanding Customers</p>
-                </article>
-
-                {/* Payable Amount */}
-                <article className="stat-card-modern">
-                  <div className="stat-card-header">
-                    <span>Payable Amount</span>
-                    <span className="stat-icon-badge text-red">📤</span>
-                  </div>
-                  <strong className="text-red">{formatCurrency(payableTotal)}</strong>
-                  <p>Outstanding Suppliers</p>
-                </article>
+              <div className="quick-action-console">
+                {[
+                  ['Add Sale', 'voucher-entry'],
+                  ['Add Expense', 'voucher-entry'],
+                  ['Add Customer', 'crm'],
+                  ['Add Supplier', 'suppliers'],
+                  ['Create Invoice', 'invoices'],
+                ].map(([label, href]) => (
+                  <a className="quick-action-tile" href={`#${href}`} key={label}>{label}</a>
+                ))}
               </div>
 
               {vouchers.length === 0 && (
@@ -3611,49 +3637,72 @@ export default function VoiceExpenseTrackerPreview() {
                 </div>
               )}
 
-              {recentVouchers.length > 0 && (
-                <section className="panel dashboard-recent-panel">
+              <div className="dashboard-analytics-grid">
+                <section className="dashboard-glass-panel wide">
                   <div className="section-header">
                     <div>
-                      <span className="eyebrow">Supabase synced</span>
-                      <h2>Recent Vouchers</h2>
+                      <span className="eyebrow">Business overview</span>
+                      <h2>Revenue vs Expenses</h2>
                     </div>
-                    <a className="secondary-button compact-link" href="#day-book">Open Day Book</a>
+                  </div>
+                  <MiniBarChart data={getLast6MonthsData(vouchers)} valueKey="sales" barColor="#8b5cf6" title="Monthly Sales" />
+                  <ProfitTrendChart data={getLast6MonthsData(vouchers)} />
+                </section>
+                <section className="dashboard-glass-panel">
+                  <div className="section-header">
+                    <div>
+                      <span className="eyebrow">Top expenses</span>
+                      <h2>Expense Trend</h2>
+                    </div>
+                  </div>
+                  <MiniBarChart data={getLast6MonthsData(vouchers)} valueKey="expenses" barColor="#ef4444" title="Monthly Expenses" />
+                </section>
+                <section className="dashboard-glass-panel">
+                  <div className="section-header">
+                    <div>
+                      <span className="eyebrow">Recent activity</span>
+                      <h2>Recent Transactions</h2>
+                    </div>
+                    <a className="secondary-button compact-link" href="#day-book">Day Book</a>
                   </div>
                   <div className="activity-list">
-                    {recentVouchers.map((voucher) => (
+                    {(recentVouchers.length ? recentVouchers : vouchers.slice(0, 1)).map((voucher) => (
                       <article className="activity-item" key={voucher.id}>
                         <div>
-                          <p className={`activity-type voucher-${String(voucher.type || 'voucher').toLowerCase()}`}>
-                            {voucher.type || 'Voucher'}
-                          </p>
+                          <p className={`activity-type voucher-${String(voucher.type || 'voucher').toLowerCase()}`}>{voucher.type || 'Voucher'}</p>
                           <p className="voucher-narration">{voucher.narration}</p>
-                          <p className="voucher-meta">
-                            {voucher.date} · {counterLabel(voucher)} · {voucher.source || 'manual'}
-                          </p>
+                          <p className="voucher-meta">{voucher.date} · {counterLabel(voucher)} · {voucher.source || 'manual'}</p>
                         </div>
                         <strong>{formatCurrency(voucher.amount)}</strong>
                       </article>
                     ))}
+                    {!recentVouchers.length && !vouchers.length && <div className="empty-state">No recent transactions.</div>}
                   </div>
                 </section>
-              )}
-
-              <div className="charts-grid-layout">
-                <MiniBarChart 
-                  data={getLast6MonthsData(vouchers)} 
-                  valueKey="sales" 
-                  barColor="#3b82f6" 
-                  title="Monthly Sales (Last 6 Months)" 
-                />
-                <MiniBarChart 
-                  data={getLast6MonthsData(vouchers)} 
-                  valueKey="expenses" 
-                  barColor="#ef4444" 
-                  title="Monthly Expenses (Last 6 Months)" 
-                />
-                <ProfitTrendChart data={getLast6MonthsData(vouchers)} />
-                <TopCustomersChart data={getTopCustomers(partySummary)} />
+                <section className="dashboard-glass-panel">
+                  <div className="section-header">
+                    <div>
+                      <span className="eyebrow">AI insights</span>
+                      <h2>Business Health</h2>
+                    </div>
+                    <strong>{aiInsights.score}/100</strong>
+                  </div>
+                  <div className="ai-list good">
+                    <p>{aiInsights.suggestions[0] || 'Add transactions to unlock smarter business insights.'}</p>
+                    <p>Cash balance: {formatCurrency(cashInHand)}</p>
+                    <p>Receivables: {formatCurrency(receivableTotal)}</p>
+                  </div>
+                </section>
+                <section className="dashboard-glass-panel support-console-card">
+                  <span className="eyebrow">Support</span>
+                  <h2>Need help?</h2>
+                  <p>Contact support for setup, Supabase, or business workflow help.</p>
+                  <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
+                  <a href={`tel:${SUPPORT_PHONE}`}>{SUPPORT_PHONE}</a>
+                </section>
+                <section className="dashboard-glass-panel">
+                  <TopCustomersChart data={getTopCustomers(partySummary)} />
+                </section>
               </div>
             </section>
           )}
