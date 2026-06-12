@@ -854,6 +854,7 @@ export default function VoiceExpenseTrackerPreview() {
   const sidebarSectionRefs = useRef({});
   const hasVerifiedAccess = !REQUIRE_VERIFIED_EMAIL || Boolean(authUser?.emailVerified);
   const canViewDatabaseDebug = import.meta.env.DEV || authUser?.role === 'Owner';
+  const canViewAuthDebug = import.meta.env.DEV || import.meta.env.VITE_DEBUG_AUTH === 'true';
 
   const mergeAuthDebugInfo = (next = {}) => {
     setAuthDebugInfo((current) => ({
@@ -1049,22 +1050,22 @@ export default function VoiceExpenseTrackerPreview() {
         loadProfileSettings(),
       ]);
       const transactions = transactionsResult.ok ? transactionsResult.rows : [];
-      const customers = customersResult.ok ? customersResult.rows : cloudCustomers;
-      const suppliers = suppliersResult.ok ? suppliersResult.rows : cloudSuppliers;
-      const inventory = inventoryResult.ok ? inventoryResult.rows : cloudInventory;
-      const stockTransactions = stockTransactionsResult.ok ? stockTransactionsResult.rows : cloudStockTransactions;
-      const invoices = invoicesResult.ok ? invoicesResult.rows : cloudInvoices;
-      const orders = ordersResult.ok ? ordersResult.rows : cloudOrders;
-      const employees = employeesResult.ok ? employeesResult.rows : cloudEmployees;
-      const attendance = attendanceResult.ok ? attendanceResult.rows : cloudAttendance;
-      const payments = paymentsResult.ok ? paymentsResult.rows : cloudPayments;
-      const auditLogs = auditLogsResult.ok ? auditLogsResult.rows : cloudAuditLogs;
+      const customers = customersResult.ok ? customersResult.rows : [];
+      const suppliers = suppliersResult.ok ? suppliersResult.rows : [];
+      const inventory = inventoryResult.ok ? inventoryResult.rows : [];
+      const stockTransactions = stockTransactionsResult.ok ? stockTransactionsResult.rows : [];
+      const invoices = invoicesResult.ok ? invoicesResult.rows : [];
+      const orders = ordersResult.ok ? ordersResult.rows : [];
+      const employees = employeesResult.ok ? employeesResult.rows : [];
+      const attendance = attendanceResult.ok ? attendanceResult.rows : [];
+      const payments = paymentsResult.ok ? paymentsResult.rows : [];
+      const auditLogs = auditLogsResult.ok ? auditLogsResult.rows : [];
       const subscriptionRows = subscriptionRowsResult.ok ? subscriptionRowsResult.rows : [];
       const securityRows = securityRowsResult.ok ? securityRowsResult.rows : [];
-      const devices = devicesResult.ok ? devicesResult.rows : cloudDevices;
-      const offlineQueue = offlineQueueResult.ok ? offlineQueueResult.rows : cloudOfflineQueue;
-      const businesses = businessesResult.ok ? businessesResult.rows : cloudBusinesses;
-      const notifications = notificationsResult.ok ? notificationsResult.rows : cloudNotifications;
+      const devices = devicesResult.ok ? devicesResult.rows : [];
+      const offlineQueue = offlineQueueResult.ok ? offlineQueueResult.rows : [];
+      const businesses = businessesResult.ok ? businessesResult.rows : [];
+      const notifications = notificationsResult.ok ? notificationsResult.rows : [];
       const failedLoads = [
         transactionsResult,
         customersResult,
@@ -1089,6 +1090,22 @@ export default function VoiceExpenseTrackerPreview() {
         const message = `Supabase table load failed for ${firstFailure.tableName}. Run the latest supabase-schema.sql and refresh.`;
         setSecureError(message);
         setStatus(message);
+        setCloudCustomers([]);
+        setCloudSuppliers([]);
+        setCloudInventory([]);
+        setCloudStockTransactions([]);
+        setCloudInvoices([]);
+        setCloudOrders([]);
+        setCloudEmployees([]);
+        setCloudAttendance([]);
+        setCloudPayments([]);
+        setCloudAuditLogs([]);
+        setCloudSubscription(null);
+        setCloudSecurity(null);
+        setCloudDevices([]);
+        setCloudOfflineQueue([]);
+        setCloudBusinesses([]);
+        setCloudNotifications([]);
       }
       cloudTransactions = transactionsResult.ok ? transactions : null;
       cloudProfile = profileSettingsResult.ok ? profileSettingsResult.profileRows : null;
@@ -2696,23 +2713,34 @@ export default function VoiceExpenseTrackerPreview() {
       nextProfile.logo = await fileToDataUrl(uploadedLogo);
     }
 
-    if (import.meta.env.DEV) {
-      writeScopedString(PROFILE_KEY, JSON.stringify(nextProfile));
+    try {
+      if (authUser?.uid) {
+        await Promise.all([
+          saveUserProfile(authUser.uid, {
+            businessName: nextProfile.name,
+            ownerName: nextProfile.owner,
+            email: nextProfile.email,
+            role: authUser.role || 'Owner',
+          }),
+          saveUserProfileSettings(authUser.uid, {
+            ...nextProfile,
+            userId: authUser.uid,
+          }),
+        ]);
+      } else if (import.meta.env.PROD) {
+        throw new Error('Sign in with Supabase before saving profile settings.');
+      }
+
+      if (import.meta.env.DEV) {
+        writeScopedString(PROFILE_KEY, JSON.stringify(nextProfile));
+      }
+      setProfile(nextProfile);
+      setSecureError('');
+      setStatus('Business profile saved');
+    } catch (error) {
+      setSecureError(publicSafeError(error, 'Profile cloud sync failed. Please try again.'));
+      setStatus('Profile save failed');
     }
-    setProfile(nextProfile);
-    if (authUser?.uid) {
-      saveUserProfile(authUser.uid, {
-        businessName: nextProfile.name,
-        ownerName: nextProfile.owner,
-        email: nextProfile.email,
-        role: authUser.role || 'Owner',
-      }).catch((error) => setSecureError(publicSafeError(error, 'Profile saved locally but cloud sync failed.')));
-      saveUserProfileSettings(authUser.uid, {
-        ...nextProfile,
-        userId: authUser.uid,
-      }).catch((error) => setSecureError(publicSafeError(error, 'Profile cloud sync failed.')));
-    }
-    setStatus('Business profile saved');
   };
 
   const resetBusinessProfile = () => {
@@ -3043,19 +3071,21 @@ export default function VoiceExpenseTrackerPreview() {
               </p>
               {authNotice && <div className="notice">{authNotice}</div>}
               {secureError && <div className="notice error">{secureError}</div>}
-              <div className="auth-debug-panel">
-                <strong>Verification Debug</strong>
-                <dl>
-                  <div><dt>Email</dt><dd>{authDebugInfo.email || authUser?.email || 'Not available'}</dd></div>
-                  <div><dt>User ID</dt><dd>{authDebugInfo.uid || authUser?.uid || 'Not available'}</dd></div>
-                  <div><dt>Email confirmed</dt><dd>{authDebugInfo.emailVerified || authUser?.emailVerified ? 'Yes' : 'No'}</dd></div>
-                  <div><dt>Confirmation sent</dt><dd>{authDebugInfo.confirmationSentAt || 'Unknown'}</dd></div>
-                  <div><dt>Confirmed at</dt><dd>{authDebugInfo.confirmedAt || 'Not confirmed yet'}</dd></div>
-                  <div><dt>Last resend</dt><dd>{authDebugInfo.lastResendAt || 'Not resent yet'}</dd></div>
-                  <div><dt>Session</dt><dd>{authDebugInfo.sessionState || 'unknown'}</dd></div>
-                  <div><dt>Redirect URL</dt><dd>{authDebugInfo.emailRedirectTo || `${window.location.origin}/react.html`}</dd></div>
-                </dl>
-              </div>
+              {canViewAuthDebug && (
+                <div className="auth-debug-panel">
+                  <strong>Verification Debug</strong>
+                  <dl>
+                    <div><dt>Email</dt><dd>{authDebugInfo.email || authUser?.email || 'Not available'}</dd></div>
+                    <div><dt>User ID</dt><dd>{authDebugInfo.uid || authUser?.uid || 'Not available'}</dd></div>
+                    <div><dt>Email confirmed</dt><dd>{authDebugInfo.emailVerified || authUser?.emailVerified ? 'Yes' : 'No'}</dd></div>
+                    <div><dt>Confirmation sent</dt><dd>{authDebugInfo.confirmationSentAt || 'Unknown'}</dd></div>
+                    <div><dt>Confirmed at</dt><dd>{authDebugInfo.confirmedAt || 'Not confirmed yet'}</dd></div>
+                    <div><dt>Last resend</dt><dd>{authDebugInfo.lastResendAt || 'Not resent yet'}</dd></div>
+                    <div><dt>Session</dt><dd>{authDebugInfo.sessionState || 'unknown'}</dd></div>
+                    <div><dt>Redirect URL</dt><dd>{authDebugInfo.emailRedirectTo || `${window.location.origin}/react.html`}</dd></div>
+                  </dl>
+                </div>
+              )}
               <button
                 className="saas-primary-button full"
                 type="button"

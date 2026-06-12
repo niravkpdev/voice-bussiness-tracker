@@ -488,8 +488,8 @@ export default function Phase3Ops({
           <div className="phase3-grid">
             <article className="phase3-card"><strong>Installable App</strong><p>Manifest and service worker are active. Android users can install from browser.</p></article>
             <article className="phase3-card"><strong>Android APK</strong><p>Use Bubblewrap/TWA with this PWA URL for Play Store APK packaging.</p></article>
-            <article className="phase3-card"><strong>Offline Data Entry</strong><p>LocalStorage data and offline action queue keep entries available without internet.</p></article>
-            <article className="phase3-card"><strong>Auto Sync</strong><p>Queue is prepared; real cloud sync needs backend endpoint and auth token.</p></article>
+            <article className="phase3-card"><strong>Offline App Shell</strong><p>The app can open offline, but production business entries require Supabase before saving.</p></article>
+            <article className="phase3-card"><strong>Sync Readiness</strong><p>Queued sync is planned; current production records save only after Supabase confirms.</p></article>
           </div>
         </section>
       </section>

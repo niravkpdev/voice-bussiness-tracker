@@ -3604,3 +3604,225 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 760px) {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+
+  .page-shell,
+  .saas-app,
+  .workspace,
+  .phase2-stack,
+  .phase3-stack {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .app-frame {
+    display: block;
+  }
+
+  .workspace {
+    padding: 12px 12px 108px;
+  }
+
+  .sidebar {
+    position: static;
+    width: 100%;
+    max-height: none;
+    margin-bottom: 12px;
+    border-radius: 0 0 18px 18px;
+  }
+
+  .sidebar-brand,
+  .sidebar-support {
+    display: none;
+  }
+
+  .side-nav {
+    display: grid;
+    gap: 8px;
+  }
+
+  .sidebar-section-trigger {
+    min-height: 46px;
+    padding: 10px 12px;
+  }
+
+  .sidebar-section.expanded .sidebar-section-panel {
+    max-height: 58vh;
+    overflow-y: auto;
+  }
+
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    align-items: stretch;
+    padding: 12px;
+    border-radius: 0 0 18px 18px;
+  }
+
+  .topbar > div:first-child {
+    min-width: 0;
+  }
+
+  .topbar strong,
+  .topbar .eyebrow {
+    overflow-wrap: anywhere;
+  }
+
+  .topbar-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .topbar-link,
+  .topbar-actions button {
+    width: 100%;
+    min-height: 44px;
+    margin: 0;
+    padding: 10px 12px;
+    font-size: 0.92rem;
+  }
+
+  .runtime-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .content-grid,
+  .stats-grid,
+  .summary-grid,
+  .analytics-grid,
+  .report-grid,
+  .form-grid,
+  .advanced-grid,
+  .account-detail-grid,
+  .tally-module-grid,
+  .phase3-grid,
+  .erp-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .hero-panel,
+  .panel,
+  .advanced-panel,
+  .phase2-stack .panel,
+  .phase3-stack .panel,
+  .auth-card {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 16px;
+    padding: 16px;
+  }
+
+  .auth-page {
+    min-height: 100vh;
+    padding: 14px;
+    align-items: stretch;
+  }
+
+  .auth-card h1,
+  .saas-hero h1 {
+    font-size: 2rem;
+    line-height: 1.08;
+  }
+
+  .erp-hero,
+  .phase3-hero,
+  .section-header,
+  .empty-state-panel,
+  .activity-item {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .erp-hero h2,
+  .phase3-hero h2,
+  .panel h2 {
+    font-size: 1.35rem;
+    line-height: 1.18;
+  }
+
+  .erp-hero-actions,
+  .quick-actions,
+  .voice-actions,
+  .manual-actions,
+  .ai-input-row,
+  .modal-footer {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  input,
+  select,
+  textarea,
+  button,
+  .manual-button,
+  .secondary-button,
+  .danger-button,
+  .warning-button {
+    min-height: 46px;
+    border-radius: 12px;
+  }
+
+  .data-table,
+  table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .bar-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .bar-value {
+    text-align: left;
+  }
+
+  .floating-mic-btn {
+    right: 18px;
+    bottom: 92px;
+    width: 62px;
+    height: 62px;
+  }
+}
+
+@media (max-width: 420px) {
+  .workspace {
+    padding-inline: 8px;
+  }
+
+  .topbar-actions,
+  .mobile-bottom-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mobile-bottom-nav {
+    left: 8px;
+    right: 8px;
+  }
+
+  .auth-card h1,
+  .saas-hero h1 {
+    font-size: 1.72rem;
+  }
+
+  .panel,
+  .auth-card {
+    padding: 14px;
+  }
+}
