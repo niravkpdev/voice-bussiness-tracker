@@ -862,6 +862,9 @@ export default function VoiceExpenseTrackerPreview() {
   const hasVerifiedAccess = !REQUIRE_VERIFIED_EMAIL || Boolean(authUser?.emailVerified);
   const canViewDatabaseDebug = import.meta.env.DEV || authUser?.role === 'Owner';
   const canViewAuthDebug = import.meta.env.DEV || import.meta.env.VITE_DEBUG_AUTH === 'true';
+  const activeSidebarSection = SIDEBAR_SECTIONS.find((group) => group.items.some(([tab]) => tab === activeTab));
+  const activeSidebarItem = activeSidebarSection?.items.find(([tab]) => tab === activeTab);
+  const activePageTitle = activeSidebarItem?.[1] || 'Dashboard';
 
   const mergeAuthDebugInfo = (next = {}) => {
     setAuthDebugInfo((current) => ({
@@ -3416,6 +3419,19 @@ export default function VoiceExpenseTrackerPreview() {
             ×
           </button>
         </div>
+        <div className="sidebar-status-card" aria-label="Connection status">
+          <span className="sidebar-status-kicker">Secure Supabase Login</span>
+          <strong>{status}</strong>
+          <div className="runtime-badges sidebar-runtime-badges">
+            <span className={`runtime-pill ${supabaseEnabled ? 'live' : 'demo'}`}>
+              {supabaseEnabled ? 'Supabase protected' : 'Local demo'}
+            </span>
+            <span className={`runtime-pill ${offline ? 'offline' : 'online'}`}>
+              {offline ? 'Offline' : 'Online'}
+            </span>
+            <span className="runtime-pill role">{authUser?.role || 'Guest'}</span>
+          </div>
+        </div>
         <nav className="side-nav" aria-label="ERP sections">
           {SIDEBAR_SECTIONS.map((section) => ({
             ...section,
@@ -3472,18 +3488,9 @@ export default function VoiceExpenseTrackerPreview() {
           >
             ☰
           </button>
-          <div>
-            <span className="eyebrow">Professional Business Tracker</span>
-            <strong>{status}</strong>
-            <div className="runtime-badges">
-              <span className={`runtime-pill ${supabaseEnabled ? 'live' : 'demo'}`}>
-                {supabaseEnabled ? 'Supabase protected' : 'Local demo'}
-              </span>
-              <span className={`runtime-pill ${offline ? 'offline' : 'online'}`}>
-                {offline ? 'Offline' : 'Online'}
-              </span>
-              <span className="runtime-pill role">{authUser?.role || 'Guest'}</span>
-            </div>
+          <div className="topbar-title">
+            <span className="eyebrow">{activeSidebarSection?.label || 'Overview'}</span>
+            <strong>{activePageTitle}</strong>
           </div>
           <div className="topbar-search">
             <span>⌕</span>
