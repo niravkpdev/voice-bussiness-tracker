@@ -337,7 +337,7 @@ export function getSupabaseAuthErrorMessage(error, fallback = 'Authentication fa
     'auth/invalid-credential': 'Email or password is incorrect. Please check both and try again.',
     'auth/email-already-in-use': 'This email is already registered. Please login instead.',
     'auth/weak-password': 'Password is too weak. Use at least 8 characters.',
-    'auth/too-many-requests': 'Too many attempts. Try again later.',
+    'auth/too-many-requests': 'Supabase is temporarily limiting reset emails for safety. Please wait 60 seconds, then request one new link.',
     'auth/network-request-failed': 'Network error. Check your internet.',
     'auth/popup-closed-by-user': 'Google login was closed before completion.',
     'auth/requires-recent-login': 'Please login again before doing this action.',

@@ -784,6 +784,7 @@ export default function VoiceExpenseTrackerPreview() {
   const [authNotice, setAuthNotice] = useState('');
   const [verificationCooldown, setVerificationCooldown] = useState(0);
   const [verificationResending, setVerificationResending] = useState(false);
+  const [passwordResetCooldown, setPasswordResetCooldown] = useState(0);
   const [authDebugInfo, setAuthDebugInfo] = useState({
     email: '',
     uid: '',
@@ -866,6 +867,7 @@ export default function VoiceExpenseTrackerPreview() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const sidebarSectionRefs = useRef({});
   const recoverySessionPreparedRef = useRef(false);
+  const passwordResetInFlightRef = useRef(false);
   const hasVerifiedAccess = !REQUIRE_VERIFIED_EMAIL || Boolean(authUser?.emailVerified);
   const canViewDatabaseDebug = import.meta.env.DEV || authUser?.role === 'Owner';
   const canViewAuthDebug = import.meta.env.DEV || import.meta.env.VITE_DEBUG_AUTH === 'true';
@@ -1499,6 +1501,17 @@ export default function VoiceExpenseTrackerPreview() {
 
   const resetPassword = async (event) => {
     event.preventDefault();
+
+    if (passwordResetInFlightRef.current) {
+      return;
+    }
+
+    if (passwordResetCooldown > 0) {
+      setSecureError(`Please wait ${passwordResetCooldown}s before requesting another reset email.`);
+      setStatus('Password reset cooldown active');
+      return;
+    }
+
     const form = new FormData(event.currentTarget);
     const email = sanitizeEmail(form.get('email')).toLowerCase().trim();
 
@@ -1518,6 +1531,7 @@ export default function VoiceExpenseTrackerPreview() {
       return;
     }
 
+    passwordResetInFlightRef.current = true;
     setAuthLoading(true);
     setSecureError('');
     setAuthNotice('');
@@ -1528,17 +1542,22 @@ export default function VoiceExpenseTrackerPreview() {
       }
       const sent = await sendSupabasePasswordReset(email);
       if (sent) {
+        setPasswordResetCooldown(60);
         setStatus('Password reset email sent');
         setSecureError('');
-        setAuthNotice('Password reset email sent. Check your inbox and spam folder.');
+        setAuthNotice('Password reset email sent. Check Inbox, Spam, and Promotions folders. You can request another link after 60 seconds.');
         setAuthView('login');
       }
     } catch (error) {
       const message = getSupabaseAuthErrorMessage(error, 'Could not send password reset email. Please try again.');
+      if (String(error?.code || '').toLowerCase() === 'auth/too-many-requests' || /too many|rate limit|security purposes/i.test(error?.message || '')) {
+        setPasswordResetCooldown(60);
+      }
       setSecureError(message);
       setAuthNotice('');
       setStatus(message);
     } finally {
+      passwordResetInFlightRef.current = false;
       setAuthLoading(false);
     }
   };
@@ -1756,6 +1775,18 @@ export default function VoiceExpenseTrackerPreview() {
 
     return () => window.clearInterval(timer);
   }, [verificationCooldown]);
+
+  useEffect(() => {
+    if (passwordResetCooldown <= 0) {
+      return undefined;
+    }
+
+    const timer = window.setInterval(() => {
+      setPasswordResetCooldown((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [passwordResetCooldown]);
 
   useEffect(() => {
     localStorage.setItem('darkMode', String(darkMode));
@@ -3355,8 +3386,8 @@ export default function VoiceExpenseTrackerPreview() {
                 <form onSubmit={resetPassword}>
                   <label className="field-label" htmlFor="reset-email">Registered Email</label>
                   <input id="reset-email" name="email" type="email" placeholder="owner@business.com" autoComplete="email" />
-                  <button className="saas-primary-button full" type="submit" disabled={authLoading || !supabaseEnabled}>
-                    {authLoading ? 'Sending...' : 'Send Reset Link'}
+                  <button className="saas-primary-button full" type="submit" disabled={authLoading || !supabaseEnabled || passwordResetCooldown > 0}>
+                    {authLoading ? 'Sending...' : passwordResetCooldown > 0 ? `Try again in ${passwordResetCooldown}s` : 'Send Reset Link'}
                   </button>
                   <button className="saas-google-button" type="button" onClick={() => setAuthView('login')} disabled={authLoading}>
                     Back to Login
