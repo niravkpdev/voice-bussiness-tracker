@@ -5107,20 +5107,29 @@ body.dark .topbar {
 
 /* Final sidebar safety override: older section styles clipped rendered children. */
 .side-nav .sidebar-section {
+  display: flex !important;
+  flex-direction: column !important;
   height: auto !important;
   max-height: none !important;
   min-height: 0 !important;
-  overflow: visible !important;
+  overflow: hidden !important;
 }
 
 .side-nav .sidebar-section.expanded {
+  display: flex !important;
+  flex-direction: column !important;
   height: auto !important;
   max-height: none !important;
-  overflow: visible !important;
+  overflow: hidden !important;
 }
 
 .side-nav .sidebar-section .sidebar-children {
+  flex: 0 0 auto !important;
+  float: none !important;
+  inset: auto !important;
+  margin: 0 !important;
   position: static !important;
+  width: 100% !important;
   visibility: visible !important;
   transform: none !important;
 }
