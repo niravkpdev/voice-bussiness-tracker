@@ -42,6 +42,7 @@ import {
   listenToSupabaseAuth,
   loadCloudCollection,
   loadUserProfileSettings,
+  prepareSupabasePasswordRecoverySession,
   reloadCurrentSupabaseUser,
   runSupabaseDebugTest,
   saveCloudRecord,
@@ -864,6 +865,7 @@ export default function VoiceExpenseTrackerPreview() {
   });
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const sidebarSectionRefs = useRef({});
+  const recoverySessionPreparedRef = useRef(false);
   const hasVerifiedAccess = !REQUIRE_VERIFIED_EMAIL || Boolean(authUser?.emailVerified);
   const canViewDatabaseDebug = import.meta.env.DEV || authUser?.role === 'Owner';
   const canViewAuthDebug = import.meta.env.DEV || import.meta.env.VITE_DEBUG_AUTH === 'true';
@@ -1778,6 +1780,51 @@ export default function VoiceExpenseTrackerPreview() {
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
+
+  useEffect(() => {
+    if (!supabaseEnabled || !isPasswordRecoveryRoute() || recoverySessionPreparedRef.current) {
+      return;
+    }
+
+    recoverySessionPreparedRef.current = true;
+    setAuthView('new-password');
+    setAuthLoading(true);
+    setSecureError('');
+    setAuthNotice('Preparing secure password reset session...');
+
+    prepareSupabasePasswordRecoverySession()
+      .then((user) => {
+        if (!user) {
+          throw new Error('Password reset session is not active. Please request a new reset link and open the latest email.');
+        }
+        setAuthUser(user);
+        mergeAuthDebugInfo({
+          email: user.email || '',
+          uid: user.uid || '',
+          emailVerified: Boolean(user.emailVerified),
+          sessionState: 'password-recovery',
+          lastAuthActionAt: new Date().toISOString(),
+        });
+        setAuthView('new-password');
+        setSecureError('');
+        setAuthNotice('Secure reset session ready. Create your new password.');
+        setStatus('Password recovery session ready');
+      })
+      .catch((error) => {
+        const message = getSupabaseAuthErrorMessage(
+          error,
+          'Password reset link is expired or invalid. Please request a new reset link.'
+        );
+        setAuthUser(null);
+        setAuthView('new-password');
+        setAuthNotice('');
+        setSecureError(message);
+        setStatus(message);
+      })
+      .finally(() => {
+        setAuthLoading(false);
+      });
+  }, [supabaseEnabled]);
 
   useEffect(() => {
     let unsubscribe = () => {};
@@ -3151,8 +3198,8 @@ export default function VoiceExpenseTrackerPreview() {
                 <input id="new-password" name="newPassword" type="password" minLength="8" autoComplete="new-password" placeholder="Minimum 8 characters" />
                 <label className="field-label" htmlFor="confirm-password">Confirm New Password</label>
                 <input id="confirm-password" name="confirmPassword" type="password" minLength="8" autoComplete="new-password" placeholder="Repeat new password" />
-                <button className="saas-primary-button full" type="submit" disabled={authLoading}>
-                  {authLoading ? 'Updating...' : 'Update Password'}
+                <button className="saas-primary-button full" type="submit" disabled={authLoading || !authUser?.uid}>
+                  {authLoading ? 'Preparing...' : authUser?.uid ? 'Update Password' : 'Request New Reset Link'}
                 </button>
               </form>
               <button className="saas-google-button" type="button" onClick={logout} disabled={authLoading}>

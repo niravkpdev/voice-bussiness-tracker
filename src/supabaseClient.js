@@ -225,8 +225,24 @@ export function isPasswordRecoveryRoute() {
 
   return /[?&]auth=recovery\b/.test(query)
     || /(?:^|[&#?])type=recovery\b/.test(combined)
+    || /(?:^|[&#?])code=/.test(combined)
     || /(?:^|[&#?])error_code=otp_expired\b/.test(combined)
     || /(?:^|[&#?])error=access_denied\b/.test(combined);
+}
+
+function recoveryUrlParams() {
+  if (typeof window === 'undefined') {
+    return new URLSearchParams();
+  }
+
+  const params = new URLSearchParams(window.location.search || '');
+  const hashParams = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
+  hashParams.forEach((value, key) => {
+    if (!params.has(key)) {
+      params.set(key, value);
+    }
+  });
+  return params;
 }
 
 function redactAuthResponse(value) {
@@ -326,6 +342,9 @@ export function getSupabaseAuthErrorMessage(error, fallback = 'Authentication fa
     'auth/popup-closed-by-user': 'Google login was closed before completion.',
     'auth/requires-recent-login': 'Please login again before doing this action.',
     'auth/email-not-verified': 'Please verify your email before logging in.',
+    'auth/recovery-link-expired': 'Password reset link expired. Please request a new reset link and open the latest email.',
+    'auth/recovery-link-invalid': 'Password reset link is invalid. Please request a new reset link.',
+    'auth/recovery-session-missing': 'Password reset session expired. Please request a new reset link and open the latest email.',
   };
 
   if (message.includes('invalid login credentials')) {
@@ -576,6 +595,17 @@ export async function updateCurrentUserPassword(newPassword) {
     return false;
   }
 
+  const { data: sessionData, error: sessionError } = await client.auth.getSession();
+  if (sessionError || !sessionData?.session?.user) {
+    const error = new Error('Password reset session expired. Please request a new reset link and open the latest email.');
+    error.code = sessionError ? mapAuthError(sessionError) : 'auth/recovery-session-missing';
+    cloudError('PASSWORD_UPDATE_SESSION_MISSING', {
+      code: error.code,
+      message: sessionError?.message || error.message,
+    });
+    throw error;
+  }
+
   cloudInfo('PASSWORD_UPDATE_START');
   const { data, error } = await client.auth.updateUser({ password: String(newPassword || '') });
   cloudInfo('SUPABASE_PASSWORD_UPDATE_RESPONSE', redactAuthResponse({ data, error }));
@@ -590,6 +620,85 @@ export async function updateCurrentUserPassword(newPassword) {
   }
   cloudInfo('PASSWORD_UPDATE_SUCCESS', { uid: data?.user?.id || null });
   return true;
+}
+
+export async function prepareSupabasePasswordRecoverySession() {
+  const client = getSupabaseClient();
+  if (!client) {
+    return null;
+  }
+
+  const params = recoveryUrlParams();
+  const errorCode = params.get('error_code') || params.get('error');
+  const errorDescription = params.get('error_description') || '';
+
+  cloudInfo('PASSWORD_RECOVERY_PREPARE_START', {
+    hasCode: Boolean(params.get('code')),
+    hasAccessToken: Boolean(params.get('access_token')),
+    hasRefreshToken: Boolean(params.get('refresh_token')),
+    errorCode: errorCode || null,
+  });
+
+  if (errorCode) {
+    const error = new Error(errorDescription || 'Password reset link is expired or invalid. Please request a new reset link.');
+    error.code = errorCode === 'otp_expired' ? 'auth/recovery-link-expired' : 'auth/recovery-link-invalid';
+    cloudError('PASSWORD_RECOVERY_PREPARE_ERROR', { code: error.code, message: error.message });
+    throw error;
+  }
+
+  const code = params.get('code');
+  if (code) {
+    const { data, error } = await client.auth.exchangeCodeForSession(code);
+    cloudInfo('PASSWORD_RECOVERY_EXCHANGE_RESPONSE', redactAuthResponse({ data, error }));
+    if (error) {
+      error.code = mapAuthError(error);
+      cloudError('PASSWORD_RECOVERY_EXCHANGE_ERROR', {
+        code: error.code,
+        message: error.message,
+        status: error.status || null,
+      });
+      throw error;
+    }
+  } else {
+    const accessToken = params.get('access_token');
+    const refreshToken = params.get('refresh_token');
+    if (accessToken && refreshToken) {
+      const { data, error } = await client.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+      cloudInfo('PASSWORD_RECOVERY_SET_SESSION_RESPONSE', redactAuthResponse({ data, error }));
+      if (error) {
+        error.code = mapAuthError(error);
+        cloudError('PASSWORD_RECOVERY_SET_SESSION_ERROR', {
+          code: error.code,
+          message: error.message,
+          status: error.status || null,
+        });
+        throw error;
+      }
+    }
+  }
+
+  const { data, error } = await client.auth.getSession();
+  cloudInfo('PASSWORD_RECOVERY_SESSION_RESPONSE', redactAuthResponse({ data, error }));
+  if (error || !data?.session?.user) {
+    const sessionError = error || new Error('Password reset session is not active. Please request a new reset link and open the latest email.');
+    sessionError.code = error ? mapAuthError(error) : 'auth/recovery-session-missing';
+    cloudError('PASSWORD_RECOVERY_SESSION_ERROR', {
+      code: sessionError.code,
+      message: sessionError.message,
+    });
+    throw sessionError;
+  }
+
+  if (typeof window !== 'undefined') {
+    window.history.replaceState({}, document.title, '/react.html?auth=recovery');
+  }
+
+  const user = userPayload(data.session.user, { sessionState: 'password-recovery' });
+  cloudInfo('PASSWORD_RECOVERY_SESSION_READY', { uid: user.uid, email: user.email });
+  return user;
 }
 
 export async function runSupabaseDebugTest() {
