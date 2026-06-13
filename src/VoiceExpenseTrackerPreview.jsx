@@ -176,68 +176,76 @@ const navigationConfig = [
     icon: '⌂',
     children: [
       { id: 'dashboard', path: '#dashboard', tab: 'dashboard', label: 'Dashboard', icon: '⌂' },
-      { id: 'company-setup', path: '#company-setup', tab: 'company-setup', label: 'Company Setup', icon: '▣' },
-      { id: 'ai-insights', path: '#ai-assistant', tab: 'ai-assistant', label: 'AI Insights', icon: '✣' },
+      { id: 'ai-insights', path: '#ai-assistant', tab: 'ai-assistant', label: 'AI Assistant', icon: '✣' },
       { id: 'analytics', path: '#analytics', tab: 'analytics', label: 'Analytics', icon: '⌁' },
       { id: 'notifications', path: '#notifications', tab: 'notifications', label: 'Notifications', icon: '◌' },
     ],
   },
   {
-    id: 'tally-structure',
-    label: 'Business Structure',
+    id: 'setup',
+    label: 'Setup',
     icon: '◇',
     children: [
-      { id: 'company-master', path: '#company-setup', tab: 'company-setup', label: 'Company Master', icon: '▦' },
-      { id: 'branches', path: '#businesses', tab: 'businesses', label: 'Branches', icon: '⌖' },
-      { id: 'departments', path: '#businesses', tab: 'businesses', label: 'Departments', icon: '☷' },
-      { id: 'products-services', path: '#inventory', tab: 'inventory', label: 'Products / Services', icon: '⬡' },
-      { id: 'units', path: '#inventory', tab: 'inventory', label: 'Units', icon: '◇' },
-      { id: 'categories', path: '#masters', tab: 'masters', label: 'Categories', icon: '◈' },
-      { id: 'warehouses', path: '#inventory', tab: 'inventory', label: 'Warehouses', icon: '▤' },
+      { id: 'company-setup', path: '#company-setup', tab: 'company-setup', label: 'Company Setup', icon: '▦' },
+      { id: 'businesses', path: '#businesses', tab: 'businesses', label: 'Businesses / Branches', icon: '⌖' },
+      { id: 'masters', path: '#masters', tab: 'masters', label: 'Masters', icon: '◈' },
     ],
   },
   {
-    id: 'erp',
-    label: 'ERP Modules',
+    id: 'daily-work',
+    label: 'Daily Work',
     icon: '▦',
     children: [
-      { id: 'sales', path: '#voucher-entry', tab: 'voucher-entry', label: 'Sales', icon: '▿' },
-      { id: 'purchase', path: '#voucher-entry', tab: 'voucher-entry', label: 'Purchase', icon: '▵' },
-      { id: 'inventory', path: '#inventory', tab: 'inventory', label: 'Inventory', icon: '⬢' },
-      { id: 'accounting', path: '#accounting-ledgers', tab: 'accounting-ledgers', label: 'Accounting', icon: '▤' },
-      { id: 'banking', path: '#day-book', tab: 'day-book', label: 'Banking', icon: '▥' },
+      { id: 'voucher-entry', path: '#voucher-entry', tab: 'voucher-entry', label: 'Voucher Entry', icon: '▣' },
+      { id: 'invoices', path: '#invoices', tab: 'invoices', label: 'Invoices', icon: '▧' },
+      { id: 'payments', path: '#upi-payments', tab: 'upi-payments', label: 'Payments / UPI', icon: '▥' },
+      { id: 'day-book', path: '#day-book', tab: 'day-book', label: 'Day Book', icon: '☷' },
     ],
   },
   {
-    id: 'people',
+    id: 'inventory-work',
+    label: 'Inventory & Orders',
+    icon: '⬢',
+    children: [
+      { id: 'inventory', path: '#inventory', tab: 'inventory', label: 'Inventory', icon: '⬢' },
+      { id: 'orders', path: '#orders', tab: 'orders', label: 'Orders', icon: '▤' },
+      { id: 'gst', path: '#gst', tab: 'gst', label: 'GST Center', icon: '◇' },
+    ],
+  },
+  {
+    id: 'people-ledger',
     label: 'People & Ledger',
     icon: '◉',
     children: [
       { id: 'customers', path: '#crm', tab: 'crm', label: 'Customers', icon: '☉' },
       { id: 'suppliers', path: '#suppliers', tab: 'suppliers', label: 'Suppliers', icon: '◎' },
       { id: 'employees', path: '#employees', tab: 'employees', label: 'Employees', icon: '♙' },
-      { id: 'ledger', path: '#party-statement', tab: 'party-statement', label: 'Ledger', icon: '▣' },
+      { id: 'party-management', path: '#party-management', tab: 'party-management', label: 'Party Management', icon: '▣' },
+      { id: 'ledger', path: '#party-statement', tab: 'party-statement', label: 'Party Ledger', icon: '▤' },
     ],
   },
   {
-    id: 'automation',
-    label: 'Automation',
+    id: 'reports-accounting',
+    label: 'Reports & Accounting',
+    icon: '▱',
+    children: [
+      { id: 'reports', path: '#reports', tab: 'reports', label: 'Reports', icon: '▱' },
+      { id: 'reports-hub', path: '#reports-hub', tab: 'reports-hub', label: 'Advanced Reports', icon: '⌁' },
+      { id: 'accounting', path: '#accounting-ledgers', tab: 'accounting-ledgers', label: 'Accounting Ledgers', icon: '▤' },
+      { id: 'vouchers-hub', path: '#vouchers-hub', tab: 'vouchers-hub', label: 'Voucher Types', icon: '▦' },
+    ],
+  },
+  {
+    id: 'automation-admin',
+    label: 'Automation & Admin',
     icon: '⚡',
     children: [
-      { id: 'workflows', path: '#mobile-app', tab: 'mobile-app', label: 'Workflows', icon: '⎇' },
-      { id: 'reminders', path: '#notifications', tab: 'notifications', label: 'Reminders', icon: '◷' },
-      { id: 'automations', path: '#whatsapp-automation', tab: 'whatsapp-automation', label: 'Automations', icon: '⚡' },
-    ],
-  },
-  {
-    id: 'admin',
-    label: 'Admin & Security',
-    icon: '◈',
-    children: [
-      { id: 'users-roles', path: '#security-center', tab: 'security-center', label: 'Users & Roles', icon: '☷' },
-      { id: 'permissions', path: '#security-center', tab: 'security-center', label: 'Permissions', icon: '◇' },
-      { id: 'audit-logs', path: '#reports-hub', tab: 'reports-hub', label: 'Audit Logs', icon: '▱' },
-      { id: 'system-settings', path: '#app-settings', tab: 'app-settings', label: 'System Settings', icon: '⚙' },
+      { id: 'voice-bookkeeper', path: '#voice-bookkeeper', tab: 'voice-bookkeeper', label: 'Voice Bookkeeper', icon: '✣' },
+      { id: 'whatsapp-automation', path: '#whatsapp-automation', tab: 'whatsapp-automation', label: 'WhatsApp Automation', icon: '⚡' },
+      { id: 'cloud-backup', path: '#cloud-backup', tab: 'cloud-backup', label: 'Cloud Backup', icon: '⎇' },
+      { id: 'security-center', path: '#security-center', tab: 'security-center', label: 'Security Center', icon: '◇' },
+      { id: 'profile-settings', path: '#profile-settings', tab: 'profile-settings', label: 'Profile', icon: '☉' },
+      { id: 'system-settings', path: '#app-settings', tab: 'app-settings', label: 'Settings', icon: '⚙' },
       { id: 'database-test', path: '#database-test', tab: 'database-test', label: 'Database Test', icon: '◉', debugOnly: true },
     ],
   },
@@ -859,18 +867,19 @@ export default function VoiceExpenseTrackerPreview() {
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
   const [openSidebarSections, setOpenSidebarSections] = useState({
     overview: true,
-    'tally-structure': true,
-    erp: true,
-    people: true,
-    automation: true,
-    admin: true,
+    setup: true,
+    'daily-work': true,
+    'inventory-work': true,
+    'people-ledger': true,
+    'reports-accounting': true,
+    'automation-admin': true,
   });
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const sidebarSectionRefs = useRef({});
   const recoverySessionPreparedRef = useRef(false);
   const passwordResetInFlightRef = useRef(false);
   const hasVerifiedAccess = !REQUIRE_VERIFIED_EMAIL || Boolean(authUser?.emailVerified);
-  const canViewDatabaseDebug = import.meta.env.DEV || authUser?.role === 'Owner';
+  const canViewDatabaseDebug = import.meta.env.DEV || import.meta.env.VITE_DEBUG_DATABASE === 'true';
   const canViewAuthDebug = import.meta.env.DEV || import.meta.env.VITE_DEBUG_AUTH === 'true';
   const activeSidebarSection = SIDEBAR_SECTIONS.find((group) => group.children.some((child) => child.tab === activeTab));
   const activeSidebarItem = activeSidebarSection?.children.find((child) => child.tab === activeTab);
@@ -3594,7 +3603,7 @@ export default function VoiceExpenseTrackerPreview() {
         <div className="sidebar-support">
           <strong>Need Help?</strong>
           <span>Contact our support team for any assistance.</span>
-          <a className="sidebar-support-button" href="#support">Contact Support</a>
+          <a className="sidebar-support-button" href="#contact-us">Contact Support</a>
         </div>
       </aside>
 
@@ -3629,7 +3638,7 @@ export default function VoiceExpenseTrackerPreview() {
             <a className="topbar-link" href="#profile-settings">Profile</a>
             <a className="topbar-link" href="#app-settings">Settings</a>
             <button className="topbar-link" type="button" onClick={logout}>Logout</button>
-            <a className="topbar-link primary" href="#support">Support</a>
+            <a className="topbar-link primary" href="#contact-us">Support</a>
           </div>
         </header>
 
