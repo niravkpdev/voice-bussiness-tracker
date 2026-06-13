@@ -3462,13 +3462,38 @@ export default function VoiceExpenseTrackerPreview() {
                   </span>
                   <span className="sidebar-chevron">›</span>
                 </button>
-                <div className="sidebar-children">
+                <div
+                  className="sidebar-children"
+                  style={{
+                    display: 'grid',
+                    gap: '3px',
+                    height: 'auto',
+                    maxHeight: 'none',
+                    opacity: 1,
+                    overflow: 'visible',
+                    padding: '4px 6px 10px 6px',
+                    pointerEvents: 'auto',
+                  }}
+                >
                   {section.children.map((child) => (
                     <a
                       href={child.path}
                       className={activeTab === child.tab ? 'active' : ''}
                       key={child.id}
                       onClick={() => setMobileNavOpen(false)}
+                      style={{
+                        alignItems: 'center',
+                        borderRadius: '10px',
+                        color: activeTab === child.tab ? '#ffffff' : '#cbd5e1',
+                        display: 'grid',
+                        fontSize: '0.84rem',
+                        fontWeight: 750,
+                        gap: '9px',
+                        gridTemplateColumns: '20px minmax(0, 1fr)',
+                        minHeight: '36px',
+                        padding: '8px 10px',
+                        textDecoration: 'none',
+                      }}
                     >
                       <span className="sidebar-item-icon">{child.icon || '•'}</span>
                       <span>{child.label}</span>
