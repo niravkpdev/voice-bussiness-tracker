@@ -214,6 +214,21 @@ function passwordRecoveryRedirectTo() {
   return new URL('/react.html?auth=recovery', window.location.origin).toString();
 }
 
+export function isPasswordRecoveryRoute() {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  const query = window.location.search || '';
+  const hash = window.location.hash || '';
+  const combined = `${query}&${hash.replace(/^#/, '')}`;
+
+  return /[?&]auth=recovery\b/.test(query)
+    || /(?:^|[&#?])type=recovery\b/.test(combined)
+    || /(?:^|[&#?])error_code=otp_expired\b/.test(combined)
+    || /(?:^|[&#?])error=access_denied\b/.test(combined);
+}
+
 function redactAuthResponse(value) {
   if (!value || typeof value !== 'object') {
     return value;
@@ -686,7 +701,7 @@ export async function listenToSupabaseAuth(onUser, onError) {
   client.auth.getSession().then(({ data, error }) => {
     cloudInfo('SUPABASE_GET_SESSION_RESPONSE', redactAuthResponse({ data, error }));
     const user = data?.session?.user;
-    const isRecoveryUrl = typeof window !== 'undefined' && /[?&]auth=recovery\b/.test(window.location.search || '');
+    const isRecoveryUrl = isPasswordRecoveryRoute();
     onUser(user ? userPayload(user, { sessionState: isRecoveryUrl ? 'password-recovery' : 'active' }) : null);
   }).catch((error) => {
     if (/session.*missing|auth session missing/i.test(error?.message || '')) {
@@ -699,7 +714,8 @@ export async function listenToSupabaseAuth(onUser, onError) {
   const { data } = client.auth.onAuthStateChange((event, session) => {
     try {
       cloudInfo('SUPABASE_AUTH_STATE_CHANGE', redactAuthResponse({ event, session }));
-      const sessionState = event === 'PASSWORD_RECOVERY' ? 'password-recovery' : session ? 'active' : 'missing-session';
+      const isRecoveryUrl = isPasswordRecoveryRoute();
+      const sessionState = event === 'PASSWORD_RECOVERY' || isRecoveryUrl ? 'password-recovery' : session ? 'active' : 'missing-session';
       onUser(session?.user ? userPayload(session.user, { sessionState }) : null);
     } catch (error) {
       onError?.(error);

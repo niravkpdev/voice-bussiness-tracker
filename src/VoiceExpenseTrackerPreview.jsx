@@ -38,6 +38,7 @@ import {
   getSupabaseAuthErrorMessage,
   getSupabaseProjectHost,
   isSupabaseConfigured,
+  isPasswordRecoveryRoute,
   listenToSupabaseAuth,
   loadCloudCollection,
   loadUserProfileSettings,
@@ -753,6 +754,9 @@ function CircularHealthScore({ score }) {
 
 export default function VoiceExpenseTrackerPreview() {
   const [authView, setAuthView] = useState(() => {
+    if (isPasswordRecoveryRoute()) {
+      return 'new-password';
+    }
     if (import.meta.env.PROD) {
       return 'landing';
     }
@@ -1799,7 +1803,7 @@ export default function VoiceExpenseTrackerPreview() {
             sessionState: user.sessionState || 'active',
             lastAuthActionAt: new Date().toISOString(),
           });
-          if (user.sessionState === 'password-recovery') {
+          if (user.sessionState === 'password-recovery' || isPasswordRecoveryRoute()) {
             setAuthUser(user);
             setAuthView('new-password');
             setAuthNotice('Create a new password to finish account recovery.');
@@ -1811,6 +1815,12 @@ export default function VoiceExpenseTrackerPreview() {
         } else {
           if (import.meta.env.DEV) {
             debugInfo('[Supabase auth state]', { user: null });
+          }
+          if (isPasswordRecoveryRoute()) {
+            setAuthView('new-password');
+            setAuthNotice('');
+            setSecureError('Password reset link is expired or invalid. Please request a new reset link.');
+            setStatus('Password reset link expired');
           }
           mergeAuthDebugInfo({
             sessionState: 'signed-out',
