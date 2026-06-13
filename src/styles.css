@@ -5133,3 +5133,163 @@ body.dark .topbar {
   visibility: visible !important;
   transform: none !important;
 }
+
+/* Clean sidebar navigation v2: isolated from legacy sidebar-section rules. */
+.erp-nav-list {
+  display: flex !important;
+  flex: 1 1 auto !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  padding: 2px 4px 12px 0 !important;
+  scrollbar-width: thin;
+}
+
+.erp-nav-list::-webkit-scrollbar {
+  width: 7px;
+}
+
+.erp-nav-list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.3);
+}
+
+.erp-nav-group {
+  display: flex !important;
+  flex: 0 0 auto !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  min-height: 0 !important;
+  border: 1px solid rgba(148, 163, 184, 0.16) !important;
+  border-radius: 14px !important;
+  background: linear-gradient(145deg, rgba(15, 27, 45, 0.72), rgba(15, 23, 42, 0.36)) !important;
+  overflow: hidden !important;
+}
+
+.erp-nav-group.is-active,
+.erp-nav-group.is-open {
+  border-color: rgba(124, 58, 237, 0.38) !important;
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.58)) !important;
+}
+
+.erp-nav-trigger {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  min-height: 40px !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding: 8px 10px !important;
+  background: transparent !important;
+  color: #f8fafc !important;
+  font-size: 0.78rem !important;
+  font-weight: 950 !important;
+  letter-spacing: 0.025em !important;
+  text-align: left !important;
+  text-transform: uppercase !important;
+  transform: none !important;
+}
+
+.erp-nav-trigger:hover,
+.erp-nav-trigger:focus-visible {
+  background: rgba(255, 255, 255, 0.07) !important;
+  filter: none !important;
+}
+
+.erp-nav-title {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-width: 0 !important;
+}
+
+.erp-nav-section-icon,
+.erp-nav-child-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 auto !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 8px !important;
+  background: rgba(148, 163, 184, 0.12) !important;
+  color: #c4b5fd !important;
+  font-size: 0.75rem !important;
+  line-height: 1 !important;
+}
+
+.erp-nav-chevron {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 auto !important;
+  color: #cbd5e1 !important;
+  font-size: 1rem !important;
+  line-height: 1 !important;
+  transform: rotate(0deg) !important;
+  transition: transform 0.2s ease !important;
+}
+
+.erp-nav-group.is-open .erp-nav-chevron {
+  transform: rotate(90deg) !important;
+}
+
+.erp-nav-children {
+  display: none !important;
+  flex: 0 0 auto !important;
+  flex-direction: column !important;
+  gap: 3px !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  padding: 0 8px 10px 34px !important;
+  opacity: 1 !important;
+  overflow: visible !important;
+  position: static !important;
+  visibility: visible !important;
+  transform: none !important;
+}
+
+.erp-nav-group.is-open .erp-nav-children {
+  display: flex !important;
+}
+
+.erp-nav-link {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  min-height: 34px !important;
+  margin: 0 !important;
+  border: 1px solid transparent !important;
+  border-radius: 10px !important;
+  padding: 7px 9px !important;
+  color: #cbd5e1 !important;
+  font-size: 0.82rem !important;
+  font-weight: 760 !important;
+  line-height: 1.2 !important;
+  text-decoration: none !important;
+}
+
+.erp-nav-link:hover,
+.erp-nav-link:focus-visible {
+  background: rgba(255, 255, 255, 0.075) !important;
+  color: #fff !important;
+}
+
+.erp-nav-link.is-active {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  background: linear-gradient(135deg, #6d28d9 0%, #4f46e5 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 12px 26px rgba(79, 70, 229, 0.3) !important;
+}
+
+.erp-nav-link.is-active .erp-nav-child-icon {
+  background: rgba(255, 255, 255, 0.18) !important;
+  color: #fff !important;
+}

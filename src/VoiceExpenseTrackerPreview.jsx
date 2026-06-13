@@ -3521,17 +3521,17 @@ export default function VoiceExpenseTrackerPreview() {
             <span className="runtime-pill role">{authUser?.role || 'Guest'}</span>
           </div>
         </div>
-        <nav className="side-nav" aria-label="ERP sections">
+        <nav className="erp-nav-list" aria-label="ERP sections">
           {SIDEBAR_SECTIONS.map((section) => ({
             ...section,
             children: section.children.filter((child) => !child.debugOnly || canViewDatabaseDebug),
           })).filter((section) => section.children.length > 0).map((section) => {
-            const isExpanded = true;
+            const isExpanded = openSidebarSections[section.id] ?? true;
             const hasActiveItem = section.children.some((child) => child.tab === activeTab);
 
             return (
               <div
-                className={`sidebar-section ${isExpanded ? 'expanded' : ''} ${hasActiveItem ? 'has-active' : ''}`}
+                className={`erp-nav-group ${isExpanded ? 'is-open' : ''} ${hasActiveItem ? 'is-active' : ''}`}
                 data-open={isExpanded ? 'true' : 'false'}
                 key={section.id}
                 ref={(node) => {
@@ -3540,25 +3540,25 @@ export default function VoiceExpenseTrackerPreview() {
               >
                 <button
                   aria-expanded={isExpanded}
-                  className="sidebar-section-trigger"
+                  className="erp-nav-trigger"
                   type="button"
                   onClick={() => toggleSidebarSection(section.id)}
                 >
-                  <span className="sidebar-section-title">
-                    <span className="sidebar-section-icon">{section.icon}</span>
+                  <span className="erp-nav-title">
+                    <span className="erp-nav-section-icon">{section.icon}</span>
                     <span>{section.label}</span>
                   </span>
-                  <span className="sidebar-chevron">›</span>
+                  <span className="erp-nav-chevron">›</span>
                 </button>
-                <div className="sidebar-children">
+                <div className="erp-nav-children" aria-hidden={!isExpanded}>
                   {section.children.map((child) => (
                     <a
                       href={child.path}
-                      className={activeTab === child.tab ? 'active' : ''}
+                      className={`erp-nav-link ${activeTab === child.tab ? 'is-active' : ''}`}
                       key={child.id}
                       onClick={() => setMobileNavOpen(false)}
                     >
-                      <span className="sidebar-item-icon">{child.icon || '•'}</span>
+                      <span className="erp-nav-child-icon">{child.icon || '•'}</span>
                       <span>{child.label}</span>
                     </a>
                   ))}
