@@ -5293,3 +5293,35 @@ body.dark .topbar {
   background: rgba(255, 255, 255, 0.18) !important;
   color: #fff !important;
 }
+
+.password-label-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.password-label-row .field-label {
+  margin: 0 0 8px;
+}
+
+.password-toggle-button {
+  width: auto;
+  min-height: 34px;
+  margin: 0 0 8px;
+  border: 1px solid rgba(79, 70, 229, 0.22);
+  border-radius: 999px;
+  padding: 6px 11px;
+  background: rgba(79, 70, 229, 0.08);
+  color: #4f46e5;
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.password-toggle-button:hover,
+.password-toggle-button:focus-visible {
+  background: rgba(79, 70, 229, 0.14);
+  filter: none;
+  transform: none;
+}

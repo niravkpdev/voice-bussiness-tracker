@@ -785,6 +785,7 @@ export default function VoiceExpenseTrackerPreview() {
   const [verificationCooldown, setVerificationCooldown] = useState(0);
   const [verificationResending, setVerificationResending] = useState(false);
   const [passwordResetCooldown, setPasswordResetCooldown] = useState(0);
+  const [showAuthPassword, setShowAuthPassword] = useState(false);
   const [authDebugInfo, setAuthDebugInfo] = useState({
     email: '',
     uid: '',
@@ -1507,7 +1508,8 @@ export default function VoiceExpenseTrackerPreview() {
     }
 
     if (passwordResetCooldown > 0) {
-      setSecureError(`Please wait ${passwordResetCooldown}s before requesting another reset email.`);
+      setSecureError('');
+      setAuthNotice(`Password reset email is temporarily paused for safety. Please wait ${passwordResetCooldown}s, then request one new link.`);
       setStatus('Password reset cooldown active');
       return;
     }
@@ -1551,11 +1553,15 @@ export default function VoiceExpenseTrackerPreview() {
     } catch (error) {
       const message = getSupabaseAuthErrorMessage(error, 'Could not send password reset email. Please try again.');
       if (String(error?.code || '').toLowerCase() === 'auth/too-many-requests' || /too many|rate limit|security purposes/i.test(error?.message || '')) {
-        setPasswordResetCooldown(60);
+        setPasswordResetCooldown(300);
+        setSecureError('');
+        setAuthNotice('Supabase has temporarily paused password reset emails for this address. Please wait 5 minutes, then request one new link only.');
+        setStatus('Password reset cooldown active');
+      } else {
+        setSecureError(message);
+        setAuthNotice('');
+        setStatus(message);
       }
-      setSecureError(message);
-      setAuthNotice('');
-      setStatus(message);
     } finally {
       passwordResetInFlightRef.current = false;
       setAuthLoading(false);
@@ -3383,9 +3389,12 @@ export default function VoiceExpenseTrackerPreview() {
                 </div>
               )}
               {authView === 'reset-password' ? (
-                <form onSubmit={resetPassword}>
+                <form onSubmit={resetPassword} autoComplete="on">
                   <label className="field-label" htmlFor="reset-email">Registered Email</label>
-                  <input id="reset-email" name="email" type="email" placeholder="owner@business.com" autoComplete="email" />
+                  <input id="reset-email" name="email" type="email" placeholder="owner@business.com" autoComplete="username email" inputMode="email" />
+                  {passwordResetCooldown > 0 && (
+                    <p className="field-help">Reset emails are paused for safety. Wait for the timer, then request only one fresh link.</p>
+                  )}
                   <button className="saas-primary-button full" type="submit" disabled={authLoading || !supabaseEnabled || passwordResetCooldown > 0}>
                     {authLoading ? 'Sending...' : passwordResetCooldown > 0 ? `Try again in ${passwordResetCooldown}s` : 'Send Reset Link'}
                   </button>
@@ -3394,7 +3403,7 @@ export default function VoiceExpenseTrackerPreview() {
                   </button>
                 </form>
               ) : (
-              <form onSubmit={completeAuth}>
+              <form onSubmit={completeAuth} autoComplete="on">
                 {authView === 'register' && (
                   <>
                     <label className="field-label" htmlFor="auth-business">Business Name</label>
@@ -3404,9 +3413,24 @@ export default function VoiceExpenseTrackerPreview() {
                   </>
                 )}
                 <label className="field-label" htmlFor="auth-email">Email</label>
-                <input id="auth-email" name="email" type="email" placeholder="owner@business.com" autoComplete="email" />
-                <label className="field-label" htmlFor="auth-password">Password</label>
-                <input id="auth-password" name="password" type="password" placeholder="••••••••" autoComplete={authView === 'login' ? 'current-password' : 'new-password'} />
+                <input id="auth-email" name="email" type="email" placeholder="owner@business.com" autoComplete="username email" inputMode="email" />
+                <div className="password-label-row">
+                  <label className="field-label" htmlFor="auth-password">Password</label>
+                  <button
+                    className="password-toggle-button"
+                    type="button"
+                    onClick={() => setShowAuthPassword((visible) => !visible)}
+                  >
+                    {showAuthPassword ? 'Hide' : 'Show'} password
+                  </button>
+                </div>
+                <input
+                  id="auth-password"
+                  name="password"
+                  type={showAuthPassword ? 'text' : 'password'}
+                  placeholder="Enter your password"
+                  autoComplete={authView === 'login' ? 'current-password' : 'new-password'}
+                />
                 {authView === 'login' && (
                   <div className="auth-row">
                     <label><input type="checkbox" /> Remember me</label>
