@@ -5104,3 +5104,23 @@ body.dark .topbar {
   background: rgba(255, 255, 255, 0.16);
   color: #fff;
 }
+
+/* Final sidebar safety override: older section styles clipped rendered children. */
+.side-nav .sidebar-section {
+  height: auto !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+.side-nav .sidebar-section.expanded {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+.side-nav .sidebar-section .sidebar-children {
+  position: static !important;
+  visibility: visible !important;
+  transform: none !important;
+}
