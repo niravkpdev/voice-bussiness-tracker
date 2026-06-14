@@ -2044,11 +2044,20 @@ body.dark .growth-down { background: #2a0a0a; color: #f87171; }
 }
 
 .health-score-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  border: 1px solid #047857;
+  border-radius: 12px;
+  padding: 8px 14px;
+  background: #10b981;
   font-size: 0.82rem;
   font-weight: 800;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: #ffffff;
   white-space: nowrap;
+  -webkit-text-fill-color: #ffffff;
 }
 
 /* ================================================================
