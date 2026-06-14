@@ -3669,6 +3669,18 @@ export default function VoiceExpenseTrackerPreview() {
         </header>
 
         <main className="page-shell">
+          <section className="mobile-start-panel" aria-label="Mobile quick start">
+            <div>
+              <span className="eyebrow">{activeSidebarSection?.label || 'Overview'}</span>
+              <h2>{activePageTitle}</h2>
+            </div>
+            <div className="mobile-start-actions">
+              <a href="#dashboard">Home</a>
+              <a href="#voucher-entry">Add Voucher</a>
+              <a href="#day-book">Day Book</a>
+            </div>
+          </section>
+
           {/* Active View conditional rendering */}
           {appLoading && (
             <section className="skeleton-grid" aria-label="Loading dashboard">
