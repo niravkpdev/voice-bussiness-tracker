@@ -969,6 +969,18 @@ export default function VoiceExpenseTrackerPreview() {
   }, []);
 
   useEffect(() => {
+    if (authView !== 'app' || !authUser || !hasVerifiedAccess) {
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    });
+  }, [authView, authUser?.uid, hasVerifiedAccess]);
+
+  useEffect(() => {
     const section = SIDEBAR_SECTIONS.find((group) => group.children.some((child) => child.tab === activeTab));
     const sectionNode = section ? sidebarSectionRefs.current[section.id] : null;
     if (!sectionNode) {
