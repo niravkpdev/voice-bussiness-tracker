@@ -3623,14 +3623,6 @@ export default function VoiceExpenseTrackerPreview() {
           </div>
           <div className="topbar-actions">
             <input className="topbar-date" type="date" defaultValue={new Date().toISOString().slice(0, 10)} aria-label="Dashboard date" />
-            <button 
-              className="topbar-link dark-mode-toggle-btn"
-              disabled
-              type="button"
-              title="Light mode is locked for readability"
-            >
-              Light
-            </button>
             <a className="topbar-link notification-link" href="#notifications">Alerts</a>
             <a className="topbar-link" href="#profile-settings">Profile</a>
             <a className="topbar-link" href="#app-settings">Settings</a>

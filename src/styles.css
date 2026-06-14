@@ -5845,3 +5845,173 @@ fieldset {
   color: #111827 !important;
   border-color: #d1d5db !important;
 }
+
+/* Usability polish: consistent light-mode controls, badges, loaders, and mobile header. */
+.badge,
+.info-badge,
+.runtime-pill,
+.status-pill,
+.growth-badge,
+.stat-icon-badge {
+  border: 1px solid rgba(79, 70, 229, 0.18) !important;
+  box-shadow: none !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+.runtime-pill,
+.status-pill,
+.info-badge {
+  background: #eef2ff !important;
+  color: #4338ca !important;
+}
+
+.badge-receipt,
+.growth-up {
+  background: #dcfce7 !important;
+  color: #15803d !important;
+  border-color: #bbf7d0 !important;
+}
+
+.badge-payment,
+.growth-down {
+  background: #fee2e2 !important;
+  color: #b91c1c !important;
+  border-color: #fecaca !important;
+}
+
+.badge-sales,
+.badge-debtor {
+  background: #dbeafe !important;
+  color: #1e40af !important;
+  border-color: #bfdbfe !important;
+}
+
+.badge-purchase,
+.badge-creditor {
+  background: #fef3c7 !important;
+  color: #92400e !important;
+  border-color: #fde68a !important;
+}
+
+.manual-button:hover,
+.saas-primary-button:hover,
+.primary-button:hover,
+.sidebar-support-button:hover,
+.topbar-link.primary:hover,
+.quick-action-tile:hover,
+.quick-action-tile:focus-visible {
+  filter: brightness(0.98) !important;
+  transform: translateY(-1px) !important;
+}
+
+.secondary-button:hover,
+.saas-google-button:hover,
+.topbar-link:hover,
+.topbar-actions button:hover,
+.password-toggle-button:hover {
+  background: #f8fafc !important;
+  color: #111827 !important;
+  border-color: #c7d2fe !important;
+}
+
+.skeleton-grid,
+.skeleton-panel {
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 18px !important;
+  color: #4b5563 !important;
+}
+
+.skeleton-grid span {
+  background: linear-gradient(90deg, #f3f4f6, #e5e7eb, #f3f4f6) !important;
+}
+
+.empty-state,
+.empty-state-panel {
+  border: 1px dashed #cbd5e1 !important;
+  background: #f8fafc !important;
+  color: #374151 !important;
+}
+
+.empty-state *,
+.empty-state-panel * {
+  color: inherit !important;
+}
+
+.topbar {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 20 !important;
+}
+
+.topbar-search input {
+  min-width: 0 !important;
+}
+
+@media (max-width: 768px) {
+  .topbar {
+    min-height: auto !important;
+    padding: 10px 12px !important;
+    gap: 10px !important;
+  }
+
+  .topbar-title {
+    min-width: 0 !important;
+    flex: 1 1 180px !important;
+  }
+
+  .topbar-title strong {
+    display: block !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .topbar-search {
+    order: 3 !important;
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .topbar-actions {
+    order: 2 !important;
+    display: flex !important;
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    overflow-x: auto !important;
+    padding-bottom: 2px !important;
+    gap: 8px !important;
+    scrollbar-width: thin !important;
+  }
+
+  .topbar-date,
+  .topbar-link,
+  .topbar-actions button {
+    flex: 0 0 auto !important;
+    min-height: 44px !important;
+    white-space: nowrap !important;
+  }
+
+  .page-shell {
+    padding: 14px !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .topbar-date {
+    max-width: 142px !important;
+  }
+
+  .topbar-link {
+    padding-inline: 12px !important;
+  }
+
+  .dashboard-summary-grid,
+  .dashboard-analytics-grid,
+  .ai-stats-breakdown,
+  .settings-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
