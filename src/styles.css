@@ -5325,3 +5325,432 @@ body.dark .topbar {
   filter: none;
   transform: none;
 }
+
+/* Permanent light theme lock: keep the app readable on dark OS/browser modes. */
+html,
+body,
+#root {
+  background: #ffffff !important;
+  color: #111827 !important;
+  color-scheme: light !important;
+}
+
+body,
+body.dark {
+  --bg-page: #ffffff !important;
+  --bg-main: #ffffff !important;
+  --bg-card: #f9fafb !important;
+  --bg-card-dark: #e5e7eb !important;
+  --surface-main: #ffffff !important;
+  --panel-bg: #ffffff !important;
+  --card-bg: #ffffff !important;
+  --text-main: #111827 !important;
+  --text-muted: #4b5563 !important;
+  --text-faint: #6b7280 !important;
+  --border-main: #d1d5db !important;
+  --border-color: #d1d5db !important;
+  --erp-bg: #ffffff !important;
+  --erp-bg-soft: #f9fafb !important;
+  --erp-sidebar: #ffffff !important;
+  --erp-panel: #ffffff !important;
+  --erp-panel-strong: #ffffff !important;
+  --erp-border: #d1d5db !important;
+  --erp-text: #111827 !important;
+  --erp-muted: #4b5563 !important;
+  background: #ffffff !important;
+  color: #111827 !important;
+}
+
+.app-frame,
+.workspace,
+body.dark .workspace,
+.page-shell,
+.saas-public-shell,
+.auth-page {
+  background: #ffffff !important;
+  color: #111827 !important;
+}
+
+.sidebar {
+  background: #ffffff !important;
+  color: #111827 !important;
+  border-right: 1px solid #d1d5db !important;
+  box-shadow: 8px 0 28px rgba(15, 23, 42, 0.08) !important;
+}
+
+.sidebar-brand,
+.sidebar-status-card,
+.sidebar-support,
+.erp-nav-group,
+.dashboard-command-center,
+.dashboard-glass-panel,
+.stat-card-modern,
+.quick-action-console,
+.hero-panel,
+.panel,
+.advanced-panel,
+.auth-card,
+.legal-card,
+.settings-card,
+.profile-logo-card,
+.phase3-card,
+.phase2-stack .panel,
+.phase3-stack .panel,
+.modal-content,
+.invoice-paper,
+.ai-list,
+.empty-state,
+.compact-item,
+.summary-card,
+.storage-box {
+  background: #ffffff !important;
+  color: #111827 !important;
+  border-color: #d1d5db !important;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08) !important;
+}
+
+.erp-nav-group.is-open,
+.erp-nav-group.is-active,
+.sidebar-section.expanded,
+.sidebar-section.has-active {
+  background: #f9fafb !important;
+  border-color: #c7d2fe !important;
+}
+
+.sidebar-brand strong,
+.sidebar-status-card strong,
+.sidebar-support strong,
+.topbar-title strong,
+.dashboard-welcome-card h1,
+.dashboard-glass-panel h2,
+.dashboard-glass-panel h3,
+.section-header h2,
+.panel h2,
+.panel h3,
+.auth-card h1,
+.legal-card h1,
+.legal-card h2,
+h1,
+h2,
+h3,
+h4,
+strong,
+label,
+.field-label,
+.erp-nav-trigger,
+.erp-nav-link,
+.topbar-link,
+.quick-action-tile,
+.activity-item,
+.statement-table,
+.statement-table td,
+.statement-table th {
+  color: #111827 !important;
+}
+
+p,
+span,
+small,
+dd,
+dt,
+.eyebrow,
+.sidebar-brand span,
+.sidebar-status-kicker,
+.sidebar-support span,
+.dashboard-welcome-card p,
+.stat-card-modern p,
+.activity-item p,
+.panel-hint,
+.field-help,
+.legal-updated {
+  color: #4b5563 !important;
+}
+
+.erp-nav-trigger:hover,
+.erp-nav-trigger:focus-visible,
+.erp-nav-link:hover,
+.erp-nav-link:focus-visible,
+.quick-action-tile:hover,
+.quick-action-tile:focus-visible {
+  background: #eef2ff !important;
+  color: #111827 !important;
+}
+
+.erp-nav-link.is-active,
+.side-nav a.active,
+.mobile-bottom-nav a.active {
+  background: #4f46e5 !important;
+  color: #ffffff !important;
+  border-color: #4f46e5 !important;
+}
+
+.erp-nav-link.is-active *,
+.side-nav a.active *,
+.mobile-bottom-nav a.active * {
+  color: #ffffff !important;
+}
+
+.erp-nav-section-icon,
+.erp-nav-child-icon,
+.sidebar-section-icon,
+.sidebar-item-icon,
+.stat-icon-badge,
+.growth-badge {
+  background: #eef2ff !important;
+  color: #4f46e5 !important;
+}
+
+.topbar,
+body.dark .topbar {
+  background: #ffffff !important;
+  color: #111827 !important;
+  border-bottom: 1px solid #d1d5db !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06) !important;
+}
+
+.topbar-search,
+.dashboard-search,
+.topbar-date,
+.topbar-link,
+.topbar-actions button,
+.icon-command-button,
+.profile-avatar {
+  background: #ffffff !important;
+  color: #111827 !important;
+  border: 1px solid #d1d5db !important;
+}
+
+input,
+select,
+textarea,
+button,
+.restore-label {
+  color-scheme: light !important;
+}
+
+input,
+select,
+textarea,
+.topbar-search input,
+.dashboard-search input,
+body.dark input,
+body.dark select,
+body.dark textarea {
+  background: #ffffff !important;
+  color: #111827 !important;
+  border: 1px solid #d1d5db !important;
+  caret-color: #111827 !important;
+  box-shadow: none !important;
+}
+
+input::placeholder,
+textarea::placeholder,
+.topbar-search input::placeholder,
+.dashboard-search input::placeholder {
+  color: #6b7280 !important;
+  opacity: 1 !important;
+}
+
+select option {
+  background: #ffffff !important;
+  color: #111827 !important;
+}
+
+table,
+.statement-table,
+.data-table,
+.erp-table-wrap table {
+  background: #ffffff !important;
+  color: #111827 !important;
+  border-color: #d1d5db !important;
+}
+
+th,
+td,
+.statement-table th,
+.statement-table td,
+body.dark .statement-table th,
+body.dark .statement-table td,
+body.dark .statement-table tr {
+  background: #ffffff !important;
+  color: #111827 !important;
+  border-color: #e5e7eb !important;
+}
+
+thead th,
+.statement-table th {
+  background: #f9fafb !important;
+  color: #374151 !important;
+}
+
+.notice {
+  background: #ecfdf5 !important;
+  color: #065f46 !important;
+  border-color: #a7f3d0 !important;
+}
+
+.notice.error,
+.app-error-banner {
+  background: #fef2f2 !important;
+  color: #991b1b !important;
+  border-color: #fecaca !important;
+}
+
+.notice.warning {
+  background: #fffbeb !important;
+  color: #92400e !important;
+  border-color: #fde68a !important;
+}
+
+.saas-primary-button,
+.manual-button,
+.primary-button,
+.sidebar-support-button,
+.topbar-link.primary {
+  background: #4f46e5 !important;
+  color: #ffffff !important;
+  border-color: #4f46e5 !important;
+}
+
+.saas-google-button,
+.secondary-button,
+.topbar-link.dark-mode-toggle-btn,
+.password-toggle-button {
+  background: #ffffff !important;
+  color: #111827 !important;
+  border: 1px solid #d1d5db !important;
+}
+
+.danger-button,
+.delete-entry-button {
+  background: #fef2f2 !important;
+  color: #991b1b !important;
+  border-color: #fecaca !important;
+}
+
+.mobile-bottom-nav {
+  background: #ffffff !important;
+  border-top: 1px solid #d1d5db !important;
+}
+
+.mobile-bottom-nav a {
+  color: #374151 !important;
+}
+
+.modal-backdrop {
+  background: rgba(17, 24, 39, 0.35) !important;
+}
+
+svg text {
+  fill: #111827 !important;
+}
+
+/* Final readability guard: this block must stay last so OS/browser dark mode never wins. */
+html,
+body,
+#root,
+body.dark,
+body[data-theme='dark'] {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  color-scheme: light !important;
+}
+
+* {
+  scrollbar-color: #cbd5e1 #ffffff;
+}
+
+.sidebar,
+.mobile-drawer,
+.mobile-drawer-panel,
+.mobile-sidebar,
+.drawer,
+.drawer-panel,
+.workspace,
+.app-frame,
+.main-content,
+.page-shell,
+.dashboard-shell,
+.auth-page,
+.auth-card,
+.modal-content,
+.modal-panel,
+.dropdown-menu,
+.popover,
+.toast,
+.card,
+.panel,
+.settings-card,
+.profile-card,
+.table-card {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+}
+
+.mobile-drawer-overlay,
+.drawer-overlay,
+.modal-backdrop {
+  background-color: rgba(17, 24, 39, 0.35) !important;
+}
+
+input,
+select,
+textarea,
+[contenteditable='true'] {
+  appearance: auto;
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  border-color: #d1d5db !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  box-shadow: 0 0 0 1000px #ffffff inset !important;
+  -webkit-text-fill-color: #111827 !important;
+  caret-color: #111827 !important;
+}
+
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background-color: #f3f4f6 !important;
+  color: #6b7280 !important;
+  border-color: #d1d5db !important;
+  opacity: 1 !important;
+  -webkit-text-fill-color: #6b7280 !important;
+}
+
+a:not(.erp-nav-link):not(.mobile-bottom-nav a):not(.side-nav a) {
+  color: #4f46e5 !important;
+}
+
+hr,
+fieldset {
+  border-color: #e5e7eb !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  html,
+  body,
+  #root {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    color-scheme: light !important;
+  }
+
+  input,
+  select,
+  textarea,
+  option,
+  optgroup {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    border-color: #d1d5db !important;
+    -webkit-text-fill-color: #111827 !important;
+  }
+}

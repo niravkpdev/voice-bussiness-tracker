@@ -864,7 +864,6 @@ export default function VoiceExpenseTrackerPreview() {
   });
   const [voiceConfirmation, setVoiceConfirmation] = useState(null);
   const [activeReportTab, setActiveReportTab] = useState('pnl');
-  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
   const [openSidebarSections, setOpenSidebarSections] = useState({
     overview: true,
     setup: true,
@@ -1804,13 +1803,10 @@ export default function VoiceExpenseTrackerPreview() {
   }, [passwordResetCooldown]);
 
   useEffect(() => {
-    localStorage.setItem('darkMode', String(darkMode));
-    if (darkMode) {
-      document.body.classList.add('dark');
-    } else {
-      document.body.classList.remove('dark');
-    }
-  }, [darkMode]);
+    localStorage.setItem('darkMode', 'false');
+    document.documentElement.classList.remove('dark');
+    document.body.classList.remove('dark');
+  }, []);
 
   useEffect(() => {
     hydrateWorkspace();
@@ -3629,10 +3625,11 @@ export default function VoiceExpenseTrackerPreview() {
             <input className="topbar-date" type="date" defaultValue={new Date().toISOString().slice(0, 10)} aria-label="Dashboard date" />
             <button 
               className="topbar-link dark-mode-toggle-btn"
-              onClick={() => setDarkMode(!darkMode)}
+              disabled
               type="button"
+              title="Light mode is locked for readability"
             >
-              {darkMode ? '☀️ Light' : '🌙 Dark'}
+              Light
             </button>
             <a className="topbar-link notification-link" href="#notifications">Alerts</a>
             <a className="topbar-link" href="#profile-settings">Profile</a>
