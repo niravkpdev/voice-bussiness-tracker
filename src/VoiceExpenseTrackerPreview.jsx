@@ -883,6 +883,43 @@ export default function VoiceExpenseTrackerPreview() {
   const activeSidebarSection = SIDEBAR_SECTIONS.find((group) => group.children.some((child) => child.tab === activeTab));
   const activeSidebarItem = activeSidebarSection?.children.find((child) => child.tab === activeTab);
   const activePageTitle = activeSidebarItem?.label || 'Dashboard';
+  const renderedTabs = new Set([
+    'dashboard',
+    'ai-assistant',
+    'inventory',
+    'invoices',
+    'gst',
+    'crm',
+    'suppliers',
+    'businesses',
+    'cloud-backup',
+    'notifications',
+    'analytics',
+    'mobile-app',
+    'whatsapp-automation',
+    'upi-payments',
+    'orders',
+    'voice-bookkeeper',
+    'employees',
+    'subscriptions',
+    'accountant-portal',
+    'security-center',
+    'voucher-entry',
+    'party-management',
+    'reports',
+    'day-book',
+    'party-statement',
+    'company-setup',
+    'masters',
+    'vouchers-hub',
+    'accounting-ledgers',
+    'reports-hub',
+    'profile-settings',
+    'app-settings',
+    ...(canViewDatabaseDebug ? ['database-test'] : []),
+    ...LEGAL_PAGE_IDS,
+  ]);
+  const shouldShowRouteFallback = !appLoading && !renderedTabs.has(activeTab);
 
   const mergeAuthDebugInfo = (next = {}) => {
     setAuthDebugInfo((current) => ({
@@ -5012,6 +5049,22 @@ export default function VoiceExpenseTrackerPreview() {
               >
                 Run Database Test
               </button>
+            </section>
+          )}
+
+          {shouldShowRouteFallback && (
+            <section className="panel route-fallback-panel fade-in" id="route-fallback">
+              <span className="eyebrow">Ready</span>
+              <h2>Open a business section</h2>
+              <p className="panel-hint">
+                This page is available from the menu. Use the quick actions below to continue.
+              </p>
+              <div className="mobile-quick-grid">
+                <a className="manual-button compact-link" href="#dashboard">Dashboard</a>
+                <a className="secondary-button compact-link" href="#voucher-entry">Add Voucher</a>
+                <a className="secondary-button compact-link" href="#day-book">Day Book</a>
+                <a className="secondary-button compact-link" href="#profile-settings">Profile</a>
+              </div>
             </section>
           )}
         </main>
