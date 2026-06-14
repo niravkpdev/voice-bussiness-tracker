@@ -6059,13 +6059,15 @@ fieldset {
 
   .topbar {
     display: flex !important;
-    flex-wrap: wrap !important;
+    flex-wrap: nowrap !important;
     align-items: center !important;
     width: 100% !important;
-    min-height: 64px !important;
+    min-height: 56px !important;
     margin: 0 !important;
     border-radius: 0 !important;
+    padding: 8px 12px !important;
     background: #ffffff !important;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06) !important;
   }
 
   .topbar-menu-button {
@@ -6083,6 +6085,30 @@ fieldset {
     margin: 0 !important;
     padding: 8px 12px calc(132px + env(safe-area-inset-bottom)) !important;
     background: #ffffff !important;
+  }
+
+  .topbar-search,
+  .topbar-actions {
+    display: none !important;
+  }
+
+  .topbar-title {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+  }
+
+  .topbar-title .eyebrow {
+    display: none !important;
+  }
+
+  .topbar-title strong {
+    display: block !important;
+    overflow: hidden !important;
+    color: #111827 !important;
+    font-size: 1rem !important;
+    line-height: 1.15 !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
   }
 
   .page-shell > section,
@@ -6122,7 +6148,7 @@ fieldset {
 
   .mobile-start-actions {
     display: grid !important;
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 8px !important;
   }
 
@@ -6152,7 +6178,7 @@ fieldset {
 
 @media (max-width: 420px) {
   .topbar-search {
-    display: flex !important;
+    display: none !important;
   }
 
   .topbar-actions {
