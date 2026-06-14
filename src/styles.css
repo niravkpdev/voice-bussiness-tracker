@@ -5754,3 +5754,35 @@ fieldset {
     -webkit-text-fill-color: #111827 !important;
   }
 }
+
+/* Button/badge contrast guard: keep text readable on colored action surfaces. */
+.section-header > span,
+.topbar-link.primary,
+.topbar-link.primary:visited,
+.sidebar-support-button,
+.sidebar-support-button:visited,
+.saas-primary-button,
+.manual-button,
+.primary-button,
+.erp-nav-link.is-active,
+.mobile-bottom-nav a.active {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+.section-header > span *,
+.topbar-link.primary *,
+.sidebar-support-button *,
+.saas-primary-button *,
+.manual-button *,
+.primary-button *,
+.erp-nav-link.is-active *,
+.mobile-bottom-nav a.active * {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+.section-header > span {
+  background: #111827 !important;
+  border: 1px solid #374151 !important;
+}
