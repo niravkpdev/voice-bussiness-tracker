@@ -40,10 +40,12 @@ import {
   getSupabaseUrl,
   getSupabaseAuthErrorMessage,
   getSupabaseProjectHost,
+  inviteCompanyMember,
   isSupabaseConfigured,
   isPasswordRecoveryRoute,
   listenToSupabaseAuth,
   loadCloudCollection,
+  loadCompanyMembers,
   loadUserProfileSettings,
   postPaymentWithLedger,
   prepareSupabasePasswordRecoverySession,
@@ -58,6 +60,8 @@ import {
   signInSupabaseGoogle,
   signOutSupabase,
   updateCurrentUserPassword,
+  updateCompanyMember,
+  removeCompanyMember,
 } from './supabaseClient.js';
 import {
   canRunRateLimitedAction,
@@ -162,6 +166,7 @@ const APP_TABS = [
   'subscriptions',
   'accountant-portal',
   'security-center',
+  'user-management',
   'voucher-entry',
   'party-management',
   'reports',
@@ -248,6 +253,7 @@ const navigationConfig = [
       { id: 'whatsapp-automation', path: '#whatsapp-automation', tab: 'whatsapp-automation', label: 'WhatsApp Automation', icon: '⚡' },
       { id: 'cloud-backup', path: '#cloud-backup', tab: 'cloud-backup', label: 'Cloud Backup', icon: '⎇' },
       { id: 'security-center', path: '#security-center', tab: 'security-center', label: 'Security Center', icon: '◇' },
+      { id: 'user-management', path: '#user-management', tab: 'user-management', label: 'Users & Roles', icon: '♙' },
       { id: 'profile-settings', path: '#profile-settings', tab: 'profile-settings', label: 'Profile', icon: '☉' },
       { id: 'system-settings', path: '#app-settings', tab: 'app-settings', label: 'Settings', icon: '⚙' },
       { id: 'database-test', path: '#database-test', tab: 'database-test', label: 'Database Test', icon: '◉', debugOnly: true },
@@ -833,6 +839,16 @@ export default function VoiceExpenseTrackerPreview() {
   const [cloudOfflineQueue, setCloudOfflineQueue] = useState([]);
   const [cloudBusinesses, setCloudBusinesses] = useState([]);
   const [cloudNotifications, setCloudNotifications] = useState([]);
+  const [companyMembers, setCompanyMembers] = useState([]);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [memberSaving, setMemberSaving] = useState(false);
+  const [memberNotice, setMemberNotice] = useState('');
+  const [memberError, setMemberError] = useState('');
+  const [memberInvite, setMemberInvite] = useState({
+    name: '',
+    email: '',
+    role: 'staff',
+  });
   const [peopleLoading, setPeopleLoading] = useState(false);
   const [manualType, setManualType] = useState('Expense');
   const [manualAmount, setManualAmount] = useState('');
@@ -882,6 +898,7 @@ export default function VoiceExpenseTrackerPreview() {
   const recoverySessionPreparedRef = useRef(false);
   const passwordResetInFlightRef = useRef(false);
   const hasVerifiedAccess = !REQUIRE_VERIFIED_EMAIL || Boolean(authUser?.emailVerified);
+  const isCompanyOwner = String(authUser?.role || '').toLowerCase() === 'owner';
   const canViewDatabaseDebug = import.meta.env.DEV || import.meta.env.VITE_DEBUG_DATABASE === 'true';
   const canViewAuthDebug = import.meta.env.DEV || import.meta.env.VITE_DEBUG_AUTH === 'true';
   const activeSidebarSection = SIDEBAR_SECTIONS.find((group) => group.children.some((child) => child.tab === activeTab));
@@ -908,6 +925,7 @@ export default function VoiceExpenseTrackerPreview() {
     'subscriptions',
     'accountant-portal',
     'security-center',
+    'user-management',
     'voucher-entry',
     'party-management',
     'reports',
@@ -952,6 +970,30 @@ export default function VoiceExpenseTrackerPreview() {
 
     return true;
   };
+
+  const refreshCompanyMembers = async () => {
+    if (!supabaseEnabled || !authUser?.uid || !isCompanyOwner) {
+      setCompanyMembers([]);
+      return;
+    }
+
+    setMembersLoading(true);
+    setMemberError('');
+    try {
+      const members = await loadCompanyMembers(authUser.uid, 'default');
+      setCompanyMembers(members);
+    } catch (error) {
+      setMemberError(publicSafeError(error, 'Could not load company members. Run the member management SQL migration and try again.'));
+    } finally {
+      setMembersLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (authView === 'app' && hasVerifiedAccess) {
+      refreshCompanyMembers();
+    }
+  }, [authView, hasVerifiedAccess, authUser?.uid, authUser?.role, supabaseEnabled]);
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -1550,6 +1592,110 @@ export default function VoiceExpenseTrackerPreview() {
     } catch (error) {
       setSecureError(publicSafeError(error, 'Cloud data delete failed. Please try again.'));
       throw error;
+    }
+  };
+
+  const handleInviteMember = async (event) => {
+    event.preventDefault();
+    if (!requireSensitiveAccess('member invites')) return;
+    if (!isCompanyOwner) {
+      setMemberError('Only the company owner can invite members.');
+      return;
+    }
+
+    const email = sanitizeEmail(memberInvite.email);
+    const name = sanitizeText(memberInvite.name);
+    if (!validateEmail(email)) {
+      setMemberError('Enter a valid member email.');
+      return;
+    }
+    if (email === sanitizeEmail(authUser?.email || '')) {
+      setMemberError('You cannot invite or change your own membership.');
+      return;
+    }
+
+    setMemberSaving(true);
+    setMemberError('');
+    setMemberNotice('');
+    try {
+      const member = await inviteCompanyMember(authUser.uid, {
+        name,
+        email,
+        role: memberInvite.role,
+        businessId: 'default',
+      });
+      if (member?.id) {
+        setCompanyMembers((items) => [member, ...(items || []).filter((item) => item.id !== member.id)]);
+      } else {
+        await refreshCompanyMembers();
+      }
+      setMemberInvite({ name: '', email: '', role: 'staff' });
+      setMemberNotice('Member invite saved. Role access is controlled by Supabase RLS.');
+    } catch (error) {
+      setMemberError(publicSafeError(error, 'Could not invite member. Check owner access and run the member management SQL migration.'));
+    } finally {
+      setMemberSaving(false);
+    }
+  };
+
+  const handleMemberUpdate = async (member, updates) => {
+    if (!requireSensitiveAccess('member management')) return;
+    if (!isCompanyOwner) {
+      setMemberError('Only the company owner can manage members.');
+      return;
+    }
+    if (member.userId && member.userId === authUser?.uid) {
+      setMemberError('You cannot change your own role or status.');
+      return;
+    }
+
+    setMemberSaving(true);
+    setMemberError('');
+    setMemberNotice('');
+    try {
+      const updated = await updateCompanyMember(authUser.uid, member.id, updates);
+      if (updated?.id) {
+        setCompanyMembers((items) => (items || []).map((item) => (item.id === updated.id ? updated : item)));
+      } else {
+        await refreshCompanyMembers();
+      }
+      setMemberNotice('Member updated and audit log recorded.');
+    } catch (error) {
+      setMemberError(publicSafeError(error, 'Could not update member. Check owner permissions and RLS policies.'));
+    } finally {
+      setMemberSaving(false);
+    }
+  };
+
+  const handleMemberDisable = (member) => {
+    handleMemberUpdate(member, { status: 'disabled' });
+  };
+
+  const handleMemberRemove = async (member) => {
+    if (!requireSensitiveAccess('member removal')) return;
+    if (!isCompanyOwner) {
+      setMemberError('Only the company owner can remove members.');
+      return;
+    }
+    if (member.userId && member.userId === authUser?.uid) {
+      setMemberError('You cannot remove your own membership.');
+      return;
+    }
+    if (!window.confirm(`Remove ${member.email || member.name || 'this member'} from the company?`)) {
+      return;
+    }
+
+    setMemberSaving(true);
+    setMemberError('');
+    setMemberNotice('');
+    try {
+      await removeCompanyMember(authUser.uid, member.id);
+      setCompanyMembers((items) => (items || []).filter((item) => item.id !== member.id));
+      setMemberNotice('Member removed and audit log recorded.');
+    } catch (error) {
+      setMemberError(publicSafeError(error, 'Could not remove member. Check owner permissions and RLS policies.'));
+    } finally {
+      setMemberSaving(false);
     }
   };
 
@@ -5117,6 +5263,167 @@ export default function VoiceExpenseTrackerPreview() {
             </section>
           )}
 
+          {activeTab === 'user-management' && (
+            <section className="panel members-panel fade-in" id="user-management">
+              <div className="section-header">
+                <div>
+                  <h2>Users & Roles</h2>
+                  <p className="panel-hint">Invite team members and control access with Owner, Manager, Accountant, and Staff roles.</p>
+                </div>
+                <span>{isCompanyOwner ? 'Owner Access' : 'Owner Only'}</span>
+              </div>
+
+              {!isCompanyOwner ? (
+                <div className="notice error">
+                  Only the company owner can invite or manage members. Your current role is {authUser?.role || 'Guest'}.
+                </div>
+              ) : (
+                <>
+                  {memberError && <div className="notice error">{memberError}</div>}
+                  {memberNotice && <div className="notice success">{memberNotice}</div>}
+
+                  <form className="member-invite-card" onSubmit={handleInviteMember}>
+                    <div>
+                      <h3>Invite Member</h3>
+                      <p className="panel-hint">Pending invites are stored in Supabase and role access is enforced by RLS.</p>
+                    </div>
+                    <div className="form-grid">
+                      <div>
+                        <label className="field-label" htmlFor="member-name">Name</label>
+                        <input
+                          id="member-name"
+                          value={memberInvite.name}
+                          onChange={(event) => setMemberInvite((current) => ({ ...current, name: event.target.value }))}
+                          placeholder="Example: Rahul Shah"
+                        />
+                      </div>
+                      <div>
+                        <label className="field-label" htmlFor="member-email">Email</label>
+                        <input
+                          id="member-email"
+                          type="email"
+                          value={memberInvite.email}
+                          onChange={(event) => setMemberInvite((current) => ({ ...current, email: event.target.value }))}
+                          placeholder="member@example.com"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="field-label" htmlFor="member-role">Role</label>
+                        <select
+                          id="member-role"
+                          value={memberInvite.role}
+                          onChange={(event) => setMemberInvite((current) => ({ ...current, role: event.target.value }))}
+                        >
+                          <option value="manager">Manager</option>
+                          <option value="accountant">Accountant</option>
+                          <option value="staff">Staff</option>
+                        </select>
+                      </div>
+                      <div className="member-invite-action">
+                        <button className="manual-button" type="submit" disabled={memberSaving || membersLoading}>
+                          {memberSaving ? 'Saving...' : 'Invite Member'}
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+
+                  <div className="member-toolbar">
+                    <div>
+                      <h3>Company Members</h3>
+                      <p className="panel-hint">{membersLoading ? 'Loading members...' : `${companyMembers.length} member${companyMembers.length === 1 ? '' : 's'} found`}</p>
+                    </div>
+                    <button className="secondary-button compact-button" type="button" onClick={refreshCompanyMembers} disabled={membersLoading || memberSaving}>
+                      Refresh
+                    </button>
+                  </div>
+
+                  <div className="members-table-wrap">
+                    <table className="members-table">
+                      <thead>
+                        <tr>
+                          <th>Name</th>
+                          <th>Email</th>
+                          <th>Role</th>
+                          <th>Status</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {companyMembers.length === 0 && (
+                          <tr>
+                            <td colSpan="5">
+                              <div className="empty-state">No members yet. Invite your first manager, accountant, or staff member.</div>
+                            </td>
+                          </tr>
+                        )}
+                        {companyMembers.map((member) => {
+                          const isSelf = Boolean(member.userId && member.userId === authUser?.uid);
+                          const displayName = member.name || (isSelf ? profile.owner : 'Invited member');
+                          const displayEmail = member.email || (isSelf ? authUser?.email : 'Email not available');
+                          return (
+                            <tr key={member.id}>
+                              <td data-label="Name">
+                                <strong>{displayName}</strong>
+                                {isSelf && <span className="member-self-pill">You</span>}
+                              </td>
+                              <td data-label="Email">{displayEmail}</td>
+                              <td data-label="Role">
+                                <select
+                                  value={member.role}
+                                  disabled={isSelf || memberSaving}
+                                  onChange={(event) => handleMemberUpdate(member, { role: event.target.value })}
+                                  aria-label={`Change role for ${displayEmail}`}
+                                >
+                                  <option value="owner">Owner</option>
+                                  <option value="manager">Manager</option>
+                                  <option value="accountant">Accountant</option>
+                                  <option value="staff">Staff</option>
+                                </select>
+                              </td>
+                              <td data-label="Status">
+                                <select
+                                  value={member.status}
+                                  disabled={isSelf || memberSaving}
+                                  onChange={(event) => handleMemberUpdate(member, { status: event.target.value })}
+                                  aria-label={`Change status for ${displayEmail}`}
+                                >
+                                  <option value="active">Active</option>
+                                  <option value="invited">Invited</option>
+                                  <option value="disabled">Disabled</option>
+                                </select>
+                              </td>
+                              <td data-label="Actions">
+                                <div className="member-actions">
+                                  <button
+                                    className="secondary-button compact-button"
+                                    type="button"
+                                    disabled={isSelf || memberSaving || member.status === 'disabled'}
+                                    onClick={() => handleMemberDisable(member)}
+                                  >
+                                    Disable
+                                  </button>
+                                  <button
+                                    className="danger-button compact-button"
+                                    type="button"
+                                    disabled={isSelf || memberSaving}
+                                    onClick={() => handleMemberRemove(member)}
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </section>
+          )}
+
           {activeTab === 'app-settings' && (
             <section className="panel settings-panel fade-in" id="app-settings">
               <div className="section-header">
@@ -5147,9 +5454,14 @@ export default function VoiceExpenseTrackerPreview() {
                   <p><strong>{authUser?.email || 'No email available'}</strong></p>
                   <p className="panel-hint">User ID: {authUser?.uid || 'Not available'}</p>
                   <p className="panel-hint">Status: {authUser?.emailVerified ? 'Email verified' : 'Email not verified'}</p>
-                  <button className="secondary-button compact-button" type="button" onClick={() => { window.location.hash = 'profile-settings'; }}>
-                    Open Profile
-                  </button>
+                  <div className="inline-actions">
+                    <button className="secondary-button compact-button" type="button" onClick={() => { window.location.hash = 'profile-settings'; }}>
+                      Open Profile
+                    </button>
+                    <button className="secondary-button compact-button" type="button" onClick={() => { window.location.hash = 'user-management'; }}>
+                      Users & Roles
+                    </button>
+                  </div>
                 </article>
                 <article className="settings-card">
                   <h3>Data Safety & Backups</h3>
@@ -5548,9 +5860,3 @@ export default function VoiceExpenseTrackerPreview() {
     </div>
   );
 }
-
-
-
-
-
-

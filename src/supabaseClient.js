@@ -1384,6 +1384,151 @@ export async function loadCloudCollection(uid, tableName) {
   return (data || []).map(rowToAppRecord).filter(Boolean);
 }
 
+function normalizeCompanyMember(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    ownerUserId: row.owner_user_id,
+    businessId: row.business_id || 'default',
+    userId: row.user_id || '',
+    name: row.display_name || row.member_name || '',
+    email: row.invited_email || row.member_email || '',
+    role: row.role || 'staff',
+    status: row.status || 'invited',
+    invitedAt: row.invited_at || '',
+    joinedAt: row.joined_at || '',
+    createdAt: row.created_at || '',
+    updatedAt: row.updated_at || '',
+  };
+}
+
+export async function loadCompanyMembers(uid, businessId = 'default') {
+  const client = getSupabaseClient();
+  const user = await getCurrentSupabaseUser(client);
+  const currentUid = user?.id || null;
+  const path = `company_members/${uid}/${businessId}`;
+
+  if (!client || !uid) {
+    return [];
+  }
+
+  cloudInfo('SUPABASE_MEMBERS_LOAD_START', {
+    projectId: getSupabaseProjectHost() || null,
+    authDomain: supabaseConfig.url || null,
+    currentSupabaseUserUid: currentUid,
+    requestedUid: uid,
+    path,
+  });
+
+  try {
+    const { data, error } = await withCloudTimeout(
+      client
+        .from('company_members')
+        .select('id, owner_user_id, business_id, user_id, display_name, invited_email, role, status, invited_at, joined_at, created_at, updated_at')
+        .eq('owner_user_id', uid)
+        .eq('business_id', businessId)
+        .order('updated_at', { ascending: false }),
+      { path, uid, currentSupabaseUserUid: currentUid, operation: 'select:company_members' }
+    );
+    if (error) throw error;
+    cloudInfo('SUPABASE_MEMBERS_LOAD_SUCCESS', {
+      projectId: getSupabaseProjectHost() || null,
+      currentSupabaseUserUid: currentUid,
+      requestedUid: uid,
+      count: (data || []).length,
+      path,
+    });
+    return (data || []).map(normalizeCompanyMember).filter(Boolean);
+  } catch (error) {
+    cloudError('SUPABASE_MEMBERS_LOAD_ERROR', {
+      projectId: getSupabaseProjectHost() || null,
+      authDomain: supabaseConfig.url || null,
+      currentSupabaseUserUid: currentUid,
+      requestedUid: uid,
+      path,
+      code: error?.code || null,
+      message: error?.message || String(error),
+    });
+    throw error;
+  }
+}
+
+export async function inviteCompanyMember(uid, member) {
+  const client = getSupabaseClient();
+  const user = await getCurrentSupabaseUser(client);
+  const currentUid = user?.id || null;
+  const path = `company_members/${uid}/${member?.businessId || 'default'}`;
+
+  if (!client || !uid || !member?.email) {
+    throw new Error('Missing Supabase client, owner uid, or member email for invite.');
+  }
+  if (currentUid !== uid) {
+    throw new Error('Only the company owner can invite members.');
+  }
+
+  const { data, error } = await withCloudTimeout(
+    client.rpc('invite_company_member', {
+      p_owner_user_id: uid,
+      p_business_id: member.businessId || 'default',
+      p_email: sanitizeEmail(member.email),
+      p_name: sanitizeText(member.name || ''),
+      p_role: member.role || 'staff',
+    }),
+    { path, uid, currentSupabaseUserUid: currentUid, operation: 'rpc:invite_company_member' }
+  );
+  if (error) throw error;
+  return normalizeCompanyMember(data?.member || data);
+}
+
+export async function updateCompanyMember(uid, memberId, updates) {
+  const client = getSupabaseClient();
+  const user = await getCurrentSupabaseUser(client);
+  const currentUid = user?.id || null;
+  const path = `company_members/${uid}/${memberId}`;
+
+  if (!client || !uid || !memberId) {
+    throw new Error('Missing Supabase client, owner uid, or member id for update.');
+  }
+  if (currentUid !== uid) {
+    throw new Error('Only the company owner can update members.');
+  }
+
+  const { data, error } = await withCloudTimeout(
+    client.rpc('update_company_member', {
+      p_member_id: memberId,
+      p_role: updates?.role || null,
+      p_status: updates?.status || null,
+      p_name: updates?.name ? sanitizeText(updates.name) : null,
+    }),
+    { path, uid, currentSupabaseUserUid: currentUid, operation: 'rpc:update_company_member' }
+  );
+  if (error) throw error;
+  return normalizeCompanyMember(data?.member || data);
+}
+
+export async function removeCompanyMember(uid, memberId) {
+  const client = getSupabaseClient();
+  const user = await getCurrentSupabaseUser(client);
+  const currentUid = user?.id || null;
+  const path = `company_members/${uid}/${memberId}`;
+
+  if (!client || !uid || !memberId) {
+    throw new Error('Missing Supabase client, owner uid, or member id for removal.');
+  }
+  if (currentUid !== uid) {
+    throw new Error('Only the company owner can remove members.');
+  }
+
+  const { data, error } = await withCloudTimeout(
+    client.rpc('remove_company_member', {
+      p_member_id: memberId,
+    }),
+    { path, uid, currentSupabaseUserUid: currentUid, operation: 'rpc:remove_company_member' }
+  );
+  if (error) throw error;
+  return data;
+}
+
 export async function saveUserProfileSettings(uid, profile) {
   return saveCloudRecord(uid, 'settings', 'profile', profile);
 }
