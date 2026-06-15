@@ -35,6 +35,8 @@ import {
   createInvoiceWithStock,
   createSupabaseAccount,
   deleteCloudRecord,
+  deletePaymentWithLedgerReversal,
+  editPaymentWithLedgerReversal,
   getSupabaseUrl,
   getSupabaseAuthErrorMessage,
   getSupabaseProjectHost,
@@ -1147,7 +1149,7 @@ export default function VoiceExpenseTrackerPreview() {
       const orders = ordersResult.ok ? ordersResult.rows : [];
       const employees = employeesResult.ok ? employeesResult.rows : [];
       const attendance = attendanceResult.ok ? attendanceResult.rows : [];
-      const payments = paymentsResult.ok ? paymentsResult.rows : [];
+      const payments = paymentsResult.ok ? paymentsResult.rows.filter((payment) => !payment.deletedAt) : [];
       const auditLogs = auditLogsResult.ok ? auditLogsResult.rows : [];
       const subscriptionRows = subscriptionRowsResult.ok ? subscriptionRowsResult.rows : [];
       const securityRows = securityRowsResult.ok ? securityRowsResult.rows : [];
@@ -1471,6 +1473,65 @@ export default function VoiceExpenseTrackerPreview() {
       return result;
     } catch (error) {
       setSecureError(publicSafeError(error, 'Atomic payment posting failed. Please run the latest Supabase Phase 1 payment RPC migration.'));
+      throw error;
+    }
+  };
+
+  const syncPaymentLedgerRpcResult = (result, fallbackPaymentId) => {
+    if (result?.payment?.id && !result.payment.deletedAt) {
+      updateCloudRecordCache('payments', result.payment.id, result.payment);
+    }
+    if (result?.payment?.deletedAt) {
+      removeCloudRecordCache('payments', result.payment.id || fallbackPaymentId);
+    }
+    if (result?.cancelledLedgerPosting?.id) {
+      updateCloudRecordCache('transactions', result.cancelledLedgerPosting.id, result.cancelledLedgerPosting);
+    }
+    if (result?.ledgerPosting?.id) {
+      updateCloudRecordCache('transactions', result.ledgerPosting.id, result.ledgerPosting);
+    }
+    if (result?.invoice?.id) {
+      updateCloudRecordCache('invoices', result.invoice.id, result.invoice);
+    }
+    if (result?.auditLogId) {
+      updateCloudRecordCache('audit_logs', result.auditLogId, result.auditLog || {
+        id: result.auditLogId,
+        action: 'payment_reversal',
+        area: 'Payments',
+        targetId: result.payment?.id || fallbackPaymentId,
+        targetType: 'payment',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+    }
+  };
+
+  const editAtomicPaymentWithLedgerReversal = async (payment, ledgerPosting = {}) => {
+    if (!supabaseEnabled || !authUser?.uid) {
+      return false;
+    }
+
+    try {
+      const result = await editPaymentWithLedgerReversal(authUser.uid, payment, ledgerPosting);
+      syncPaymentLedgerRpcResult(result, payment.id);
+      return result;
+    } catch (error) {
+      setSecureError(publicSafeError(error, 'Atomic payment edit failed. Please run the latest Supabase payment reversal RPC migration.'));
+      throw error;
+    }
+  };
+
+  const deleteAtomicPaymentWithLedgerReversal = async (paymentId) => {
+    if (!supabaseEnabled || !authUser?.uid) {
+      return false;
+    }
+
+    try {
+      const result = await deletePaymentWithLedgerReversal(authUser.uid, paymentId);
+      syncPaymentLedgerRpcResult(result, paymentId);
+      return result;
+    } catch (error) {
+      setSecureError(publicSafeError(error, 'Atomic payment delete failed. Please run the latest Supabase payment reversal RPC migration.'));
       throw error;
     }
   };
@@ -4146,6 +4207,8 @@ export default function VoiceExpenseTrackerPreview() {
                 onCloudDelete={deleteAuthenticatedCloudRecord}
                 onCloudSnapshot={saveCloudDataSnapshot}
                 onAtomicPaymentWithLedger={postAtomicPaymentWithLedger}
+                onAtomicPaymentEdit={editAtomicPaymentWithLedgerReversal}
+                onAtomicPaymentDelete={deleteAtomicPaymentWithLedgerReversal}
               />
             </Suspense>
           )}

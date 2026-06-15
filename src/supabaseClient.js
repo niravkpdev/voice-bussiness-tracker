@@ -1008,6 +1008,161 @@ export async function postPaymentWithLedger(uid, payment, ledgerPosting = {}) {
   }
 }
 
+export async function editPaymentWithLedgerReversal(uid, payment, ledgerPosting = {}) {
+  const client = getSupabaseClient();
+  const user = await getCurrentSupabaseUser(client);
+  const currentUid = user?.id || null;
+  const paymentId = payment?.id || '';
+  const path = uid && paymentId ? pathFor(uid, 'payments', paymentId) : null;
+
+  if (!client || !uid || !paymentId) {
+    throw new Error('Missing Supabase client, uid, or payment id for atomic payment edit.');
+  }
+
+  if (!currentUid) {
+    throw new Error('No authenticated Supabase user is available for atomic payment edit.');
+  }
+
+  if (currentUid !== uid) {
+    throw new Error('Authenticated Supabase uid does not match requested payment owner uid.');
+  }
+
+  cloudInfo('SUPABASE_RPC_START', {
+    projectId: getSupabaseProjectHost() || null,
+    authDomain: supabaseConfig.url || null,
+    currentSupabaseUserUid: currentUid,
+    requestedUid: uid,
+    path,
+    operation: 'edit_payment_with_ledger_reversal',
+    invoiceId: payment?.invoiceId || null,
+  });
+
+  try {
+    const { data, error } = await withCloudTimeout(
+      client.rpc('edit_payment_with_ledger_reversal', {
+        p_payment: {
+          ...payment,
+          userId: uid,
+          ownerUid: uid,
+        },
+        p_ledger_posting: {
+          ...(ledgerPosting || {}),
+          userId: uid,
+          ownerUid: uid,
+        },
+      }),
+      { path, uid, currentSupabaseUserUid: currentUid, operation: 'rpc:edit_payment_with_ledger_reversal' }
+    );
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data?.payment || !data?.ledgerPosting) {
+      const rpcError = new Error('Atomic payment edit RPC did not return both payment and replacement ledger posting.');
+      rpcError.code = 'supabase/rpc-verification-failed';
+      throw rpcError;
+    }
+
+    cloudInfo('SUPABASE_RPC_SUCCESS', {
+      projectId: getSupabaseProjectHost() || null,
+      authDomain: supabaseConfig.url || null,
+      currentSupabaseUserUid: currentUid,
+      requestedUid: uid,
+      path,
+      operation: 'edit_payment_with_ledger_reversal',
+      transactionId: data.ledgerPosting?.id || null,
+      auditLogId: data.auditLogId || null,
+    });
+
+    return data;
+  } catch (error) {
+    cloudError('SUPABASE_RPC_ERROR', {
+      projectId: getSupabaseProjectHost() || null,
+      authDomain: supabaseConfig.url || null,
+      currentSupabaseUserUid: currentUid,
+      requestedUid: uid,
+      path,
+      operation: 'edit_payment_with_ledger_reversal',
+      code: error?.code || null,
+      message: error?.message || '',
+    });
+    throw error;
+  }
+}
+
+export async function deletePaymentWithLedgerReversal(uid, paymentId) {
+  const client = getSupabaseClient();
+  const user = await getCurrentSupabaseUser(client);
+  const currentUid = user?.id || null;
+  const path = uid && paymentId ? pathFor(uid, 'payments', paymentId) : null;
+
+  if (!client || !uid || !paymentId) {
+    throw new Error('Missing Supabase client, uid, or payment id for atomic payment delete.');
+  }
+
+  if (!currentUid) {
+    throw new Error('No authenticated Supabase user is available for atomic payment delete.');
+  }
+
+  if (currentUid !== uid) {
+    throw new Error('Authenticated Supabase uid does not match requested payment owner uid.');
+  }
+
+  cloudInfo('SUPABASE_RPC_START', {
+    projectId: getSupabaseProjectHost() || null,
+    authDomain: supabaseConfig.url || null,
+    currentSupabaseUserUid: currentUid,
+    requestedUid: uid,
+    path,
+    operation: 'delete_payment_with_ledger_reversal',
+  });
+
+  try {
+    const { data, error } = await withCloudTimeout(
+      client.rpc('delete_payment_with_ledger_reversal', {
+        p_payment_id: paymentId,
+      }),
+      { path, uid, currentSupabaseUserUid: currentUid, operation: 'rpc:delete_payment_with_ledger_reversal' }
+    );
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data?.payment || !data?.cancelledLedgerPosting) {
+      const rpcError = new Error('Atomic payment delete RPC did not return both payment and cancelled ledger posting.');
+      rpcError.code = 'supabase/rpc-verification-failed';
+      throw rpcError;
+    }
+
+    cloudInfo('SUPABASE_RPC_SUCCESS', {
+      projectId: getSupabaseProjectHost() || null,
+      authDomain: supabaseConfig.url || null,
+      currentSupabaseUserUid: currentUid,
+      requestedUid: uid,
+      path,
+      operation: 'delete_payment_with_ledger_reversal',
+      transactionId: data.cancelledLedgerPosting?.id || null,
+      auditLogId: data.auditLogId || null,
+    });
+
+    return data;
+  } catch (error) {
+    cloudError('SUPABASE_RPC_ERROR', {
+      projectId: getSupabaseProjectHost() || null,
+      authDomain: supabaseConfig.url || null,
+      currentSupabaseUserUid: currentUid,
+      requestedUid: uid,
+      path,
+      operation: 'delete_payment_with_ledger_reversal',
+      code: error?.code || null,
+      message: error?.message || '',
+    });
+    throw error;
+  }
+}
+
 export async function saveCloudRecord(uid, tableName, id, data) {
   const client = getSupabaseClient();
   const user = await getCurrentSupabaseUser(client);

@@ -68,7 +68,7 @@ function encodeUpi({ pa, pn, am, tn }) {
 }
 
 function isMissingPaymentRpc(error) {
-  return /post_payment_with_ledger|function.*not.*found|schema cache|PGRST202|42883/i.test(
+  return /post_payment_with_ledger|edit_payment_with_ledger_reversal|delete_payment_with_ledger_reversal|function.*not.*found|schema cache|PGRST202|42883/i.test(
     `${error?.code || ''} ${error?.message || ''}`
   );
 }
@@ -117,6 +117,8 @@ export default function Phase3Ops({
   onCloudDelete,
   onCloudSnapshot,
   onAtomicPaymentWithLedger,
+  onAtomicPaymentEdit,
+  onAtomicPaymentDelete,
 }) {
   const [orders, setOrders] = useState(() => readArray(ORDER_KEY));
   const [employees, setEmployees] = useState(() => readArray(EMPLOYEE_KEY));
@@ -442,15 +444,57 @@ export default function Phase3Ops({
       status: sanitizeText(form.get('status'), 80) || 'Marked Paid',
       updatedAt: new Date().toISOString(),
     };
+    const ledgerPosting = {
+      id: `txn-${payment.id}-edit-${Date.now().toString(36)}`,
+      type: 'Receipt',
+      amount: payment.amount,
+      date: payment.date,
+      narration: `Edited payment received for ${payment.invoiceNo || payment.id}`,
+      source: 'payment_edit_posting',
+      paymentId: payment.id,
+      invoiceId: payment.invoiceId || '',
+      invoiceNo: payment.invoiceNo || '',
+      customerId: payment.customerId || '',
+      businessId: payment.businessId || 'default',
+      lines: [
+        { ledgerId: 'ledger-bank', debit: payment.amount, credit: 0 },
+        { ledgerId: payment.customerLedgerId || payment.customerId || 'ledger-sales', debit: 0, credit: payment.amount },
+      ],
+    };
     try {
+      if (onAtomicPaymentEdit) {
+        const result = await onAtomicPaymentEdit(payment, ledgerPosting);
+        if (!result?.payment) {
+          throw new Error('Atomic payment edit did not return the saved payment.');
+        }
+        setPayments((items) => [result.payment, ...items.filter((item) => item.id !== result.payment.id)]);
+        setEditingPayment(null);
+        onStatus('Payment edit and ledger reversal posted atomically.');
+        return;
+      }
       await persistRecord('payments', payment, 'Payment update failed');
+    } catch (error) {
+      if (isMissingPaymentRpc(error)) {
+        onStatus('Payment reversal RPC migration is not installed yet. Saving edit with legacy payment path for now.');
+        try {
+          await persistRecord('payments', payment, 'Payment update failed');
+        } catch (fallbackError) {
+          onStatus(fallbackError?.message || 'Payment update failed');
+          return;
+        }
+      } else {
+        onStatus(error?.message || 'Atomic payment edit failed');
+        return;
+      }
+    }
+    setPayments((items) => [payment, ...items.filter((item) => item.id !== payment.id)]);
+    setEditingPayment(null);
+    try {
+      await logAudit(`Updated payment ${payment.invoiceNo || payment.id}`, 'Payments');
     } catch (error) {
       onStatus(error?.message || 'Payment update failed');
       return;
     }
-    setPayments((items) => [payment, ...items.filter((item) => item.id !== payment.id)]);
-    setEditingPayment(null);
-    await logAudit(`Updated payment ${payment.invoiceNo || payment.id}`, 'Payments');
     onStatus('Payment updated');
   };
 
@@ -493,10 +537,40 @@ export default function Phase3Ops({
   };
 
   const deletePayment = async (payment) => {
-    const deleted = await deleteRecord('payments', payment.id, payment.invoiceNo || 'payment', setPayments, () => {
+    if (!confirm(`Delete ${payment.invoiceNo || 'payment'}?`)) {
+      return;
+    }
+    try {
+      if (onAtomicPaymentDelete) {
+        const result = await onAtomicPaymentDelete(payment.id);
+        if (!result?.payment) {
+          throw new Error('Atomic payment delete did not return the cancelled payment.');
+        }
+        setPayments((items) => items.filter((item) => item.id !== payment.id));
+        if (editingPayment?.id === payment.id) setEditingPayment(null);
+        onStatus(`${payment.invoiceNo || 'Payment'} deleted with ledger reversal`);
+        return;
+      }
+    } catch (error) {
+      if (!isMissingPaymentRpc(error)) {
+        onStatus(error?.message || 'Atomic payment delete failed');
+        return;
+      }
+      onStatus('Payment reversal RPC migration is not installed yet. Deleting with legacy payment path for now.');
+    }
+
+    try {
+      const deleted = await onCloudDelete?.('payments', payment.id);
+      if (!deleted) {
+        throw new Error(`${payment.invoiceNo || 'Payment'} delete failed`);
+      }
+      setPayments((items) => items.filter((item) => item.id !== payment.id));
       if (editingPayment?.id === payment.id) setEditingPayment(null);
-    });
-    if (deleted) await logAudit(`Deleted payment ${payment.invoiceNo || payment.id}`, 'Payments');
+      await logAudit(`Deleted payment ${payment.invoiceNo || payment.id}`, 'Payments');
+      onStatus(`${payment.invoiceNo || 'Payment'} deleted`);
+    } catch (error) {
+      onStatus(error?.message || 'Payment delete failed');
+    }
   };
 
   const saveSecurity = async (key, value) => {
