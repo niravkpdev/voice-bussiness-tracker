@@ -1,8 +1,16 @@
 -- Phase 1 Risk 4: Full append-only audit logging.
--- Run this file in Supabase SQL Editor after the role-aware RLS migration.
+-- Safe to rerun. Run after supabase-schema.sql and supabase-phase1-member-management.sql.
 
 create index if not exists audit_logs_user_updated_idx
   on public.audit_logs (user_id, updated_at desc);
+
+create or replace function public.row_business_id(p_data jsonb)
+returns text
+language sql
+immutable
+as $$
+  select coalesce(nullif(trim(p_data->>'businessId'), ''), 'default')
+$$;
 
 create or replace function public.audit_redact_json(p_data jsonb)
 returns jsonb
