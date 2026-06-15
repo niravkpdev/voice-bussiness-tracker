@@ -1,6 +1,37 @@
 -- Phase 1 Risk 4: Full append-only audit logging.
 -- Safe to rerun. Run after supabase-schema.sql and supabase-phase1-member-management.sql.
 
+create table if not exists public.audit_logs (
+  id text not null,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (user_id, id)
+);
+
+alter table public.audit_logs enable row level security;
+
+create table if not exists public.company_members (
+  id uuid primary key default gen_random_uuid(),
+  owner_user_id uuid not null references auth.users(id) on delete cascade,
+  business_id text not null default 'default',
+  user_id uuid references auth.users(id) on delete cascade,
+  role text not null default 'staff',
+  status text not null default 'active',
+  invited_at timestamptz not null default now(),
+  joined_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  invited_email text,
+  display_name text,
+  constraint company_members_role_check check (role in ('owner', 'manager', 'accountant', 'staff')),
+  constraint company_members_status_check check (status in ('active', 'invited', 'disabled')),
+  constraint company_members_business_id_not_blank check (length(trim(business_id)) > 0)
+);
+
+alter table public.company_members enable row level security;
+
 create index if not exists audit_logs_user_updated_idx
   on public.audit_logs (user_id, updated_at desc);
 
@@ -10,6 +41,62 @@ language sql
 immutable
 as $$
   select coalesce(nullif(trim(p_data->>'businessId'), ''), 'default')
+$$;
+
+create or replace function public.current_user_role(p_owner_user_id uuid, p_business_id text default 'default')
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select case
+    when auth.uid() is null then null
+    when auth.uid() = p_owner_user_id then 'owner'
+    else (
+      select lower(cm.role)
+      from public.company_members cm
+      where cm.owner_user_id = p_owner_user_id
+        and cm.business_id = coalesce(nullif(trim(p_business_id), ''), 'default')
+        and cm.user_id = auth.uid()
+        and cm.status = 'active'
+      limit 1
+    )
+  end
+$$;
+
+create or replace function public.has_company_role(
+  p_owner_user_id uuid,
+  p_business_id text,
+  p_allowed_roles text[]
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(public.current_user_role(p_owner_user_id, p_business_id) = any(p_allowed_roles), false)
+$$;
+
+create or replace function public.can_select_company_row(
+  p_owner_user_id uuid,
+  p_business_id text,
+  p_table_name text
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select case
+    when p_table_name in ('security_settings', 'subscriptions', 'devices', 'offline_queue', 'settings')
+      then public.has_company_role(p_owner_user_id, p_business_id, array['owner'])
+    when p_table_name in ('reports', 'audit_logs')
+      then public.has_company_role(p_owner_user_id, p_business_id, array['owner', 'manager', 'accountant'])
+    else public.has_company_role(p_owner_user_id, p_business_id, array['owner', 'manager', 'accountant', 'staff'])
+  end
 $$;
 
 create or replace function public.audit_redact_json(p_data jsonb)
