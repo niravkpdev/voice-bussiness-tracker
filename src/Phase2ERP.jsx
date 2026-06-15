@@ -131,6 +131,7 @@ export default function Phase2ERP({
   onStatus,
   onCloudRecord,
   onCloudDelete,
+  onAtomicInvoiceWithStock,
   onCloudSnapshot,
 }) {
   const [products, setProducts] = useState(() => readArray(PRODUCT_KEY));
@@ -641,19 +642,32 @@ export default function Phase2ERP({
     const affectedProducts = productsAfterInvoice
       .filter((product) => invoice.lines.some((line) => line.productId === product.id));
     try {
-      const invoiceSaved = await onCloudRecord?.('invoices', invoice.id, invoice);
-      if (!invoiceSaved) {
-        throw new Error('Invoice save failed');
-      }
-      await Promise.all(affectedProducts.map(async (product) => {
-        const saved = await onCloudRecord?.('inventory', product.id, {
-          ...product,
-          itemId: product.id,
-        });
-        if (!saved) {
-          throw new Error('Invoice stock update failed');
+      if (onAtomicInvoiceWithStock) {
+        const result = await onAtomicInvoiceWithStock(
+          invoice,
+          affectedProducts.map((product) => ({
+            ...product,
+            itemId: product.id,
+          }))
+        );
+        if (!result?.invoice) {
+          throw new Error('Atomic invoice save failed');
         }
-      }));
+      } else {
+        const invoiceSaved = await onCloudRecord?.('invoices', invoice.id, invoice);
+        if (!invoiceSaved) {
+          throw new Error('Invoice save failed');
+        }
+        await Promise.all(affectedProducts.map(async (product) => {
+          const saved = await onCloudRecord?.('inventory', product.id, {
+            ...product,
+            itemId: product.id,
+          });
+          if (!saved) {
+            throw new Error('Invoice stock update failed');
+          }
+        }));
+      }
     } catch (error) {
       onStatus(error?.message || 'Invoice save failed');
       return;

@@ -838,6 +838,93 @@ export async function saveUserProfile(uid, profile) {
   return saveCloudRecord(uid, 'settings', 'profile', profile);
 }
 
+export async function createInvoiceWithStock(uid, invoice, inventoryItems = []) {
+  const client = getSupabaseClient();
+  const user = await getCurrentSupabaseUser(client);
+  const currentUid = user?.id || null;
+  const invoiceId = invoice?.id || '';
+  const path = uid && invoiceId ? pathFor(uid, 'invoices', invoiceId) : null;
+
+  if (!client || !uid || !invoiceId) {
+    throw new Error('Missing Supabase client, uid, or invoice id for atomic invoice save.');
+  }
+
+  if (!currentUid) {
+    throw new Error('No authenticated Supabase user is available for atomic invoice save.');
+  }
+
+  if (currentUid !== uid) {
+    throw new Error('Authenticated Supabase uid does not match requested invoice owner uid.');
+  }
+
+  cloudInfo('SUPABASE_RPC_START', {
+    projectId: getSupabaseProjectHost() || null,
+    authDomain: supabaseConfig.url || null,
+    currentSupabaseUserUid: currentUid,
+    requestedUid: uid,
+    path,
+    operation: 'create_invoice_with_stock',
+    inventoryCount: Array.isArray(inventoryItems) ? inventoryItems.length : 0,
+  });
+
+  try {
+    const { data, error } = await withCloudTimeout(
+      client.rpc('create_invoice_with_stock', {
+        p_invoice: {
+          ...invoice,
+          userId: uid,
+          ownerUid: uid,
+        },
+        p_inventory: Array.isArray(inventoryItems)
+          ? inventoryItems.map((item) => ({
+              ...item,
+              id: item.id || item.itemId,
+              itemId: item.itemId || item.id,
+              userId: uid,
+              ownerUid: uid,
+            }))
+          : [],
+      }),
+      { path, uid, currentSupabaseUserUid: currentUid, operation: 'rpc:create_invoice_with_stock' }
+    );
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data?.invoice) {
+      const rpcError = new Error('Atomic invoice RPC did not return a saved invoice.');
+      rpcError.code = 'supabase/rpc-verification-failed';
+      throw rpcError;
+    }
+
+    cloudInfo('SUPABASE_RPC_SUCCESS', {
+      projectId: getSupabaseProjectHost() || null,
+      authDomain: supabaseConfig.url || null,
+      currentSupabaseUserUid: currentUid,
+      requestedUid: uid,
+      path,
+      operation: 'create_invoice_with_stock',
+      inventoryCount: Array.isArray(data.inventory) ? data.inventory.length : 0,
+      auditLogId: data.auditLogId || null,
+    });
+
+    return data;
+  } catch (error) {
+    cloudError('SUPABASE_RPC_ERROR', {
+      projectId: getSupabaseProjectHost() || null,
+      authDomain: supabaseConfig.url || null,
+      currentSupabaseUserUid: currentUid,
+      requestedUid: uid,
+      path,
+      operation: 'create_invoice_with_stock',
+      code: error?.code || null,
+      message: error?.message || String(error),
+    });
+    throw error;
+  }
+}
+
 export async function saveCloudRecord(uid, tableName, id, data) {
   const client = getSupabaseClient();
   const user = await getCurrentSupabaseUser(client);

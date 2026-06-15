@@ -32,6 +32,7 @@ import {
 } from './accounting';
 import { LegalPage, LEGAL_PAGE_IDS } from './LegalPages.jsx';
 import {
+  createInvoiceWithStock,
   createSupabaseAccount,
   deleteCloudRecord,
   getSupabaseUrl,
@@ -1396,6 +1397,39 @@ export default function VoiceExpenseTrackerPreview() {
       return saved;
     } catch (error) {
       setSecureError(publicSafeError(error, 'Cloud data save failed. Please try again.'));
+      throw error;
+    }
+  };
+
+  const saveAtomicInvoiceWithStock = async (invoice, inventoryItems = []) => {
+    if (!supabaseEnabled || !authUser?.uid) {
+      return false;
+    }
+
+    try {
+      const result = await createInvoiceWithStock(authUser.uid, invoice, inventoryItems);
+      if (result?.invoice?.id) {
+        updateCloudRecordCache('invoices', result.invoice.id, result.invoice);
+      }
+      if (Array.isArray(result?.inventory)) {
+        result.inventory.forEach((item) => {
+          updateCloudRecordCache('inventory', item.id || item.itemId, item);
+        });
+      }
+      if (result?.auditLogId) {
+        updateCloudRecordCache('audit_logs', result.auditLogId, {
+          id: result.auditLogId,
+          action: 'invoice_upsert_with_stock',
+          area: 'Invoices',
+          targetId: result.invoice?.id || invoice.id,
+          targetType: 'invoice',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      }
+      return result;
+    } catch (error) {
+      setSecureError(publicSafeError(error, 'Atomic invoice save failed. Please run the latest Supabase Phase 1 RPC migration.'));
       throw error;
     }
   };
@@ -4028,6 +4062,7 @@ export default function VoiceExpenseTrackerPreview() {
                 onStatus={setStatus}
                 onCloudRecord={saveAuthenticatedCloudRecord}
                 onCloudDelete={deleteAuthenticatedCloudRecord}
+                onAtomicInvoiceWithStock={saveAtomicInvoiceWithStock}
                 onCloudSnapshot={saveCloudDataSnapshot}
               />
             </Suspense>
