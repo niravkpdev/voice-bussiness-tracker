@@ -79,6 +79,33 @@ create table if not exists public.attendance (
   primary key (user_id, id)
 );
 
+create table if not exists public.leave_balances (
+  id text not null,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (user_id, id)
+);
+
+create table if not exists public.leave_requests (
+  id text not null,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (user_id, id)
+);
+
+create table if not exists public.holidays (
+  id text not null,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (user_id, id)
+);
+
 create table if not exists public.payments (
   id text not null,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -193,6 +220,9 @@ begin
     'orders',
     'employees',
     'attendance',
+    'leave_balances',
+    'leave_requests',
+    'holidays',
     'payments',
     'audit_logs',
     'subscriptions',
@@ -341,6 +371,9 @@ begin
     'orders',
     'employees',
     'attendance',
+    'leave_balances',
+    'leave_requests',
+    'holidays',
     'payments',
     'audit_logs',
     'subscriptions',
@@ -374,6 +407,9 @@ alter table public.invoices enable row level security;
 alter table public.orders enable row level security;
 alter table public.employees enable row level security;
 alter table public.attendance enable row level security;
+alter table public.leave_balances enable row level security;
+alter table public.leave_requests enable row level security;
+alter table public.holidays enable row level security;
 alter table public.payments enable row level security;
 alter table public.audit_logs enable row level security;
 alter table public.subscriptions enable row level security;
@@ -398,6 +434,9 @@ drop policy if exists "Users manage own invoices" on public.invoices;
 drop policy if exists "Users manage own orders" on public.orders;
 drop policy if exists "Users manage own employees" on public.employees;
 drop policy if exists "Users manage own attendance" on public.attendance;
+drop policy if exists "Users manage own leave balances" on public.leave_balances;
+drop policy if exists "Users manage own leave requests" on public.leave_requests;
+drop policy if exists "Users manage own holidays" on public.holidays;
 drop policy if exists "Users manage own payments" on public.payments;
 drop policy if exists "Users manage own audit logs" on public.audit_logs;
 drop policy if exists "Users manage own subscriptions" on public.subscriptions;
@@ -435,6 +474,15 @@ create policy "Users manage own employees" on public.employees
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "Users manage own attendance" on public.attendance
+for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy "Users manage own leave balances" on public.leave_balances
+for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy "Users manage own leave requests" on public.leave_requests
+for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy "Users manage own holidays" on public.holidays
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "Users manage own payments" on public.payments

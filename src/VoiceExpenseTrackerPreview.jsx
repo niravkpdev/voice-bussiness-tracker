@@ -831,6 +831,9 @@ export default function VoiceExpenseTrackerPreview() {
   const [cloudOrders, setCloudOrders] = useState([]);
   const [cloudEmployees, setCloudEmployees] = useState([]);
   const [cloudAttendance, setCloudAttendance] = useState([]);
+  const [cloudLeaveBalances, setCloudLeaveBalances] = useState([]);
+  const [cloudLeaveRequests, setCloudLeaveRequests] = useState([]);
+  const [cloudHolidays, setCloudHolidays] = useState([]);
   const [cloudPayments, setCloudPayments] = useState([]);
   const [cloudAuditLogs, setCloudAuditLogs] = useState([]);
   const [cloudSubscription, setCloudSubscription] = useState(null);
@@ -1153,6 +1156,9 @@ export default function VoiceExpenseTrackerPreview() {
         ordersResult,
         employeesResult,
         attendanceResult,
+        leaveBalancesResult,
+        leaveRequestsResult,
+        holidaysResult,
         paymentsResult,
         auditLogsResult,
         subscriptionRowsResult,
@@ -1172,6 +1178,9 @@ export default function VoiceExpenseTrackerPreview() {
         loadModuleCollection('orders'),
         loadModuleCollection('employees'),
         loadModuleCollection('attendance'),
+        loadModuleCollection('leave_balances'),
+        loadModuleCollection('leave_requests'),
+        loadModuleCollection('holidays'),
         loadModuleCollection('payments'),
         loadModuleCollection('audit_logs'),
         loadModuleCollection('subscriptions'),
@@ -1191,6 +1200,9 @@ export default function VoiceExpenseTrackerPreview() {
       const orders = ordersResult.ok ? ordersResult.rows : [];
       const employees = employeesResult.ok ? employeesResult.rows : [];
       const attendance = attendanceResult.ok ? attendanceResult.rows : [];
+      const leaveBalances = leaveBalancesResult.ok ? leaveBalancesResult.rows : [];
+      const leaveRequests = leaveRequestsResult.ok ? leaveRequestsResult.rows : [];
+      const holidays = holidaysResult.ok ? holidaysResult.rows : [];
       const payments = paymentsResult.ok ? paymentsResult.rows.filter((payment) => !payment.deletedAt) : [];
       const auditLogs = auditLogsResult.ok ? auditLogsResult.rows : [];
       const subscriptionRows = subscriptionRowsResult.ok ? subscriptionRowsResult.rows : [];
@@ -1209,6 +1221,9 @@ export default function VoiceExpenseTrackerPreview() {
         ordersResult,
         employeesResult,
         attendanceResult,
+        leaveBalancesResult,
+        leaveRequestsResult,
+        holidaysResult,
         paymentsResult,
         auditLogsResult,
         subscriptionRowsResult,
@@ -1231,6 +1246,9 @@ export default function VoiceExpenseTrackerPreview() {
         setCloudOrders([]);
         setCloudEmployees([]);
         setCloudAttendance([]);
+        setCloudLeaveBalances([]);
+        setCloudLeaveRequests([]);
+        setCloudHolidays([]);
         setCloudPayments([]);
         setCloudAuditLogs([]);
         setCloudSubscription(null);
@@ -1250,6 +1268,9 @@ export default function VoiceExpenseTrackerPreview() {
       if (ordersResult.ok) setCloudOrders(orders);
       if (employeesResult.ok) setCloudEmployees(employees);
       if (attendanceResult.ok) setCloudAttendance(attendance);
+      if (leaveBalancesResult.ok) setCloudLeaveBalances(leaveBalances);
+      if (leaveRequestsResult.ok) setCloudLeaveRequests(leaveRequests);
+      if (holidaysResult.ok) setCloudHolidays(holidays);
       if (paymentsResult.ok) setCloudPayments(payments);
       if (auditLogsResult.ok) setCloudAuditLogs(auditLogs);
       if (subscriptionRowsResult.ok) setCloudSubscription(subscriptionRows.find((item) => item.id === 'current') || null);
@@ -1295,6 +1316,9 @@ export default function VoiceExpenseTrackerPreview() {
         orders: orders.length,
         employees: employees.length,
         attendance: attendance.length,
+        leaveBalances: leaveBalances.length,
+        leaveRequests: leaveRequests.length,
+        holidays: holidays.length,
         payments: payments.length,
         businesses: businesses.length,
         notifications: notifications.length,
@@ -1346,6 +1370,15 @@ export default function VoiceExpenseTrackerPreview() {
         break;
       case 'attendance':
         mergeCloudListRecord(setCloudAttendance, id, data);
+        break;
+      case 'leave_balances':
+        mergeCloudListRecord(setCloudLeaveBalances, id, data);
+        break;
+      case 'leave_requests':
+        mergeCloudListRecord(setCloudLeaveRequests, id, data);
+        break;
+      case 'holidays':
+        mergeCloudListRecord(setCloudHolidays, id, data);
         break;
       case 'payments':
         mergeCloudListRecord(setCloudPayments, id, data);
@@ -1401,6 +1434,15 @@ export default function VoiceExpenseTrackerPreview() {
         break;
       case 'attendance':
         removeCloudListRecord(setCloudAttendance, id);
+        break;
+      case 'leave_balances':
+        removeCloudListRecord(setCloudLeaveBalances, id);
+        break;
+      case 'leave_requests':
+        removeCloudListRecord(setCloudLeaveRequests, id);
+        break;
+      case 'holidays':
+        removeCloudListRecord(setCloudHolidays, id);
         break;
       case 'payments':
         removeCloudListRecord(setCloudPayments, id);
@@ -1983,6 +2025,9 @@ export default function VoiceExpenseTrackerPreview() {
     setCloudOrders([]);
     setCloudEmployees([]);
     setCloudAttendance([]);
+    setCloudLeaveBalances([]);
+    setCloudLeaveRequests([]);
+    setCloudHolidays([]);
     setCloudPayments([]);
     setCloudAuditLogs([]);
     setCloudSubscription(null);
@@ -4341,6 +4386,9 @@ export default function VoiceExpenseTrackerPreview() {
                 cloudOrders={cloudOrders}
                 cloudEmployees={cloudEmployees}
                 cloudAttendance={cloudAttendance}
+                cloudLeaveBalances={cloudLeaveBalances}
+                cloudLeaveRequests={cloudLeaveRequests}
+                cloudHolidays={cloudHolidays}
                 cloudPayments={cloudPayments}
                 cloudAuditLogs={cloudAuditLogs}
                 cloudSubscription={cloudSubscription}

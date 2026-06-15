@@ -6850,14 +6850,112 @@ fieldset {
   white-space: pre-wrap;
 }
 
+.hrms-phaseb-panel {
+  background: #ffffff !important;
+  color: #111827 !important;
+}
+
+.hrms-inline-form {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 18px 0;
+  align-items: center;
+}
+
+.hrms-inline-form input,
+.hrms-inline-form select {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: #ffffff !important;
+  color: #111827 !important;
+}
+
+.hrms-inline-form .manual-button,
+.hrms-inline-form .secondary-button {
+  min-height: 44px;
+  margin-top: 0;
+}
+
+.hrms-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 10px 12px;
+  color: #334155;
+  font-weight: 900;
+}
+
+.hrms-check input {
+  width: auto;
+  min-height: 0;
+}
+
+.hrms-record-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.hrms-mini-card,
+.hrms-holiday-card {
+  display: grid;
+  gap: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 14px;
+  background: #ffffff;
+  color: #111827;
+}
+
+.hrms-mini-card strong,
+.hrms-holiday-card strong {
+  color: #111827;
+}
+
+.hrms-mini-card p,
+.hrms-holiday-card p {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.hrms-mini-card > span:not(.attendance-pill):not(.hrms-status) {
+  color: #4f46e5;
+  font-weight: 900;
+}
+
+.hrms-holiday-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.hrms-holiday-card time {
+  color: #4f46e5;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
 @media (max-width: 900px) {
   .hrms-summary-grid,
   .hrms-employee-grid,
-  .hrms-detail-grid {
+  .hrms-detail-grid,
+  .hrms-record-grid,
+  .hrms-holiday-grid {
     grid-template-columns: 1fr 1fr;
   }
 
-  .hrms-toolbar {
+  .hrms-toolbar,
+  .hrms-inline-form {
     grid-template-columns: 1fr;
   }
 }
@@ -6866,7 +6964,9 @@ fieldset {
   .hrms-summary-grid,
   .hrms-employee-grid,
   .hrms-detail-grid,
-  .hrms-employee-meta {
+  .hrms-employee-meta,
+  .hrms-record-grid,
+  .hrms-holiday-grid {
     grid-template-columns: 1fr;
   }
 

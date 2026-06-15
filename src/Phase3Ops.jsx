@@ -5,6 +5,9 @@ import { readScopedString, writeScopedString } from './storageScope.js';
 const ORDER_KEY = 'phase3Orders';
 const EMPLOYEE_KEY = 'phase3Employees';
 const ATTENDANCE_KEY = 'phase3Attendance';
+const LEAVE_BALANCE_KEY = 'phase3LeaveBalances';
+const LEAVE_REQUEST_KEY = 'phase3LeaveRequests';
+const HOLIDAY_KEY = 'phase3Holidays';
 const SUBSCRIPTION_KEY = 'phase3Subscription';
 const AUDIT_KEY = 'phase3AuditLogs';
 const DEVICE_KEY = 'phase3Devices';
@@ -15,6 +18,13 @@ const OFFLINE_QUEUE_KEY = 'phase3OfflineQueue';
 const ORDER_STAGES = ['New Order', 'Confirmed', 'In Production', 'Quality Check', 'Ready', 'Dispatched', 'Delivered'];
 const ROLES = ['Owner', 'Manager', 'Accountant', 'Staff'];
 const EMPLOYEE_STATUSES = ['Active', 'Inactive'];
+const ATTENDANCE_STATUSES = ['Present', 'Absent', 'Half Day', 'Leave'];
+const LEAVE_TYPES = [
+  { id: 'SL', label: 'Sick Leave', allocation: 6 },
+  { id: 'CL', label: 'Casual Leave', allocation: 6 },
+  { id: 'PL', label: 'Paid / Privilege Leave', allocation: 12 },
+];
+const LEAVE_STATUSES = ['Pending', 'Approved', 'Rejected'];
 const EMPLOYEE_PROFILE_TABS = [
   'Personal Information',
   'Work Information',
@@ -78,8 +88,24 @@ function employeeDesignation(employee) {
   return employee.designation || employee.role || '';
 }
 
+function employeeIdentifier(employee) {
+  return employee.employeeId || employee.employee_id || employee.id || '';
+}
+
 function today() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function monthKey(date = today()) {
+  return String(date || today()).slice(0, 7);
+}
+
+function leaveDays(startDate, endDate) {
+  if (!startDate || !endDate) return 0;
+  const start = new Date(`${startDate}T00:00:00`);
+  const end = new Date(`${endDate}T00:00:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return 0;
+  return Math.floor((end - start) / 86_400_000) + 1;
 }
 
 function formatCurrency(amount) {
@@ -139,6 +165,9 @@ export default function Phase3Ops({
   cloudOrders,
   cloudEmployees,
   cloudAttendance,
+  cloudLeaveBalances,
+  cloudLeaveRequests,
+  cloudHolidays,
   cloudPayments,
   cloudAuditLogs,
   cloudSubscription,
@@ -157,6 +186,9 @@ export default function Phase3Ops({
   const [orders, setOrders] = useState(() => readArray(ORDER_KEY));
   const [employees, setEmployees] = useState(() => readArray(EMPLOYEE_KEY));
   const [attendance, setAttendance] = useState(() => readArray(ATTENDANCE_KEY));
+  const [leaveBalances, setLeaveBalances] = useState(() => readArray(LEAVE_BALANCE_KEY));
+  const [leaveRequests, setLeaveRequests] = useState(() => readArray(LEAVE_REQUEST_KEY));
+  const [holidays, setHolidays] = useState(() => readArray(HOLIDAY_KEY));
   const [auditLogs, setAuditLogs] = useState(() => readArray(AUDIT_KEY));
   const [payments, setPayments] = useState(() => readArray(PAYMENT_KEY));
   const [offlineQueue, setOfflineQueue] = useState(() => readArray(OFFLINE_QUEUE_KEY));
@@ -168,6 +200,13 @@ export default function Phase3Ops({
   const [employeeDepartmentFilter, setEmployeeDepartmentFilter] = useState('All');
   const [employeeStatusFilter, setEmployeeStatusFilter] = useState('All');
   const [employeePage, setEmployeePage] = useState(1);
+  const [attendanceEmployeeFilter, setAttendanceEmployeeFilter] = useState('All');
+  const [attendanceMonthFilter, setAttendanceMonthFilter] = useState(monthKey());
+  const [editingAttendance, setEditingAttendance] = useState(null);
+  const [leaveEmployeeFilter, setLeaveEmployeeFilter] = useState('All');
+  const [leaveStatusFilter, setLeaveStatusFilter] = useState('All');
+  const [leaveTypeFilter, setLeaveTypeFilter] = useState('All');
+  const [editingHoliday, setEditingHoliday] = useState(null);
   const [editingPayment, setEditingPayment] = useState(null);
   const [subscription, setSubscription] = useState(() =>
     readObject(SUBSCRIPTION_KEY, { plan: 'Free', invoicesLimit: 25, usersLimit: 1, aiEnabled: true })
@@ -194,6 +233,9 @@ export default function Phase3Ops({
   useEffect(() => writeArray(ORDER_KEY, orders), [orders]);
   useEffect(() => writeArray(EMPLOYEE_KEY, employees), [employees]);
   useEffect(() => writeArray(ATTENDANCE_KEY, attendance), [attendance]);
+  useEffect(() => writeArray(LEAVE_BALANCE_KEY, leaveBalances), [leaveBalances]);
+  useEffect(() => writeArray(LEAVE_REQUEST_KEY, leaveRequests), [leaveRequests]);
+  useEffect(() => writeArray(HOLIDAY_KEY, holidays), [holidays]);
   useEffect(() => writeArray(AUDIT_KEY, auditLogs), [auditLogs]);
   useEffect(() => writeArray(PAYMENT_KEY, payments), [payments]);
   useEffect(() => writeArray(OFFLINE_QUEUE_KEY, offlineQueue), [offlineQueue]);
@@ -209,6 +251,15 @@ export default function Phase3Ops({
   useEffect(() => {
     if (Array.isArray(cloudAttendance)) setAttendance(cloudAttendance);
   }, [cloudAttendance]);
+  useEffect(() => {
+    if (Array.isArray(cloudLeaveBalances)) setLeaveBalances(cloudLeaveBalances);
+  }, [cloudLeaveBalances]);
+  useEffect(() => {
+    if (Array.isArray(cloudLeaveRequests)) setLeaveRequests(cloudLeaveRequests);
+  }, [cloudLeaveRequests]);
+  useEffect(() => {
+    if (Array.isArray(cloudHolidays)) setHolidays(cloudHolidays);
+  }, [cloudHolidays]);
   useEffect(() => {
     if (Array.isArray(cloudPayments)) setPayments(cloudPayments);
   }, [cloudPayments]);
@@ -229,7 +280,7 @@ export default function Phase3Ops({
   }, [cloudOfflineQueue]);
   useEffect(() => {
     onCloudSnapshot?.('phase3_ops_updated');
-  }, [orders, employees, attendance, auditLogs, payments, offlineQueue, subscription, security, devices]);
+  }, [orders, employees, attendance, leaveBalances, leaveRequests, holidays, auditLogs, payments, offlineQueue, subscription, security, devices]);
 
   useEffect(() => {
     setEmployeePage(1);
@@ -277,6 +328,19 @@ export default function Phase3Ops({
     () => validAttendance.filter((entry) => entry.date === today()),
     [validAttendance]
   );
+  const filteredAttendance = useMemo(
+    () => validAttendance.filter((entry) => {
+      const matchesEmployee = attendanceEmployeeFilter === 'All' || entry.employeeId === attendanceEmployeeFilter;
+      const matchesMonth = !attendanceMonthFilter || String(entry.attendanceDate || entry.attendance_date || entry.date || '').startsWith(attendanceMonthFilter);
+      return matchesEmployee && matchesMonth;
+    }),
+    [attendanceEmployeeFilter, attendanceMonthFilter, validAttendance]
+  );
+  const attendanceSummary = useMemo(() => ({
+    present: filteredAttendance.filter((entry) => entry.status === 'Present').length,
+    absent: filteredAttendance.filter((entry) => entry.status === 'Absent').length,
+    late: filteredAttendance.filter((entry) => Boolean(entry.lateMark || entry.late_mark)).length,
+  }), [filteredAttendance]);
   const attendanceByEmployeeToday = useMemo(() => {
     const map = new Map();
     todayAttendance.forEach((entry) => {
@@ -284,7 +348,31 @@ export default function Phase3Ops({
     });
     return map;
   }, [todayAttendance]);
-  const attendanceStatusLabel = (status) => (status === 'Present' ? 'P' : status === 'Absent' ? 'A' : '-');
+  const attendanceStatusLabel = (status) => {
+    if (status === 'Present') return 'P';
+    if (status === 'Absent') return 'A';
+    if (status === 'Half Day') return 'HD';
+    if (status === 'Leave') return 'L';
+    return '-';
+  };
+  const leaveBalancesByEmployee = useMemo(() => {
+    const map = new Map();
+    leaveBalances.forEach((balance) => {
+      const key = `${balance.employeeId || balance.employee_id}-${balance.leaveType || balance.leave_type}`;
+      map.set(key, balance);
+    });
+    return map;
+  }, [leaveBalances]);
+  const filteredLeaveRequests = useMemo(() => leaveRequests.filter((request) => {
+    const matchesEmployee = leaveEmployeeFilter === 'All' || request.employeeId === leaveEmployeeFilter;
+    const matchesStatus = leaveStatusFilter === 'All' || request.status === leaveStatusFilter;
+    const matchesType = leaveTypeFilter === 'All' || request.leaveType === leaveTypeFilter;
+    return matchesEmployee && matchesStatus && matchesType;
+  }), [leaveEmployeeFilter, leaveRequests, leaveStatusFilter, leaveTypeFilter]);
+  const sortedHolidays = useMemo(
+    () => [...holidays].sort((a, b) => String(a.holidayDate || a.holiday_date || '').localeCompare(String(b.holidayDate || b.holiday_date || ''))),
+    [holidays]
+  );
   const pendingCollections = useMemo(
     () => partySummary.filter((party) => party.group === 'Sundry Debtors' && party.outstandingAmount > 0),
     [partySummary]
@@ -476,9 +564,23 @@ export default function Phase3Ops({
       ...(existing || {}),
       id: existing?.id || `att-${employee.id}-${date}`,
       employeeId: employee.id,
+      employee_id: employeeIdentifier(employee),
+      businessId: existing?.businessId || 'default',
+      companyId: existing?.companyId || 'default',
       name: employeeDisplayName(employee),
       status,
       date,
+      attendanceDate: date,
+      attendance_date: date,
+      inTime: existing?.inTime || existing?.in_time || '',
+      in_time: existing?.inTime || existing?.in_time || '',
+      outTime: existing?.outTime || existing?.out_time || '',
+      out_time: existing?.outTime || existing?.out_time || '',
+      workingHours: existing?.workingHours || existing?.working_hours || 0,
+      working_hours: existing?.workingHours || existing?.working_hours || 0,
+      lateMark: Boolean(existing?.lateMark || existing?.late_mark),
+      late_mark: Boolean(existing?.lateMark || existing?.late_mark),
+      remarks: existing?.remarks || '',
       createdAt: existing?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -490,6 +592,240 @@ export default function Phase3Ops({
     }
     setAttendance((items) => [attendanceEntry, ...items.filter((entry) => entry.id !== attendanceEntry.id)]);
     await logAudit(`Marked ${employeeDisplayName(employee)} ${status}`, 'Attendance');
+  };
+
+  const saveAttendanceEntry = async (event) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const employeeId = form.get('employeeId');
+    const employee = employees.find((item) => item.id === employeeId);
+    if (!employee) {
+      onStatus('Select an employee for attendance');
+      return;
+    }
+    const attendanceDate = form.get('attendanceDate') || today();
+    const current = editingAttendance;
+    const inTime = sanitizeText(form.get('inTime'), 20);
+    const outTime = sanitizeText(form.get('outTime'), 20);
+    const workingHours = normalizeAmount(form.get('workingHours'));
+    const status = ATTENDANCE_STATUSES.includes(form.get('status')) ? form.get('status') : 'Present';
+    const attendanceEntry = {
+      ...(current || {}),
+      id: current?.id || `att-${employee.id}-${attendanceDate}`,
+      employeeId: employee.id,
+      employee_id: employeeIdentifier(employee),
+      businessId: current?.businessId || 'default',
+      companyId: current?.companyId || 'default',
+      name: employeeDisplayName(employee),
+      date: attendanceDate,
+      attendanceDate,
+      attendance_date: attendanceDate,
+      inTime,
+      in_time: inTime,
+      outTime,
+      out_time: outTime,
+      workingHours,
+      working_hours: workingHours,
+      status,
+      lateMark: form.get('lateMark') === 'on',
+      late_mark: form.get('lateMark') === 'on',
+      remarks: sanitizeText(form.get('remarks'), 300),
+      createdAt: current?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    try {
+      await persistRecord('attendance', attendanceEntry, 'Attendance save failed');
+    } catch (error) {
+      onStatus(error?.message || 'Attendance save failed');
+      return;
+    }
+    setAttendance((items) => [attendanceEntry, ...items.filter((entry) => entry.id !== attendanceEntry.id)]);
+    await logAudit(`${current ? 'attendance edited' : 'attendance created'}: ${employeeDisplayName(employee)} ${attendanceDate}`, 'Attendance');
+    setEditingAttendance(null);
+    event.currentTarget.reset();
+  };
+
+  const ensureLeaveBalance = async (employee, leaveType) => {
+    const key = `${employee.id}-${leaveType}`;
+    const existing = leaveBalancesByEmployee.get(key);
+    if (existing) return existing;
+    const typeInfo = LEAVE_TYPES.find((type) => type.id === leaveType) || LEAVE_TYPES[0];
+    const balance = {
+      id: `leave-bal-${employee.id}-${leaveType}`,
+      employeeId: employee.id,
+      employee_id: employeeIdentifier(employee),
+      employeeName: employeeDisplayName(employee),
+      leaveType,
+      leave_type: leaveType,
+      yearlyAllocation: typeInfo.allocation,
+      yearly_allocation: typeInfo.allocation,
+      usedLeaves: 0,
+      used_leaves: 0,
+      remainingLeaves: typeInfo.allocation,
+      remaining_leaves: typeInfo.allocation,
+      businessId: 'default',
+      companyId: 'default',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    await persistRecord('leave_balances', balance, 'Leave balance save failed');
+    setLeaveBalances((items) => [balance, ...items.filter((item) => item.id !== balance.id)]);
+    return balance;
+  };
+
+  const saveLeaveRequest = async (event) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const employeeId = form.get('employeeId');
+    const employee = employees.find((item) => item.id === employeeId);
+    const leaveType = form.get('leaveType');
+    const startDate = form.get('startDate');
+    const endDate = form.get('endDate');
+    const totalDays = leaveDays(startDate, endDate);
+    if (!employee || !LEAVE_TYPES.some((type) => type.id === leaveType) || totalDays <= 0) {
+      onStatus('Select employee, leave type, and valid leave dates');
+      return;
+    }
+    try {
+      await ensureLeaveBalance(employee, leaveType);
+    } catch (error) {
+      onStatus(error?.message || 'Leave balance save failed');
+      return;
+    }
+    const request = {
+      id: createId('leave'),
+      employeeId: employee.id,
+      employee_id: employeeIdentifier(employee),
+      employeeName: employeeDisplayName(employee),
+      leaveType,
+      leave_type: leaveType,
+      startDate,
+      start_date: startDate,
+      endDate,
+      end_date: endDate,
+      totalDays,
+      total_days: totalDays,
+      reason: sanitizeText(form.get('reason'), 400),
+      status: 'Pending',
+      approvedBy: '',
+      approved_by: '',
+      approvedAt: '',
+      approved_at: '',
+      rejectionReason: '',
+      rejection_reason: '',
+      businessId: 'default',
+      companyId: 'default',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    try {
+      await persistRecord('leave_requests', request, 'Leave request save failed');
+    } catch (error) {
+      onStatus(error?.message || 'Leave request save failed');
+      return;
+    }
+    setLeaveRequests((items) => [request, ...items]);
+    await logAudit(`leave applied: ${request.employeeName} ${leaveType} ${startDate} to ${endDate}`, 'Leave');
+    event.currentTarget.reset();
+  };
+
+  const decideLeaveRequest = async (request, decision) => {
+    if (!['Approved', 'Rejected'].includes(decision)) return;
+    const employee = employees.find((item) => item.id === request.employeeId);
+    if (!employee) {
+      onStatus('Employee record not found for leave request');
+      return;
+    }
+    const balance = await ensureLeaveBalance(employee, request.leaveType).catch((error) => {
+      onStatus(error?.message || 'Leave balance save failed');
+      return null;
+    });
+    if (!balance) return;
+    if (decision === 'Approved' && Number(balance.remainingLeaves ?? balance.remaining_leaves) < Number(request.totalDays)) {
+      onStatus('Leave balance is not enough for approval');
+      return;
+    }
+    const now = new Date().toISOString();
+    const updatedRequest = {
+      ...request,
+      status: decision,
+      approvedBy: decision === 'Approved' ? (authUser?.email || authUser?.uid || 'Owner') : '',
+      approved_by: decision === 'Approved' ? (authUser?.email || authUser?.uid || 'Owner') : '',
+      approvedAt: decision === 'Approved' ? now : '',
+      approved_at: decision === 'Approved' ? now : '',
+      rejectionReason: decision === 'Rejected' ? 'Rejected by manager' : '',
+      rejection_reason: decision === 'Rejected' ? 'Rejected by manager' : '',
+      updatedAt: now,
+    };
+    let updatedBalance = balance;
+    if (decision === 'Approved' && request.status !== 'Approved') {
+      const usedLeaves = Number(balance.usedLeaves ?? balance.used_leaves) + Number(request.totalDays);
+      const yearlyAllocation = Number(balance.yearlyAllocation ?? balance.yearly_allocation) || 0;
+      updatedBalance = {
+        ...balance,
+        usedLeaves,
+        used_leaves: usedLeaves,
+        remainingLeaves: Math.max(0, yearlyAllocation - usedLeaves),
+        remaining_leaves: Math.max(0, yearlyAllocation - usedLeaves),
+        updatedAt: now,
+      };
+    }
+    try {
+      await persistRecord('leave_requests', updatedRequest, 'Leave decision save failed');
+      if (updatedBalance !== balance) {
+        await persistRecord('leave_balances', updatedBalance, 'Leave balance update failed');
+      }
+    } catch (error) {
+      onStatus(error?.message || 'Leave decision save failed');
+      return;
+    }
+    setLeaveRequests((items) => [updatedRequest, ...items.filter((item) => item.id !== request.id)]);
+    if (updatedBalance !== balance) {
+      setLeaveBalances((items) => [updatedBalance, ...items.filter((item) => item.id !== updatedBalance.id)]);
+    }
+    await logAudit(`leave ${decision.toLowerCase()}: ${request.employeeName} ${request.leaveType}`, 'Leave');
+  };
+
+  const saveHoliday = async (event) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const current = editingHoliday;
+    const holidayName = sanitizeText(form.get('holidayName'), 140);
+    const holidayDate = form.get('holidayDate');
+    if (!holidayName || !holidayDate) {
+      onStatus('Enter holiday name and date');
+      return;
+    }
+    const holiday = {
+      ...(current || {}),
+      id: current?.id || createId('hol'),
+      holidayName,
+      holiday_name: holidayName,
+      holidayDate,
+      holiday_date: holidayDate,
+      description: sanitizeText(form.get('description'), 300),
+      businessId: current?.businessId || 'default',
+      companyId: current?.companyId || 'default',
+      createdAt: current?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    try {
+      await persistRecord('holidays', holiday, 'Holiday save failed');
+    } catch (error) {
+      onStatus(error?.message || 'Holiday save failed');
+      return;
+    }
+    setHolidays((items) => [holiday, ...items.filter((item) => item.id !== holiday.id)]);
+    await logAudit(`holiday ${current ? 'updated' : 'created'}: ${holiday.holidayName}`, 'Holidays');
+    setEditingHoliday(null);
+    event.currentTarget.reset();
+  };
+
+  const deleteHoliday = async (holiday) => {
+    const deleted = await deleteRecord('holidays', holiday.id, holiday.holidayName || holiday.holiday_name || 'holiday', setHolidays, () => {
+      if (editingHoliday?.id === holiday.id) setEditingHoliday(null);
+    });
+    if (deleted) await logAudit(`holiday deleted: ${holiday.holidayName || holiday.holiday_name}`, 'Holidays');
   };
 
   const recordPayment = async (invoice) => {
@@ -906,9 +1242,27 @@ export default function Phase3Ops({
   if (activeTab === 'employees') {
     const currentEmployee = editingEmployee || {};
     const employeeRole = String(authUser?.role || '').toLowerCase();
+    const staffEmployeeIds = new Set(employees
+      .filter((employee) => String(employee.email || '').toLowerCase() === String(authUser?.email || '').toLowerCase())
+      .map((employee) => employee.id));
     const canManageEmployees = ['owner', 'manager'].includes(employeeRole);
-    const canViewEmployeeMaster = ['owner', 'manager', 'accountant'].includes(employeeRole);
+    const canViewEmployeeMaster = ['owner', 'manager', 'accountant'].includes(employeeRole) || staffEmployeeIds.size > 0;
+    const canManageAttendance = ['owner', 'manager'].includes(employeeRole);
+    const canManageLeave = ['owner', 'manager'].includes(employeeRole);
+    const canManageHolidays = ['owner', 'manager'].includes(employeeRole);
     const canViewSalary = ['owner', 'manager', 'accountant'].includes(employeeRole);
+    const accessibleEmployees = staffEmployeeIds.size > 0 && !['owner', 'manager', 'accountant'].includes(employeeRole)
+      ? employees.filter((employee) => staffEmployeeIds.has(employee.id))
+      : employees;
+    const visiblePaginatedEmployees = staffEmployeeIds.size > 0 && !['owner', 'manager', 'accountant'].includes(employeeRole)
+      ? paginatedEmployees.filter((employee) => staffEmployeeIds.has(employee.id))
+      : paginatedEmployees;
+    const visibleAttendance = staffEmployeeIds.size > 0 && !canManageAttendance
+      ? filteredAttendance.filter((entry) => staffEmployeeIds.has(entry.employeeId))
+      : filteredAttendance;
+    const visibleLeaveRequests = staffEmployeeIds.size > 0 && !canManageLeave
+      ? filteredLeaveRequests.filter((request) => staffEmployeeIds.has(request.employeeId))
+      : filteredLeaveRequests;
 
     return (
       <section className="phase3-stack fade-in" id="employees">
@@ -928,8 +1282,8 @@ export default function Phase3Ops({
         )}
 
         {canViewEmployeeMaster && <section className="hrms-summary-grid">
-          <div className="summary-card"><span>Total Employees</span><strong>{employees.length}</strong></div>
-          <div className="summary-card"><span>Active</span><strong>{employees.filter((employee) => (employee.status || 'Active') === 'Active').length}</strong></div>
+          <div className="summary-card"><span>Total Employees</span><strong>{accessibleEmployees.length}</strong></div>
+          <div className="summary-card"><span>Active</span><strong>{accessibleEmployees.filter((employee) => (employee.status || 'Active') === 'Active').length}</strong></div>
           <div className="summary-card"><span>Departments</span><strong>{Math.max(0, employeeDepartments.length - 1)}</strong></div>
           <div className="summary-card"><span>Monthly Payroll</span><strong>{canViewSalary ? formatCurrency(payrollTotal) : 'Restricted'}</strong></div>
         </section>}
@@ -1036,13 +1390,13 @@ export default function Phase3Ops({
             </select>
           </div>
 
-          {employees.length === 0 ? (
+          {accessibleEmployees.length === 0 ? (
             <div className="empty-state">No employees yet. Add your first employee master record.</div>
-          ) : filteredEmployees.length === 0 ? (
+          ) : visiblePaginatedEmployees.length === 0 ? (
             <div className="empty-state">No employees match the selected filters.</div>
           ) : (
             <div className="hrms-employee-grid">
-              {paginatedEmployees.map((employee) => {
+              {visiblePaginatedEmployees.map((employee) => {
                 const todayEntry = attendanceByEmployeeToday.get(employee.id);
                 return (
                   <article className={`hrms-employee-card ${selectedEmployee?.id === employee.id ? 'selected' : ''}`} key={employee.id}>
@@ -1081,6 +1435,178 @@ export default function Phase3Ops({
             <button className="secondary-button compact-button" type="button" disabled={employeePage >= employeePageCount} onClick={() => setEmployeePage((page) => Math.min(employeePageCount, page + 1))}>Next</button>
           </div>
         </section>}
+
+        {canViewEmployeeMaster && (
+          <section className="panel hrms-phaseb-panel">
+            <div className="section-header">
+              <div>
+                <h2>Attendance</h2>
+                <p className="panel-hint">Daily attendance entry, monthly filters, counts, and quick calendar view.</p>
+              </div>
+              <span>{visibleAttendance.length} records</span>
+            </div>
+            <div className="hrms-summary-grid">
+              <div className="summary-card"><span>Present</span><strong>{attendanceSummary.present}</strong></div>
+              <div className="summary-card"><span>Absent</span><strong>{attendanceSummary.absent}</strong></div>
+              <div className="summary-card"><span>Late Marks</span><strong>{attendanceSummary.late}</strong></div>
+              <div className="summary-card"><span>Filtered Records</span><strong>{visibleAttendance.length}</strong></div>
+            </div>
+
+            <div className="hrms-toolbar">
+              <select value={attendanceEmployeeFilter} onChange={(event) => setAttendanceEmployeeFilter(event.target.value)}>
+                <option value="All">All employees</option>
+                {accessibleEmployees.map((employee) => <option key={employee.id} value={employee.id}>{employeeDisplayName(employee)}</option>)}
+              </select>
+              <input type="month" value={attendanceMonthFilter} onChange={(event) => setAttendanceMonthFilter(event.target.value)} />
+              <button className="secondary-button compact-button" type="button" onClick={() => setAttendanceMonthFilter(monthKey())}>This Month</button>
+            </div>
+
+            {canManageAttendance && (
+              <form className="hrms-inline-form" onSubmit={saveAttendanceEntry} key={editingAttendance?.id || 'attendance-new'}>
+                <select name="employeeId" defaultValue={editingAttendance?.employeeId || accessibleEmployees[0]?.id || ''} required>
+                  <option value="" disabled>Select employee</option>
+                  {accessibleEmployees.map((employee) => <option key={employee.id} value={employee.id}>{employeeDisplayName(employee)}</option>)}
+                </select>
+                <input name="attendanceDate" type="date" defaultValue={editingAttendance?.attendanceDate || editingAttendance?.date || today()} required />
+                <input name="inTime" type="time" defaultValue={editingAttendance?.inTime || editingAttendance?.in_time || ''} />
+                <input name="outTime" type="time" defaultValue={editingAttendance?.outTime || editingAttendance?.out_time || ''} />
+                <input name="workingHours" type="number" min="0" step="0.25" defaultValue={editingAttendance?.workingHours ?? editingAttendance?.working_hours ?? ''} placeholder="Hours" />
+                <select name="status" defaultValue={editingAttendance?.status || 'Present'}>
+                  {ATTENDANCE_STATUSES.map((status) => <option key={status}>{status}</option>)}
+                </select>
+                <label className="hrms-check"><input name="lateMark" type="checkbox" defaultChecked={Boolean(editingAttendance?.lateMark || editingAttendance?.late_mark)} /> Late</label>
+                <input name="remarks" defaultValue={editingAttendance?.remarks || ''} placeholder="Remarks" />
+                <button className="manual-button" type="submit">{editingAttendance ? 'Update Attendance' : 'Save Attendance'}</button>
+                {editingAttendance && <button className="secondary-button compact-button" type="button" onClick={() => setEditingAttendance(null)}>Cancel</button>}
+              </form>
+            )}
+
+            <div className="hrms-record-grid">
+              {visibleAttendance.length === 0 ? <div className="empty-state">No attendance records for this filter.</div> : visibleAttendance.slice(0, 12).map((entry) => (
+                <article className="hrms-mini-card" key={entry.id}>
+                  <div>
+                    <strong>{entry.name || employees.find((employee) => employee.id === entry.employeeId)?.name || 'Employee'}</strong>
+                    <p>{entry.attendanceDate || entry.date} · {entry.inTime || entry.in_time || '--'} to {entry.outTime || entry.out_time || '--'}</p>
+                  </div>
+                  <span className={`attendance-pill ${entry.status === 'Absent' ? 'absent' : entry.status === 'Present' ? 'present' : ''}`}>{attendanceStatusLabel(entry.status)}</span>
+                  {Boolean(entry.lateMark || entry.late_mark) && <span className="hrms-status inactive">Late</span>}
+                  {canManageAttendance && <button className="share-entry-button" type="button" onClick={() => setEditingAttendance(entry)}>Edit</button>}
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {canViewEmployeeMaster && (
+          <section className="panel hrms-phaseb-panel">
+            <div className="section-header">
+              <div>
+                <h2>Leave Management</h2>
+                <p className="panel-hint">SL, CL, and PL requests with approval flow and balance tracking.</p>
+              </div>
+              <span>{visibleLeaveRequests.length} requests</span>
+            </div>
+
+            <div className="hrms-record-grid">
+              {LEAVE_TYPES.map((type) => {
+                const totalRemaining = leaveBalances
+                  .filter((balance) => balance.leaveType === type.id)
+                  .reduce((sum, balance) => sum + Number(balance.remainingLeaves ?? balance.remaining_leaves ?? type.allocation), 0);
+                return (
+                  <article className="hrms-mini-card" key={type.id}>
+                    <strong>{type.id}</strong>
+                    <p>{type.label}</p>
+                    <span>{totalRemaining} remaining</span>
+                  </article>
+                );
+              })}
+            </div>
+
+            <form className="hrms-inline-form" onSubmit={saveLeaveRequest}>
+              <select name="employeeId" defaultValue={accessibleEmployees[0]?.id || ''} required>
+                <option value="" disabled>Select employee</option>
+                {accessibleEmployees.map((employee) => <option key={employee.id} value={employee.id}>{employeeDisplayName(employee)}</option>)}
+              </select>
+              <select name="leaveType" defaultValue="SL">{LEAVE_TYPES.map((type) => <option key={type.id} value={type.id}>{type.id} - {type.label}</option>)}</select>
+              <input name="startDate" type="date" required />
+              <input name="endDate" type="date" required />
+              <input name="reason" placeholder="Reason" />
+              <button className="manual-button" type="submit">Apply Leave</button>
+            </form>
+
+            <div className="hrms-toolbar">
+              <select value={leaveEmployeeFilter} onChange={(event) => setLeaveEmployeeFilter(event.target.value)}>
+                <option value="All">All employees</option>
+                {accessibleEmployees.map((employee) => <option key={employee.id} value={employee.id}>{employeeDisplayName(employee)}</option>)}
+              </select>
+              <select value={leaveStatusFilter} onChange={(event) => setLeaveStatusFilter(event.target.value)}>
+                <option>All</option>
+                {LEAVE_STATUSES.map((status) => <option key={status}>{status}</option>)}
+              </select>
+              <select value={leaveTypeFilter} onChange={(event) => setLeaveTypeFilter(event.target.value)}>
+                <option>All</option>
+                {LEAVE_TYPES.map((type) => <option key={type.id}>{type.id}</option>)}
+              </select>
+            </div>
+
+            <div className="hrms-record-grid">
+              {visibleLeaveRequests.length === 0 ? <div className="empty-state">No leave requests yet.</div> : visibleLeaveRequests.map((request) => (
+                <article className="hrms-mini-card" key={request.id}>
+                  <div>
+                    <strong>{request.employeeName}</strong>
+                    <p>{request.leaveType} · {request.startDate} to {request.endDate} · {request.totalDays} days</p>
+                    <p>{request.reason || 'No reason added'}</p>
+                  </div>
+                  <span className={`hrms-status ${request.status === 'Rejected' ? 'inactive' : ''}`}>{request.status}</span>
+                  {canManageLeave && request.status === 'Pending' && (
+                    <div className="voucher-actions">
+                      <button className="share-entry-button" type="button" onClick={() => decideLeaveRequest(request, 'Approved')}>Approve</button>
+                      <button className="delete-entry-button" type="button" onClick={() => decideLeaveRequest(request, 'Rejected')}>Reject</button>
+                    </div>
+                  )}
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {canViewEmployeeMaster && (
+          <section className="panel hrms-phaseb-panel">
+            <div className="section-header">
+              <div>
+                <h2>Holiday Calendar</h2>
+                <p className="panel-hint">Company holidays visible to employees, with owner/manager management.</p>
+              </div>
+              <span>{holidays.length} holidays</span>
+            </div>
+
+            {canManageHolidays && (
+              <form className="hrms-inline-form" onSubmit={saveHoliday} key={editingHoliday?.id || 'holiday-new'}>
+                <input name="holidayName" defaultValue={editingHoliday?.holidayName || editingHoliday?.holiday_name || ''} placeholder="Holiday name" required />
+                <input name="holidayDate" type="date" defaultValue={editingHoliday?.holidayDate || editingHoliday?.holiday_date || ''} required />
+                <input name="description" defaultValue={editingHoliday?.description || ''} placeholder="Description" />
+                <button className="manual-button" type="submit">{editingHoliday ? 'Update Holiday' : 'Add Holiday'}</button>
+                {editingHoliday && <button className="secondary-button compact-button" type="button" onClick={() => setEditingHoliday(null)}>Cancel</button>}
+              </form>
+            )}
+
+            <div className="hrms-holiday-grid">
+              {sortedHolidays.length === 0 ? <div className="empty-state">No holidays added yet.</div> : sortedHolidays.map((holiday) => (
+                <article className="hrms-holiday-card" key={holiday.id}>
+                  <time>{holiday.holidayDate || holiday.holiday_date}</time>
+                  <strong>{holiday.holidayName || holiday.holiday_name}</strong>
+                  <p>{holiday.description || 'Company holiday'}</p>
+                  {canManageHolidays && (
+                    <div className="voucher-actions">
+                      <button className="share-entry-button" type="button" onClick={() => setEditingHoliday(holiday)}>Edit</button>
+                      <button className="delete-entry-button" type="button" onClick={() => deleteHoliday(holiday)}>Delete</button>
+                    </div>
+                  )}
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
 
         {canViewEmployeeMaster && selectedEmployee && (
           <section className="panel hrms-profile-panel">
@@ -1127,8 +1653,39 @@ export default function Phase3Ops({
                   <div><dt>Salary History</dt><dd>Placeholder for HRMS Phase B.</dd></div>
                 </dl>
               )}
-              {employeeProfileTab === 'Leave Information' && <div className="empty-state">Leave management placeholder for a later HRMS phase.</div>}
-              {employeeProfileTab === 'Attendance' && <div className="empty-state">Attendance profile analytics placeholder. Existing quick attendance buttons remain available in the directory.</div>}
+              {employeeProfileTab === 'Leave Information' && (
+                <div className="hrms-record-grid">
+                  {LEAVE_TYPES.map((type) => {
+                    const balance = leaveBalancesByEmployee.get(`${selectedEmployee.id}-${type.id}`);
+                    return (
+                      <article className="hrms-mini-card" key={type.id}>
+                        <strong>{type.id}</strong>
+                        <p>{type.label}</p>
+                        <span>{Number(balance?.remainingLeaves ?? balance?.remaining_leaves ?? type.allocation)} remaining</span>
+                      </article>
+                    );
+                  })}
+                  {leaveRequests.filter((request) => request.employeeId === selectedEmployee.id).slice(0, 4).map((request) => (
+                    <article className="hrms-mini-card" key={request.id}>
+                      <strong>{request.status}</strong>
+                      <p>{request.leaveType} · {request.startDate} to {request.endDate}</p>
+                    </article>
+                  ))}
+                </div>
+              )}
+              {employeeProfileTab === 'Attendance' && (
+                <div className="hrms-record-grid">
+                  {validAttendance.filter((entry) => entry.employeeId === selectedEmployee.id).slice(0, 8).length === 0 ? (
+                    <div className="empty-state">No attendance records for this employee yet.</div>
+                  ) : validAttendance.filter((entry) => entry.employeeId === selectedEmployee.id).slice(0, 8).map((entry) => (
+                    <article className="hrms-mini-card" key={entry.id}>
+                      <strong>{entry.attendanceDate || entry.date}</strong>
+                      <p>{entry.status} · {entry.workingHours ?? entry.working_hours ?? 0} hours</p>
+                      <span className={`attendance-pill ${entry.status === 'Absent' ? 'absent' : entry.status === 'Present' ? 'present' : ''}`}>{attendanceStatusLabel(entry.status)}</span>
+                    </article>
+                  ))}
+                </div>
+              )}
               {employeeProfileTab === 'Documents' && <div className="empty-state">Document storage placeholder for a later HRMS phase.</div>}
               {employeeProfileTab === 'Notes / Description' && (
                 <article className="hrms-notes-card">
