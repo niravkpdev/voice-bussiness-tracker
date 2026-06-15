@@ -232,11 +232,30 @@ export default function Phase3Ops({
   };
 
   const logAudit = async (action, area) => {
-    const log = { id: createId('aud'), action, area, user: 'Owner', date: new Date().toLocaleString() };
+    const timestamp = new Date().toISOString();
+    const log = {
+      id: createId('aud'),
+      action,
+      actionType: action,
+      area,
+      module: area,
+      tableName: area,
+      user: authUser?.email || authUser?.uid || 'Owner',
+      actorUid: authUser?.uid || '',
+      ownerUid: authUser?.uid || '',
+      businessId: 'default',
+      date: new Date().toLocaleString(),
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      occurredAt: timestamp,
+      source: 'frontend_best_effort',
+    };
     try {
       await persistRecord('audit_logs', log, 'Audit log save failed');
     } catch (error) {
-      onStatus(error?.message || 'Audit log save failed');
+      if (import.meta.env.DEV) {
+        console.warn('AUDIT_LOG_BEST_EFFORT_FAILED', error);
+      }
     }
     setAuditLogs([log, ...auditLogs].slice(0, 100));
   };
