@@ -642,18 +642,30 @@ export default function Phase2ERP({
     const affectedProducts = productsAfterInvoice
       .filter((product) => invoice.lines.some((line) => line.productId === product.id));
     try {
+      let shouldUseLegacyInvoiceSave = !onAtomicInvoiceWithStock;
       if (onAtomicInvoiceWithStock) {
-        const result = await onAtomicInvoiceWithStock(
-          invoice,
-          affectedProducts.map((product) => ({
-            ...product,
-            itemId: product.id,
-          }))
-        );
-        if (!result?.invoice) {
-          throw new Error('Atomic invoice save failed');
+        try {
+          const result = await onAtomicInvoiceWithStock(
+            invoice,
+            affectedProducts.map((product) => ({
+              ...product,
+              itemId: product.id,
+            }))
+          );
+          if (!result?.invoice) {
+            throw new Error('Atomic invoice save failed');
+          }
+        } catch (error) {
+          const errorText = `${error?.code || ''} ${error?.message || ''}`;
+          if (!/create_invoice_with_stock|schema cache|function.*not found|pgrst202|42883/i.test(errorText)) {
+            throw error;
+          }
+          shouldUseLegacyInvoiceSave = true;
+          onStatus('Phase 1 RPC migration is not installed yet. Saving invoice with legacy flow for now.');
         }
-      } else {
+      }
+
+      if (shouldUseLegacyInvoiceSave) {
         const invoiceSaved = await onCloudRecord?.('invoices', invoice.id, invoice);
         if (!invoiceSaved) {
           throw new Error('Invoice save failed');
