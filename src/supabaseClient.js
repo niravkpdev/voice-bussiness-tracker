@@ -925,6 +925,89 @@ export async function createInvoiceWithStock(uid, invoice, inventoryItems = []) 
   }
 }
 
+export async function postPaymentWithLedger(uid, payment, ledgerPosting = {}) {
+  const client = getSupabaseClient();
+  const user = await getCurrentSupabaseUser(client);
+  const currentUid = user?.id || null;
+  const paymentId = payment?.id || '';
+  const path = uid && paymentId ? pathFor(uid, 'payments', paymentId) : null;
+
+  if (!client || !uid || !paymentId) {
+    throw new Error('Missing Supabase client, uid, or payment id for atomic payment posting.');
+  }
+
+  if (!currentUid) {
+    throw new Error('No authenticated Supabase user is available for atomic payment posting.');
+  }
+
+  if (currentUid !== uid) {
+    throw new Error('Authenticated Supabase uid does not match requested payment owner uid.');
+  }
+
+  cloudInfo('SUPABASE_RPC_START', {
+    projectId: getSupabaseProjectHost() || null,
+    authDomain: supabaseConfig.url || null,
+    currentSupabaseUserUid: currentUid,
+    requestedUid: uid,
+    path,
+    operation: 'post_payment_with_ledger',
+    invoiceId: payment?.invoiceId || null,
+  });
+
+  try {
+    const { data, error } = await withCloudTimeout(
+      client.rpc('post_payment_with_ledger', {
+        p_payment: {
+          ...payment,
+          userId: uid,
+          ownerUid: uid,
+        },
+        p_ledger_posting: {
+          ...(ledgerPosting || {}),
+          userId: uid,
+          ownerUid: uid,
+        },
+      }),
+      { path, uid, currentSupabaseUserUid: currentUid, operation: 'rpc:post_payment_with_ledger' }
+    );
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data?.payment || !data?.ledgerPosting) {
+      const rpcError = new Error('Atomic payment RPC did not return both payment and ledger posting.');
+      rpcError.code = 'supabase/rpc-verification-failed';
+      throw rpcError;
+    }
+
+    cloudInfo('SUPABASE_RPC_SUCCESS', {
+      projectId: getSupabaseProjectHost() || null,
+      authDomain: supabaseConfig.url || null,
+      currentSupabaseUserUid: currentUid,
+      requestedUid: uid,
+      path,
+      operation: 'post_payment_with_ledger',
+      transactionId: data.ledgerPosting?.id || null,
+      auditLogId: data.auditLogId || null,
+    });
+
+    return data;
+  } catch (error) {
+    cloudError('SUPABASE_RPC_ERROR', {
+      projectId: getSupabaseProjectHost() || null,
+      authDomain: supabaseConfig.url || null,
+      currentSupabaseUserUid: currentUid,
+      requestedUid: uid,
+      path,
+      operation: 'post_payment_with_ledger',
+      code: error?.code || null,
+      message: error?.message || '',
+    });
+    throw error;
+  }
+}
+
 export async function saveCloudRecord(uid, tableName, id, data) {
   const client = getSupabaseClient();
   const user = await getCurrentSupabaseUser(client);

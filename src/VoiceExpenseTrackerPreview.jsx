@@ -43,6 +43,7 @@ import {
   listenToSupabaseAuth,
   loadCloudCollection,
   loadUserProfileSettings,
+  postPaymentWithLedger,
   prepareSupabasePasswordRecoverySession,
   reloadCurrentSupabaseUser,
   runSupabaseDebugTest,
@@ -1272,6 +1273,12 @@ export default function VoiceExpenseTrackerPreview() {
 
   const updateCloudRecordCache = (collectionName, id, data) => {
     switch (collectionName) {
+      case 'transactions':
+        setVouchers((items) => sortVouchersNewestFirst([
+          { ...data, id },
+          ...(items || []).filter((item) => item.id !== id),
+        ]));
+        break;
       case 'customers':
         mergeCloudListRecord(setCloudCustomers, id, data);
         break;
@@ -1430,6 +1437,40 @@ export default function VoiceExpenseTrackerPreview() {
       return result;
     } catch (error) {
       setSecureError(publicSafeError(error, 'Atomic invoice save failed. Please run the latest Supabase Phase 1 RPC migration.'));
+      throw error;
+    }
+  };
+
+  const postAtomicPaymentWithLedger = async (payment, ledgerPosting = {}) => {
+    if (!supabaseEnabled || !authUser?.uid) {
+      return false;
+    }
+
+    try {
+      const result = await postPaymentWithLedger(authUser.uid, payment, ledgerPosting);
+      if (result?.payment?.id) {
+        updateCloudRecordCache('payments', result.payment.id, result.payment);
+      }
+      if (result?.ledgerPosting?.id) {
+        updateCloudRecordCache('transactions', result.ledgerPosting.id, result.ledgerPosting);
+      }
+      if (result?.invoice?.id) {
+        updateCloudRecordCache('invoices', result.invoice.id, result.invoice);
+      }
+      if (result?.auditLogId) {
+        updateCloudRecordCache('audit_logs', result.auditLogId, result.auditLog || {
+          id: result.auditLogId,
+          action: 'payment_posted_with_ledger',
+          area: 'Payments',
+          targetId: result.payment?.id || payment.id,
+          targetType: 'payment',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      }
+      return result;
+    } catch (error) {
+      setSecureError(publicSafeError(error, 'Atomic payment posting failed. Please run the latest Supabase Phase 1 payment RPC migration.'));
       throw error;
     }
   };
@@ -4104,6 +4145,7 @@ export default function VoiceExpenseTrackerPreview() {
                 onCloudRecord={saveAuthenticatedCloudRecord}
                 onCloudDelete={deleteAuthenticatedCloudRecord}
                 onCloudSnapshot={saveCloudDataSnapshot}
+                onAtomicPaymentWithLedger={postAtomicPaymentWithLedger}
               />
             </Suspense>
           )}

@@ -67,6 +67,12 @@ function encodeUpi({ pa, pn, am, tn }) {
   return `upi://pay?${params.toString()}`;
 }
 
+function isMissingPaymentRpc(error) {
+  return /post_payment_with_ledger|function.*not.*found|schema cache|PGRST202|42883/i.test(
+    `${error?.code || ''} ${error?.message || ''}`
+  );
+}
+
 function QrGrid({ value }) {
   let hash = 0;
   for (let index = 0; index < value.length; index += 1) {
@@ -110,6 +116,7 @@ export default function Phase3Ops({
   onCloudRecord,
   onCloudDelete,
   onCloudSnapshot,
+  onAtomicPaymentWithLedger,
 }) {
   const [orders, setOrders] = useState(() => readArray(ORDER_KEY));
   const [employees, setEmployees] = useState(() => readArray(EMPLOYEE_KEY));
@@ -353,15 +360,71 @@ export default function Phase3Ops({
 
   const recordPayment = async (invoice) => {
     const amount = invoice.balance || invoice.total || 0;
-    const payment = { id: createId('pay'), invoiceId: invoice.id, invoiceNo: invoice.invoiceNo, amount, date: today(), mode: 'UPI', status: 'Marked Paid' };
+    const customer = (customers || []).find((item) => item.id === invoice.customerId);
+    const payment = {
+      id: createId('pay'),
+      invoiceId: invoice.id,
+      invoiceNo: invoice.invoiceNo,
+      customerId: invoice.customerId || '',
+      customerName: customer?.name || invoice.customerName || '',
+      businessId: invoice.businessId || 'default',
+      amount,
+      date: today(),
+      mode: 'UPI',
+      status: 'Marked Paid',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    const ledgerPosting = {
+      id: `txn-${payment.id}`,
+      type: 'Receipt',
+      amount,
+      date: payment.date,
+      narration: `Payment received for ${invoice.invoiceNo || invoice.id}`,
+      source: 'payment_posting',
+      paymentId: payment.id,
+      invoiceId: invoice.id,
+      invoiceNo: invoice.invoiceNo,
+      customerId: invoice.customerId || '',
+      businessId: invoice.businessId || 'default',
+      lines: [
+        { ledgerId: 'ledger-bank', debit: amount, credit: 0 },
+        { ledgerId: invoice.customerLedgerId || invoice.customerId || 'ledger-sales', debit: 0, credit: amount },
+      ],
+    };
     try {
+      if (onAtomicPaymentWithLedger) {
+        const result = await onAtomicPaymentWithLedger(payment, ledgerPosting);
+        if (!result?.payment) {
+          throw new Error('Atomic payment posting did not return the saved payment.');
+        }
+        setPayments((items) => [result.payment, ...items.filter((item) => item.id !== result.payment.id)]);
+        onStatus('Payment and ledger posted atomically in Supabase.');
+        return;
+      }
       await persistRecord('payments', payment, 'Payment save failed');
+    } catch (error) {
+      if (isMissingPaymentRpc(error)) {
+        onStatus('Payment RPC migration is not installed yet. Saving with legacy payment path for now.');
+        try {
+          await persistRecord('payments', payment, 'Payment save failed');
+        } catch (fallbackError) {
+          onStatus(fallbackError?.message || 'Payment save failed');
+          return;
+        }
+      } else {
+        onStatus(error?.message || 'Atomic payment posting failed');
+        return;
+      }
+    }
+
+    setPayments([payment, ...payments]);
+    try {
+      await logAudit(`Marked payment for ${invoice.invoiceNo}`, 'Payments');
     } catch (error) {
       onStatus(error?.message || 'Payment save failed');
       return;
     }
-    setPayments([payment, ...payments]);
-    await logAudit(`Marked payment for ${invoice.invoiceNo}`, 'Payments');
     onStatus('Payment recorded in Supabase. Provider webhook required for automatic bank confirmation.');
   };
 
