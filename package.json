@@ -2,6 +2,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
+    "test": "vitest run",
     "preview": "vite preview --host 127.0.0.1",
     "smoke": "npm run build",
     "security:audit": "npm audit --audit-level=moderate",
@@ -13,5 +14,11 @@
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "vite": "8.0.14"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/react": "16.3.2",
+    "jsdom": "29.1.1",
+    "vitest": "4.1.8"
   }
 }
