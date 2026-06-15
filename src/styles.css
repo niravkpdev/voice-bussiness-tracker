@@ -6598,3 +6598,284 @@ fieldset {
     width: 100%;
   }
 }
+
+/* HRMS Phase A */
+.hrms-hero p,
+.panel-hint {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.hrms-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.hrms-master-panel,
+.hrms-directory-panel,
+.hrms-profile-panel {
+  background: #ffffff !important;
+  color: #111827 !important;
+}
+
+.hrms-form-grid {
+  align-items: start;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 8px;
+  color: #111827;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.wide-field {
+  grid-column: 1 / -1;
+}
+
+.hrms-form-grid textarea,
+.hrms-toolbar input,
+.hrms-toolbar select {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  background: #ffffff !important;
+  color: #111827 !important;
+}
+
+.hrms-form-grid textarea {
+  min-height: 112px;
+  padding: 12px 14px;
+  resize: vertical;
+}
+
+.hrms-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 180px 150px;
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.hrms-employee-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.hrms-employee-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 16px;
+  background: #ffffff;
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.06);
+  color: #111827;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.hrms-employee-card:hover,
+.hrms-employee-card.selected {
+  border-color: #818cf8;
+  box-shadow: 0 22px 45px rgba(79, 70, 229, 0.14);
+  transform: translateY(-1px);
+}
+
+.hrms-employee-card-head,
+.hrms-profile-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hrms-employee-card-head {
+  justify-content: space-between;
+}
+
+.hrms-employee-card-head > div:nth-child(2),
+.hrms-profile-header > div:nth-child(2) {
+  min-width: 0;
+  flex: 1;
+}
+
+.hrms-employee-card strong,
+.hrms-profile-header h2 {
+  color: #111827;
+}
+
+.hrms-employee-card p,
+.hrms-profile-header p {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.hrms-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #4f46e5, #3b82f6);
+  color: #ffffff;
+  font-weight: 900;
+}
+
+.hrms-avatar.large {
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  font-size: 1.35rem;
+}
+
+.hrms-status {
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: #dcfce7;
+  color: #166534;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.hrms-status.inactive {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.hrms-employee-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.hrms-employee-meta span {
+  min-width: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 9px 10px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 0.84rem;
+  overflow-wrap: anywhere;
+}
+
+.hrms-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 18px;
+  color: #475569;
+  font-weight: 800;
+}
+
+.hrms-tabs {
+  display: flex;
+  gap: 10px;
+  margin: 18px 0;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.hrms-tabs button {
+  flex: 0 0 auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: #ffffff;
+  color: #334155;
+  font-weight: 900;
+}
+
+.hrms-tabs button.active {
+  border-color: transparent;
+  background: linear-gradient(135deg, #4f46e5, #3b82f6);
+  color: #ffffff;
+}
+
+.hrms-tab-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 18px;
+  background: #f8fafc;
+  color: #111827;
+}
+
+.hrms-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.hrms-detail-grid div,
+.hrms-notes-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 14px;
+  background: #ffffff;
+}
+
+.hrms-detail-grid dt {
+  margin-bottom: 4px;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.hrms-detail-grid dd {
+  margin: 0;
+  color: #111827;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.hrms-notes-card strong {
+  color: #111827;
+}
+
+.hrms-notes-card p {
+  margin: 8px 0 0;
+  color: #334155;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 900px) {
+  .hrms-summary-grid,
+  .hrms-employee-grid,
+  .hrms-detail-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .hrms-toolbar {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .hrms-summary-grid,
+  .hrms-employee-grid,
+  .hrms-detail-grid,
+  .hrms-employee-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .hrms-profile-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .hrms-profile-header .compact-button {
+    width: 100%;
+  }
+}

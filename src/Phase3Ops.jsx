@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { normalizeAmount, sanitizeText, validatePhone } from './security.js';
+import { normalizeAmount, sanitizeText, validateEmail, validatePhone } from './security.js';
 import { readScopedString, writeScopedString } from './storageScope.js';
 
 const ORDER_KEY = 'phase3Orders';
@@ -14,6 +14,16 @@ const OFFLINE_QUEUE_KEY = 'phase3OfflineQueue';
 
 const ORDER_STAGES = ['New Order', 'Confirmed', 'In Production', 'Quality Check', 'Ready', 'Dispatched', 'Delivered'];
 const ROLES = ['Owner', 'Manager', 'Accountant', 'Staff'];
+const EMPLOYEE_STATUSES = ['Active', 'Inactive'];
+const EMPLOYEE_PROFILE_TABS = [
+  'Personal Information',
+  'Work Information',
+  'Salary Information',
+  'Leave Information',
+  'Attendance',
+  'Documents',
+  'Notes / Description',
+];
 
 function readArray(key) {
   try {
@@ -42,6 +52,30 @@ function writeObject(key, value) {
 
 function createId(prefix) {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function createEmployeeCode(items = []) {
+  const nextNumber = items.reduce((max, employee) => {
+    const match = String(employee.employeeId || employee.employee_id || '').match(/EMP-(\d+)/i);
+    return Math.max(max, match ? Number(match[1]) : 0);
+  }, 0) + 1;
+  return `EMP-${String(nextNumber).padStart(4, '0')}`;
+}
+
+function employeeDisplayName(employee) {
+  return employee.fullName || employee.full_name || employee.name || 'Employee';
+}
+
+function employeeCode(employee) {
+  return employee.employeeId || employee.employee_id || employee.id || '';
+}
+
+function employeeMobile(employee) {
+  return employee.mobileNumber || employee.mobile_number || employee.mobile || '';
+}
+
+function employeeDesignation(employee) {
+  return employee.designation || employee.role || '';
 }
 
 function today() {
@@ -128,6 +162,12 @@ export default function Phase3Ops({
   const [offlineQueue, setOfflineQueue] = useState(() => readArray(OFFLINE_QUEUE_KEY));
   const [editingOrder, setEditingOrder] = useState(null);
   const [editingEmployee, setEditingEmployee] = useState(null);
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [employeeProfileTab, setEmployeeProfileTab] = useState(EMPLOYEE_PROFILE_TABS[0]);
+  const [employeeSearch, setEmployeeSearch] = useState('');
+  const [employeeDepartmentFilter, setEmployeeDepartmentFilter] = useState('All');
+  const [employeeStatusFilter, setEmployeeStatusFilter] = useState('All');
+  const [employeePage, setEmployeePage] = useState(1);
   const [editingPayment, setEditingPayment] = useState(null);
   const [subscription, setSubscription] = useState(() =>
     readObject(SUBSCRIPTION_KEY, { plan: 'Free', invoicesLimit: 25, usersLimit: 1, aiEnabled: true })
@@ -191,9 +231,44 @@ export default function Phase3Ops({
     onCloudSnapshot?.('phase3_ops_updated');
   }, [orders, employees, attendance, auditLogs, payments, offlineQueue, subscription, security, devices]);
 
+  useEffect(() => {
+    setEmployeePage(1);
+  }, [employeeDepartmentFilter, employeeSearch, employeeStatusFilter]);
+
+  useEffect(() => {
+    if (selectedEmployee) {
+      setSelectedEmployee(employees.find((employee) => employee.id === selectedEmployee.id) || null);
+    }
+  }, [employees, selectedEmployee?.id]);
+
   const unpaidInvoices = useMemo(() => invoices.filter((invoice) => invoice.status !== 'Paid'), [invoices]);
   const payrollTotal = useMemo(() => employees.reduce((sum, employee) => sum + (Number(employee.salary) || 0), 0), [employees]);
   const validEmployeeIds = useMemo(() => new Set(employees.map((employee) => employee.id)), [employees]);
+  const employeeDepartments = useMemo(() => {
+    const departments = employees.map((employee) => employee.department).filter(Boolean);
+    return ['All', ...Array.from(new Set(departments)).sort()];
+  }, [employees]);
+  const filteredEmployees = useMemo(() => {
+    const query = employeeSearch.trim().toLowerCase();
+    return employees.filter((employee) => {
+      const searchable = [
+        employeeDisplayName(employee),
+        employeeCode(employee),
+        employee.email,
+        employeeMobile(employee),
+        employee.department,
+        employeeDesignation(employee),
+        employee.reportingManager || employee.reporting_manager,
+      ].join(' ').toLowerCase();
+      const matchesQuery = !query || searchable.includes(query);
+      const matchesDepartment = employeeDepartmentFilter === 'All' || employee.department === employeeDepartmentFilter;
+      const matchesStatus = employeeStatusFilter === 'All' || (employee.status || 'Active') === employeeStatusFilter;
+      return matchesQuery && matchesDepartment && matchesStatus;
+    });
+  }, [employeeDepartmentFilter, employeeSearch, employeeStatusFilter, employees]);
+  const employeePageSize = 6;
+  const employeePageCount = Math.max(1, Math.ceil(filteredEmployees.length / employeePageSize));
+  const paginatedEmployees = filteredEmployees.slice((employeePage - 1) * employeePageSize, employeePage * employeePageSize);
   const validAttendance = useMemo(
     () => attendance.filter((entry) => validEmployeeIds.has(entry.employeeId)),
     [attendance, validEmployeeIds]
@@ -329,19 +404,53 @@ export default function Phase3Ops({
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const current = editingEmployee;
+    const employeeId = sanitizeText(form.get('employee_id'), 32) || current?.employeeId || current?.employee_id || createEmployeeCode(employees);
+    const fullName = sanitizeText(form.get('full_name'), 140);
+    const mobileNumber = sanitizeText(form.get('mobile_number'), 24);
+    const email = String(form.get('email') || '').trim().toLowerCase();
+    const status = EMPLOYEE_STATUSES.includes(form.get('status')) ? form.get('status') : 'Active';
     const employee = {
       ...(current || {}),
       id: current?.id || createId('emp'),
-      name: sanitizeText(form.get('name'), 120),
-      mobile: sanitizeText(form.get('mobile'), 24),
-      role: sanitizeText(form.get('role'), 80),
+      employeeId,
+      employee_id: employeeId,
+      fullName,
+      full_name: fullName,
+      name: fullName,
+      mobileNumber,
+      mobile_number: mobileNumber,
+      mobile: mobileNumber,
+      email,
+      address: sanitizeText(form.get('address'), 280),
+      department: sanitizeText(form.get('department'), 100),
+      designation: sanitizeText(form.get('designation'), 100),
+      joiningDate: form.get('joining_date') || '',
+      joining_date: form.get('joining_date') || '',
+      shiftTiming: sanitizeText(form.get('shift_timing'), 100),
+      shift_timing: sanitizeText(form.get('shift_timing'), 100),
+      reportingManager: sanitizeText(form.get('reporting_manager'), 120),
+      reporting_manager: sanitizeText(form.get('reporting_manager'), 120),
+      status,
+      role: sanitizeText(form.get('designation'), 100),
       salary: normalizeAmount(form.get('salary')),
       advance: normalizeAmount(form.get('advance')),
+      notes: sanitizeText(form.get('notes'), 1200),
+      description: sanitizeText(form.get('notes'), 1200),
+      businessId: current?.businessId || 'default',
       createdAt: current?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    if (!employee.name || !validatePhone(employee.mobile)) {
+    const duplicateCode = employees.some((item) => item.id !== employee.id && employeeCode(item).toLowerCase() === employeeId.toLowerCase());
+    if (!employee.fullName || !validatePhone(employee.mobileNumber)) {
       onStatus('Enter valid employee name and mobile');
+      return;
+    }
+    if (email && !validateEmail(email)) {
+      onStatus('Enter a valid employee email');
+      return;
+    }
+    if (duplicateCode) {
+      onStatus('Employee ID must be unique');
       return;
     }
     try {
@@ -351,7 +460,11 @@ export default function Phase3Ops({
       return;
     }
     setEmployees((items) => [employee, ...items.filter((item) => item.id !== employee.id)]);
-    await logAudit(`${current ? 'Updated' : 'Added'} employee ${employee.name}`, 'Employees');
+    setSelectedEmployee(employee);
+    await logAudit(`${current ? 'employee updated' : 'employee created'}: ${employee.fullName}`, 'Employees');
+    if (current && current.status !== employee.status) {
+      await logAudit(`employee status changed: ${employee.fullName} ${current.status || 'Unknown'} to ${employee.status}`, 'Employees');
+    }
     setEditingEmployee(null);
     event.currentTarget.reset();
   };
@@ -363,7 +476,7 @@ export default function Phase3Ops({
       ...(existing || {}),
       id: existing?.id || `att-${employee.id}-${date}`,
       employeeId: employee.id,
-      name: employee.name,
+      name: employeeDisplayName(employee),
       status,
       date,
       createdAt: existing?.createdAt || new Date().toISOString(),
@@ -376,7 +489,7 @@ export default function Phase3Ops({
       return;
     }
     setAttendance((items) => [attendanceEntry, ...items.filter((entry) => entry.id !== attendanceEntry.id)]);
-    await logAudit(`Marked ${employee.name} ${status}`, 'Attendance');
+    await logAudit(`Marked ${employeeDisplayName(employee)} ${status}`, 'Attendance');
   };
 
   const recordPayment = async (invoice) => {
@@ -545,13 +658,14 @@ export default function Phase3Ops({
 
   const deleteEmployee = async (employee) => {
     const employeeAttendance = attendance.filter((entry) => entry.employeeId === employee.id);
-    const deleted = await deleteRecord('employees', employee.id, employee.name || 'employee', setEmployees, () => {
+    const deleted = await deleteRecord('employees', employee.id, employeeDisplayName(employee) || 'employee', setEmployees, () => {
       if (editingEmployee?.id === employee.id) setEditingEmployee(null);
+      if (selectedEmployee?.id === employee.id) setSelectedEmployee(null);
       setAttendance((items) => items.filter((entry) => entry.employeeId !== employee.id));
     });
     if (deleted) {
       await Promise.all(employeeAttendance.map((entry) => onCloudDelete?.('attendance', entry.id).catch(() => false)));
-      await logAudit(`Deleted employee ${employee.name}`, 'Employees');
+      await logAudit(`Deleted employee ${employeeDisplayName(employee)}`, 'Employees');
     }
   };
 
@@ -790,61 +904,241 @@ export default function Phase3Ops({
   }
 
   if (activeTab === 'employees') {
+    const currentEmployee = editingEmployee || {};
+    const employeeRole = String(authUser?.role || '').toLowerCase();
+    const canManageEmployees = ['owner', 'manager'].includes(employeeRole);
+    const canViewEmployeeMaster = ['owner', 'manager', 'accountant'].includes(employeeRole);
+    const canViewSalary = ['owner', 'manager', 'accountant'].includes(employeeRole);
+
     return (
       <section className="phase3-stack fade-in" id="employees">
-        <div className="phase3-hero"><div><span className="eyebrow">Employee Management</span><h2>Employee database, attendance, salary, advance tracking, and payroll</h2></div><strong>{formatCurrency(payrollTotal)} payroll</strong></div>
-        <section className="content-grid">
-          <article className="panel">
-            <h2>{editingEmployee ? 'Edit Employee' : 'Add Employee'}</h2>
+        <div className="phase3-hero hrms-hero">
+          <div>
+            <span className="eyebrow">HRMS Phase A</span>
+            <h2>Employee Master and Professional HR Profiles</h2>
+            <p>Foundation for HRMS with structured employee records, profile tabs, notes, and role-aware access.</p>
+          </div>
+          <strong>{employees.filter((employee) => (employee.status || 'Active') === 'Active').length} active</strong>
+        </div>
+
+        {!canViewEmployeeMaster && (
+          <section className="notice error">
+            Your current role does not have unrestricted employee access. Contact the owner for HRMS permissions.
+          </section>
+        )}
+
+        {canViewEmployeeMaster && <section className="hrms-summary-grid">
+          <div className="summary-card"><span>Total Employees</span><strong>{employees.length}</strong></div>
+          <div className="summary-card"><span>Active</span><strong>{employees.filter((employee) => (employee.status || 'Active') === 'Active').length}</strong></div>
+          <div className="summary-card"><span>Departments</span><strong>{Math.max(0, employeeDepartments.length - 1)}</strong></div>
+          <div className="summary-card"><span>Monthly Payroll</span><strong>{canViewSalary ? formatCurrency(payrollTotal) : 'Restricted'}</strong></div>
+        </section>}
+
+        {canManageEmployees && (
+          <section className="panel hrms-master-panel">
+            <div className="section-header">
+              <div>
+                <h2>{editingEmployee ? 'Edit Employee Master' : 'Add Employee Master'}</h2>
+                <p className="panel-hint">Capture basic, work, salary, shift, reporting, and internal notes.</p>
+              </div>
+              <span>{editingEmployee ? 'Editing' : 'New'}</span>
+            </div>
             <form onSubmit={saveEmployee} key={editingEmployee?.id || 'new-employee'}>
-              <div className="form-grid">
-                <input name="name" defaultValue={editingEmployee?.name || ''} placeholder="Employee name" />
-                <input name="mobile" defaultValue={editingEmployee?.mobile || ''} placeholder="Mobile" />
-                <select name="role" defaultValue={editingEmployee?.role || ROLES[0]}>{ROLES.map((role) => <option key={role}>{role}</option>)}</select>
-                <input name="salary" type="number" defaultValue={editingEmployee?.salary ?? ''} placeholder="Monthly salary" />
-                <input name="advance" type="number" defaultValue={editingEmployee?.advance ?? ''} placeholder="Advance paid" />
+              <div className="form-grid hrms-form-grid">
+                <div>
+                  <label className="field-label" htmlFor="employee_id">Employee ID</label>
+                  <input id="employee_id" name="employee_id" defaultValue={employeeCode(currentEmployee) || createEmployeeCode(employees)} placeholder="EMP-0001" />
+                </div>
+                <div>
+                  <label className="field-label" htmlFor="full_name">Full Name</label>
+                  <input id="full_name" name="full_name" defaultValue={employeeDisplayName(currentEmployee) === 'Employee' ? '' : employeeDisplayName(currentEmployee)} placeholder="Employee full name" required />
+                </div>
+                <div>
+                  <label className="field-label" htmlFor="mobile_number">Mobile Number</label>
+                  <input id="mobile_number" name="mobile_number" defaultValue={employeeMobile(currentEmployee)} placeholder="+91 mobile number" required />
+                </div>
+                <div>
+                  <label className="field-label" htmlFor="email">Email</label>
+                  <input id="email" name="email" type="email" defaultValue={currentEmployee.email || ''} placeholder="employee@example.com" />
+                </div>
+                <div className="wide-field">
+                  <label className="field-label" htmlFor="address">Address</label>
+                  <textarea id="address" name="address" defaultValue={currentEmployee.address || ''} placeholder="Employee address" />
+                </div>
+                <div>
+                  <label className="field-label" htmlFor="department">Department</label>
+                  <input id="department" name="department" defaultValue={currentEmployee.department || ''} placeholder="Inventory, Sales, Admin" />
+                </div>
+                <div>
+                  <label className="field-label" htmlFor="designation">Designation</label>
+                  <input id="designation" name="designation" defaultValue={employeeDesignation(currentEmployee)} placeholder="Store Manager" />
+                </div>
+                <div>
+                  <label className="field-label" htmlFor="joining_date">Joining Date</label>
+                  <input id="joining_date" name="joining_date" type="date" defaultValue={currentEmployee.joiningDate || currentEmployee.joining_date || ''} />
+                </div>
+                <div>
+                  <label className="field-label" htmlFor="salary">Salary</label>
+                  <input id="salary" name="salary" type="number" min="0" defaultValue={currentEmployee.salary ?? ''} placeholder="Monthly salary" />
+                </div>
+                <div>
+                  <label className="field-label" htmlFor="advance">Advance</label>
+                  <input id="advance" name="advance" type="number" min="0" defaultValue={currentEmployee.advance ?? ''} placeholder="Advance paid" />
+                </div>
+                <div>
+                  <label className="field-label" htmlFor="shift_timing">Shift Timing</label>
+                  <input id="shift_timing" name="shift_timing" defaultValue={currentEmployee.shiftTiming || currentEmployee.shift_timing || ''} placeholder="10:00 AM - 7:00 PM" />
+                </div>
+                <div>
+                  <label className="field-label" htmlFor="reporting_manager">Reporting Manager</label>
+                  <input id="reporting_manager" name="reporting_manager" defaultValue={currentEmployee.reportingManager || currentEmployee.reporting_manager || ''} placeholder="Manager name" />
+                </div>
+                <div>
+                  <label className="field-label" htmlFor="status">Status</label>
+                  <select id="status" name="status" defaultValue={currentEmployee.status || 'Active'}>
+                    {EMPLOYEE_STATUSES.map((status) => <option key={status}>{status}</option>)}
+                  </select>
+                </div>
+                <div className="wide-field">
+                  <label className="field-label" htmlFor="notes">Description / Notes</label>
+                  <textarea
+                    id="notes"
+                    name="notes"
+                    defaultValue={currentEmployee.notes || currentEmployee.description || ''}
+                    placeholder="Good performer, handles inventory and customer support. Eligible for increment after December 2026."
+                  />
+                </div>
               </div>
               <div className="inline-actions">
                 <button className="manual-button" type="submit">{editingEmployee ? 'Update Employee' : 'Save Employee'}</button>
                 {editingEmployee && <button className="secondary-button compact-button" type="button" onClick={() => setEditingEmployee(null)}>Cancel</button>}
               </div>
             </form>
-          </article>
-          <article className="panel">
-            <h2>Reports</h2>
-            <div className="summary-grid report-summary">
-              <div className="summary-card"><span>Employees</span><strong>{employees.length}</strong></div>
-              <div className="summary-card"><span>Salary</span><strong>{formatCurrency(payrollTotal)}</strong></div>
-              <div className="summary-card"><span>Attendance</span><strong>{todayAttendance.length}</strong></div>
-              <div className="summary-card"><span>Advances</span><strong>{formatCurrency(employees.reduce((s, e) => s + (Number(e.advance) || 0), 0))}</strong></div>
+          </section>
+        )}
+
+        {canViewEmployeeMaster && <section className="panel hrms-directory-panel">
+          <div className="section-header">
+            <div>
+              <h2>Employee Directory</h2>
+              <p className="panel-hint">Search, filter, and open employee profiles.</p>
             </div>
-            <div className="attendance-status-grid">
-              <span>Present: {todayAttendance.filter((entry) => entry.status === 'Present').length}</span>
-              <span>Absent: {todayAttendance.filter((entry) => entry.status === 'Absent').length}</span>
-            </div>
-          </article>
-        </section>
-        <section className="panel">
-          <div className="compact-list">
-            {employees.map((employee) => (
-              <article className="compact-item" key={employee.id}>
-                <div>
-                  <strong>{employee.name}</strong>
-                  <p>{employee.role} · Salary {formatCurrency(employee.salary)} · Advance {formatCurrency(employee.advance)}</p>
-                  <span className={`attendance-pill ${attendanceByEmployeeToday.get(employee.id)?.status === 'Absent' ? 'absent' : attendanceByEmployeeToday.get(employee.id)?.status === 'Present' ? 'present' : ''}`}>
-                    {attendanceStatusLabel(attendanceByEmployeeToday.get(employee.id)?.status)} today
-                  </span>
-                </div>
-                <div className="voucher-actions">
-                  <button className="share-entry-button" type="button" onClick={() => markAttendance(employee, 'Present')}>Present</button>
-                  <button className="share-entry-button" type="button" onClick={() => markAttendance(employee, 'Absent')}>Absent</button>
-                  <button className="share-entry-button" type="button" onClick={() => setEditingEmployee(employee)}>Edit</button>
-                  <button className="delete-entry-button" type="button" onClick={() => deleteEmployee(employee)}>Delete</button>
-                </div>
-              </article>
-            ))}
+            <span>{filteredEmployees.length} results</span>
           </div>
-        </section>
+          <div className="hrms-toolbar">
+            <input value={employeeSearch} onChange={(event) => setEmployeeSearch(event.target.value)} placeholder="Search employee, ID, department, mobile..." />
+            <select value={employeeDepartmentFilter} onChange={(event) => setEmployeeDepartmentFilter(event.target.value)}>
+              {employeeDepartments.map((department) => <option key={department}>{department}</option>)}
+            </select>
+            <select value={employeeStatusFilter} onChange={(event) => setEmployeeStatusFilter(event.target.value)}>
+              <option>All</option>
+              {EMPLOYEE_STATUSES.map((status) => <option key={status}>{status}</option>)}
+            </select>
+          </div>
+
+          {employees.length === 0 ? (
+            <div className="empty-state">No employees yet. Add your first employee master record.</div>
+          ) : filteredEmployees.length === 0 ? (
+            <div className="empty-state">No employees match the selected filters.</div>
+          ) : (
+            <div className="hrms-employee-grid">
+              {paginatedEmployees.map((employee) => {
+                const todayEntry = attendanceByEmployeeToday.get(employee.id);
+                return (
+                  <article className={`hrms-employee-card ${selectedEmployee?.id === employee.id ? 'selected' : ''}`} key={employee.id}>
+                    <div className="hrms-employee-card-head">
+                      <div className="hrms-avatar">{employeeDisplayName(employee).slice(0, 1).toUpperCase()}</div>
+                      <div>
+                        <strong>{employeeDisplayName(employee)}</strong>
+                        <p>{employeeCode(employee)} · {employee.department || 'No department'}</p>
+                      </div>
+                      <span className={`hrms-status ${(employee.status || 'Active').toLowerCase()}`}>{employee.status || 'Active'}</span>
+                    </div>
+                    <div className="hrms-employee-meta">
+                      <span>{employeeDesignation(employee) || 'Designation pending'}</span>
+                      <span>{employeeMobile(employee) || 'Mobile pending'}</span>
+                      {canViewSalary && <span>{formatCurrency(employee.salary)} salary</span>}
+                      <span className={`attendance-pill ${todayEntry?.status === 'Absent' ? 'absent' : todayEntry?.status === 'Present' ? 'present' : ''}`}>
+                        {attendanceStatusLabel(todayEntry?.status)} today
+                      </span>
+                    </div>
+                    <div className="voucher-actions">
+                      <button className="share-entry-button" type="button" onClick={() => { setSelectedEmployee(employee); setEmployeeProfileTab(EMPLOYEE_PROFILE_TABS[0]); }}>Profile</button>
+                      {canManageEmployees && <button className="share-entry-button" type="button" onClick={() => setEditingEmployee(employee)}>Edit</button>}
+                      {canManageEmployees && <button className="share-entry-button" type="button" onClick={() => markAttendance(employee, 'Present')}>Present</button>}
+                      {canManageEmployees && <button className="share-entry-button" type="button" onClick={() => markAttendance(employee, 'Absent')}>Absent</button>}
+                      {canManageEmployees && <button className="delete-entry-button" type="button" onClick={() => deleteEmployee(employee)}>Delete</button>}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="hrms-pagination">
+            <button className="secondary-button compact-button" type="button" disabled={employeePage <= 1} onClick={() => setEmployeePage((page) => Math.max(1, page - 1))}>Previous</button>
+            <span>Page {employeePage} of {employeePageCount}</span>
+            <button className="secondary-button compact-button" type="button" disabled={employeePage >= employeePageCount} onClick={() => setEmployeePage((page) => Math.min(employeePageCount, page + 1))}>Next</button>
+          </div>
+        </section>}
+
+        {canViewEmployeeMaster && selectedEmployee && (
+          <section className="panel hrms-profile-panel">
+            <div className="hrms-profile-header">
+              <div className="hrms-avatar large">{employeeDisplayName(selectedEmployee).slice(0, 1).toUpperCase()}</div>
+              <div>
+                <span className="eyebrow">Employee Profile</span>
+                <h2>{employeeDisplayName(selectedEmployee)}</h2>
+                <p>{employeeCode(selectedEmployee)} · {employeeDesignation(selectedEmployee) || 'Designation pending'} · {selectedEmployee.department || 'Department pending'}</p>
+              </div>
+              <button className="secondary-button compact-button" type="button" onClick={() => setSelectedEmployee(null)}>Close</button>
+            </div>
+            <div className="hrms-tabs">
+              {EMPLOYEE_PROFILE_TABS.map((tab) => (
+                <button className={employeeProfileTab === tab ? 'active' : ''} key={tab} type="button" onClick={() => setEmployeeProfileTab(tab)}>
+                  {tab}
+                </button>
+              ))}
+            </div>
+            <div className="hrms-tab-card">
+              {employeeProfileTab === 'Personal Information' && (
+                <dl className="hrms-detail-grid">
+                  <div><dt>Full Name</dt><dd>{employeeDisplayName(selectedEmployee)}</dd></div>
+                  <div><dt>Mobile</dt><dd>{employeeMobile(selectedEmployee) || 'Not added'}</dd></div>
+                  <div><dt>Email</dt><dd>{selectedEmployee.email || 'Not added'}</dd></div>
+                  <div><dt>Address</dt><dd>{selectedEmployee.address || 'Not added'}</dd></div>
+                </dl>
+              )}
+              {employeeProfileTab === 'Work Information' && (
+                <dl className="hrms-detail-grid">
+                  <div><dt>Employee ID</dt><dd>{employeeCode(selectedEmployee)}</dd></div>
+                  <div><dt>Department</dt><dd>{selectedEmployee.department || 'Not added'}</dd></div>
+                  <div><dt>Designation</dt><dd>{employeeDesignation(selectedEmployee) || 'Not added'}</dd></div>
+                  <div><dt>Joining Date</dt><dd>{selectedEmployee.joiningDate || selectedEmployee.joining_date || 'Not added'}</dd></div>
+                  <div><dt>Shift Timing</dt><dd>{selectedEmployee.shiftTiming || selectedEmployee.shift_timing || 'Not added'}</dd></div>
+                  <div><dt>Reporting Manager</dt><dd>{selectedEmployee.reportingManager || selectedEmployee.reporting_manager || 'Not added'}</dd></div>
+                  <div><dt>Status</dt><dd>{selectedEmployee.status || 'Active'}</dd></div>
+                </dl>
+              )}
+              {employeeProfileTab === 'Salary Information' && (
+                <dl className="hrms-detail-grid">
+                  <div><dt>Monthly Salary</dt><dd>{canViewSalary ? formatCurrency(selectedEmployee.salary) : 'Restricted'}</dd></div>
+                  <div><dt>Advance</dt><dd>{canViewSalary ? formatCurrency(selectedEmployee.advance) : 'Restricted'}</dd></div>
+                  <div><dt>Salary History</dt><dd>Placeholder for HRMS Phase B.</dd></div>
+                </dl>
+              )}
+              {employeeProfileTab === 'Leave Information' && <div className="empty-state">Leave management placeholder for a later HRMS phase.</div>}
+              {employeeProfileTab === 'Attendance' && <div className="empty-state">Attendance profile analytics placeholder. Existing quick attendance buttons remain available in the directory.</div>}
+              {employeeProfileTab === 'Documents' && <div className="empty-state">Document storage placeholder for a later HRMS phase.</div>}
+              {employeeProfileTab === 'Notes / Description' && (
+                <article className="hrms-notes-card">
+                  <strong>Description / Notes</strong>
+                  <p>{selectedEmployee.notes || selectedEmployee.description || 'No notes added yet.'}</p>
+                </article>
+              )}
+            </div>
+          </section>
+        )}
       </section>
     );
   }
