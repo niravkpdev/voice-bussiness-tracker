@@ -1,5 +1,26 @@
 -- Phase 1 remaining feature: Owner invite/member management UI support.
--- Run this after supabase-phase1-role-aware-rls.sql and supabase-phase1-audit-logging.sql.
+-- Safe to run more than once. If the earlier role-aware RLS migration was not
+-- applied, this file creates the company_members dependency needed by the UI.
+
+create table if not exists public.company_members (
+  id uuid primary key default gen_random_uuid(),
+  owner_user_id uuid not null references auth.users(id) on delete cascade,
+  business_id text not null default 'default',
+  user_id uuid references auth.users(id) on delete cascade,
+  role text not null default 'staff',
+  status text not null default 'active',
+  invited_at timestamptz not null default now(),
+  joined_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  invited_email text,
+  display_name text,
+  constraint company_members_role_check check (role in ('owner', 'manager', 'accountant', 'staff')),
+  constraint company_members_status_check check (status in ('active', 'invited', 'disabled')),
+  constraint company_members_business_id_not_blank check (length(trim(business_id)) > 0)
+);
+
+alter table public.company_members enable row level security;
 
 alter table public.company_members
   alter column user_id drop not null;
@@ -14,6 +35,61 @@ create index if not exists company_members_invited_email_idx
 create unique index if not exists company_members_pending_email_unique_idx
   on public.company_members (owner_user_id, business_id, lower(invited_email))
   where user_id is null and invited_email is not null;
+
+create unique index if not exists company_members_user_unique_idx
+  on public.company_members (owner_user_id, business_id, user_id)
+  where user_id is not null;
+
+create or replace function public.current_user_role(p_owner_user_id uuid, p_business_id text default 'default')
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select case
+    when auth.uid() is null then null
+    when auth.uid() = p_owner_user_id then 'owner'
+    else (
+      select lower(cm.role)
+      from public.company_members cm
+      where cm.owner_user_id = p_owner_user_id
+        and cm.business_id = coalesce(nullif(trim(p_business_id), ''), 'default')
+        and cm.user_id = auth.uid()
+        and cm.status = 'active'
+      limit 1
+    )
+  end
+$$;
+
+create or replace function public.has_company_role(
+  p_owner_user_id uuid,
+  p_business_id text,
+  p_allowed_roles text[]
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(public.current_user_role(p_owner_user_id, p_business_id) = any(p_allowed_roles), false)
+$$;
+
+drop policy if exists "Members read own memberships" on public.company_members;
+drop policy if exists "Owners manage company memberships" on public.company_members;
+
+create policy "Members read own memberships" on public.company_members
+for select
+using (
+  auth.uid() = user_id
+  or public.has_company_role(owner_user_id, business_id, array['owner'])
+);
+
+create policy "Owners manage company memberships" on public.company_members
+for all
+using (public.has_company_role(owner_user_id, business_id, array['owner']))
+with check (public.has_company_role(owner_user_id, business_id, array['owner']));
 
 create or replace function public.normalize_member_role(p_role text)
 returns text
@@ -61,6 +137,7 @@ declare
   v_target_user_id uuid;
   v_member public.company_members%rowtype;
   v_existing_pending_id uuid;
+  v_existing_user_id uuid;
 begin
   if v_actor is null then
     raise exception 'Authentication required.' using errcode = '28000';
@@ -111,6 +188,30 @@ begin
 
       return jsonb_build_object('member', to_jsonb(v_member));
     end if;
+  else
+    select id
+      into v_existing_user_id
+    from public.company_members
+    where owner_user_id = p_owner_user_id
+      and business_id = v_business_id
+      and user_id = v_target_user_id
+    limit 1
+    for update;
+
+    if v_existing_user_id is not null then
+      update public.company_members
+         set role = v_role,
+             status = 'invited',
+             invited_email = v_email,
+             display_name = coalesce(v_name, display_name),
+             invited_at = now(),
+             joined_at = coalesce(joined_at, now()),
+             updated_at = now()
+       where id = v_existing_user_id
+       returning * into v_member;
+
+      return jsonb_build_object('member', to_jsonb(v_member));
+    end if;
   end if;
 
   insert into public.company_members (
@@ -135,13 +236,6 @@ begin
     now(),
     case when v_target_user_id is not null then now() else null end
   )
-  on conflict (owner_user_id, business_id, user_id) do update
-    set role = excluded.role,
-        status = 'invited',
-        invited_email = excluded.invited_email,
-        display_name = coalesce(excluded.display_name, public.company_members.display_name),
-        invited_at = now(),
-        updated_at = now()
   returning * into v_member;
 
   return jsonb_build_object('member', to_jsonb(v_member));
