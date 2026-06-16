@@ -7113,8 +7113,24 @@ fieldset {
 }
 
 /* Responsive Fixes */
-.hrms-layout, .hrms-page-container, .app-container { max-width: 100vw; overflow-x: hidden; }
-.hrms-table-container, .table-wrapper { max-width: 100%; overflow-x: auto; }
+.app-frame {
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+}
+
+.workspace, .main-content {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+}
+
+.topbar {
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+.hrms-layout, .hrms-page-container, .app-container { max-width: 100% !important; min-width: 0 !important; overflow-x: hidden !important; }
+.hrms-table-container, .table-wrapper { max-width: 100% !important; overflow-x: auto !important; }
 .hrms-toolbar { display: flex; flex-wrap: wrap; gap: 12px; margin: 18px 0; }
 .hrms-toolbar > * { flex: 1 1 150px; }
 .hrms-record-grid { display: grid !important; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important; }
