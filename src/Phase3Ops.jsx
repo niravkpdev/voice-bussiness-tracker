@@ -15,6 +15,7 @@ const SALARY_HISTORY_KEY = 'phase3SalaryHistory';
 const PAYSLIP_KEY = 'phase3Payslips';
 const EMPLOYEE_DOCUMENT_KEY = 'phase3EmployeeDocuments';
 const SUBSCRIPTION_KEY = 'phase3Subscription';
+const PROFILE_REQUEST_KEY = 'phase3ProfileRequests';
 const AUDIT_KEY = 'phase3AuditLogs';
 const DEVICE_KEY = 'phase3Devices';
 const SECURITY_KEY = 'phase3SecuritySettings';
@@ -195,6 +196,7 @@ export default function Phase3Ops({
   cloudSalaryHistory,
   cloudPayslips,
   cloudEmployeeDocuments,
+  cloudProfileRequests,
   cloudPayments,
   cloudAuditLogs,
   cloudSubscription,
@@ -225,9 +227,11 @@ export default function Phase3Ops({
   const [employeeDocuments, setEmployeeDocuments] = useState(() => readArray(EMPLOYEE_DOCUMENT_KEY));
   const [auditLogs, setAuditLogs] = useState(() => readArray(AUDIT_KEY));
   const [payments, setPayments] = useState(() => readArray(PAYMENT_KEY));
+  const [profileRequests, setProfileRequests] = useState(() => readArray(PROFILE_REQUEST_KEY));
   const [offlineQueue, setOfflineQueue] = useState(() => readArray(OFFLINE_QUEUE_KEY));
   const [editingOrder, setEditingOrder] = useState(null);
   const [editingEmployee, setEditingEmployee] = useState(null);
+  const [requestUpdateModal, setRequestUpdateModal] = useState(null);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [employeeProfileTab, setEmployeeProfileTab] = useState(EMPLOYEE_PROFILE_TABS[0]);
   const [employeeSearch, setEmployeeSearch] = useState('');
@@ -281,6 +285,7 @@ export default function Phase3Ops({
   useEffect(() => writeArray(SALARY_HISTORY_KEY, salaryHistory), [salaryHistory]);
   useEffect(() => writeArray(PAYSLIP_KEY, payslips), [payslips]);
   useEffect(() => writeArray(EMPLOYEE_DOCUMENT_KEY, employeeDocuments), [employeeDocuments]);
+  useEffect(() => writeArray(PROFILE_REQUEST_KEY, profileRequests), [profileRequests]);
   useEffect(() => writeArray(AUDIT_KEY, auditLogs), [auditLogs]);
   useEffect(() => writeArray(PAYMENT_KEY, payments), [payments]);
   useEffect(() => writeArray(OFFLINE_QUEUE_KEY, offlineQueue), [offlineQueue]);
@@ -317,6 +322,9 @@ export default function Phase3Ops({
   useEffect(() => {
     if (Array.isArray(cloudEmployeeDocuments)) setEmployeeDocuments(cloudEmployeeDocuments);
   }, [cloudEmployeeDocuments]);
+  useEffect(() => {
+    if (Array.isArray(cloudProfileRequests)) setProfileRequests(cloudProfileRequests);
+  }, [cloudProfileRequests]);
   useEffect(() => {
     if (Array.isArray(cloudPayments)) setPayments(cloudPayments);
   }, [cloudPayments]);
@@ -604,6 +612,10 @@ export default function Phase3Ops({
       role: sanitizeText(form.get('designation'), 100),
       salary: normalizeAmount(form.get('salary')),
       advance: normalizeAmount(form.get('advance')),
+      emergencyContact: sanitizeText(form.get('emergency_contact'), 100),
+      emergency_contact: sanitizeText(form.get('emergency_contact'), 100),
+      bankDetails: sanitizeText(form.get('bank_details'), 300),
+      bank_details: sanitizeText(form.get('bank_details'), 300),
       notes: sanitizeText(form.get('notes'), 1200),
       description: sanitizeText(form.get('notes'), 1200),
       businessId: current?.businessId || 'default',
@@ -1275,6 +1287,78 @@ export default function Phase3Ops({
     }
   };
 
+  const submitProfileRequest = async (event) => {
+    event.preventDefault();
+    if (!authUser?.uid) return;
+    const form = new FormData(event.currentTarget);
+    const changes = {
+      mobile_number: sanitizeText(form.get('mobile_number'), 24),
+      email: String(form.get('email') || '').trim().toLowerCase(),
+      address: sanitizeText(form.get('address'), 280),
+      emergency_contact: sanitizeText(form.get('emergency_contact'), 100),
+      bank_details: sanitizeText(form.get('bank_details'), 300),
+    };
+    const req = {
+      id: createId('preq'),
+      employee_id: selectedEmployee.id,
+      requested_by: authUser.uid,
+      changes,
+      status: 'Pending',
+      business_id: selectedEmployee.businessId || 'default',
+      company_id: selectedEmployee.companyId || 'default',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    try {
+      await persistRecord('employee_profile_requests', req, 'Profile request failed');
+      setProfileRequests(items => [req, ...items]);
+      await logAudit(`Profile update requested: ${employeeDisplayName(selectedEmployee)}`, 'Employees');
+      onStatus('Profile update requested');
+      setRequestUpdateModal(null);
+    } catch (err) {
+      onStatus(err?.message || 'Request failed');
+    }
+  };
+
+  const approveProfileRequest = async (req) => {
+    try {
+      const updatedReq = { ...req, status: 'Approved', reviewed_by: authUser?.email, updated_at: new Date().toISOString() };
+      await persistRecord('employee_profile_requests', updatedReq, 'Approval failed');
+      
+      const targetEmp = employees.find(e => e.id === req.employee_id || e.id === req.employeeId);
+      if (targetEmp) {
+        const empUpdates = { 
+          ...targetEmp, 
+          ...req.changes, 
+          mobileNumber: req.changes.mobile_number || targetEmp.mobileNumber,
+          emergencyContact: req.changes.emergency_contact || targetEmp.emergencyContact,
+          bankDetails: req.changes.bank_details || targetEmp.bankDetails,
+          updatedAt: new Date().toISOString() 
+        };
+        await persistRecord('employees', empUpdates, 'Employee update failed');
+        setEmployees(items => [empUpdates, ...items.filter(i => i.id !== targetEmp.id)]);
+      }
+
+      setProfileRequests(items => [updatedReq, ...items.filter(i => i.id !== req.id)]);
+      await logAudit(`Profile update approved: ${targetEmp ? employeeDisplayName(targetEmp) : req.employee_id}`, 'Employees');
+      onStatus('Profile update approved');
+    } catch (err) {
+      onStatus(err?.message || 'Action failed');
+    }
+  };
+
+  const rejectProfileRequest = async (req, reason) => {
+    try {
+      const updatedReq = { ...req, status: 'Rejected', rejection_reason: reason, reviewed_by: authUser?.email, updated_at: new Date().toISOString() };
+      await persistRecord('employee_profile_requests', updatedReq, 'Rejection failed');
+      setProfileRequests(items => [updatedReq, ...items.filter(i => i.id !== req.id)]);
+      await logAudit(`Profile update rejected: ${req.employee_id}`, 'Employees');
+      onStatus('Profile update rejected');
+    } catch (err) {
+      onStatus(err?.message || 'Action failed');
+    }
+  };
+
   const deleteEmployeeDocument = async (documentRecord) => {
     const deleted = await deleteRecord('employee_documents', documentRecord.id, documentRecord.documentName || 'document', setEmployeeDocuments, async () => {
       if (editingEmployeeDocument?.id === documentRecord.id) setEditingEmployeeDocument(null);
@@ -1567,10 +1651,14 @@ export default function Phase3Ops({
         {rejectionModal && (
           <div className="modal-overlay">
             <div className="modal-content">
-              <h3>Reject {rejectionModal.type === 'salary' ? 'Salary Record' : 'Payslip'}</h3>
+              <h3>Reject {rejectionModal.type === 'profile_request' ? 'Profile Request' : rejectionModal.type === 'salary' ? 'Salary Record' : 'Payslip'}</h3>
               <form onSubmit={(e) => {
                 e.preventDefault();
-                rejectRecord(rejectionModal.record, rejectionModal.type, new FormData(e.currentTarget).get('reason'));
+                if (rejectionModal.type === 'profile_request') {
+                  rejectProfileRequest(rejectionModal.record, new FormData(e.currentTarget).get('reason'));
+                } else {
+                  rejectRecord(rejectionModal.record, rejectionModal.type, new FormData(e.currentTarget).get('reason'));
+                }
               }}>
                 <textarea name="reason" placeholder="Reason for rejection" required rows={3} style={{ width: '100%', marginBottom: '1rem', padding: '0.5rem' }} />
                 <div className="voucher-actions">
@@ -1669,6 +1757,68 @@ export default function Phase3Ops({
                 {editingEmployee && <button className="secondary-button compact-button" type="button" onClick={() => setEditingEmployee(null)}>Cancel</button>}
               </div>
             </form>
+          </section>
+        )}
+
+        {requestUpdateModal && (
+          <div className="modal-overlay">
+            <div className="modal-content" style={{ maxWidth: '500px' }}>
+              <h3>Request Profile Update</h3>
+              <p className="panel-hint" style={{ marginBottom: '1rem' }}>Your manager will review these changes before they are applied.</p>
+              <form className="hrms-form-grid" onSubmit={submitProfileRequest}>
+                <div>
+                  <label className="field-label" htmlFor="mobile_number">Mobile Number</label>
+                  <input id="mobile_number" name="mobile_number" defaultValue={employeeMobile(requestUpdateModal)} placeholder="+91 mobile number" required />
+                </div>
+                <div>
+                  <label className="field-label" htmlFor="email">Email</label>
+                  <input id="email" name="email" type="email" defaultValue={requestUpdateModal.email || ''} placeholder="employee@example.com" />
+                </div>
+                <div className="wide-field">
+                  <label className="field-label" htmlFor="address">Address</label>
+                  <textarea id="address" name="address" defaultValue={requestUpdateModal.address || ''} placeholder="Employee address" />
+                </div>
+                <div className="wide-field">
+                  <label className="field-label" htmlFor="emergency_contact">Emergency Contact</label>
+                  <input id="emergency_contact" name="emergency_contact" defaultValue={requestUpdateModal.emergencyContact || requestUpdateModal.emergency_contact || ''} placeholder="Name & Phone" />
+                </div>
+                <div className="wide-field">
+                  <label className="field-label" htmlFor="bank_details">Bank Details</label>
+                  <textarea id="bank_details" name="bank_details" defaultValue={requestUpdateModal.bankDetails || requestUpdateModal.bank_details || ''} placeholder="Account No, IFSC, Bank Name" />
+                </div>
+                <div className="voucher-actions wide-field">
+                  <button className="primary-button" type="submit">Submit Request</button>
+                  <button className="secondary-button" type="button" onClick={() => setRequestUpdateModal(null)}>Cancel</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {canManageEmployees && profileRequests.some(r => r.status === 'Pending') && (
+          <section className="panel">
+            <div className="section-header">
+              <h2>Pending Profile Updates</h2>
+              <span>Requires Approval</span>
+            </div>
+            <div className="hrms-record-grid">
+              {profileRequests.filter(r => r.status === 'Pending').map(req => {
+                const emp = employees.find(e => e.id === req.employee_id || e.id === req.employeeId);
+                return (
+                  <article className="hrms-mini-card" key={req.id}>
+                    <strong>{emp ? employeeDisplayName(emp) : req.employee_id}</strong>
+                    <p>Requested changes to personal info.</p>
+                    <div style={{ marginTop: '0.5rem', marginBottom: '0.5rem', padding: '0.5rem', background: '#f9fafb', borderRadius: '4px', fontSize: '13px' }}>
+                      {Object.entries(req.changes).map(([k, v]) => <div key={k}><b>{k}:</b> {v || '(empty)'}</div>)}
+                    </div>
+                    <div className="voucher-actions">
+                      <button className="share-entry-button" type="button" onClick={() => approveProfileRequest(req)}>Approve</button>
+                      <button className="delete-entry-button" type="button" onClick={() => setRejectionModal({ record: req, type: 'profile_request' })}>Reject</button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
           </section>
         )}
 
@@ -2021,12 +2171,19 @@ export default function Phase3Ops({
             </div>
             <div className="hrms-tab-card">
               {employeeProfileTab === 'Personal Information' && (
-                <dl className="hrms-detail-grid">
-                  <div><dt>Full Name</dt><dd>{employeeDisplayName(selectedEmployee)}</dd></div>
-                  <div><dt>Mobile</dt><dd>{employeeMobile(selectedEmployee) || 'Not added'}</dd></div>
-                  <div><dt>Email</dt><dd>{selectedEmployee.email || 'Not added'}</dd></div>
-                  <div><dt>Address</dt><dd>{selectedEmployee.address || 'Not added'}</dd></div>
-                </dl>
+                <div style={{ position: 'relative' }}>
+                  {staffEmployeeIds.has(selectedEmployee.id) && (
+                    <button className="primary-button" style={{ position: 'absolute', top: '-3rem', right: '0' }} onClick={() => setRequestUpdateModal(selectedEmployee)}>Request Update</button>
+                  )}
+                  <dl className="hrms-detail-grid">
+                    <div><dt>Full Name</dt><dd>{employeeDisplayName(selectedEmployee)}</dd></div>
+                    <div><dt>Mobile</dt><dd>{employeeMobile(selectedEmployee) || 'Not added'}</dd></div>
+                    <div><dt>Email</dt><dd>{selectedEmployee.email || 'Not added'}</dd></div>
+                    <div><dt>Address</dt><dd>{selectedEmployee.address || 'Not added'}</dd></div>
+                    <div><dt>Emergency Contact</dt><dd>{selectedEmployee.emergencyContact || selectedEmployee.emergency_contact || 'Not added'}</dd></div>
+                    <div style={{ gridColumn: '1 / -1' }}><dt>Bank Details</dt><dd>{selectedEmployee.bankDetails || selectedEmployee.bank_details || 'Not added'}</dd></div>
+                  </dl>
+                </div>
               )}
               {employeeProfileTab === 'Work Information' && (
                 <dl className="hrms-detail-grid">
