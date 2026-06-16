@@ -33,8 +33,11 @@ import {
 import { LegalPage, LEGAL_PAGE_IDS } from './LegalPages.jsx';
 import {
   createInvoiceWithStock,
+  buildHrmsStoragePath,
+  createHrmsDocumentSignedUrl,
   createSupabaseAccount,
   deleteCloudRecord,
+  deleteHrmsDocument,
   deletePaymentWithLedgerReversal,
   editPaymentWithLedgerReversal,
   getSupabaseUrl,
@@ -61,6 +64,7 @@ import {
   signOutSupabase,
   updateCurrentUserPassword,
   updateCompanyMember,
+  uploadHrmsDocument,
   removeCompanyMember,
 } from './supabaseClient.js';
 import {
@@ -834,6 +838,9 @@ export default function VoiceExpenseTrackerPreview() {
   const [cloudLeaveBalances, setCloudLeaveBalances] = useState([]);
   const [cloudLeaveRequests, setCloudLeaveRequests] = useState([]);
   const [cloudHolidays, setCloudHolidays] = useState([]);
+  const [cloudSalaryHistory, setCloudSalaryHistory] = useState([]);
+  const [cloudPayslips, setCloudPayslips] = useState([]);
+  const [cloudEmployeeDocuments, setCloudEmployeeDocuments] = useState([]);
   const [cloudPayments, setCloudPayments] = useState([]);
   const [cloudAuditLogs, setCloudAuditLogs] = useState([]);
   const [cloudSubscription, setCloudSubscription] = useState(null);
@@ -1159,6 +1166,9 @@ export default function VoiceExpenseTrackerPreview() {
         leaveBalancesResult,
         leaveRequestsResult,
         holidaysResult,
+        salaryHistoryResult,
+        payslipsResult,
+        employeeDocumentsResult,
         paymentsResult,
         auditLogsResult,
         subscriptionRowsResult,
@@ -1181,6 +1191,9 @@ export default function VoiceExpenseTrackerPreview() {
         loadModuleCollection('leave_balances'),
         loadModuleCollection('leave_requests'),
         loadModuleCollection('holidays'),
+        loadModuleCollection('salary_history'),
+        loadModuleCollection('payslips'),
+        loadModuleCollection('employee_documents'),
         loadModuleCollection('payments'),
         loadModuleCollection('audit_logs'),
         loadModuleCollection('subscriptions'),
@@ -1203,6 +1216,9 @@ export default function VoiceExpenseTrackerPreview() {
       const leaveBalances = leaveBalancesResult.ok ? leaveBalancesResult.rows : [];
       const leaveRequests = leaveRequestsResult.ok ? leaveRequestsResult.rows : [];
       const holidays = holidaysResult.ok ? holidaysResult.rows : [];
+      const salaryHistory = salaryHistoryResult.ok ? salaryHistoryResult.rows : [];
+      const payslips = payslipsResult.ok ? payslipsResult.rows : [];
+      const employeeDocuments = employeeDocumentsResult.ok ? employeeDocumentsResult.rows : [];
       const payments = paymentsResult.ok ? paymentsResult.rows.filter((payment) => !payment.deletedAt) : [];
       const auditLogs = auditLogsResult.ok ? auditLogsResult.rows : [];
       const subscriptionRows = subscriptionRowsResult.ok ? subscriptionRowsResult.rows : [];
@@ -1224,6 +1240,9 @@ export default function VoiceExpenseTrackerPreview() {
         leaveBalancesResult,
         leaveRequestsResult,
         holidaysResult,
+        salaryHistoryResult,
+        payslipsResult,
+        employeeDocumentsResult,
         paymentsResult,
         auditLogsResult,
         subscriptionRowsResult,
@@ -1249,6 +1268,9 @@ export default function VoiceExpenseTrackerPreview() {
         setCloudLeaveBalances([]);
         setCloudLeaveRequests([]);
         setCloudHolidays([]);
+        setCloudSalaryHistory([]);
+        setCloudPayslips([]);
+        setCloudEmployeeDocuments([]);
         setCloudPayments([]);
         setCloudAuditLogs([]);
         setCloudSubscription(null);
@@ -1271,6 +1293,9 @@ export default function VoiceExpenseTrackerPreview() {
       if (leaveBalancesResult.ok) setCloudLeaveBalances(leaveBalances);
       if (leaveRequestsResult.ok) setCloudLeaveRequests(leaveRequests);
       if (holidaysResult.ok) setCloudHolidays(holidays);
+      if (salaryHistoryResult.ok) setCloudSalaryHistory(salaryHistory);
+      if (payslipsResult.ok) setCloudPayslips(payslips);
+      if (employeeDocumentsResult.ok) setCloudEmployeeDocuments(employeeDocuments);
       if (paymentsResult.ok) setCloudPayments(payments);
       if (auditLogsResult.ok) setCloudAuditLogs(auditLogs);
       if (subscriptionRowsResult.ok) setCloudSubscription(subscriptionRows.find((item) => item.id === 'current') || null);
@@ -1319,6 +1344,9 @@ export default function VoiceExpenseTrackerPreview() {
         leaveBalances: leaveBalances.length,
         leaveRequests: leaveRequests.length,
         holidays: holidays.length,
+        salaryHistory: salaryHistory.length,
+        payslips: payslips.length,
+        employeeDocuments: employeeDocuments.length,
         payments: payments.length,
         businesses: businesses.length,
         notifications: notifications.length,
@@ -1379,6 +1407,15 @@ export default function VoiceExpenseTrackerPreview() {
         break;
       case 'holidays':
         mergeCloudListRecord(setCloudHolidays, id, data);
+        break;
+      case 'salary_history':
+        mergeCloudListRecord(setCloudSalaryHistory, id, data);
+        break;
+      case 'payslips':
+        mergeCloudListRecord(setCloudPayslips, id, data);
+        break;
+      case 'employee_documents':
+        mergeCloudListRecord(setCloudEmployeeDocuments, id, data);
         break;
       case 'payments':
         mergeCloudListRecord(setCloudPayments, id, data);
@@ -1444,6 +1481,15 @@ export default function VoiceExpenseTrackerPreview() {
       case 'holidays':
         removeCloudListRecord(setCloudHolidays, id);
         break;
+      case 'salary_history':
+        removeCloudListRecord(setCloudSalaryHistory, id);
+        break;
+      case 'payslips':
+        removeCloudListRecord(setCloudPayslips, id);
+        break;
+      case 'employee_documents':
+        removeCloudListRecord(setCloudEmployeeDocuments, id);
+        break;
       case 'payments':
         removeCloudListRecord(setCloudPayments, id);
         break;
@@ -1492,6 +1538,34 @@ export default function VoiceExpenseTrackerPreview() {
       setSecureError(publicSafeError(error, 'Cloud data save failed. Please try again.'));
       throw error;
     }
+  };
+
+  const uploadAuthenticatedHrmsDocument = async ({ employeeId, businessId = 'default', category, file }) => {
+    if (!supabaseEnabled || !authUser?.uid || !file) {
+      throw new Error('Sign in with Supabase before uploading HRMS documents.');
+    }
+    const path = buildHrmsStoragePath({
+      uid: authUser.uid,
+      businessId,
+      employeeId,
+      category,
+      fileName: file.name,
+    });
+    return uploadHrmsDocument({ uid: authUser.uid, path, file });
+  };
+
+  const deleteAuthenticatedHrmsDocument = async (path) => {
+    if (!supabaseEnabled || !authUser?.uid || !path) {
+      return false;
+    }
+    return deleteHrmsDocument({ uid: authUser.uid, path });
+  };
+
+  const getAuthenticatedHrmsDocumentUrl = async (path) => {
+    if (!supabaseEnabled || !authUser?.uid || !path) {
+      throw new Error('Sign in with Supabase before downloading HRMS documents.');
+    }
+    return createHrmsDocumentSignedUrl({ uid: authUser.uid, path });
   };
 
   const saveAtomicInvoiceWithStock = async (invoice, inventoryItems = []) => {
@@ -2028,6 +2102,9 @@ export default function VoiceExpenseTrackerPreview() {
     setCloudLeaveBalances([]);
     setCloudLeaveRequests([]);
     setCloudHolidays([]);
+    setCloudSalaryHistory([]);
+    setCloudPayslips([]);
+    setCloudEmployeeDocuments([]);
     setCloudPayments([]);
     setCloudAuditLogs([]);
     setCloudSubscription(null);
@@ -4389,6 +4466,9 @@ export default function VoiceExpenseTrackerPreview() {
                 cloudLeaveBalances={cloudLeaveBalances}
                 cloudLeaveRequests={cloudLeaveRequests}
                 cloudHolidays={cloudHolidays}
+                cloudSalaryHistory={cloudSalaryHistory}
+                cloudPayslips={cloudPayslips}
+                cloudEmployeeDocuments={cloudEmployeeDocuments}
                 cloudPayments={cloudPayments}
                 cloudAuditLogs={cloudAuditLogs}
                 cloudSubscription={cloudSubscription}
@@ -4399,6 +4479,9 @@ export default function VoiceExpenseTrackerPreview() {
                 onStatus={setStatus}
                 onCloudRecord={saveAuthenticatedCloudRecord}
                 onCloudDelete={deleteAuthenticatedCloudRecord}
+                onHrmsDocumentUpload={uploadAuthenticatedHrmsDocument}
+                onHrmsDocumentDelete={deleteAuthenticatedHrmsDocument}
+                onHrmsDocumentUrl={getAuthenticatedHrmsDocumentUrl}
                 onCloudSnapshot={saveCloudDataSnapshot}
                 onAtomicPaymentWithLedger={postAtomicPaymentWithLedger}
                 onAtomicPaymentEdit={editAtomicPaymentWithLedgerReversal}

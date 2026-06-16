@@ -19,6 +19,9 @@ const CLOUD_TABLES = new Set([
   'leave_balances',
   'leave_requests',
   'holidays',
+  'salary_history',
+  'payslips',
+  'employee_documents',
   'payments',
   'audit_logs',
   'subscriptions',
@@ -33,6 +36,7 @@ const CLOUD_TABLES = new Set([
 
 const CLOUD_TIMEOUT_MS = 10_000;
 const CLOUD_TIMEOUT_MESSAGE = 'Supabase write timed out. Please check Supabase project, RLS policies, API keys, or env variables.';
+const HRMS_DOCUMENT_BUCKET = import.meta.env.VITE_SUPABASE_HRMS_BUCKET || 'hrms-documents';
 
 let supabaseClient;
 let projectLogged = false;
@@ -1319,6 +1323,80 @@ export async function deleteCloudRecord(uid, tableName, id) {
     path,
   });
   return true;
+}
+
+function safeStorageSegment(value, fallback = 'file') {
+  return String(value || fallback)
+    .trim()
+    .replace(/[^a-zA-Z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 120) || fallback;
+}
+
+export function buildHrmsStoragePath({ uid, businessId = 'default', employeeId, category = 'documents', fileName }) {
+  return [
+    safeStorageSegment(uid, 'user'),
+    safeStorageSegment(businessId, 'default'),
+    safeStorageSegment(employeeId, 'employee'),
+    safeStorageSegment(category, 'documents'),
+    `${Date.now()}-${safeStorageSegment(fileName, 'document')}`,
+  ].join('/');
+}
+
+export async function uploadHrmsDocument({ uid, path, file }) {
+  const client = getSupabaseClient();
+  const user = await getCurrentSupabaseUser(client);
+  if (!client || !uid || !path || !file) {
+    throw new Error('Missing Supabase upload details.');
+  }
+  if (user?.id !== uid) {
+    throw new Error('Authenticated Supabase uid does not match requested storage owner uid.');
+  }
+
+  const { error } = await withCloudTimeout(
+    client.storage.from(HRMS_DOCUMENT_BUCKET).upload(path, file, {
+      cacheControl: '3600',
+      upsert: true,
+      contentType: file.type || 'application/octet-stream',
+    }),
+    { path: `${HRMS_DOCUMENT_BUCKET}/${path}`, uid, currentSupabaseUserUid: user?.id || null, operation: 'storage:upload' }
+  );
+  if (error) throw error;
+  return { bucket: HRMS_DOCUMENT_BUCKET, path };
+}
+
+export async function deleteHrmsDocument({ uid, path }) {
+  const client = getSupabaseClient();
+  const user = await getCurrentSupabaseUser(client);
+  if (!client || !uid || !path) {
+    return false;
+  }
+  if (user?.id !== uid) {
+    throw new Error('Authenticated Supabase uid does not match requested storage owner uid.');
+  }
+  const { error } = await withCloudTimeout(
+    client.storage.from(HRMS_DOCUMENT_BUCKET).remove([path]),
+    { path: `${HRMS_DOCUMENT_BUCKET}/${path}`, uid, currentSupabaseUserUid: user?.id || null, operation: 'storage:delete' }
+  );
+  if (error) throw error;
+  return true;
+}
+
+export async function createHrmsDocumentSignedUrl({ uid, path, expiresIn = 300 }) {
+  const client = getSupabaseClient();
+  const user = await getCurrentSupabaseUser(client);
+  if (!client || !uid || !path) {
+    throw new Error('Missing Supabase download details.');
+  }
+  if (user?.id !== uid) {
+    throw new Error('Authenticated Supabase uid does not match requested storage owner uid.');
+  }
+  const { data, error } = await withCloudTimeout(
+    client.storage.from(HRMS_DOCUMENT_BUCKET).createSignedUrl(path, expiresIn),
+    { path: `${HRMS_DOCUMENT_BUCKET}/${path}`, uid, currentSupabaseUserUid: user?.id || null, operation: 'storage:signed-url' }
+  );
+  if (error) throw error;
+  return data?.signedUrl || '';
 }
 
 export async function loadCloudCollection(uid, tableName) {

@@ -106,6 +106,33 @@ create table if not exists public.holidays (
   primary key (user_id, id)
 );
 
+create table if not exists public.salary_history (
+  id text not null,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (user_id, id)
+);
+
+create table if not exists public.payslips (
+  id text not null,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (user_id, id)
+);
+
+create table if not exists public.employee_documents (
+  id text not null,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (user_id, id)
+);
+
 create table if not exists public.payments (
   id text not null,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -223,6 +250,9 @@ begin
     'leave_balances',
     'leave_requests',
     'holidays',
+    'salary_history',
+    'payslips',
+    'employee_documents',
     'payments',
     'audit_logs',
     'subscriptions',
@@ -374,6 +404,9 @@ begin
     'leave_balances',
     'leave_requests',
     'holidays',
+    'salary_history',
+    'payslips',
+    'employee_documents',
     'payments',
     'audit_logs',
     'subscriptions',
@@ -410,6 +443,9 @@ alter table public.attendance enable row level security;
 alter table public.leave_balances enable row level security;
 alter table public.leave_requests enable row level security;
 alter table public.holidays enable row level security;
+alter table public.salary_history enable row level security;
+alter table public.payslips enable row level security;
+alter table public.employee_documents enable row level security;
 alter table public.payments enable row level security;
 alter table public.audit_logs enable row level security;
 alter table public.subscriptions enable row level security;
@@ -437,6 +473,9 @@ drop policy if exists "Users manage own attendance" on public.attendance;
 drop policy if exists "Users manage own leave balances" on public.leave_balances;
 drop policy if exists "Users manage own leave requests" on public.leave_requests;
 drop policy if exists "Users manage own holidays" on public.holidays;
+drop policy if exists "Users manage own salary history" on public.salary_history;
+drop policy if exists "Users manage own payslips" on public.payslips;
+drop policy if exists "Users manage own employee documents" on public.employee_documents;
 drop policy if exists "Users manage own payments" on public.payments;
 drop policy if exists "Users manage own audit logs" on public.audit_logs;
 drop policy if exists "Users manage own subscriptions" on public.subscriptions;
@@ -483,6 +522,15 @@ create policy "Users manage own leave requests" on public.leave_requests
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "Users manage own holidays" on public.holidays
+for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy "Users manage own salary history" on public.salary_history
+for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy "Users manage own payslips" on public.payslips
+for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy "Users manage own employee documents" on public.employee_documents
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "Users manage own payments" on public.payments

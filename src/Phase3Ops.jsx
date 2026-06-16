@@ -8,6 +8,9 @@ const ATTENDANCE_KEY = 'phase3Attendance';
 const LEAVE_BALANCE_KEY = 'phase3LeaveBalances';
 const LEAVE_REQUEST_KEY = 'phase3LeaveRequests';
 const HOLIDAY_KEY = 'phase3Holidays';
+const SALARY_HISTORY_KEY = 'phase3SalaryHistory';
+const PAYSLIP_KEY = 'phase3Payslips';
+const EMPLOYEE_DOCUMENT_KEY = 'phase3EmployeeDocuments';
 const SUBSCRIPTION_KEY = 'phase3Subscription';
 const AUDIT_KEY = 'phase3AuditLogs';
 const DEVICE_KEY = 'phase3Devices';
@@ -25,6 +28,22 @@ const LEAVE_TYPES = [
   { id: 'PL', label: 'Paid / Privilege Leave', allocation: 12 },
 ];
 const LEAVE_STATUSES = ['Pending', 'Approved', 'Rejected'];
+const SALARY_TYPES = ['Monthly', 'Daily', 'Hourly'];
+const PAYSLIP_STATUSES = ['Draft', 'Generated', 'Uploaded'];
+const DOCUMENT_CATEGORIES = [
+  'Offer Letter',
+  'Appointment Letter',
+  'Experience Letter',
+  'Relieving Letter',
+  'Payslips',
+  'Increment Letters',
+  'Warning Letters',
+  'Aadhaar Card',
+  'PAN Card',
+  'Bank Details',
+  'Educational Certificates',
+  'Other Documents',
+];
 const EMPLOYEE_PROFILE_TABS = [
   'Personal Information',
   'Work Information',
@@ -168,6 +187,9 @@ export default function Phase3Ops({
   cloudLeaveBalances,
   cloudLeaveRequests,
   cloudHolidays,
+  cloudSalaryHistory,
+  cloudPayslips,
+  cloudEmployeeDocuments,
   cloudPayments,
   cloudAuditLogs,
   cloudSubscription,
@@ -178,6 +200,9 @@ export default function Phase3Ops({
   onStatus,
   onCloudRecord,
   onCloudDelete,
+  onHrmsDocumentUpload,
+  onHrmsDocumentDelete,
+  onHrmsDocumentUrl,
   onCloudSnapshot,
   onAtomicPaymentWithLedger,
   onAtomicPaymentEdit,
@@ -189,6 +214,9 @@ export default function Phase3Ops({
   const [leaveBalances, setLeaveBalances] = useState(() => readArray(LEAVE_BALANCE_KEY));
   const [leaveRequests, setLeaveRequests] = useState(() => readArray(LEAVE_REQUEST_KEY));
   const [holidays, setHolidays] = useState(() => readArray(HOLIDAY_KEY));
+  const [salaryHistory, setSalaryHistory] = useState(() => readArray(SALARY_HISTORY_KEY));
+  const [payslips, setPayslips] = useState(() => readArray(PAYSLIP_KEY));
+  const [employeeDocuments, setEmployeeDocuments] = useState(() => readArray(EMPLOYEE_DOCUMENT_KEY));
   const [auditLogs, setAuditLogs] = useState(() => readArray(AUDIT_KEY));
   const [payments, setPayments] = useState(() => readArray(PAYMENT_KEY));
   const [offlineQueue, setOfflineQueue] = useState(() => readArray(OFFLINE_QUEUE_KEY));
@@ -207,6 +235,10 @@ export default function Phase3Ops({
   const [leaveStatusFilter, setLeaveStatusFilter] = useState('All');
   const [leaveTypeFilter, setLeaveTypeFilter] = useState('All');
   const [editingHoliday, setEditingHoliday] = useState(null);
+  const [editingSalaryRecord, setEditingSalaryRecord] = useState(null);
+  const [editingPayslip, setEditingPayslip] = useState(null);
+  const [editingEmployeeDocument, setEditingEmployeeDocument] = useState(null);
+  const [documentCategoryFilter, setDocumentCategoryFilter] = useState('All');
   const [editingPayment, setEditingPayment] = useState(null);
   const [subscription, setSubscription] = useState(() =>
     readObject(SUBSCRIPTION_KEY, { plan: 'Free', invoicesLimit: 25, usersLimit: 1, aiEnabled: true })
@@ -236,6 +268,9 @@ export default function Phase3Ops({
   useEffect(() => writeArray(LEAVE_BALANCE_KEY, leaveBalances), [leaveBalances]);
   useEffect(() => writeArray(LEAVE_REQUEST_KEY, leaveRequests), [leaveRequests]);
   useEffect(() => writeArray(HOLIDAY_KEY, holidays), [holidays]);
+  useEffect(() => writeArray(SALARY_HISTORY_KEY, salaryHistory), [salaryHistory]);
+  useEffect(() => writeArray(PAYSLIP_KEY, payslips), [payslips]);
+  useEffect(() => writeArray(EMPLOYEE_DOCUMENT_KEY, employeeDocuments), [employeeDocuments]);
   useEffect(() => writeArray(AUDIT_KEY, auditLogs), [auditLogs]);
   useEffect(() => writeArray(PAYMENT_KEY, payments), [payments]);
   useEffect(() => writeArray(OFFLINE_QUEUE_KEY, offlineQueue), [offlineQueue]);
@@ -261,6 +296,15 @@ export default function Phase3Ops({
     if (Array.isArray(cloudHolidays)) setHolidays(cloudHolidays);
   }, [cloudHolidays]);
   useEffect(() => {
+    if (Array.isArray(cloudSalaryHistory)) setSalaryHistory(cloudSalaryHistory);
+  }, [cloudSalaryHistory]);
+  useEffect(() => {
+    if (Array.isArray(cloudPayslips)) setPayslips(cloudPayslips);
+  }, [cloudPayslips]);
+  useEffect(() => {
+    if (Array.isArray(cloudEmployeeDocuments)) setEmployeeDocuments(cloudEmployeeDocuments);
+  }, [cloudEmployeeDocuments]);
+  useEffect(() => {
     if (Array.isArray(cloudPayments)) setPayments(cloudPayments);
   }, [cloudPayments]);
   useEffect(() => {
@@ -280,7 +324,7 @@ export default function Phase3Ops({
   }, [cloudOfflineQueue]);
   useEffect(() => {
     onCloudSnapshot?.('phase3_ops_updated');
-  }, [orders, employees, attendance, leaveBalances, leaveRequests, holidays, auditLogs, payments, offlineQueue, subscription, security, devices]);
+  }, [orders, employees, attendance, leaveBalances, leaveRequests, holidays, salaryHistory, payslips, employeeDocuments, auditLogs, payments, offlineQueue, subscription, security, devices]);
 
   useEffect(() => {
     setEmployeePage(1);
@@ -372,6 +416,31 @@ export default function Phase3Ops({
   const sortedHolidays = useMemo(
     () => [...holidays].sort((a, b) => String(a.holidayDate || a.holiday_date || '').localeCompare(String(b.holidayDate || b.holiday_date || ''))),
     [holidays]
+  );
+  const selectedEmployeeSalaryHistory = useMemo(
+    () => selectedEmployee
+      ? salaryHistory
+        .filter((record) => record.employeeId === selectedEmployee.id)
+        .sort((a, b) => String(b.effectiveFrom || b.effective_from || '').localeCompare(String(a.effectiveFrom || a.effective_from || '')))
+      : [],
+    [salaryHistory, selectedEmployee]
+  );
+  const selectedEmployeePayslips = useMemo(
+    () => selectedEmployee
+      ? payslips
+        .filter((record) => record.employeeId === selectedEmployee.id)
+        .sort((a, b) => String(b.salaryMonth || b.salary_month || '').localeCompare(String(a.salaryMonth || a.salary_month || '')))
+      : [],
+    [payslips, selectedEmployee]
+  );
+  const selectedEmployeeDocuments = useMemo(
+    () => selectedEmployee
+      ? employeeDocuments
+        .filter((record) => record.employeeId === selectedEmployee.id)
+        .filter((record) => documentCategoryFilter === 'All' || record.documentCategory === documentCategoryFilter)
+        .sort((a, b) => String(b.uploadedAt || b.uploaded_at || b.createdAt || '').localeCompare(String(a.uploadedAt || a.uploaded_at || a.createdAt || '')))
+      : [],
+    [documentCategoryFilter, employeeDocuments, selectedEmployee]
   );
   const pendingCollections = useMemo(
     () => partySummary.filter((party) => party.group === 'Sundry Debtors' && party.outstandingAmount > 0),
@@ -828,6 +897,229 @@ export default function Phase3Ops({
     if (deleted) await logAudit(`holiday deleted: ${holiday.holidayName || holiday.holiday_name}`, 'Holidays');
   };
 
+  const saveSalaryRecord = async (event) => {
+    event.preventDefault();
+    if (!selectedEmployee) return;
+    const form = new FormData(event.currentTarget);
+    const current = editingSalaryRecord;
+    const salaryType = SALARY_TYPES.includes(form.get('salaryType')) ? form.get('salaryType') : 'Monthly';
+    const salaryRecord = {
+      ...(current || {}),
+      id: current?.id || createId('sal'),
+      employeeId: selectedEmployee.id,
+      employee_id: employeeIdentifier(selectedEmployee),
+      employeeName: employeeDisplayName(selectedEmployee),
+      businessId: current?.businessId || 'default',
+      companyId: current?.companyId || 'default',
+      effectiveFrom: form.get('effectiveFrom') || today(),
+      effective_from: form.get('effectiveFrom') || today(),
+      salaryAmount: normalizeAmount(form.get('salaryAmount')),
+      salary_amount: normalizeAmount(form.get('salaryAmount')),
+      salaryType,
+      salary_type: salaryType,
+      incrementAmount: normalizeAmount(form.get('incrementAmount')),
+      increment_amount: normalizeAmount(form.get('incrementAmount')),
+      incrementReason: sanitizeText(form.get('incrementReason'), 260),
+      increment_reason: sanitizeText(form.get('incrementReason'), 260),
+      remarks: sanitizeText(form.get('remarks'), 400),
+      createdBy: current?.createdBy || authUser?.email || authUser?.uid || '',
+      created_by: current?.createdBy || authUser?.email || authUser?.uid || '',
+      createdAt: current?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    if (!salaryRecord.salaryAmount) {
+      onStatus('Enter salary amount');
+      return;
+    }
+    try {
+      await persistRecord('salary_history', salaryRecord, 'Salary record save failed');
+    } catch (error) {
+      onStatus(error?.message || 'Salary record save failed');
+      return;
+    }
+    setSalaryHistory((items) => [salaryRecord, ...items.filter((item) => item.id !== salaryRecord.id)]);
+    await logAudit(`salary record ${current ? 'updated' : 'created'}: ${employeeDisplayName(selectedEmployee)}`, 'Salary');
+    setEditingSalaryRecord(null);
+    event.currentTarget.reset();
+  };
+
+  const savePayslip = async (event) => {
+    event.preventDefault();
+    if (!selectedEmployee) return;
+    const form = new FormData(event.currentTarget);
+    const current = editingPayslip;
+    const file = form.get('payslipFile');
+    let storagePath = current?.storagePath || current?.storage_path || '';
+    let uploadedFileName = current?.fileName || current?.file_name || '';
+    if (file?.size) {
+      try {
+        if (storagePath && onHrmsDocumentDelete) {
+          await onHrmsDocumentDelete(storagePath).catch(() => false);
+        }
+        const upload = await onHrmsDocumentUpload?.({
+          employeeId: selectedEmployee.id,
+          businessId: current?.businessId || 'default',
+          category: 'Payslips',
+          file,
+        });
+        storagePath = upload?.path || storagePath;
+        uploadedFileName = file.name;
+      } catch (error) {
+        onStatus(error?.message || 'Payslip upload failed');
+        return;
+      }
+    }
+    const basicSalary = normalizeAmount(form.get('basicSalary'));
+    const allowances = normalizeAmount(form.get('allowances'));
+    const deductions = normalizeAmount(form.get('deductions'));
+    const status = PAYSLIP_STATUSES.includes(form.get('status')) ? form.get('status') : (storagePath ? 'Uploaded' : 'Generated');
+    const payslip = {
+      ...(current || {}),
+      id: current?.id || createId('payroll'),
+      employeeId: selectedEmployee.id,
+      employee_id: employeeIdentifier(selectedEmployee),
+      employeeName: employeeDisplayName(selectedEmployee),
+      businessId: current?.businessId || 'default',
+      companyId: current?.companyId || 'default',
+      salaryMonth: form.get('salaryMonth') || monthKey(),
+      salary_month: form.get('salaryMonth') || monthKey(),
+      basicSalary,
+      basic_salary: basicSalary,
+      allowances,
+      deductions,
+      netSalary: Math.max(0, basicSalary + allowances - deductions),
+      net_salary: Math.max(0, basicSalary + allowances - deductions),
+      storagePath,
+      storage_path: storagePath,
+      generatedPayslipUrl: storagePath,
+      generated_payslip_url: storagePath,
+      fileName: uploadedFileName,
+      file_name: uploadedFileName,
+      status,
+      createdBy: current?.createdBy || authUser?.email || authUser?.uid || '',
+      created_by: current?.createdBy || authUser?.email || authUser?.uid || '',
+      createdAt: current?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    if (!payslip.basicSalary || !payslip.salaryMonth) {
+      onStatus('Enter salary month and basic salary');
+      return;
+    }
+    try {
+      await persistRecord('payslips', payslip, 'Payslip save failed');
+    } catch (error) {
+      onStatus(error?.message || 'Payslip save failed');
+      return;
+    }
+    setPayslips((items) => [payslip, ...items.filter((item) => item.id !== payslip.id)]);
+    await logAudit(`payslip ${current ? (file?.size ? 'replaced' : 'updated') : 'generated'}: ${employeeDisplayName(selectedEmployee)} ${payslip.salaryMonth}`, 'Payslips');
+    setEditingPayslip(null);
+    event.currentTarget.reset();
+  };
+
+  const saveEmployeeDocument = async (event) => {
+    event.preventDefault();
+    if (!selectedEmployee) return;
+    const form = new FormData(event.currentTarget);
+    const current = editingEmployeeDocument;
+    const file = form.get('documentFile');
+    let storagePath = current?.storagePath || current?.storage_path || '';
+    let fileType = current?.fileType || current?.file_type || '';
+    let fileName = current?.fileName || current?.file_name || '';
+    if (file?.size) {
+      try {
+        if (storagePath && onHrmsDocumentDelete) {
+          await onHrmsDocumentDelete(storagePath).catch(() => false);
+        }
+        const upload = await onHrmsDocumentUpload?.({
+          employeeId: selectedEmployee.id,
+          businessId: current?.businessId || 'default',
+          category: form.get('documentCategory') || 'Other Documents',
+          file,
+        });
+        storagePath = upload?.path || storagePath;
+        fileType = file.type || 'application/octet-stream';
+        fileName = file.name;
+      } catch (error) {
+        onStatus(error?.message || 'Document upload failed');
+        return;
+      }
+    }
+    if (!storagePath) {
+      onStatus('Choose a document file to upload');
+      return;
+    }
+    const category = DOCUMENT_CATEGORIES.includes(form.get('documentCategory')) ? form.get('documentCategory') : 'Other Documents';
+    const documentRecord = {
+      ...(current || {}),
+      id: current?.id || createId('doc'),
+      employeeId: selectedEmployee.id,
+      employee_id: employeeIdentifier(selectedEmployee),
+      employeeName: employeeDisplayName(selectedEmployee),
+      businessId: current?.businessId || 'default',
+      companyId: current?.companyId || 'default',
+      documentCategory: category,
+      document_category: category,
+      documentName: sanitizeText(form.get('documentName'), 160) || fileName,
+      document_name: sanitizeText(form.get('documentName'), 160) || fileName,
+      storagePath,
+      storage_path: storagePath,
+      fileType,
+      file_type: fileType,
+      fileName,
+      file_name: fileName,
+      uploadedBy: current?.uploadedBy || authUser?.email || authUser?.uid || '',
+      uploaded_by: current?.uploadedBy || authUser?.email || authUser?.uid || '',
+      uploadedAt: current?.uploadedAt || new Date().toISOString(),
+      uploaded_at: current?.uploadedAt || new Date().toISOString(),
+      notes: sanitizeText(form.get('notes'), 400),
+      createdAt: current?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    try {
+      await persistRecord('employee_documents', documentRecord, 'Employee document save failed');
+    } catch (error) {
+      onStatus(error?.message || 'Employee document save failed');
+      return;
+    }
+    setEmployeeDocuments((items) => [documentRecord, ...items.filter((item) => item.id !== documentRecord.id)]);
+    await logAudit(`employee document ${current ? 'replaced' : 'uploaded'}: ${employeeDisplayName(selectedEmployee)} ${documentRecord.documentName}`, 'Documents');
+    setEditingEmployeeDocument(null);
+    event.currentTarget.reset();
+  };
+
+  const downloadHrmsFile = async (path) => {
+    try {
+      const url = await onHrmsDocumentUrl?.(path);
+      if (!url) throw new Error('Secure document URL was not generated.');
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      onStatus(error?.message || 'Document download failed');
+    }
+  };
+
+  const deletePayslip = async (payslip) => {
+    const deleted = await deleteRecord('payslips', payslip.id, payslip.salaryMonth || 'payslip', setPayslips, async () => {
+      if (editingPayslip?.id === payslip.id) setEditingPayslip(null);
+    });
+    if (deleted) {
+      if (payslip.storagePath || payslip.storage_path) {
+        await onHrmsDocumentDelete?.(payslip.storagePath || payslip.storage_path).catch(() => false);
+      }
+      await logAudit(`payslip deleted: ${payslip.employeeName || ''} ${payslip.salaryMonth || ''}`, 'Payslips');
+    }
+  };
+
+  const deleteEmployeeDocument = async (documentRecord) => {
+    const deleted = await deleteRecord('employee_documents', documentRecord.id, documentRecord.documentName || 'document', setEmployeeDocuments, async () => {
+      if (editingEmployeeDocument?.id === documentRecord.id) setEditingEmployeeDocument(null);
+    });
+    if (deleted) {
+      await onHrmsDocumentDelete?.(documentRecord.storagePath || documentRecord.storage_path).catch(() => false);
+      await logAudit(`employee document deleted: ${documentRecord.employeeName || ''} ${documentRecord.documentName || ''}`, 'Documents');
+    }
+  };
+
   const recordPayment = async (invoice) => {
     const amount = invoice.balance || invoice.total || 0;
     const customer = (customers || []).find((item) => item.id === invoice.customerId);
@@ -1251,6 +1543,8 @@ export default function Phase3Ops({
     const canManageLeave = ['owner', 'manager'].includes(employeeRole);
     const canManageHolidays = ['owner', 'manager'].includes(employeeRole);
     const canViewSalary = ['owner', 'manager', 'accountant'].includes(employeeRole);
+    const canManageSalary = ['owner', 'accountant'].includes(employeeRole);
+    const canManageDocuments = ['owner'].includes(employeeRole);
     const accessibleEmployees = staffEmployeeIds.size > 0 && !['owner', 'manager', 'accountant'].includes(employeeRole)
       ? employees.filter((employee) => staffEmployeeIds.has(employee.id))
       : employees;
@@ -1647,11 +1941,73 @@ export default function Phase3Ops({
                 </dl>
               )}
               {employeeProfileTab === 'Salary Information' && (
-                <dl className="hrms-detail-grid">
-                  <div><dt>Monthly Salary</dt><dd>{canViewSalary ? formatCurrency(selectedEmployee.salary) : 'Restricted'}</dd></div>
-                  <div><dt>Advance</dt><dd>{canViewSalary ? formatCurrency(selectedEmployee.advance) : 'Restricted'}</dd></div>
-                  <div><dt>Salary History</dt><dd>Placeholder for HRMS Phase B.</dd></div>
-                </dl>
+                <div className="hrms-phasec-stack">
+                  {!canViewSalary ? (
+                    <div className="empty-state">Salary information is restricted for your role.</div>
+                  ) : (
+                    <>
+                      {canManageSalary && (
+                        <form className="hrms-inline-form" onSubmit={saveSalaryRecord} key={editingSalaryRecord?.id || 'salary-new'}>
+                          <input name="effectiveFrom" type="date" defaultValue={editingSalaryRecord?.effectiveFrom || editingSalaryRecord?.effective_from || today()} required />
+                          <input name="salaryAmount" type="number" min="0" defaultValue={editingSalaryRecord?.salaryAmount ?? editingSalaryRecord?.salary_amount ?? selectedEmployee.salary ?? ''} placeholder="Salary amount" required />
+                          <select name="salaryType" defaultValue={editingSalaryRecord?.salaryType || editingSalaryRecord?.salary_type || 'Monthly'}>
+                            {SALARY_TYPES.map((type) => <option key={type}>{type}</option>)}
+                          </select>
+                          <input name="incrementAmount" type="number" min="0" defaultValue={editingSalaryRecord?.incrementAmount ?? editingSalaryRecord?.increment_amount ?? ''} placeholder="Increment" />
+                          <input name="incrementReason" defaultValue={editingSalaryRecord?.incrementReason || editingSalaryRecord?.increment_reason || ''} placeholder="Increment reason" />
+                          <input name="remarks" defaultValue={editingSalaryRecord?.remarks || ''} placeholder="Remarks" />
+                          <button className="manual-button" type="submit">{editingSalaryRecord ? 'Update Salary' : 'Add Salary'}</button>
+                          {editingSalaryRecord && <button className="secondary-button compact-button" type="button" onClick={() => setEditingSalaryRecord(null)}>Cancel</button>}
+                        </form>
+                      )}
+                      <div className="hrms-record-grid">
+                        {selectedEmployeeSalaryHistory.length === 0 ? <div className="empty-state">No salary history records yet.</div> : selectedEmployeeSalaryHistory.map((record) => (
+                          <article className="hrms-mini-card" key={record.id}>
+                            <strong>{formatCurrency(record.salaryAmount ?? record.salary_amount)}</strong>
+                            <p>{record.salaryType || record.salary_type} · Effective {record.effectiveFrom || record.effective_from}</p>
+                            <p>{record.incrementReason || record.increment_reason || record.remarks || 'No increment note'}</p>
+                            {canManageSalary && <button className="share-entry-button" type="button" onClick={() => setEditingSalaryRecord(record)}>Edit</button>}
+                          </article>
+                        ))}
+                      </div>
+
+                      <div className="section-header hrms-subsection-header">
+                        <div>
+                          <h3>Payslips</h3>
+                          <p className="panel-hint">Generate or upload private payslip records for this employee.</p>
+                        </div>
+                      </div>
+                      {canManageSalary && (
+                        <form className="hrms-inline-form" onSubmit={savePayslip} key={editingPayslip?.id || 'payslip-new'}>
+                          <input name="salaryMonth" type="month" defaultValue={editingPayslip?.salaryMonth || editingPayslip?.salary_month || monthKey()} required />
+                          <input name="basicSalary" type="number" min="0" defaultValue={editingPayslip?.basicSalary ?? editingPayslip?.basic_salary ?? selectedEmployee.salary ?? ''} placeholder="Basic salary" required />
+                          <input name="allowances" type="number" min="0" defaultValue={editingPayslip?.allowances ?? ''} placeholder="Allowances" />
+                          <input name="deductions" type="number" min="0" defaultValue={editingPayslip?.deductions ?? ''} placeholder="Deductions" />
+                          <select name="status" defaultValue={editingPayslip?.status || 'Generated'}>
+                            {PAYSLIP_STATUSES.map((status) => <option key={status}>{status}</option>)}
+                          </select>
+                          <input name="payslipFile" type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" />
+                          <button className="manual-button" type="submit">{editingPayslip ? 'Update Payslip' : 'Generate Payslip'}</button>
+                          {editingPayslip && <button className="secondary-button compact-button" type="button" onClick={() => setEditingPayslip(null)}>Cancel</button>}
+                        </form>
+                      )}
+                      <div className="hrms-record-grid">
+                        {selectedEmployeePayslips.length === 0 ? <div className="empty-state">No payslips yet.</div> : selectedEmployeePayslips.map((payslip) => (
+                          <article className="hrms-mini-card" key={payslip.id}>
+                            <strong>{payslip.salaryMonth || payslip.salary_month}</strong>
+                            <p>Net salary: {formatCurrency(payslip.netSalary ?? payslip.net_salary)}</p>
+                            <span className={`hrms-status ${payslip.status === 'Draft' ? 'inactive' : ''}`}>{payslip.status}</span>
+                            <div className="voucher-actions">
+                              {(payslip.storagePath || payslip.storage_path) && <button className="share-entry-button" type="button" onClick={() => downloadHrmsFile(payslip.storagePath || payslip.storage_path)}>Download</button>}
+                              {canManageSalary && <button className="share-entry-button" type="button" onClick={() => setEditingPayslip(payslip)}>Edit</button>}
+                              {canManageSalary && <button className="delete-entry-button" type="button" onClick={() => deletePayslip(payslip)}>Delete</button>}
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
               {employeeProfileTab === 'Leave Information' && (
                 <div className="hrms-record-grid">
@@ -1686,7 +2042,42 @@ export default function Phase3Ops({
                   ))}
                 </div>
               )}
-              {employeeProfileTab === 'Documents' && <div className="empty-state">Document storage placeholder for a later HRMS phase.</div>}
+              {employeeProfileTab === 'Documents' && (
+                <div className="hrms-phasec-stack">
+                  {canManageDocuments && (
+                    <form className="hrms-inline-form" onSubmit={saveEmployeeDocument} key={editingEmployeeDocument?.id || 'document-new'}>
+                      <select name="documentCategory" defaultValue={editingEmployeeDocument?.documentCategory || editingEmployeeDocument?.document_category || 'Other Documents'}>
+                        {DOCUMENT_CATEGORIES.map((category) => <option key={category}>{category}</option>)}
+                      </select>
+                      <input name="documentName" defaultValue={editingEmployeeDocument?.documentName || editingEmployeeDocument?.document_name || ''} placeholder="Document name" />
+                      <input name="documentFile" type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" />
+                      <input name="notes" defaultValue={editingEmployeeDocument?.notes || ''} placeholder="Notes" />
+                      <button className="manual-button" type="submit">{editingEmployeeDocument ? 'Replace Document' : 'Upload Document'}</button>
+                      {editingEmployeeDocument && <button className="secondary-button compact-button" type="button" onClick={() => setEditingEmployeeDocument(null)}>Cancel</button>}
+                    </form>
+                  )}
+                  <div className="hrms-toolbar">
+                    <select value={documentCategoryFilter} onChange={(event) => setDocumentCategoryFilter(event.target.value)}>
+                      <option>All</option>
+                      {DOCUMENT_CATEGORIES.map((category) => <option key={category}>{category}</option>)}
+                    </select>
+                  </div>
+                  <div className="hrms-record-grid">
+                    {selectedEmployeeDocuments.length === 0 ? <div className="empty-state">No employee documents uploaded yet.</div> : selectedEmployeeDocuments.map((documentRecord) => (
+                      <article className="hrms-mini-card" key={documentRecord.id}>
+                        <strong>{documentRecord.documentName || documentRecord.document_name}</strong>
+                        <p>{documentRecord.documentCategory || documentRecord.document_category} · {documentRecord.fileName || documentRecord.file_name || 'Stored file'}</p>
+                        <p>{documentRecord.notes || 'No notes'}</p>
+                        <div className="voucher-actions">
+                          <button className="share-entry-button" type="button" onClick={() => downloadHrmsFile(documentRecord.storagePath || documentRecord.storage_path)}>Download</button>
+                          {canManageDocuments && <button className="share-entry-button" type="button" onClick={() => setEditingEmployeeDocument(documentRecord)}>Replace</button>}
+                          {canManageDocuments && <button className="delete-entry-button" type="button" onClick={() => deleteEmployeeDocument(documentRecord)}>Delete</button>}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              )}
               {employeeProfileTab === 'Notes / Description' && (
                 <article className="hrms-notes-card">
                   <strong>Description / Notes</strong>
