@@ -32,7 +32,8 @@ const LEAVE_TYPES = [
 ];
 const LEAVE_STATUSES = ['Pending', 'Approved', 'Rejected'];
 const SALARY_TYPES = ['Monthly', 'Daily', 'Hourly'];
-const PAYSLIP_STATUSES = ['Draft', 'Generated', 'Uploaded'];
+const SALARY_STATUSES = ['Draft', 'Pending Approval', 'Approved', 'Rejected', 'Paid'];
+const PAYSLIP_STATUSES = ['Draft', 'Pending Approval', 'Approved', 'Rejected', 'Paid'];
 const DOCUMENT_CATEGORIES = [
   'Offer Letter',
   'Appointment Letter',
@@ -244,6 +245,7 @@ export default function Phase3Ops({
   const [editingSalaryRecord, setEditingSalaryRecord] = useState(null);
   const [editingPayslip, setEditingPayslip] = useState(null);
   const [generatingPayslipId, setGeneratingPayslipId] = useState(null);
+  const [rejectionModal, setRejectionModal] = useState(null);
   const [editingEmployeeDocument, setEditingEmployeeDocument] = useState(null);
   const [documentCategoryFilter, setDocumentCategoryFilter] = useState('All');
   const [editingPayment, setEditingPayment] = useState(null);
@@ -1001,6 +1003,7 @@ export default function Phase3Ops({
       effective_from: form.get('effectiveFrom') || today(),
       salaryAmount: normalizeAmount(form.get('salaryAmount')),
       salary_amount: normalizeAmount(form.get('salaryAmount')),
+      status: current?.status || 'Draft',
       salaryType,
       salary_type: salaryType,
       incrementAmount: normalizeAmount(form.get('incrementAmount')),
@@ -1058,7 +1061,7 @@ export default function Phase3Ops({
     const basicSalary = normalizeAmount(form.get('basicSalary'));
     const allowances = normalizeAmount(form.get('allowances'));
     const deductions = normalizeAmount(form.get('deductions'));
-    const status = PAYSLIP_STATUSES.includes(form.get('status')) ? form.get('status') : (storagePath ? 'Uploaded' : 'Generated');
+    const status = current?.status || 'Draft';
     const payslip = {
       ...(current || {}),
       id: current?.id || createId('payroll'),
@@ -1196,6 +1199,82 @@ export default function Phase3Ops({
     }
   };
 
+  const submitForApproval = async (record, type) => {
+    const table = type === 'salary' ? 'salary_history' : 'payslips';
+    const setter = type === 'salary' ? setSalaryHistory : setPayslips;
+    const moduleName = type === 'salary' ? 'Salary' : 'Payslips';
+    const updated = { ...record, status: 'Pending Approval', updatedAt: new Date().toISOString() };
+    try {
+      await persistRecord(table, updated, `${moduleName} submit failed`);
+      setter(items => [updated, ...items.filter(i => i.id !== record.id)]);
+      await logAudit(`${type} submitted for approval: ${record.employeeName || record.id}`, moduleName);
+      onStatus('Submitted for approval');
+    } catch (err) {
+      onStatus(err?.message || 'Action failed');
+    }
+  };
+
+  const approveRecord = async (record, type) => {
+    const table = type === 'salary' ? 'salary_history' : 'payslips';
+    const setter = type === 'salary' ? setSalaryHistory : setPayslips;
+    const moduleName = type === 'salary' ? 'Salary' : 'Payslips';
+    const updated = { 
+      ...record, 
+      status: 'Approved', 
+      approvedBy: authUser?.email || authUser?.uid || 'Unknown', 
+      approved_by: authUser?.email || authUser?.uid || 'Unknown', 
+      approvedAt: new Date().toISOString(), 
+      approved_at: new Date().toISOString(), 
+      updatedAt: new Date().toISOString() 
+    };
+    try {
+      await persistRecord(table, updated, `${moduleName} approve failed`);
+      setter(items => [updated, ...items.filter(i => i.id !== record.id)]);
+      await logAudit(`${type} approved: ${record.employeeName || record.id}`, moduleName);
+      onStatus('Approved successfully');
+    } catch (err) {
+      onStatus(err?.message || 'Action failed');
+    }
+  };
+
+  const rejectRecord = async (record, type, reason) => {
+    const table = type === 'salary' ? 'salary_history' : 'payslips';
+    const setter = type === 'salary' ? setSalaryHistory : setPayslips;
+    const moduleName = type === 'salary' ? 'Salary' : 'Payslips';
+    const updated = { 
+      ...record, 
+      status: 'Rejected', 
+      rejectionReason: reason, 
+      rejection_reason: reason, 
+      updatedAt: new Date().toISOString() 
+    };
+    try {
+      await persistRecord(table, updated, `${moduleName} reject failed`);
+      setter(items => [updated, ...items.filter(i => i.id !== record.id)]);
+      await logAudit(`${type} rejected: ${record.employeeName || record.id}`, moduleName);
+      onStatus('Rejected successfully');
+    } catch (err) {
+      onStatus(err?.message || 'Action failed');
+    } finally {
+      setRejectionModal(null);
+    }
+  };
+
+  const markPaid = async (record, type) => {
+    const table = type === 'salary' ? 'salary_history' : 'payslips';
+    const setter = type === 'salary' ? setSalaryHistory : setPayslips;
+    const moduleName = type === 'salary' ? 'Salary' : 'Payslips';
+    const updated = { ...record, status: 'Paid', updatedAt: new Date().toISOString() };
+    try {
+      await persistRecord(table, updated, `${moduleName} mark paid failed`);
+      setter(items => [updated, ...items.filter(i => i.id !== record.id)]);
+      await logAudit(`${type} marked paid: ${record.employeeName || record.id}`, moduleName);
+      onStatus('Marked as Paid');
+    } catch (err) {
+      onStatus(err?.message || 'Action failed');
+    }
+  };
+
   const deleteEmployeeDocument = async (documentRecord) => {
     const deleted = await deleteRecord('employee_documents', documentRecord.id, documentRecord.documentName || 'document', setEmployeeDocuments, async () => {
       if (editingEmployeeDocument?.id === documentRecord.id) setEditingEmployeeDocument(null);
@@ -1203,183 +1282,6 @@ export default function Phase3Ops({
     if (deleted) {
       await onHrmsDocumentDelete?.(documentRecord.storagePath || documentRecord.storage_path).catch(() => false);
       await logAudit(`employee document deleted: ${documentRecord.employeeName || ''} ${documentRecord.documentName || ''}`, 'Documents');
-    }
-  };
-
-  const recordPayment = async (invoice) => {
-    const amount = invoice.balance || invoice.total || 0;
-    const customer = (customers || []).find((item) => item.id === invoice.customerId);
-    const payment = {
-      id: createId('pay'),
-      invoiceId: invoice.id,
-      invoiceNo: invoice.invoiceNo,
-      customerId: invoice.customerId || '',
-      customerName: customer?.name || invoice.customerName || '',
-      businessId: invoice.businessId || 'default',
-      amount,
-      date: today(),
-      mode: 'UPI',
-      status: 'Marked Paid',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    const ledgerPosting = {
-      id: `txn-${payment.id}`,
-      type: 'Receipt',
-      amount,
-      date: payment.date,
-      narration: `Payment received for ${invoice.invoiceNo || invoice.id}`,
-      source: 'payment_posting',
-      paymentId: payment.id,
-      invoiceId: invoice.id,
-      invoiceNo: invoice.invoiceNo,
-      customerId: invoice.customerId || '',
-      businessId: invoice.businessId || 'default',
-      lines: [
-        { ledgerId: 'ledger-bank', debit: amount, credit: 0 },
-        { ledgerId: invoice.customerLedgerId || invoice.customerId || 'ledger-sales', debit: 0, credit: amount },
-      ],
-    };
-    try {
-      if (onAtomicPaymentWithLedger) {
-        const result = await onAtomicPaymentWithLedger(payment, ledgerPosting);
-        if (!result?.payment) {
-          throw new Error('Atomic payment posting did not return the saved payment.');
-        }
-        setPayments((items) => [result.payment, ...items.filter((item) => item.id !== result.payment.id)]);
-        onStatus('Payment and ledger posted atomically in Supabase.');
-        return;
-      }
-      await persistRecord('payments', payment, 'Payment save failed');
-    } catch (error) {
-      if (isMissingPaymentRpc(error)) {
-        onStatus('Payment RPC migration is not installed yet. Saving with legacy payment path for now.');
-        try {
-          await persistRecord('payments', payment, 'Payment save failed');
-        } catch (fallbackError) {
-          onStatus(fallbackError?.message || 'Payment save failed');
-          return;
-        }
-      } else {
-        onStatus(error?.message || 'Atomic payment posting failed');
-        return;
-      }
-    }
-
-    setPayments([payment, ...payments]);
-    try {
-      await logAudit(`Marked payment for ${invoice.invoiceNo}`, 'Payments');
-    } catch (error) {
-      onStatus(error?.message || 'Payment save failed');
-      return;
-    }
-    onStatus('Payment recorded in Supabase. Provider webhook required for automatic bank confirmation.');
-  };
-
-  const savePaymentEdit = async (event) => {
-    event.preventDefault();
-    if (!editingPayment) {
-      return;
-    }
-    const form = new FormData(event.currentTarget);
-    const payment = {
-      ...editingPayment,
-      amount: normalizeAmount(form.get('amount')),
-      date: form.get('date') || today(),
-      mode: sanitizeText(form.get('mode'), 40) || 'UPI',
-      status: sanitizeText(form.get('status'), 80) || 'Marked Paid',
-      updatedAt: new Date().toISOString(),
-    };
-    const ledgerPosting = {
-      id: `txn-${payment.id}-edit-${Date.now().toString(36)}`,
-      type: 'Receipt',
-      amount: payment.amount,
-      date: payment.date,
-      narration: `Edited payment received for ${payment.invoiceNo || payment.id}`,
-      source: 'payment_edit_posting',
-      paymentId: payment.id,
-      invoiceId: payment.invoiceId || '',
-      invoiceNo: payment.invoiceNo || '',
-      customerId: payment.customerId || '',
-      businessId: payment.businessId || 'default',
-      lines: [
-        { ledgerId: 'ledger-bank', debit: payment.amount, credit: 0 },
-        { ledgerId: payment.customerLedgerId || payment.customerId || 'ledger-sales', debit: 0, credit: payment.amount },
-      ],
-    };
-    try {
-      if (onAtomicPaymentEdit) {
-        const result = await onAtomicPaymentEdit(payment, ledgerPosting);
-        if (!result?.payment) {
-          throw new Error('Atomic payment edit did not return the saved payment.');
-        }
-        setPayments((items) => [result.payment, ...items.filter((item) => item.id !== result.payment.id)]);
-        setEditingPayment(null);
-        onStatus('Payment edit and ledger reversal posted atomically.');
-        return;
-      }
-      await persistRecord('payments', payment, 'Payment update failed');
-    } catch (error) {
-      if (isMissingPaymentRpc(error)) {
-        onStatus('Payment reversal RPC migration is not installed yet. Saving edit with legacy payment path for now.');
-        try {
-          await persistRecord('payments', payment, 'Payment update failed');
-        } catch (fallbackError) {
-          onStatus(fallbackError?.message || 'Payment update failed');
-          return;
-        }
-      } else {
-        onStatus(error?.message || 'Atomic payment edit failed');
-        return;
-      }
-    }
-    setPayments((items) => [payment, ...items.filter((item) => item.id !== payment.id)]);
-    setEditingPayment(null);
-    try {
-      await logAudit(`Updated payment ${payment.invoiceNo || payment.id}`, 'Payments');
-    } catch (error) {
-      onStatus(error?.message || 'Payment update failed');
-      return;
-    }
-    onStatus('Payment updated');
-  };
-
-  const deleteRecord = async (tableName, id, label, setter, afterDelete) => {
-    if (!confirm(`Delete ${label}?`)) {
-      return false;
-    }
-    try {
-      const deleted = await onCloudDelete?.(tableName, id);
-      if (!deleted) {
-        throw new Error(`${label} delete failed`);
-      }
-      setter((items) => items.filter((item) => item.id !== id));
-      afterDelete?.();
-      onStatus(`${label} deleted`);
-      return true;
-    } catch (error) {
-      onStatus(error?.message || `${label} delete failed`);
-      return false;
-    }
-  };
-
-  const deleteOrder = async (order) => {
-    const deleted = await deleteRecord('orders', order.id, order.orderNo || 'order', setOrders, () => {
-      if (editingOrder?.id === order.id) setEditingOrder(null);
-    });
-    if (deleted) await logAudit(`Deleted ${order.orderNo}`, 'Orders');
-  };
-
-  const deleteEmployee = async (employee) => {
-    const employeeAttendance = attendance.filter((entry) => entry.employeeId === employee.id);
-    const deleted = await deleteRecord('employees', employee.id, employeeDisplayName(employee) || 'employee', setEmployees, () => {
-      if (editingEmployee?.id === employee.id) setEditingEmployee(null);
-      if (selectedEmployee?.id === employee.id) setSelectedEmployee(null);
-      setAttendance((items) => items.filter((entry) => entry.employeeId !== employee.id));
-    });
-    if (deleted) {
-      await Promise.all(employeeAttendance.map((entry) => onCloudDelete?.('attendance', entry.id).catch(() => false)));
-      await logAudit(`Deleted employee ${employeeDisplayName(employee)}`, 'Employees');
     }
   };
 
@@ -1631,6 +1533,7 @@ export default function Phase3Ops({
     const canViewSalary = ['owner', 'manager', 'accountant'].includes(employeeRole);
     const canManageSalary = ['owner', 'accountant'].includes(employeeRole);
     const canManageDocuments = ['owner'].includes(employeeRole);
+    const isOwner = employeeRole === 'owner';
     const accessibleEmployees = staffEmployeeIds.size > 0 && !['owner', 'manager', 'accountant'].includes(employeeRole)
       ? employees.filter((employee) => staffEmployeeIds.has(employee.id))
       : employees;
@@ -1659,6 +1562,24 @@ export default function Phase3Ops({
           <section className="notice error">
             Your current role does not have unrestricted employee access. Contact the owner for HRMS permissions.
           </section>
+        )}
+
+        {rejectionModal && (
+          <div className="modal-overlay">
+            <div className="modal-content">
+              <h3>Reject {rejectionModal.type === 'salary' ? 'Salary Record' : 'Payslip'}</h3>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                rejectRecord(rejectionModal.record, rejectionModal.type, new FormData(e.currentTarget).get('reason'));
+              }}>
+                <textarea name="reason" placeholder="Reason for rejection" required rows={3} style={{ width: '100%', marginBottom: '1rem', padding: '0.5rem' }} />
+                <div className="voucher-actions">
+                  <button className="delete-entry-button" type="submit">Confirm Reject</button>
+                  <button className="secondary-button compact-button" type="button" onClick={() => setRejectionModal(null)}>Cancel</button>
+                </div>
+              </form>
+            </div>
+          </div>
         )}
 
         {canViewEmployeeMaster && <section className="hrms-summary-grid">
@@ -2143,8 +2064,17 @@ export default function Phase3Ops({
                           <article className="hrms-mini-card" key={record.id}>
                             <strong>{formatCurrency(record.salaryAmount ?? record.salary_amount)}</strong>
                             <p>{record.salaryType || record.salary_type} · Effective {record.effectiveFrom || record.effective_from}</p>
+                            <span className={`hrms-status ${(record.status || 'Draft').toLowerCase().replace(' ', '-')}`}>{record.status || 'Draft'}</span>
                             <p>{record.incrementReason || record.increment_reason || record.remarks || 'No increment note'}</p>
-                            {canManageSalary && <button className="share-entry-button" type="button" onClick={() => setEditingSalaryRecord(record)}>Edit</button>}
+                            {record.status === 'Rejected' && <p style={{ color: '#d32f2f', fontSize: '0.8rem' }}>Reason: {record.rejectionReason || record.rejection_reason}</p>}
+                            <div className="voucher-actions">
+                              {(record.status === 'Draft' || record.status === 'Rejected') && canManageSalary && <button className="share-entry-button" type="button" onClick={() => submitForApproval(record, 'salary')}>Submit</button>}
+                              {record.status === 'Pending Approval' && canManageSalary && isOwner && <button className="share-entry-button" type="button" onClick={() => approveRecord(record, 'salary')}>Approve</button>}
+                              {record.status === 'Pending Approval' && canManageSalary && isOwner && <button className="delete-entry-button" type="button" onClick={() => setRejectionModal({ record, type: 'salary' })}>Reject</button>}
+                              {record.status === 'Approved' && canManageSalary && <button className="share-entry-button" type="button" onClick={() => markPaid(record, 'salary')}>Mark Paid</button>}
+                              {canManageSalary && <button className="share-entry-button" type="button" onClick={() => setEditingSalaryRecord(record)}>Edit</button>}
+                              {canManageSalary && <button className="delete-entry-button" type="button" onClick={() => deleteSalaryRecord(record)}>Delete</button>}
+                            </div>
                           </article>
                         ))}
                       </div>
@@ -2161,9 +2091,6 @@ export default function Phase3Ops({
                           <input name="basicSalary" type="number" min="0" defaultValue={editingPayslip?.basicSalary ?? editingPayslip?.basic_salary ?? selectedEmployee.salary ?? ''} placeholder="Basic salary" required />
                           <input name="allowances" type="number" min="0" defaultValue={editingPayslip?.allowances ?? ''} placeholder="Allowances" />
                           <input name="deductions" type="number" min="0" defaultValue={editingPayslip?.deductions ?? ''} placeholder="Deductions" />
-                          <select name="status" defaultValue={editingPayslip?.status || 'Generated'}>
-                            {PAYSLIP_STATUSES.map((status) => <option key={status}>{status}</option>)}
-                          </select>
                           <input name="payslipFile" type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" />
                           <button className="manual-button" type="submit">{editingPayslip ? 'Update Payslip' : 'Generate Payslip'}</button>
                           {editingPayslip && <button className="secondary-button compact-button" type="button" onClick={() => setEditingPayslip(null)}>Cancel</button>}
@@ -2174,8 +2101,13 @@ export default function Phase3Ops({
                           <article className="hrms-mini-card" key={payslip.id}>
                             <strong>{payslip.salaryMonth || payslip.salary_month}</strong>
                             <p>Net salary: {formatCurrency(payslip.netSalary ?? payslip.net_salary)}</p>
-                            <span className={`hrms-status ${payslip.status === 'Draft' ? 'inactive' : ''}`}>{payslip.status}</span>
+                            <span className={`hrms-status ${(payslip.status || 'Draft').toLowerCase().replace(' ', '-')}`}>{payslip.status || 'Draft'}</span>
+                            {payslip.status === 'Rejected' && <p style={{ color: '#d32f2f', fontSize: '0.8rem' }}>Reason: {payslip.rejectionReason || payslip.rejection_reason}</p>}
                             <div className="voucher-actions">
+                              {(payslip.status === 'Draft' || payslip.status === 'Rejected') && canManageSalary && <button className="share-entry-button" type="button" onClick={() => submitForApproval(payslip, 'payslip')}>Submit</button>}
+                              {payslip.status === 'Pending Approval' && canManageSalary && isOwner && <button className="share-entry-button" type="button" onClick={() => approveRecord(payslip, 'payslip')}>Approve</button>}
+                              {payslip.status === 'Pending Approval' && canManageSalary && isOwner && <button className="delete-entry-button" type="button" onClick={() => setRejectionModal({ record: payslip, type: 'payslip' })}>Reject</button>}
+                              {payslip.status === 'Approved' && canManageSalary && <button className="share-entry-button" type="button" onClick={() => markPaid(payslip, 'payslip')}>Mark Paid</button>}
                               {(payslip.storagePath || payslip.storage_path) && <button className="share-entry-button" type="button" onClick={() => downloadHrmsFile(payslip.storagePath || payslip.storage_path)}>Download</button>}
                               {canManageSalary && <button className="share-entry-button" type="button" onClick={() => generatePayslipPdf(payslip, selectedEmployee)} disabled={generatingPayslipId === payslip.id}>{generatingPayslipId === payslip.id ? 'Generating...' : (payslip.storagePath || payslip.storage_path ? 'Regenerate PDF' : 'Generate PDF')}</button>}
                               {canManageSalary && <button className="share-entry-button" type="button" onClick={() => setEditingPayslip(payslip)}>Edit</button>}
