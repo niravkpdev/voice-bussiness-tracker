@@ -58,7 +58,6 @@ const EMPLOYEE_PROFILE_TABS = [
   'Attendance',
   'Documents',
   'Notes / Description',
-  'Login & Access',
 ];
 
 function readArray(key) {
@@ -239,6 +238,7 @@ export default function Phase3Ops({
   const [employeeSearch, setEmployeeSearch] = useState('');
   const [employeeDepartmentFilter, setEmployeeDepartmentFilter] = useState('All');
   
+  const [loginManageModal, setLoginManageModal] = useState(null);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginStatusMsg, setLoginStatusMsg] = useState({ text: '', type: '' });
@@ -1876,6 +1876,7 @@ export default function Phase3Ops({
                     <div className="voucher-actions">
                       <button className="share-entry-button" type="button" onClick={() => { setSelectedEmployee(employee); setEmployeeProfileTab(EMPLOYEE_PROFILE_TABS[0]); }}>Profile</button>
                       {canManageEmployees && <button className="share-entry-button" type="button" onClick={() => setEditingEmployee(employee)}>Edit</button>}
+                      {canManageEmployees && <button className="share-entry-button" type="button" onClick={() => { setLoginManageModal(employee); setLoginEmail(employee?.email || ''); setLoginPassword(''); setLoginStatusMsg({ text: '', type: '' }); }}>Manage Login</button>}
                       {canManageEmployees && <button className="share-entry-button" type="button" onClick={() => markAttendance(employee, 'Present')}>Present</button>}
                       {canManageEmployees && <button className="share-entry-button" type="button" onClick={() => markAttendance(employee, 'Absent')}>Absent</button>}
                       {canManageEmployees && <button className="delete-entry-button" type="button" onClick={() => deleteEmployee(employee)}>Delete</button>}
@@ -2448,6 +2449,92 @@ export default function Phase3Ops({
             </div>
           </section>
         )}
+
+      {loginManageModal && (
+        <div className="hrms-modal-overlay">
+          <div className="hrms-modal-content" style={{ maxWidth: '600px' }}>
+            <div className="hrms-modal-header">
+              <h2>Manage Login Access: {loginManageModal.name}</h2>
+              <button className="close-button" type="button" onClick={() => setLoginManageModal(null)}>×</button>
+            </div>
+            <div className="hrms-modal-body">
+              <p className="panel-hint" style={{ marginBottom: '1rem' }}>Manage self-service login credentials for this employee. No email invitation required.</p>
+              
+              {loginStatusMsg.text && (
+                <div className={`toast-message ${loginStatusMsg.type}`} style={{ marginBottom: '1rem' }}>
+                  {loginStatusMsg.text}
+                </div>
+              )}
+
+              <div className="hrms-grid">
+                <div className="hrms-form-group">
+                  <label>Employee Login Email</label>
+                  <input 
+                    type="email" 
+                    value={loginEmail} 
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    placeholder="e.g. emp@company.com" 
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="hrms-form-group">
+                  <label>Temporary Password</label>
+                  <input 
+                    type="text" 
+                    value={loginPassword} 
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    placeholder="Min 6 characters" 
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+                <button className="manual-button" type="button" onClick={async () => {
+                  if (!loginEmail || !loginPassword || loginPassword.length < 6) {
+                    setLoginStatusMsg({ text: 'Please provide valid email and at least 6 char password.', type: 'error' });
+                    return;
+                  }
+                  setLoginStatusMsg({ text: 'Creating login...', type: 'info' });
+                  const { error } = await createEmployeeLogin(loginEmail, loginPassword, loginManageModal.id, profile?.businessId);
+                  if (error) {
+                    setLoginStatusMsg({ text: 'Error: ' + error.message, type: 'error' });
+                  } else {
+                    setLoginStatusMsg({ text: 'Login created successfully!', type: 'success' });
+                    setLoginPassword('');
+                  }
+                }}>Create Login</button>
+                
+                <button className="secondary-button" type="button" onClick={async () => {
+                  if (!loginPassword || loginPassword.length < 6) {
+                    setLoginStatusMsg({ text: 'Please provide at least 6 char new password to reset.', type: 'error' });
+                    return;
+                  }
+                  setLoginStatusMsg({ text: 'Resetting password...', type: 'info' });
+                  const { error } = await resetEmployeePassword(loginManageModal.id, profile?.businessId, loginPassword);
+                  if (error) {
+                    setLoginStatusMsg({ text: 'Error: ' + error.message, type: 'error' });
+                  } else {
+                    setLoginStatusMsg({ text: 'Password reset successfully!', type: 'success' });
+                    setLoginPassword('');
+                  }
+                }}>Reset Password</button>
+
+                <button className="secondary-button" type="button" style={{ color: 'var(--danger-color)', borderColor: 'var(--danger-color)' }} onClick={async () => {
+                  if (confirm('Are you sure you want to disable login access for this employee?')) {
+                    setLoginStatusMsg({ text: 'Disabling login...', type: 'info' });
+                    const { error } = await disableEmployeeLogin(loginManageModal.id, profile?.businessId);
+                    if (error) {
+                      setLoginStatusMsg({ text: 'Error: ' + error.message, type: 'error' });
+                    } else {
+                      setLoginStatusMsg({ text: 'Login disabled.', type: 'success' });
+                    }
+                  }
+                }}>Disable Login</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       </section>
     );
   }

@@ -7111,3 +7111,10 @@ fieldset {
     width: 100%;
   }
 }
+
+/* Responsive Fixes */
+.hrms-layout, .hrms-page-container, .app-container { max-width: 100vw; overflow-x: hidden; }
+.hrms-table-container, .table-wrapper { max-width: 100%; overflow-x: auto; }
+.hrms-toolbar { display: flex; flex-wrap: wrap; gap: 12px; margin: 18px 0; }
+.hrms-toolbar > * { flex: 1 1 150px; }
+.hrms-record-grid { display: grid !important; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important; }
