@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { normalizeAmount, sanitizeText, validateEmail, validatePhone } from './security.js';
@@ -655,6 +656,16 @@ export default function Phase3Ops({
     }
     setEditingEmployee(null);
     event.currentTarget.reset();
+  };
+
+  const deleteEmployee = async (employee) => {
+    if (confirm(`Are you sure you want to delete employee ${employee?.fullName || employee?.name}?`)) {
+      setEmployees((prev) => prev.filter((e) => e.id !== employee.id));
+      onStatus?.(`Employee deleted.`);
+      if (globalThis.supabase) {
+        await globalThis.supabase.from('employees').delete().eq('id', employee.id).catch(() => {});
+      }
+    }
   };
 
   const markAttendance = async (employee, status) => {
@@ -2158,9 +2169,11 @@ export default function Phase3Ops({
           </section>
         )}
 
-        {canViewEmployeeMaster && selectedEmployee && (
-          <section className="panel hrms-profile-panel">
-            <div className="hrms-profile-header">
+        {canViewEmployeeMaster && selectedEmployee && createPortal(
+          <div className="modal-backdrop" style={{ zIndex: 9998 }}>
+            <div className="modal-content hrms-profile-modal" style={{ maxWidth: '900px', width: '95vw', maxHeight: '90vh', overflowY: 'auto', padding: 0 }}>
+              <section className="panel hrms-profile-panel" style={{ border: 'none', boxShadow: 'none', margin: 0 }}>
+                <div className="hrms-profile-header">
               <div className="hrms-avatar large">{employeeDisplayName(selectedEmployee).slice(0, 1).toUpperCase()}</div>
               <div>
                 <span className="eyebrow">Employee Profile</span>
@@ -2447,11 +2460,13 @@ export default function Phase3Ops({
                 </article>
               )}
             </div>
-          </section>
+              </section>
+            </div>
+          </div>, document.body
         )}
 
-      {loginManageModal && (
-        <div className="modal-overlay">
+      {loginManageModal && createPortal(
+        <div className="modal-backdrop" style={{ zIndex: 9999 }}>
           <div className="modal-content" style={{ maxWidth: '600px' }}>
             <div className="modal-header">
               <h2>Manage Login Access: {loginManageModal.name}</h2>
@@ -2533,7 +2548,7 @@ export default function Phase3Ops({
               </div>
             </div>
           </div>
-        </div>
+        </div>, document.body
       )}
       </section>
     );
