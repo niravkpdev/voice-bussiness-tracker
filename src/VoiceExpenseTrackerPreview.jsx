@@ -71,7 +71,6 @@ import {
   updateCompanyMember,
   uploadHrmsDocument,
   removeCompanyMember,
-  loadCurrentEmployeeUserMapping,
   employeeChangePassword,
 } from './supabaseClient.js';
 import {
@@ -1128,7 +1127,7 @@ export default function VoiceExpenseTrackerPreview() {
 
     if (supabaseEnabled && restoreCloud) {
       try {
-        const mappingData = await loadCurrentEmployeeUserMapping();
+        const mappingData = await loadCurrentEmployeeMapping();
         if (mappingData) {
           employeeMapping = mappingData;
           mappedRole = 'Employee';
