@@ -3,6 +3,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { normalizeAmount, sanitizeText, validateEmail, validatePhone } from './security.js';
 import { readScopedString, writeScopedString } from './storageScope.js';
+import { createEmployeeLogin, resetEmployeePassword, disableEmployeeLogin } from './supabaseClient.js';
 
 const ORDER_KEY = 'phase3Orders';
 const EMPLOYEE_KEY = 'phase3Employees';
@@ -57,6 +58,7 @@ const EMPLOYEE_PROFILE_TABS = [
   'Attendance',
   'Documents',
   'Notes / Description',
+  'Login & Access',
 ];
 
 function readArray(key) {
@@ -236,6 +238,10 @@ export default function Phase3Ops({
   const [employeeProfileTab, setEmployeeProfileTab] = useState(EMPLOYEE_PROFILE_TABS[0]);
   const [employeeSearch, setEmployeeSearch] = useState('');
   const [employeeDepartmentFilter, setEmployeeDepartmentFilter] = useState('All');
+  
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginStatusMsg, setLoginStatusMsg] = useState({ text: '', type: '' });
   const [employeeStatusFilter, setEmployeeStatusFilter] = useState('All');
   const [employeePage, setEmployeePage] = useState(1);
   const [attendanceEmployeeFilter, setAttendanceEmployeeFilter] = useState('All');
@@ -2163,11 +2169,19 @@ export default function Phase3Ops({
               <button className="secondary-button compact-button" type="button" onClick={() => setSelectedEmployee(null)}>Close</button>
             </div>
             <div className="hrms-tabs">
-              {EMPLOYEE_PROFILE_TABS.map((tab) => (
-                <button className={employeeProfileTab === tab ? 'active' : ''} key={tab} type="button" onClick={() => setEmployeeProfileTab(tab)}>
-                  {tab}
-                </button>
-              ))}
+              {EMPLOYEE_PROFILE_TABS.map((tab) => {
+                if (tab === 'Login & Access' && !canManageEmployees) return null;
+                return (
+                  <button className={employeeProfileTab === tab ? 'active' : ''} key={tab} type="button" onClick={() => {
+                    setEmployeeProfileTab(tab);
+                    setLoginStatusMsg({ text: '', type: '' });
+                    setLoginEmail(selectedEmployee?.email || '');
+                    setLoginPassword('');
+                  }}>
+                    {tab}
+                  </button>
+                );
+              })}
             </div>
             <div className="hrms-tab-card">
               {employeeProfileTab === 'Personal Information' && (
@@ -2350,6 +2364,85 @@ export default function Phase3Ops({
                 <article className="hrms-notes-card">
                   <strong>Description / Notes</strong>
                   <p>{selectedEmployee.notes || selectedEmployee.description || 'No notes added yet.'}</p>
+                </article>
+              )}
+
+              {employeeProfileTab === 'Login & Access' && canManageEmployees && (
+                <article className="hrms-notes-card">
+                  <strong>Login & Access Management</strong>
+                  <p className="panel-hint" style={{ marginBottom: '1rem' }}>Manage self-service login credentials for this employee. No email invitation required.</p>
+                  
+                  {loginStatusMsg.text && (
+                    <div className={`toast-message ${loginStatusMsg.type}`} style={{ marginBottom: '1rem' }}>
+                      {loginStatusMsg.text}
+                    </div>
+                  )}
+
+                  <div className="hrms-grid">
+                    <div className="hrms-form-group">
+                      <label>Employee Login Email</label>
+                      <input 
+                        type="email" 
+                        value={loginEmail} 
+                        onChange={(e) => setLoginEmail(e.target.value)}
+                        placeholder="e.g. emp@company.com" 
+                        autoComplete="off"
+                      />
+                    </div>
+                    <div className="hrms-form-group">
+                      <label>Temporary Password</label>
+                      <input 
+                        type="text" 
+                        value={loginPassword} 
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        placeholder="Min 6 characters" 
+                        autoComplete="off"
+                      />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+                    <button className="manual-button" type="button" onClick={async () => {
+                      if (!loginEmail || !loginPassword || loginPassword.length < 6) {
+                        setLoginStatusMsg({ text: 'Please provide valid email and at least 6 char password.', type: 'error' });
+                        return;
+                      }
+                      setLoginStatusMsg({ text: 'Creating login...', type: 'info' });
+                      const { error } = await createEmployeeLogin(loginEmail, loginPassword, selectedEmployee.id, profile?.businessId);
+                      if (error) {
+                        setLoginStatusMsg({ text: 'Error: ' + error.message, type: 'error' });
+                      } else {
+                        setLoginStatusMsg({ text: 'Login created successfully!', type: 'success' });
+                        setLoginPassword('');
+                      }
+                    }}>Create Login</button>
+                    
+                    <button className="secondary-button" type="button" onClick={async () => {
+                      if (!loginPassword || loginPassword.length < 6) {
+                        setLoginStatusMsg({ text: 'Please provide at least 6 char new password to reset.', type: 'error' });
+                        return;
+                      }
+                      setLoginStatusMsg({ text: 'Resetting password...', type: 'info' });
+                      const { error } = await resetEmployeePassword(selectedEmployee.id, profile?.businessId, loginPassword);
+                      if (error) {
+                        setLoginStatusMsg({ text: 'Error: ' + error.message, type: 'error' });
+                      } else {
+                        setLoginStatusMsg({ text: 'Password reset successfully!', type: 'success' });
+                        setLoginPassword('');
+                      }
+                    }}>Reset Password</button>
+
+                    <button className="secondary-button" type="button" style={{ color: 'var(--danger-color)', borderColor: 'var(--danger-color)' }} onClick={async () => {
+                      if (confirm('Are you sure you want to disable login access for this employee?')) {
+                        setLoginStatusMsg({ text: 'Disabling login...', type: 'info' });
+                        const { error } = await disableEmployeeLogin(selectedEmployee.id, profile?.businessId);
+                        if (error) {
+                          setLoginStatusMsg({ text: 'Error: ' + error.message, type: 'error' });
+                        } else {
+                          setLoginStatusMsg({ text: 'Login disabled.', type: 'success' });
+                        }
+                      }
+                    }}>Disable Login</button>
+                  </div>
                 </article>
               )}
             </div>

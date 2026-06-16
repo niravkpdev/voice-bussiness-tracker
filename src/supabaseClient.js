@@ -189,6 +189,92 @@ async function getCurrentSupabaseUser(client = getSupabaseClient()) {
   return data?.user || null;
 }
 
+export async function createEmployeeLogin(email, password, employeeId, businessId) {
+  const client = getSupabaseClient();
+  if (!client) return { error: { message: 'No Supabase client' } };
+  
+  const currentUid = await ensureAuthenticated();
+  if (!currentUid) return { error: { message: 'Not authenticated' } };
+
+  cloudInfo('[Creating employee login]', { email, employeeId, businessId });
+  const { data, error } = await withCloudTimeout(
+    client.rpc('create_employee_login', {
+      p_email: email,
+      p_password: password,
+      p_employee_id: employeeId,
+      p_business_id: businessId || 'default',
+    }),
+    { operation: 'rpc:create_employee_login' }
+  );
+
+  if (error) {
+    cloudError('[createEmployeeLogin error]', error);
+    return { error };
+  }
+  return { data, error: null };
+}
+
+export async function resetEmployeePassword(employeeId, businessId, newPassword) {
+  const client = getSupabaseClient();
+  if (!client) return { error: { message: 'No Supabase client' } };
+
+  const { data, error } = await withCloudTimeout(
+    client.rpc('reset_employee_password', {
+      p_employee_id: employeeId,
+      p_business_id: businessId || 'default',
+      p_new_password: newPassword,
+    }),
+    { operation: 'rpc:reset_employee_password' }
+  );
+
+  if (error) {
+    cloudError('[resetEmployeePassword error]', error);
+    return { error };
+  }
+  return { data, error: null };
+}
+
+export async function disableEmployeeLogin(employeeId, businessId) {
+  const client = getSupabaseClient();
+  if (!client) return { error: { message: 'No Supabase client' } };
+
+  const { data, error } = await withCloudTimeout(
+    client.rpc('disable_employee_login', {
+      p_employee_id: employeeId,
+      p_business_id: businessId || 'default',
+    }),
+    { operation: 'rpc:disable_employee_login' }
+  );
+
+  if (error) {
+    cloudError('[disableEmployeeLogin error]', error);
+    return { error };
+  }
+  return { data, error: null };
+}
+
+export async function employeeChangePassword(newPassword) {
+  const client = getSupabaseClient();
+  if (!client) return { error: { message: 'No Supabase client' } };
+
+  const { data, error } = await withCloudTimeout(
+    client.rpc('employee_change_password', {
+      p_new_password: newPassword,
+    }),
+    { operation: 'rpc:employee_change_password' }
+  );
+
+  if (error) {
+    cloudError('[employeeChangePassword error]', error);
+    return { error };
+  }
+  
+  // also refresh session
+  await client.auth.refreshSession();
+  return { data, error: null };
+}
+
+
 function userPayload(user, extra = {}) {
   const metadata = user?.user_metadata || {};
   return {
@@ -200,6 +286,7 @@ function userPayload(user, extra = {}) {
     provider: user?.app_metadata?.provider || extra.provider || 'email',
     emailVerified: Boolean(user?.email_confirmed_at || user?.confirmed_at),
     confirmationSentAt: user?.confirmation_sent_at || extra.confirmationSentAt || '',
+    forcePasswordChange: Boolean(user?.app_metadata?.force_password_change),
     confirmedAt: user?.email_confirmed_at || user?.confirmed_at || extra.confirmedAt || '',
     lastSignInAt: user?.last_sign_in_at || extra.lastSignInAt || '',
     sessionState: extra.sessionState || 'unknown',

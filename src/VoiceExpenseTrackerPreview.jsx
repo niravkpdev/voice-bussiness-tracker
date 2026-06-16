@@ -71,6 +71,8 @@ import {
   updateCompanyMember,
   uploadHrmsDocument,
   removeCompanyMember,
+  loadCurrentEmployeeUserMapping,
+  employeeChangePassword,
 } from './supabaseClient.js';
 import {
   canRunRateLimitedAction,
@@ -1121,12 +1123,33 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const applyAuthenticatedUser = async (nextUser, { restoreCloud = true } = {}) => {
+    let mappedRole = nextUser.role || 'Owner';
+    let employeeMapping = null;
+
+    if (supabaseEnabled && restoreCloud) {
+      try {
+        const mappingData = await loadCurrentEmployeeUserMapping();
+        if (mappingData) {
+          employeeMapping = mappingData;
+          mappedRole = 'Employee';
+          if (mappingData.status !== 'active') {
+            setSecureError('Your employee access is disabled.');
+            signOutSupabase();
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('Could not load employee mapping:', err);
+      }
+    }
+
     let scopedUser = {
       ...nextUser,
-      uid: nextUser.uid || nextUser.email,
+      uid: employeeMapping ? employeeMapping.ownerUserId : (nextUser.uid || nextUser.email),
       authUid: nextUser.uid || nextUser.email,
-      role: nextUser.role || 'Owner',
+      role: mappedRole,
       loginAt: new Date().toISOString(),
+      employeeMapping,
     };
 
     setStorageScope(scopedUser.uid || scopedUser.email);
@@ -1134,13 +1157,24 @@ export default function VoiceExpenseTrackerPreview() {
       localStorage.setItem(AUTH_KEY, JSON.stringify(scopedUser));
     }
     setAuthUser(scopedUser);
-    setAuthView(REQUIRE_VERIFIED_EMAIL && !scopedUser.emailVerified ? 'verify-email' : 'app');
-    setSecureError('');
-
+    
     if (REQUIRE_VERIFIED_EMAIL && !scopedUser.emailVerified) {
+      setAuthView('verify-email');
+      setSecureError('');
       setStatus('Email verification required');
       return;
     }
+
+    if (scopedUser.forcePasswordChange) {
+      setAuthView('force-password-change');
+      setSecureError('');
+      setStatus('Password change required for security');
+      return;
+    }
+
+    setAuthView('app');
+    setSecureError('');
+    setAppLoading(false);
 
     if (restoreCloud && supabaseEnabled) {
       try {
@@ -2038,9 +2072,9 @@ export default function VoiceExpenseTrackerPreview() {
           lastAuthActionAt: supabaseUser?.lastAuthActionAt || new Date().toISOString(),
         });
         await applyAuthenticatedUser(supabaseUser);
-        if (supabaseUser?.emailVerified) {
+        if (supabaseUser?.emailVerified && !supabaseUser?.forcePasswordChange) {
           setStatus('Secure Supabase login active');
-        } else {
+        } else if (!supabaseUser?.emailVerified) {
           setAuthNotice(supabaseUser?.alreadyExistsUnconfirmedLikely
             ? 'This email may already be registered but not verified. Click Resend Verification Email, then check Inbox, Spam, and Promotions folders.'
             : 'Verification email sent. Check Inbox, Spam, and Promotions folders.');
@@ -3982,6 +4016,48 @@ export default function VoiceExpenseTrackerPreview() {
               </form>
               <button className="saas-google-button" type="button" onClick={logout} disabled={authLoading}>
                 Cancel and Login
+              </button>
+            </div>
+          </section>
+        ) : authView === 'force-password-change' ? (
+          <section className="auth-page">
+            <div className="auth-card">
+              <span className="saas-kicker">Security Action Required</span>
+              <h2>Change Your Password</h2>
+              <p>Since this is your first time logging in, or your password was reset by an admin, you must choose a new password.</p>
+              {secureError && <div className="notice error">{secureError}</div>}
+              {authNotice && <div className="notice">{authNotice}</div>}
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                setAuthLoading(true);
+                const pwd = e.target.elements.newPassword.value;
+                if (!pwd || pwd.length < 6) {
+                  setSecureError('Password must be at least 6 characters.');
+                  setAuthLoading(false);
+                  return;
+                }
+                try {
+                  const { error } = await employeeChangePassword(pwd);
+                  if (error) throw error;
+                  setAuthNotice('Password updated successfully! Redirecting...');
+                  setSecureError('');
+                  setTimeout(() => {
+                    setAuthView('app');
+                  }, 1500);
+                } catch (err) {
+                  setSecureError(err.message || 'Failed to update password');
+                } finally {
+                  setAuthLoading(false);
+                }
+              }}>
+                <label className="field-label" htmlFor="newPassword">New Password</label>
+                <input id="newPassword" name="newPassword" type="password" placeholder="Min 6 characters" required autoComplete="new-password" />
+                <button className="saas-primary-button full" type="submit" disabled={authLoading}>
+                  {authLoading ? 'Updating...' : 'Update Password & Continue'}
+                </button>
+              </form>
+              <button className="secondary-button compact-button" style={{ marginTop: '1rem', width: '100%' }} onClick={() => signOutSupabase()}>
+                Cancel and Log Out
               </button>
             </div>
           </section>
