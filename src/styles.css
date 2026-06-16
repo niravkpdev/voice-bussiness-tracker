@@ -6619,6 +6619,8 @@ fieldset {
 .hrms-profile-panel {
   background: #ffffff !important;
   color: #111827 !important;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .hrms-form-grid {
@@ -6781,6 +6783,7 @@ fieldset {
   gap: 10px;
   margin: 18px 0;
   overflow-x: auto;
+  max-width: 100%;
   padding-bottom: 6px;
   -webkit-overflow-scrolling: touch;
 }

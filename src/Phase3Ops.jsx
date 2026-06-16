@@ -2451,13 +2451,13 @@ export default function Phase3Ops({
         )}
 
       {loginManageModal && (
-        <div className="hrms-modal-overlay">
-          <div className="hrms-modal-content" style={{ maxWidth: '600px' }}>
-            <div className="hrms-modal-header">
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '600px' }}>
+            <div className="modal-header">
               <h2>Manage Login Access: {loginManageModal.name}</h2>
               <button className="close-button" type="button" onClick={() => setLoginManageModal(null)}>×</button>
             </div>
-            <div className="hrms-modal-body">
+            <div className="modal-body">
               <p className="panel-hint" style={{ marginBottom: '1rem' }}>Manage self-service login credentials for this employee. No email invitation required.</p>
               
               {loginStatusMsg.text && (
