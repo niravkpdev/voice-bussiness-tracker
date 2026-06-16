@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { normalizeAmount, sanitizeText, validateEmail, validatePhone } from './security.js';
 import { readScopedString, writeScopedString } from './storageScope.js';
 
@@ -241,6 +243,7 @@ export default function Phase3Ops({
   const [editingHoliday, setEditingHoliday] = useState(null);
   const [editingSalaryRecord, setEditingSalaryRecord] = useState(null);
   const [editingPayslip, setEditingPayslip] = useState(null);
+  const [generatingPayslipId, setGeneratingPayslipId] = useState(null);
   const [editingEmployeeDocument, setEditingEmployeeDocument] = useState(null);
   const [documentCategoryFilter, setDocumentCategoryFilter] = useState('All');
   const [editingPayment, setEditingPayment] = useState(null);
@@ -2174,6 +2177,7 @@ export default function Phase3Ops({
                             <span className={`hrms-status ${payslip.status === 'Draft' ? 'inactive' : ''}`}>{payslip.status}</span>
                             <div className="voucher-actions">
                               {(payslip.storagePath || payslip.storage_path) && <button className="share-entry-button" type="button" onClick={() => downloadHrmsFile(payslip.storagePath || payslip.storage_path)}>Download</button>}
+                              {canManageSalary && <button className="share-entry-button" type="button" onClick={() => generatePayslipPdf(payslip, selectedEmployee)} disabled={generatingPayslipId === payslip.id}>{generatingPayslipId === payslip.id ? 'Generating...' : (payslip.storagePath || payslip.storage_path ? 'Regenerate PDF' : 'Generate PDF')}</button>}
                               {canManageSalary && <button className="share-entry-button" type="button" onClick={() => setEditingPayslip(payslip)}>Edit</button>}
                               {canManageSalary && <button className="delete-entry-button" type="button" onClick={() => deletePayslip(payslip)}>Delete</button>}
                             </div>
