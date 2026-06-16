@@ -7,6 +7,7 @@ const EMPLOYEE_KEY = 'phase3Employees';
 const ATTENDANCE_KEY = 'phase3Attendance';
 const LEAVE_BALANCE_KEY = 'phase3LeaveBalances';
 const LEAVE_REQUEST_KEY = 'phase3LeaveRequests';
+const LEAVE_POLICY_KEY = 'phase3LeavePolicies';
 const HOLIDAY_KEY = 'phase3Holidays';
 const SALARY_HISTORY_KEY = 'phase3SalaryHistory';
 const PAYSLIP_KEY = 'phase3Payslips';
@@ -186,6 +187,7 @@ export default function Phase3Ops({
   cloudAttendance,
   cloudLeaveBalances,
   cloudLeaveRequests,
+  cloudLeavePolicies,
   cloudHolidays,
   cloudSalaryHistory,
   cloudPayslips,
@@ -213,6 +215,7 @@ export default function Phase3Ops({
   const [attendance, setAttendance] = useState(() => readArray(ATTENDANCE_KEY));
   const [leaveBalances, setLeaveBalances] = useState(() => readArray(LEAVE_BALANCE_KEY));
   const [leaveRequests, setLeaveRequests] = useState(() => readArray(LEAVE_REQUEST_KEY));
+  const [leavePolicies, setLeavePolicies] = useState(() => readArray(LEAVE_POLICY_KEY));
   const [holidays, setHolidays] = useState(() => readArray(HOLIDAY_KEY));
   const [salaryHistory, setSalaryHistory] = useState(() => readArray(SALARY_HISTORY_KEY));
   const [payslips, setPayslips] = useState(() => readArray(PAYSLIP_KEY));
@@ -231,6 +234,7 @@ export default function Phase3Ops({
   const [attendanceEmployeeFilter, setAttendanceEmployeeFilter] = useState('All');
   const [attendanceMonthFilter, setAttendanceMonthFilter] = useState(monthKey());
   const [editingAttendance, setEditingAttendance] = useState(null);
+  const [editingLeavePolicy, setEditingLeavePolicy] = useState(null);
   const [leaveEmployeeFilter, setLeaveEmployeeFilter] = useState('All');
   const [leaveStatusFilter, setLeaveStatusFilter] = useState('All');
   const [leaveTypeFilter, setLeaveTypeFilter] = useState('All');
@@ -267,6 +271,7 @@ export default function Phase3Ops({
   useEffect(() => writeArray(ATTENDANCE_KEY, attendance), [attendance]);
   useEffect(() => writeArray(LEAVE_BALANCE_KEY, leaveBalances), [leaveBalances]);
   useEffect(() => writeArray(LEAVE_REQUEST_KEY, leaveRequests), [leaveRequests]);
+  useEffect(() => writeArray(LEAVE_POLICY_KEY, leavePolicies), [leavePolicies]);
   useEffect(() => writeArray(HOLIDAY_KEY, holidays), [holidays]);
   useEffect(() => writeArray(SALARY_HISTORY_KEY, salaryHistory), [salaryHistory]);
   useEffect(() => writeArray(PAYSLIP_KEY, payslips), [payslips]);
@@ -292,6 +297,9 @@ export default function Phase3Ops({
   useEffect(() => {
     if (Array.isArray(cloudLeaveRequests)) setLeaveRequests(cloudLeaveRequests);
   }, [cloudLeaveRequests]);
+  useEffect(() => {
+    if (Array.isArray(cloudLeavePolicies)) setLeavePolicies(cloudLeavePolicies);
+  }, [cloudLeavePolicies]);
   useEffect(() => {
     if (Array.isArray(cloudHolidays)) setHolidays(cloudHolidays);
   }, [cloudHolidays]);
@@ -324,7 +332,7 @@ export default function Phase3Ops({
   }, [cloudOfflineQueue]);
   useEffect(() => {
     onCloudSnapshot?.('phase3_ops_updated');
-  }, [orders, employees, attendance, leaveBalances, leaveRequests, holidays, salaryHistory, payslips, employeeDocuments, auditLogs, payments, offlineQueue, subscription, security, devices]);
+  }, [orders, employees, attendance, leaveBalances, leaveRequests, leavePolicies, holidays, salaryHistory, payslips, employeeDocuments, auditLogs, payments, offlineQueue, subscription, security, devices]);
 
   useEffect(() => {
     setEmployeePage(1);
@@ -718,7 +726,9 @@ export default function Phase3Ops({
     const key = `${employee.id}-${leaveType}`;
     const existing = leaveBalancesByEmployee.get(key);
     if (existing) return existing;
+    const activePolicy = leavePolicies.find((p) => (p.leaveType === leaveType || p.leave_type === leaveType) && p.status === 'Active');
     const typeInfo = LEAVE_TYPES.find((type) => type.id === leaveType) || LEAVE_TYPES[0];
+    const allocation = activePolicy ? Number(activePolicy.yearlyAllocation || activePolicy.yearly_allocation) : typeInfo.allocation;
     const balance = {
       id: `leave-bal-${employee.id}-${leaveType}`,
       employeeId: employee.id,
@@ -726,12 +736,12 @@ export default function Phase3Ops({
       employeeName: employeeDisplayName(employee),
       leaveType,
       leave_type: leaveType,
-      yearlyAllocation: typeInfo.allocation,
-      yearly_allocation: typeInfo.allocation,
+      yearlyAllocation: allocation,
+      yearly_allocation: allocation,
       usedLeaves: 0,
       used_leaves: 0,
-      remainingLeaves: typeInfo.allocation,
-      remaining_leaves: typeInfo.allocation,
+      remainingLeaves: allocation,
+      remaining_leaves: allocation,
       businessId: 'default',
       companyId: 'default',
       createdAt: new Date().toISOString(),
@@ -796,6 +806,79 @@ export default function Phase3Ops({
     setLeaveRequests((items) => [request, ...items]);
     await logAudit(`leave applied: ${request.employeeName} ${leaveType} ${startDate} to ${endDate}`, 'Leave');
     event.currentTarget.reset();
+  };
+  const exportAttendanceReport = async () => {
+    const csvContent = [
+      ['Employee Name', 'Date', 'In Time', 'Out Time', 'Hours', 'Status', 'Late Mark'],
+      ...filteredAttendance.map(entry => [
+        entry.name || employees.find((employee) => employee.id === entry.employeeId)?.name || 'Employee',
+        entry.attendanceDate || entry.date,
+        entry.inTime || entry.in_time || '--',
+        entry.outTime || entry.out_time || '--',
+        entry.workingHours ?? entry.working_hours ?? 0,
+        entry.status,
+        (entry.lateMark || entry.late_mark) ? 'Yes' : 'No'
+      ])
+    ].map(e => e.map(field => `"${String(field).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Attendance_Report_${attendanceMonthFilter}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    await logAudit(`Exported attendance report for ${attendanceMonthFilter}`, 'Attendance Reports');
+  };
+
+  const saveLeavePolicy = async (event) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const current = editingLeavePolicy;
+    const leaveType = form.get('leaveType');
+    const policy = {
+      ...(current || {}),
+      id: current?.id || createId('lpol'),
+      leaveType,
+      leave_type: leaveType,
+      yearlyAllocation: normalizeAmount(form.get('yearlyAllocation')),
+      yearly_allocation: normalizeAmount(form.get('yearlyAllocation')),
+      carryForwardAllowed: form.get('carryForwardAllowed') === 'on',
+      carry_forward_allowed: form.get('carryForwardAllowed') === 'on',
+      maxCarryForwardDays: normalizeAmount(form.get('maxCarryForwardDays')),
+      max_carry_forward_days: normalizeAmount(form.get('maxCarryForwardDays')),
+      encashmentAllowed: form.get('encashmentAllowed') === 'on',
+      encashment_allowed: form.get('encashmentAllowed') === 'on',
+      halfDayAllowed: form.get('halfDayAllowed') === 'on',
+      half_day_allowed: form.get('halfDayAllowed') === 'on',
+      negativeBalanceAllowed: form.get('negativeBalanceAllowed') === 'on',
+      negative_balance_allowed: form.get('negativeBalanceAllowed') === 'on',
+      approvalRequired: form.get('approvalRequired') === 'on',
+      approval_required: form.get('approvalRequired') === 'on',
+      excludeHolidays: form.get('excludeHolidays') === 'on',
+      exclude_holidays: form.get('excludeHolidays') === 'on',
+      excludeWeekends: form.get('excludeWeekends') === 'on',
+      exclude_weekends: form.get('excludeWeekends') === 'on',
+      effectiveFrom: form.get('effectiveFrom') || today(),
+      effective_from: form.get('effectiveFrom') || today(),
+      status: form.get('status') || 'Active',
+      businessId: 'default',
+      companyId: 'default',
+      createdAt: current?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    try {
+      await persistRecord('leave_policies', policy, 'Leave policy save failed');
+    } catch (error) {
+      onStatus(error?.message || 'Leave policy save failed');
+      return;
+    }
+    setLeavePolicies((items) => [policy, ...items.filter((item) => item.id !== policy.id)]);
+    await logAudit(`${current ? 'leave policy updated' : 'leave policy created'}: ${leaveType}`, 'Leave Policies');
+    if (current && current.status !== policy.status) {
+      await logAudit(`leave policy status changed: ${leaveType} to ${policy.status}`, 'Leave Policies');
+    }
+    setEditingLeavePolicy(null);
   };
 
   const decideLeaveRequest = async (request, decision) => {
@@ -1791,6 +1874,50 @@ export default function Phase3Ops({
           </section>
         )}
 
+        {(canManageAttendance || canViewSalary) && (
+          <section className="panel hrms-phaseb-panel">
+            <div className="section-header">
+              <div>
+                <h2>Attendance Reports</h2>
+                <p className="panel-hint">Monthly summaries, work hours, and export.</p>
+              </div>
+              <button className="manual-button" type="button" onClick={exportAttendanceReport}>Export CSV</button>
+            </div>
+            <div className="hrms-summary-grid">
+              <div className="summary-card"><span>Total Present</span><strong>{attendanceSummary.present}</strong></div>
+              <div className="summary-card"><span>Total Absent</span><strong>{attendanceSummary.absent}</strong></div>
+              <div className="summary-card"><span>Total Late</span><strong>{attendanceSummary.late}</strong></div>
+              <div className="summary-card"><span>Total Hours</span><strong>{filteredAttendance.reduce((sum, e) => sum + (Number(e.workingHours ?? e.working_hours) || 0), 0)}</strong></div>
+            </div>
+            <div className="hrms-table-container">
+              <table className="hrms-table">
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Date</th>
+                    <th>In Time</th>
+                    <th>Out Time</th>
+                    <th>Hours</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAttendance.slice(0, 50).map(entry => (
+                    <tr key={entry.id}>
+                      <td>{entry.name || employees.find(e => e.id === entry.employeeId)?.name || 'Employee'}</td>
+                      <td>{entry.attendanceDate || entry.date}</td>
+                      <td>{entry.inTime || entry.in_time || '--'}</td>
+                      <td>{entry.outTime || entry.out_time || '--'}</td>
+                      <td>{entry.workingHours ?? entry.working_hours ?? 0}</td>
+                      <td><span className={`attendance-pill ${entry.status === 'Absent' ? 'absent' : entry.status === 'Present' ? 'present' : ''}`}>{attendanceStatusLabel(entry.status)}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
         {canViewEmployeeMaster && (
           <section className="panel hrms-phaseb-panel">
             <div className="section-header">
@@ -1896,6 +2023,54 @@ export default function Phase3Ops({
                       <button className="delete-entry-button" type="button" onClick={() => deleteHoliday(holiday)}>Delete</button>
                     </div>
                   )}
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {canManageLeave && (
+          <section className="panel hrms-phaseb-panel">
+            <div className="section-header">
+              <div>
+                <h2>Leave Policies</h2>
+                <p className="panel-hint">Configure allocation, carry-forward, and encashment rules for leave types.</p>
+              </div>
+              <span>{leavePolicies.length} policies</span>
+            </div>
+
+            <form className="hrms-inline-form" onSubmit={saveLeavePolicy} key={editingLeavePolicy?.id || 'lpol-new'}>
+              <select name="leaveType" defaultValue={editingLeavePolicy?.leaveType || editingLeavePolicy?.leave_type || 'SL'}>
+                <option value="SL">Sick Leave (SL)</option>
+                <option value="CL">Casual Leave (CL)</option>
+                <option value="PL">Privilege Leave (PL)</option>
+              </select>
+              <input name="yearlyAllocation" type="number" min="0" defaultValue={editingLeavePolicy?.yearlyAllocation || editingLeavePolicy?.yearly_allocation || 0} placeholder="Yearly Allocation" required />
+              <input name="maxCarryForwardDays" type="number" min="0" defaultValue={editingLeavePolicy?.maxCarryForwardDays || editingLeavePolicy?.max_carry_forward_days || 0} placeholder="Max Carry Forward" />
+              <label className="hrms-check"><input name="carryForwardAllowed" type="checkbox" defaultChecked={Boolean(editingLeavePolicy?.carryForwardAllowed || editingLeavePolicy?.carry_forward_allowed)} /> Carry</label>
+              <label className="hrms-check"><input name="encashmentAllowed" type="checkbox" defaultChecked={Boolean(editingLeavePolicy?.encashmentAllowed || editingLeavePolicy?.encashment_allowed)} /> Encash</label>
+              <label className="hrms-check"><input name="halfDayAllowed" type="checkbox" defaultChecked={Boolean(editingLeavePolicy?.halfDayAllowed || editingLeavePolicy?.half_day_allowed)} /> Half Day</label>
+              <label className="hrms-check"><input name="negativeBalanceAllowed" type="checkbox" defaultChecked={Boolean(editingLeavePolicy?.negativeBalanceAllowed || editingLeavePolicy?.negative_balance_allowed)} /> Negative</label>
+              <select name="status" defaultValue={editingLeavePolicy?.status || 'Active'}>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+              <button className="manual-button" type="submit">{editingLeavePolicy ? 'Update' : 'Save'}</button>
+              {editingLeavePolicy && <button className="secondary-button compact-button" type="button" onClick={() => setEditingLeavePolicy(null)}>Cancel</button>}
+            </form>
+
+            <div className="hrms-record-grid">
+              {leavePolicies.length === 0 ? <div className="empty-state">No leave policies defined.</div> : leavePolicies.map((policy) => (
+                <article className="hrms-mini-card" key={policy.id}>
+                  <div>
+                    <strong>{policy.leaveType || policy.leave_type}</strong>
+                    <p>{policy.yearlyAllocation || policy.yearly_allocation} days/year · {policy.status}</p>
+                    <p>Carry: {(policy.carryForwardAllowed || policy.carry_forward_allowed) ? `Yes (Max: ${policy.maxCarryForwardDays || policy.max_carry_forward_days})` : 'No'} · Encash: {(policy.encashmentAllowed || policy.encashment_allowed) ? 'Yes' : 'No'}</p>
+                  </div>
+                  <span className={`hrms-status ${(policy.status || 'Active').toLowerCase()}`}>{policy.status}</span>
+                  <div className="voucher-actions">
+                    <button className="share-entry-button" type="button" onClick={() => setEditingLeavePolicy(policy)}>Edit</button>
+                  </div>
                 </article>
               ))}
             </div>
