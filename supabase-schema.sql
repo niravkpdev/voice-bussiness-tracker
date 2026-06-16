@@ -133,6 +133,22 @@ create table if not exists public.employee_documents (
   primary key (user_id, id)
 );
 
+create table if not exists public.employee_user_mappings (
+  id uuid primary key default gen_random_uuid(),
+  owner_user_id uuid not null references auth.users(id) on delete cascade,
+  business_id text not null default 'default',
+  user_id uuid not null references auth.users(id) on delete cascade,
+  employee_id text not null,
+  employee_email text not null,
+  status text not null default 'active',
+  invited_at timestamptz not null default now(),
+  linked_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (owner_user_id, business_id, user_id),
+  unique (owner_user_id, business_id, employee_id)
+);
+
 create table if not exists public.payments (
   id text not null,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -446,6 +462,7 @@ alter table public.holidays enable row level security;
 alter table public.salary_history enable row level security;
 alter table public.payslips enable row level security;
 alter table public.employee_documents enable row level security;
+alter table public.employee_user_mappings enable row level security;
 alter table public.payments enable row level security;
 alter table public.audit_logs enable row level security;
 alter table public.subscriptions enable row level security;
@@ -476,6 +493,7 @@ drop policy if exists "Users manage own holidays" on public.holidays;
 drop policy if exists "Users manage own salary history" on public.salary_history;
 drop policy if exists "Users manage own payslips" on public.payslips;
 drop policy if exists "Users manage own employee documents" on public.employee_documents;
+drop policy if exists "Users manage own employee mappings" on public.employee_user_mappings;
 drop policy if exists "Users manage own payments" on public.payments;
 drop policy if exists "Users manage own audit logs" on public.audit_logs;
 drop policy if exists "Users manage own subscriptions" on public.subscriptions;
@@ -532,6 +550,10 @@ for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "Users manage own employee documents" on public.employee_documents
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy "Users manage own employee mappings" on public.employee_user_mappings
+for all using (auth.uid() = owner_user_id or auth.uid() = user_id)
+with check (auth.uid() = owner_user_id);
 
 create policy "Users manage own payments" on public.payments
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);

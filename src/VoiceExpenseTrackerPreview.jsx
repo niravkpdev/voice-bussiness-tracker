@@ -46,15 +46,20 @@ import {
   inviteCompanyMember,
   isSupabaseConfigured,
   isPasswordRecoveryRoute,
+  linkEmployeeUserMapping,
+  logEmployeeSelfServiceEvent,
   listenToSupabaseAuth,
   loadCloudCollection,
   loadCompanyMembers,
+  loadCurrentEmployeeMapping,
+  loadEmployeeUserMappings,
   loadUserProfileSettings,
   postPaymentWithLedger,
   prepareSupabasePasswordRecoverySession,
   reloadCurrentSupabaseUser,
   runSupabaseDebugTest,
   saveCloudRecord,
+  saveEmployeeSelfServiceRecord,
   saveUserProfile,
   saveUserProfileSettings,
   sendCurrentUserEmailVerification,
@@ -265,6 +270,15 @@ const navigationConfig = [
   },
 ];
 const SIDEBAR_SECTIONS = navigationConfig;
+const EMPLOYEE_SELF_TABS = [
+  ['dashboard', 'Dashboard'],
+  ['profile', 'My Profile'],
+  ['attendance', 'My Attendance'],
+  ['leaves', 'My Leaves'],
+  ['holidays', 'My Holidays'],
+  ['salary', 'My Salary/Payslips'],
+  ['documents', 'My Documents'],
+];
 
 function getSpeechRecognition() {
   return window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -850,6 +864,9 @@ export default function VoiceExpenseTrackerPreview() {
   const [cloudBusinesses, setCloudBusinesses] = useState([]);
   const [cloudNotifications, setCloudNotifications] = useState([]);
   const [companyMembers, setCompanyMembers] = useState([]);
+  const [employeeUserMappings, setEmployeeUserMappings] = useState([]);
+  const [employeeLinkForm, setEmployeeLinkForm] = useState({ employeeId: '', email: '' });
+  const [employeeSelfTab, setEmployeeSelfTab] = useState('dashboard');
   const [membersLoading, setMembersLoading] = useState(false);
   const [memberSaving, setMemberSaving] = useState(false);
   const [memberNotice, setMemberNotice] = useState('');
@@ -999,9 +1016,23 @@ export default function VoiceExpenseTrackerPreview() {
     }
   };
 
+  const refreshEmployeeUserMappings = async () => {
+    if (!supabaseEnabled || !authUser?.uid || !isCompanyOwner) {
+      setEmployeeUserMappings([]);
+      return;
+    }
+    try {
+      const mappings = await loadEmployeeUserMappings(authUser.uid, 'default');
+      setEmployeeUserMappings(mappings);
+    } catch (error) {
+      setMemberError(publicSafeError(error, 'Could not load employee login mappings. Run the HRMS Phase D SQL migration and try again.'));
+    }
+  };
+
   useEffect(() => {
     if (authView === 'app' && hasVerifiedAccess) {
       refreshCompanyMembers();
+      refreshEmployeeUserMappings();
     }
   }, [authView, hasVerifiedAccess, authUser?.uid, authUser?.role, supabaseEnabled]);
 
@@ -1090,9 +1121,10 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const applyAuthenticatedUser = async (nextUser, { restoreCloud = true } = {}) => {
-    const scopedUser = {
+    let scopedUser = {
       ...nextUser,
       uid: nextUser.uid || nextUser.email,
+      authUid: nextUser.uid || nextUser.email,
       role: nextUser.role || 'Owner',
       loginAt: new Date().toISOString(),
     };
@@ -1110,9 +1142,96 @@ export default function VoiceExpenseTrackerPreview() {
       return;
     }
 
+    if (restoreCloud && supabaseEnabled) {
+      try {
+        const mapping = await loadCurrentEmployeeMapping();
+        if (mapping?.ownerUserId && mapping?.employeeId) {
+          scopedUser = {
+            ...scopedUser,
+            uid: mapping.ownerUserId,
+            ownerUid: mapping.ownerUserId,
+            authUid: nextUser.uid || scopedUser.authUid,
+            role: 'Employee',
+            employeeId: mapping.employeeId,
+            employeeMappingId: mapping.id,
+            businessId: mapping.businessId || 'default',
+          };
+          setStorageScope(scopedUser.uid);
+          setAuthUser(scopedUser);
+          setEmployeeSelfTab('dashboard');
+        }
+      } catch (error) {
+        debugError('EMPLOYEE_MAPPING_LOAD_ERROR', {
+          code: error?.code || null,
+          message: error?.message || String(error),
+        });
+      }
+    }
+
     let cloudTransactions = null;
     let cloudProfile = null;
     if (restoreCloud && supabaseEnabled && scopedUser.uid) {
+      if (String(scopedUser.role || '').toLowerCase() === 'employee') {
+        const loadEmployeeCollection = async (tableName) => {
+          try {
+            const rows = await loadCloudCollection(scopedUser.uid, tableName);
+            return { ok: true, tableName, rows };
+          } catch (error) {
+            debugError('SUPABASE_EMPLOYEE_MODULE_LOAD_ERROR', {
+              tableName,
+              uid: scopedUser.uid,
+              employeeId: scopedUser.employeeId,
+              code: error?.code || null,
+              message: error?.message || String(error),
+            });
+            return { ok: false, tableName, rows: [], error };
+          }
+        };
+        const [
+          employeesResult,
+          attendanceResult,
+          leaveBalancesResult,
+          leaveRequestsResult,
+          holidaysResult,
+          salaryHistoryResult,
+          payslipsResult,
+          employeeDocumentsResult,
+        ] = await Promise.all([
+          loadEmployeeCollection('employees'),
+          loadEmployeeCollection('attendance'),
+          loadEmployeeCollection('leave_balances'),
+          loadEmployeeCollection('leave_requests'),
+          loadEmployeeCollection('holidays'),
+          loadEmployeeCollection('salary_history'),
+          loadEmployeeCollection('payslips'),
+          loadEmployeeCollection('employee_documents'),
+        ]);
+        setCloudEmployees(employeesResult.ok ? employeesResult.rows : []);
+        setCloudAttendance(attendanceResult.ok ? attendanceResult.rows : []);
+        setCloudLeaveBalances(leaveBalancesResult.ok ? leaveBalancesResult.rows : []);
+        setCloudLeaveRequests(leaveRequestsResult.ok ? leaveRequestsResult.rows : []);
+        setCloudHolidays(holidaysResult.ok ? holidaysResult.rows : []);
+        setCloudSalaryHistory(salaryHistoryResult.ok ? salaryHistoryResult.rows : []);
+        setCloudPayslips(payslipsResult.ok ? payslipsResult.rows : []);
+        setCloudEmployeeDocuments(employeeDocumentsResult.ok ? employeeDocumentsResult.rows : []);
+        setCloudCustomers([]);
+        setCloudSuppliers([]);
+        setCloudInventory([]);
+        setCloudStockTransactions([]);
+        setCloudInvoices([]);
+        setCloudOrders([]);
+        setCloudPayments([]);
+        setVouchers([]);
+        setLedgers([]);
+        setLogs([]);
+        setProfile(readProfile());
+        setAppLoading(false);
+        setTransactionsLoading(false);
+        setPeopleLoading(false);
+        setAuthView('app');
+        setStatus('Employee self-service login active');
+        return;
+      }
       const transactionPath = `users/${scopedUser.uid}/transactions`;
       debugInfo('SUPABASE_PATH_USED', {
         feature: 'transactions_load',
@@ -1815,6 +1934,58 @@ export default function VoiceExpenseTrackerPreview() {
     }
   };
 
+  const handleLinkEmployeeUser = async (event) => {
+    event.preventDefault();
+    if (!requireSensitiveAccess('employee login mapping')) return;
+    if (!isCompanyOwner) {
+      setMemberError('Only the company owner can link employee login access.');
+      return;
+    }
+    const email = sanitizeEmail(employeeLinkForm.email);
+    if (!employeeLinkForm.employeeId || !validateEmail(email)) {
+      setMemberError('Select an employee and enter the employee Supabase login email.');
+      return;
+    }
+    if (email === sanitizeEmail(authUser?.email || '')) {
+      setMemberError('You cannot map the owner login as an employee.');
+      return;
+    }
+
+    setMemberSaving(true);
+    setMemberError('');
+    setMemberNotice('');
+    try {
+      const mapping = await linkEmployeeUserMapping(authUser.uid, {
+        employeeId: employeeLinkForm.employeeId,
+        email,
+        businessId: 'default',
+      });
+      if (mapping?.id) {
+        setEmployeeUserMappings((items) => [mapping, ...(items || []).filter((item) => item.id !== mapping.id)]);
+      } else {
+        await refreshEmployeeUserMappings();
+      }
+      const auditId = `aud-${Date.now().toString(36)}-employee-map`;
+      await saveAuthenticatedCloudRecord('audit_logs', auditId, {
+        id: auditId,
+        action: 'employee login mapping updated',
+        area: 'HRMS',
+        module: 'Employee Self Service',
+        employeeId: employeeLinkForm.employeeId,
+        email,
+        businessId: 'default',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }).catch(() => false);
+      setEmployeeLinkForm({ employeeId: '', email: '' });
+      setMemberNotice('Employee login linked. Employee will see only self-service HRMS pages.');
+    } catch (error) {
+      setMemberError(publicSafeError(error, 'Could not link employee login. Make sure the employee has registered with this email and run the HRMS Phase D SQL migration.'));
+    } finally {
+      setMemberSaving(false);
+    }
+  };
+
   const saveCloudDataSnapshot = (reason = 'autosave') => {
     if (!supabaseEnabled || !authUser?.uid) {
       return;
@@ -2113,6 +2284,10 @@ export default function VoiceExpenseTrackerPreview() {
     setCloudOfflineQueue([]);
     setCloudBusinesses([]);
     setCloudNotifications([]);
+    setCompanyMembers([]);
+    setEmployeeUserMappings([]);
+    setEmployeeLinkForm({ employeeId: '', email: '' });
+    setEmployeeSelfTab('dashboard');
     setTransactionsLoading(false);
     setPeopleLoading(false);
     setStatementLedgerId('');
@@ -3610,6 +3785,114 @@ export default function VoiceExpenseTrackerPreview() {
     );
   };
 
+  const isEmployeeSelfService = String(authUser?.role || '').toLowerCase() === 'employee';
+  const selfEmployee = useMemo(
+    () => cloudEmployees.find((employee) => employee.id === authUser?.employeeId) || null,
+    [authUser?.employeeId, cloudEmployees]
+  );
+  const selfAttendance = useMemo(
+    () => cloudAttendance.filter((entry) => entry.employeeId === authUser?.employeeId),
+    [authUser?.employeeId, cloudAttendance]
+  );
+  const selfLeaveBalances = useMemo(
+    () => cloudLeaveBalances.filter((entry) => entry.employeeId === authUser?.employeeId),
+    [authUser?.employeeId, cloudLeaveBalances]
+  );
+  const selfLeaveRequests = useMemo(
+    () => cloudLeaveRequests.filter((entry) => entry.employeeId === authUser?.employeeId),
+    [authUser?.employeeId, cloudLeaveRequests]
+  );
+  const selfSalaryHistory = useMemo(
+    () => cloudSalaryHistory.filter((entry) => entry.employeeId === authUser?.employeeId),
+    [authUser?.employeeId, cloudSalaryHistory]
+  );
+  const selfPayslips = useMemo(
+    () => cloudPayslips.filter((entry) => entry.employeeId === authUser?.employeeId),
+    [authUser?.employeeId, cloudPayslips]
+  );
+  const selfDocuments = useMemo(
+    () => cloudEmployeeDocuments.filter((entry) => entry.employeeId === authUser?.employeeId),
+    [authUser?.employeeId, cloudEmployeeDocuments]
+  );
+  const todaySelfAttendance = selfAttendance.find((entry) => (entry.attendanceDate || entry.date) === new Date().toISOString().slice(0, 10));
+  const selfMonth = new Date().toISOString().slice(0, 7);
+  const selfMonthlyAttendance = selfAttendance.filter((entry) => String(entry.attendanceDate || entry.date || '').startsWith(selfMonth));
+  const selfPresentCount = selfMonthlyAttendance.filter((entry) => entry.status === 'Present').length;
+  const selfAbsentCount = selfMonthlyAttendance.filter((entry) => entry.status === 'Absent').length;
+  const selfLateCount = selfMonthlyAttendance.filter((entry) => Boolean(entry.lateMark || entry.late_mark)).length;
+  const selfRemainingLeaves = selfLeaveBalances.reduce((sum, entry) => sum + Number(entry.remainingLeaves ?? entry.remaining_leaves ?? 0), 0);
+  const selfUpcomingHolidays = cloudHolidays
+    .filter((holiday) => String(holiday.holidayDate || holiday.holiday_date || '') >= new Date().toISOString().slice(0, 10))
+    .slice(0, 5);
+
+  const applyEmployeeSelfLeave = async (event) => {
+    event.preventDefault();
+    if (!isEmployeeSelfService || !selfEmployee) return;
+    const form = new FormData(event.currentTarget);
+    const startDate = form.get('startDate');
+    const endDate = form.get('endDate');
+    const leaveType = form.get('leaveType');
+    const start = new Date(`${startDate}T00:00:00`);
+    const end = new Date(`${endDate}T00:00:00`);
+    const totalDays = !Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime()) && end >= start
+      ? Math.floor((end - start) / 86_400_000) + 1
+      : 0;
+    if (!leaveType || totalDays <= 0) {
+      setStatus('Select valid leave dates');
+      return;
+    }
+    const request = {
+      id: `leave-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+      employeeId: selfEmployee.id,
+      employee_id: selfEmployee.employeeId || selfEmployee.employee_id || selfEmployee.id,
+      employeeName: selfEmployee.fullName || selfEmployee.full_name || selfEmployee.name || authUser.email,
+      leaveType,
+      leave_type: leaveType,
+      startDate,
+      start_date: startDate,
+      endDate,
+      end_date: endDate,
+      totalDays,
+      total_days: totalDays,
+      reason: sanitizeText(form.get('reason'), 400),
+      status: 'Pending',
+      businessId: authUser.businessId || 'default',
+      companyId: authUser.businessId || 'default',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    try {
+      await saveEmployeeSelfServiceRecord(authUser.uid, 'leave_requests', request.id, request);
+      setCloudLeaveRequests((items) => [request, ...items.filter((item) => item.id !== request.id)]);
+      setStatus('Leave request submitted');
+      event.currentTarget.reset();
+    } catch (error) {
+      setStatus(publicSafeError(error, 'Could not submit leave request.'));
+    }
+  };
+
+  const downloadSelfHrmsFile = async (path, record = {}) => {
+    try {
+      const url = await getAuthenticatedHrmsDocumentUrl(path);
+      if (!url) throw new Error('Secure download URL was not generated.');
+      logEmployeeSelfServiceEvent(authUser.uid, {
+        businessId: authUser.businessId || 'default',
+        employeeId: authUser.employeeId,
+        action: record.type === 'payslip' ? 'employee payslip downloaded' : 'employee document downloaded',
+        module: record.type === 'payslip' ? 'Payslips' : 'Employee Documents',
+        recordId: record.id || '',
+        metadata: { storagePath: path },
+      }).catch((error) => {
+        if (import.meta.env.DEV) {
+          debugError('[Employee self-service audit error]', error);
+        }
+      });
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      setStatus(publicSafeError(error, 'Download failed.'));
+    }
+  };
+
   if (authView !== 'app') {
     return (
       <main className="saas-public-shell">
@@ -3956,6 +4239,169 @@ export default function VoiceExpenseTrackerPreview() {
             </button>
           </div>
         </section>
+      </main>
+    );
+  }
+
+  if (isEmployeeSelfService) {
+    return (
+      <main className="employee-self-shell">
+        <header className="employee-self-header">
+          <div>
+            <span className="eyebrow">Employee Self-Service</span>
+            <h1>{selfEmployee?.fullName || selfEmployee?.full_name || selfEmployee?.name || authUser.email}</h1>
+            <p>{selfEmployee?.designation || selfEmployee?.role || 'Employee'} · {selfEmployee?.department || 'HRMS'}</p>
+          </div>
+          <button className="topbar-link" type="button" onClick={logout}>Logout</button>
+        </header>
+        <nav className="employee-self-nav" aria-label="Employee self-service navigation">
+          {EMPLOYEE_SELF_TABS.map(([id, label]) => (
+            <button className={employeeSelfTab === id ? 'active' : ''} key={id} type="button" onClick={() => setEmployeeSelfTab(id)}>
+              {label}
+            </button>
+          ))}
+        </nav>
+
+        {secureError && <div className="notice error">{secureError}</div>}
+        {!selfEmployee && <div className="notice error">Employee profile mapping was not found. Contact your company owner.</div>}
+
+        {employeeSelfTab === 'dashboard' && (
+          <section className="employee-self-grid">
+            {[
+              ['Present days', selfPresentCount],
+              ['Absent days', selfAbsentCount],
+              ['Leave balance', selfRemainingLeaves],
+              ["Today's in", todaySelfAttendance?.inTime || todaySelfAttendance?.in_time || '-'],
+              ["Today's out", todaySelfAttendance?.outTime || todaySelfAttendance?.out_time || '-'],
+              ['Working hours', todaySelfAttendance?.workingHours ?? todaySelfAttendance?.working_hours ?? '-'],
+              ['Pending leaves', selfLeaveRequests.filter((request) => request.status === 'Pending').length],
+              ['Upcoming holidays', selfUpcomingHolidays.length],
+            ].map(([label, value]) => (
+              <article className="summary-card" key={label}><span>{label}</span><strong>{value}</strong></article>
+            ))}
+          </section>
+        )}
+
+        {employeeSelfTab === 'profile' && (
+          <section className="panel employee-self-panel">
+            <h2>My Profile</h2>
+            <div className="hrms-detail-grid">
+              <div><dt>Name</dt><dd>{selfEmployee?.fullName || selfEmployee?.name || 'Not available'}</dd></div>
+              <div><dt>Email</dt><dd>{selfEmployee?.email || authUser.email}</dd></div>
+              <div><dt>Mobile</dt><dd>{selfEmployee?.mobileNumber || selfEmployee?.mobile || 'Not added'}</dd></div>
+              <div><dt>Department</dt><dd>{selfEmployee?.department || 'Not added'}</dd></div>
+              <div><dt>Designation</dt><dd>{selfEmployee?.designation || 'Not added'}</dd></div>
+              <div><dt>Joining Date</dt><dd>{selfEmployee?.joiningDate || selfEmployee?.joining_date || 'Not added'}</dd></div>
+            </div>
+          </section>
+        )}
+
+        {employeeSelfTab === 'attendance' && (
+          <section className="panel employee-self-panel">
+            <h2>My Attendance</h2>
+            <div className="hrms-summary-grid">
+              <div className="summary-card"><span>Present</span><strong>{selfPresentCount}</strong></div>
+              <div className="summary-card"><span>Absent</span><strong>{selfAbsentCount}</strong></div>
+              <div className="summary-card"><span>Late marks</span><strong>{selfLateCount}</strong></div>
+              <div className="summary-card"><span>This month</span><strong>{selfMonthlyAttendance.length}</strong></div>
+            </div>
+            <div className="hrms-record-grid">
+              {selfAttendance.length === 0 ? <div className="empty-state">No attendance records yet.</div> : selfAttendance.slice(0, 16).map((entry) => (
+                <article className="hrms-mini-card" key={entry.id}>
+                  <strong>{entry.attendanceDate || entry.date}</strong>
+                  <p>{entry.status} · {entry.inTime || entry.in_time || '--'} to {entry.outTime || entry.out_time || '--'}</p>
+                  <span>{entry.workingHours ?? entry.working_hours ?? 0} hours</span>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {employeeSelfTab === 'leaves' && (
+          <section className="panel employee-self-panel">
+            <h2>My Leaves</h2>
+            <div className="hrms-record-grid">
+              {selfLeaveBalances.length === 0 ? <div className="empty-state">No leave balances configured yet.</div> : selfLeaveBalances.map((balance) => (
+                <article className="hrms-mini-card" key={balance.id}>
+                  <strong>{balance.leaveType || balance.leave_type}</strong>
+                  <p>Used {balance.usedLeaves ?? balance.used_leaves ?? 0}</p>
+                  <span>{balance.remainingLeaves ?? balance.remaining_leaves ?? 0} remaining</span>
+                </article>
+              ))}
+            </div>
+            <form className="hrms-inline-form" onSubmit={applyEmployeeSelfLeave}>
+              <select name="leaveType" defaultValue="SL">
+                <option value="SL">SL - Sick Leave</option>
+                <option value="CL">CL - Casual Leave</option>
+                <option value="PL">PL - Paid Leave</option>
+              </select>
+              <input name="startDate" type="date" required />
+              <input name="endDate" type="date" required />
+              <input name="reason" placeholder="Reason" />
+              <button className="manual-button" type="submit">Apply Leave</button>
+            </form>
+            <div className="hrms-record-grid">
+              {selfLeaveRequests.length === 0 ? <div className="empty-state">No leave requests yet.</div> : selfLeaveRequests.map((request) => (
+                <article className="hrms-mini-card" key={request.id}>
+                  <strong>{request.status}</strong>
+                  <p>{request.leaveType} · {request.startDate} to {request.endDate}</p>
+                  <span>{request.totalDays} days</span>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {employeeSelfTab === 'holidays' && (
+          <section className="panel employee-self-panel">
+            <h2>My Holidays</h2>
+            <div className="hrms-holiday-grid">
+              {cloudHolidays.length === 0 ? <div className="empty-state">No holidays added yet.</div> : cloudHolidays.map((holiday) => (
+                <article className="hrms-holiday-card" key={holiday.id}>
+                  <time>{holiday.holidayDate || holiday.holiday_date}</time>
+                  <strong>{holiday.holidayName || holiday.holiday_name}</strong>
+                  <p>{holiday.description || 'Company holiday'}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {employeeSelfTab === 'salary' && (
+          <section className="panel employee-self-panel">
+            <h2>My Salary & Payslips</h2>
+            <div className="hrms-record-grid">
+              {selfSalaryHistory.length === 0 ? <div className="empty-state">No salary history available.</div> : selfSalaryHistory.map((record) => (
+                <article className="hrms-mini-card" key={record.id}>
+                  <strong>{formatCurrency(record.salaryAmount ?? record.salary_amount)}</strong>
+                  <p>{record.salaryType || record.salary_type} · Effective {record.effectiveFrom || record.effective_from}</p>
+                </article>
+              ))}
+              {selfPayslips.map((payslip) => (
+                <article className="hrms-mini-card" key={payslip.id}>
+                  <strong>{payslip.salaryMonth || payslip.salary_month}</strong>
+                  <p>Net salary: {formatCurrency(payslip.netSalary ?? payslip.net_salary)}</p>
+                  {(payslip.storagePath || payslip.storage_path) && <button className="share-entry-button" type="button" onClick={() => downloadSelfHrmsFile(payslip.storagePath || payslip.storage_path, { id: payslip.id, type: 'payslip' })}>Download</button>}
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {employeeSelfTab === 'documents' && (
+          <section className="panel employee-self-panel">
+            <h2>My Documents</h2>
+            <div className="hrms-record-grid">
+              {selfDocuments.length === 0 ? <div className="empty-state">No documents available.</div> : selfDocuments.map((documentRecord) => (
+                <article className="hrms-mini-card" key={documentRecord.id}>
+                  <strong>{documentRecord.documentName || documentRecord.document_name}</strong>
+                  <p>{documentRecord.documentCategory || documentRecord.document_category}</p>
+                  <button className="share-entry-button" type="button" onClick={() => downloadSelfHrmsFile(documentRecord.storagePath || documentRecord.storage_path, { id: documentRecord.id, type: 'document' })}>Download</button>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
     );
   }
@@ -5458,6 +5904,88 @@ export default function VoiceExpenseTrackerPreview() {
                       </div>
                     </div>
                   </form>
+
+                  <form className="member-invite-card" onSubmit={handleLinkEmployeeUser}>
+                    <div>
+                      <h3>Employee Login Access</h3>
+                      <p className="panel-hint">Link a registered Supabase user email to one employee profile. Employees get self-service only.</p>
+                    </div>
+                    <div className="form-grid">
+                      <div>
+                        <label className="field-label" htmlFor="employee-map-id">Employee</label>
+                        <select
+                          id="employee-map-id"
+                          value={employeeLinkForm.employeeId}
+                          onChange={(event) => setEmployeeLinkForm((current) => ({ ...current, employeeId: event.target.value }))}
+                          required
+                        >
+                          <option value="">Select employee</option>
+                          {cloudEmployees.map((employee) => (
+                            <option key={employee.id} value={employee.id}>
+                              {employee.fullName || employee.full_name || employee.name || employee.id}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="field-label" htmlFor="employee-map-email">Employee Login Email</label>
+                        <input
+                          id="employee-map-email"
+                          type="email"
+                          value={employeeLinkForm.email}
+                          onChange={(event) => setEmployeeLinkForm((current) => ({ ...current, email: event.target.value }))}
+                          placeholder="employee@example.com"
+                          required
+                        />
+                      </div>
+                      <div className="member-invite-action">
+                        <button className="manual-button" type="submit" disabled={memberSaving || membersLoading}>
+                          {memberSaving ? 'Linking...' : 'Link Employee Login'}
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+
+                  <div className="member-toolbar">
+                    <div>
+                      <h3>Employee Login Mappings</h3>
+                      <p className="panel-hint">{employeeUserMappings.length} linked employee login{employeeUserMappings.length === 1 ? '' : 's'}</p>
+                    </div>
+                    <button className="secondary-button compact-button" type="button" onClick={refreshEmployeeUserMappings} disabled={memberSaving}>
+                      Refresh Mappings
+                    </button>
+                  </div>
+
+                  <div className="members-table-wrap">
+                    <table className="members-table">
+                      <thead>
+                        <tr>
+                          <th>Employee</th>
+                          <th>Email</th>
+                          <th>Status</th>
+                          <th>Linked</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {employeeUserMappings.length === 0 && (
+                          <tr>
+                            <td colSpan="4"><div className="empty-state">No employee logins linked yet.</div></td>
+                          </tr>
+                        )}
+                        {employeeUserMappings.map((mapping) => {
+                          const employee = cloudEmployees.find((item) => item.id === mapping.employeeId);
+                          return (
+                            <tr key={mapping.id}>
+                              <td data-label="Employee">{employee?.fullName || employee?.full_name || employee?.name || mapping.employeeId}</td>
+                              <td data-label="Email">{mapping.employeeEmail}</td>
+                              <td data-label="Status">{mapping.status}</td>
+                              <td data-label="Linked">{mapping.linkedAt || mapping.updatedAt || 'Pending'}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
 
                   <div className="member-toolbar">
                     <div>

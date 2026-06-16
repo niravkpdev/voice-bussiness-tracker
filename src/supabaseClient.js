@@ -1388,15 +1388,29 @@ export async function createHrmsDocumentSignedUrl({ uid, path, expiresIn = 300 }
   if (!client || !uid || !path) {
     throw new Error('Missing Supabase download details.');
   }
-  if (user?.id !== uid) {
-    throw new Error('Authenticated Supabase uid does not match requested storage owner uid.');
-  }
   const { data, error } = await withCloudTimeout(
     client.storage.from(HRMS_DOCUMENT_BUCKET).createSignedUrl(path, expiresIn),
     { path: `${HRMS_DOCUMENT_BUCKET}/${path}`, uid, currentSupabaseUserUid: user?.id || null, operation: 'storage:signed-url' }
   );
   if (error) throw error;
   return data?.signedUrl || '';
+}
+
+export async function saveEmployeeSelfServiceRecord(ownerUid, tableName, id, data) {
+  const client = getSupabaseClient();
+  const user = await getCurrentSupabaseUser(client);
+  const allowed = ['leave_requests'].includes(tableName);
+  if (!client || !ownerUid || !id || !allowed || !user?.id) {
+    throw new Error('Employee self-service save is not allowed for this record.');
+  }
+  const row = buildRow(ownerUid, id, data);
+  const path = pathFor(ownerUid, tableName, id);
+  const { error } = await withCloudTimeout(
+    client.from(tableName).upsert(row, { onConflict: 'user_id,id' }),
+    { path, uid: ownerUid, currentSupabaseUserUid: user.id, operation: `employee-upsert:${tableName}` }
+  );
+  if (error) throw error;
+  return true;
 }
 
 export async function loadCloudCollection(uid, tableName) {
@@ -1608,6 +1622,99 @@ export async function removeCompanyMember(uid, memberId) {
   );
   if (error) throw error;
   return data;
+}
+
+function normalizeEmployeeMapping(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    ownerUserId: row.owner_user_id,
+    businessId: row.business_id || 'default',
+    userId: row.user_id,
+    employeeId: row.employee_id,
+    employeeEmail: sanitizeEmail(row.employee_email || ''),
+    status: row.status || 'active',
+    invitedAt: row.invited_at || '',
+    linkedAt: row.linked_at || '',
+    createdAt: row.created_at || '',
+    updatedAt: row.updated_at || '',
+  };
+}
+
+export async function loadCurrentEmployeeMapping() {
+  const client = getSupabaseClient();
+  const user = await getCurrentSupabaseUser(client);
+  if (!client || !user?.id) return null;
+
+  const { data, error } = await withCloudTimeout(
+    client
+      .from('employee_user_mappings')
+      .select('id, owner_user_id, business_id, user_id, employee_id, employee_email, status, invited_at, linked_at, created_at, updated_at')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    { path: `employee_user_mappings/current/${user.id}`, uid: user.id, currentSupabaseUserUid: user.id, operation: 'select:employee_user_mappings:current' }
+  );
+  if (error) throw error;
+  return normalizeEmployeeMapping(data);
+}
+
+export async function loadEmployeeUserMappings(uid, businessId = 'default') {
+  const client = getSupabaseClient();
+  const user = await getCurrentSupabaseUser(client);
+  if (!client || !uid || user?.id !== uid) return [];
+  const { data, error } = await withCloudTimeout(
+    client
+      .from('employee_user_mappings')
+      .select('id, owner_user_id, business_id, user_id, employee_id, employee_email, status, invited_at, linked_at, created_at, updated_at')
+      .eq('owner_user_id', uid)
+      .eq('business_id', businessId)
+      .order('updated_at', { ascending: false }),
+    { path: `employee_user_mappings/${uid}/${businessId}`, uid, currentSupabaseUserUid: user?.id || null, operation: 'select:employee_user_mappings' }
+  );
+  if (error) throw error;
+  return (data || []).map(normalizeEmployeeMapping).filter(Boolean);
+}
+
+export async function linkEmployeeUserMapping(uid, mapping) {
+  const client = getSupabaseClient();
+  const user = await getCurrentSupabaseUser(client);
+  if (!client || !uid || user?.id !== uid) {
+    throw new Error('Only the company owner can link employee users.');
+  }
+  const { data, error } = await withCloudTimeout(
+    client.rpc('link_employee_user_by_email', {
+      p_owner_user_id: uid,
+      p_business_id: mapping.businessId || 'default',
+      p_employee_id: mapping.employeeId,
+      p_employee_email: sanitizeEmail(mapping.email),
+    }),
+    { path: `employee_user_mappings/${uid}/${mapping.employeeId}`, uid, currentSupabaseUserUid: user?.id || null, operation: 'rpc:link_employee_user_by_email' }
+  );
+  if (error) throw error;
+  return normalizeEmployeeMapping(data?.mapping || data);
+}
+
+export async function logEmployeeSelfServiceEvent(uid, event) {
+  const client = getSupabaseClient();
+  const user = await getCurrentSupabaseUser(client);
+  if (!client || !uid || !user?.id) return false;
+  const { error } = await withCloudTimeout(
+    client.rpc('log_employee_self_service_event', {
+      p_owner_user_id: uid,
+      p_business_id: event.businessId || 'default',
+      p_employee_id: event.employeeId,
+      p_action: event.action,
+      p_module: event.module || 'Employee Self Service',
+      p_record_id: event.recordId || null,
+      p_metadata: event.metadata || {},
+    }),
+    { path: `employee_user_mappings/${uid}/${event.employeeId}/audit`, uid, currentSupabaseUserUid: user.id, operation: 'rpc:log_employee_self_service_event' }
+  );
+  if (error) throw error;
+  return true;
 }
 
 export async function saveUserProfileSettings(uid, profile) {
