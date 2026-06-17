@@ -33,10 +33,9 @@ serve(async (req) => {
       throw new Error('Missing Authorization header')
     }
 
-    step = 'check_env_vars'
+    step = 'init_admin_client'
     const supabaseUrl = Deno.env.get('PROJECT_URL') ?? ''
     const supabaseServiceKey = Deno.env.get('SERVICE_ROLE_KEY') ?? ''
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
 
     console.log(`[CREATE LOGIN] PROJECT_URL exists: ${!!supabaseUrl}`)
     console.log(`[CREATE LOGIN] SERVICE_ROLE_KEY exists: ${!!supabaseServiceKey}`)
@@ -45,20 +44,18 @@ serve(async (req) => {
       throw new Error('Server misconfiguration: missing Supabase credentials')
     }
 
-    step = 'validate_admin'
-    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } }
-    })
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
-    const { data: { user: adminUser }, error: userError } = await supabaseClient.auth.getUser()
+    step = 'get_auth_user'
+    const token = authHeader.replace('Bearer ', '')
+    const { data: { user: adminUser }, error: userError } = await supabaseAdmin.auth.getUser(token)
     if (userError || !adminUser) {
-      console.error(`[CREATE LOGIN] Admin validation failed:`, userError)
-      throw new Error('Unauthorized: Invalid token')
+      console.error(`[CREATE LOGIN] User validation failed:`, userError)
+      throw new Error(`Unauthorized: ${userError?.message || 'Invalid token'}`)
     }
     console.log(`[CREATE LOGIN] Admin validated: ${adminUser.id}`)
 
     step = 'create_user'
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: email,
