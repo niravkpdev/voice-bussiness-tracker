@@ -61,6 +61,7 @@ serve(async (req) => {
       .from('employee_user_mappings')
       .insert([
         {
+          owner_user_id: adminUser.id,
           employee_id: employee_id,
           user_id: newUserId,
           business_id: business_id || 'default',
@@ -95,8 +96,9 @@ serve(async (req) => {
     )
 
   } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : typeof error === 'object' && error !== null && 'message' in error ? String(error.message) : 'Unknown error occurred';
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: errorMsg }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
     )
   }
