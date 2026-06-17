@@ -11,52 +11,71 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  let step = 'init'
+
   try {
-    const { email, password, employee_id, business_id } = await req.json()
+    step = 'parse_body'
+    const body = await req.json()
+    const { email, password, employee_id, business_id } = body
     
+    console.log(`[CREATE LOGIN] Received body keys: ${Object.keys(body).join(', ')}`)
+    console.log(`[CREATE LOGIN] employee_id: ${employee_id}`)
+    console.log(`[CREATE LOGIN] business_id: ${business_id}`)
+    console.log(`[CREATE LOGIN] email: ${email}`)
+
     if (!email || !password || !employee_id) {
       throw new Error('Missing required fields: email, password, employee_id')
     }
 
-    // Get the JWT from the request header to identify the invoking admin
+    step = 'check_auth_header'
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
       throw new Error('Missing Authorization header')
     }
 
+    step = 'check_env_vars'
     const supabaseUrl = Deno.env.get('PROJECT_URL') ?? ''
     const supabaseServiceKey = Deno.env.get('SERVICE_ROLE_KEY') ?? ''
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+
+    console.log(`[CREATE LOGIN] PROJECT_URL exists: ${!!supabaseUrl}`)
+    console.log(`[CREATE LOGIN] SERVICE_ROLE_KEY exists: ${!!supabaseServiceKey}`)
 
     if (!supabaseUrl || !supabaseServiceKey) {
       throw new Error('Server misconfiguration: missing Supabase credentials')
     }
 
-    // 1. Client representing the admin user
+    step = 'validate_admin'
     const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
     })
 
     const { data: { user: adminUser }, error: userError } = await supabaseClient.auth.getUser()
     if (userError || !adminUser) {
+      console.error(`[CREATE LOGIN] Admin validation failed:`, userError)
       throw new Error('Unauthorized: Invalid token')
     }
+    console.log(`[CREATE LOGIN] Admin validated: ${adminUser.id}`)
 
-    // 2. Admin client bypassing RLS to create user and mapping
+    step = 'create_user'
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Create Supabase Auth user
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: email,
       password: password,
       email_confirm: true 
     })
 
-    if (authError) throw authError
+    if (authError) {
+      console.error(`[CREATE LOGIN] auth.admin.createUser error:`, authError)
+      throw authError
+    }
 
     const newUserId = authData.user.id
+    console.log(`[CREATE LOGIN] Created user: ${newUserId}`)
 
-    // Map to employee_user_mappings
+    step = 'insert_mapping'
+    console.log(`[CREATE LOGIN] Inserting into table: employee_user_mappings`)
     const { error: mappingError } = await supabaseAdmin
       .from('employee_user_mappings')
       .insert([
@@ -71,16 +90,17 @@ serve(async (req) => {
       ])
 
     if (mappingError) {
-      // Rollback user creation
+      console.error(`[CREATE LOGIN] employee_user_mappings insert error:`, mappingError)
+      step = 'rollback_user'
       await supabaseAdmin.auth.admin.deleteUser(newUserId)
       throw mappingError
     }
 
-    // Add audit log
+    step = 'insert_audit_log'
     await supabaseAdmin.from('audit_logs').insert([
         {
             id: crypto.randomUUID(),
-            user_id: adminUser.id, // the admin who performed the action
+            user_id: adminUser.id,
             data: {
               action: 'CREATE_EMPLOYEE_LOGIN',
               employee_id: employee_id,
@@ -97,8 +117,10 @@ serve(async (req) => {
 
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : typeof error === 'object' && error !== null && 'message' in error ? String(error.message) : 'Unknown error occurred';
+    console.error(`[CREATE LOGIN] Failed at step: ${step}, Error: ${errorMsg}`);
+    
     return new Response(
-      JSON.stringify({ success: false, error: errorMsg }),
+      JSON.stringify({ success: false, step: step, error: errorMsg }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
     )
   }
