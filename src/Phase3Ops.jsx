@@ -1896,6 +1896,7 @@ export default function Phase3Ops({
                     </div>
                     <div className="voucher-actions">
                       <button className="share-entry-button" type="button" onClick={() => { setSelectedEmployee(employee); setEmployeeProfileTab(EMPLOYEE_PROFILE_TABS[0]); }}>Profile</button>
+                      <button className="share-entry-button" type="button" onClick={() => { setSelectedEmployee(employee); setEmployeeProfileTab('Documents'); }}>Documents</button>
                       {canManageEmployees && <button className="share-entry-button" type="button" onClick={() => setEditingEmployee(employee)}>Edit</button>}
                       {canManageEmployees && <button className="share-entry-button" type="button" onClick={() => { setLoginManageModal(employee); setLoginEmail(employee?.email || ''); setLoginPassword(''); setLoginStatusMsg({ text: '', type: '' }); }}>Manage Login</button>}
                       {canManageEmployees && <button className="share-entry-button" type="button" onClick={() => markAttendance(employee, 'Present')}>Present</button>}
@@ -2350,17 +2351,19 @@ export default function Phase3Ops({
               )}
               {employeeProfileTab === 'Documents' && (
                 <div className="hrms-phasec-stack">
-                  {canManageDocuments && (
+                  {canManageDocuments ? (
                     <form className="hrms-inline-form" onSubmit={saveEmployeeDocument} key={editingEmployeeDocument?.id || 'document-new'}>
                       <select name="documentCategory" defaultValue={editingEmployeeDocument?.documentCategory || editingEmployeeDocument?.document_category || 'Other Documents'}>
                         {DOCUMENT_CATEGORIES.map((category) => <option key={category}>{category}</option>)}
                       </select>
-                      <input name="documentName" defaultValue={editingEmployeeDocument?.documentName || editingEmployeeDocument?.document_name || ''} placeholder="Document name" />
+                      <input name="documentName" defaultValue={editingEmployeeDocument?.documentName || editingEmployeeDocument?.document_name || ''} placeholder="Document name" required />
                       <input name="documentFile" type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" />
                       <input name="notes" defaultValue={editingEmployeeDocument?.notes || ''} placeholder="Notes" />
                       <button className="manual-button" type="submit">{editingEmployeeDocument ? 'Replace Document' : 'Upload Document'}</button>
                       {editingEmployeeDocument && <button className="secondary-button compact-button" type="button" onClick={() => setEditingEmployeeDocument(null)}>Cancel</button>}
                     </form>
+                  ) : (
+                    <div className="empty-state">You do not have permission to upload documents.</div>
                   )}
                   <div className="hrms-toolbar">
                     <select value={documentCategoryFilter} onChange={(event) => setDocumentCategoryFilter(event.target.value)}>

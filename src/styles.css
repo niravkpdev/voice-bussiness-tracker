@@ -6788,6 +6788,13 @@ fieldset {
   -webkit-overflow-scrolling: touch;
 }
 
+@media (min-width: 768px) {
+  .hrms-tabs {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+}
+
 .hrms-tabs button {
   flex: 0 0 auto;
   border: 1px solid #e2e8f0;
