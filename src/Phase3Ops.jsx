@@ -662,9 +662,18 @@ export default function Phase3Ops({
   const deleteEmployee = async (employee) => {
     if (confirm(`Are you sure you want to delete employee ${employee?.fullName || employee?.name}?`)) {
       setEmployees((prev) => prev.filter((e) => e.id !== employee.id));
-      onStatus?.(`Employee deleted.`);
-      if (globalThis.supabase) {
-        await globalThis.supabase.from('employees').delete().eq('id', employee.id).catch(() => {});
+      onStatus?.(`Deleting employee...`);
+      try {
+        const supabase = getSupabaseClient();
+        if (!supabase) throw new Error("Supabase client not initialized.");
+        const { error } = await supabase.from('employees').delete().eq('id', employee.id);
+        if (error) throw error;
+        onStatus?.(`Employee deleted successfully.`);
+        await logAudit(`employee deleted: ${employee.fullName || employee.name}`, 'Employees');
+        if (typeof loadEmployees === 'function') loadEmployees();
+      } catch (err) {
+        onStatus?.(`Error deleting employee: ${err.message}`);
+        if (typeof loadEmployees === 'function') loadEmployees();
       }
     }
   };
@@ -1634,7 +1643,7 @@ export default function Phase3Ops({
     const canManageHolidays = ['owner', 'manager'].includes(employeeRole);
     const canViewSalary = ['owner', 'manager', 'accountant'].includes(employeeRole);
     const canManageSalary = ['owner', 'accountant'].includes(employeeRole);
-    const canManageDocuments = ['owner'].includes(employeeRole);
+    const canManageDocuments = ['owner', 'admin', 'manager'].includes(employeeRole);
     const isOwner = employeeRole === 'owner';
     const accessibleEmployees = staffEmployeeIds.size > 0 && !['owner', 'manager', 'accountant'].includes(employeeRole)
       ? employees.filter((employee) => staffEmployeeIds.has(employee.id))
