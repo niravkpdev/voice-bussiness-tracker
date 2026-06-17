@@ -243,6 +243,7 @@ export default function Phase3Ops({
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginStatusMsg, setLoginStatusMsg] = useState({ text: '', type: '' });
+  const [isInvoking, setIsInvoking] = useState(false);
   const [employeeStatusFilter, setEmployeeStatusFilter] = useState('All');
   const [employeePage, setEmployeePage] = useState(1);
   const [attendanceEmployeeFilter, setAttendanceEmployeeFilter] = useState('All');
@@ -2415,18 +2416,33 @@ export default function Phase3Ops({
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
-                    <button className="manual-button" type="button" onClick={async () => {
+                    <button className="manual-button" type="button" disabled={isInvoking} onClick={async () => {
                       if (!loginEmail || !loginPassword || loginPassword.length < 6) {
                         setLoginStatusMsg({ text: 'Please provide valid email and at least 6 char password.', type: 'error' });
                         return;
                       }
                       setLoginStatusMsg({ text: 'Creating login...', type: 'info' });
-                      const { error } = await createEmployeeLogin(loginEmail, loginPassword, selectedEmployee.id, profile?.businessId);
-                      if (error) {
-                        setLoginStatusMsg({ text: 'Error: ' + error.message, type: 'error' });
-                      } else {
-                        setLoginStatusMsg({ text: 'Login created successfully!', type: 'success' });
+                      setIsInvoking(true);
+                      console.log("Calling create-employee-login");
+                      try {
+                        const { data, error } = await globalThis.supabase.functions.invoke('create-employee-login', {
+                          body: {
+                            employee_id: selectedEmployee.id,
+                            business_id: profile?.businessId || 'default',
+                            email: loginEmail,
+                            password: loginPassword,
+                            force_password_change: false
+                          }
+                        });
+                        if (error) throw error;
+                        if (data && data.success === false) throw new Error(data.error || 'Unknown error');
+                        setLoginStatusMsg({ text: 'Login Active / Password Change Required.', type: 'success' });
                         setLoginPassword('');
+                        if (typeof loadEmployees === 'function') loadEmployees();
+                      } catch (err) {
+                        setLoginStatusMsg({ text: 'Error: ' + err.message, type: 'error' });
+                      } finally {
+                        setIsInvoking(false);
                       }
                     }}>Create Login</button>
                     
@@ -2504,18 +2520,33 @@ export default function Phase3Ops({
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
-                <button className="manual-button" type="button" onClick={async () => {
+                <button className="manual-button" type="button" disabled={isInvoking} onClick={async () => {
                   if (!loginEmail || !loginPassword || loginPassword.length < 6) {
                     setLoginStatusMsg({ text: 'Please provide valid email and at least 6 char password.', type: 'error' });
                     return;
                   }
                   setLoginStatusMsg({ text: 'Creating login...', type: 'info' });
-                  const { error } = await createEmployeeLogin(loginEmail, loginPassword, loginManageModal.id, profile?.businessId);
-                  if (error) {
-                    setLoginStatusMsg({ text: 'Error: ' + error.message, type: 'error' });
-                  } else {
-                    setLoginStatusMsg({ text: 'Login created successfully!', type: 'success' });
+                  setIsInvoking(true);
+                  console.log("Calling create-employee-login");
+                  try {
+                    const { data, error } = await globalThis.supabase.functions.invoke('create-employee-login', {
+                      body: {
+                        employee_id: loginManageModal.id,
+                        business_id: profile?.businessId || 'default',
+                        email: loginEmail,
+                        password: loginPassword,
+                        force_password_change: false
+                      }
+                    });
+                    if (error) throw error;
+                    if (data && data.success === false) throw new Error(data.error || 'Unknown error');
+                    setLoginStatusMsg({ text: 'Login Active / Password Change Required.', type: 'success' });
                     setLoginPassword('');
+                    if (typeof loadEmployees === 'function') loadEmployees();
+                  } catch (err) {
+                    setLoginStatusMsg({ text: 'Error: ' + err.message, type: 'error' });
+                  } finally {
+                    setIsInvoking(false);
                   }
                 }}>Create Login</button>
                 
