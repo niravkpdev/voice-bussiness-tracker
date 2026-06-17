@@ -2442,7 +2442,14 @@ export default function Phase3Ops({
                         setLoginPassword('');
                         if (typeof loadEmployees === 'function') loadEmployees();
                       } catch (err) {
-                        setLoginStatusMsg({ text: 'Error: ' + err.message, type: 'error' });
+                        let errMsg = err.message;
+                        if (err.context && typeof err.context.json === 'function') {
+                          try {
+                            const errBody = await err.context.json();
+                            if (errBody.error) errMsg = `[${errBody.step || 'unknown'}] ${errBody.error}`;
+                          } catch (e) {}
+                        }
+                        setLoginStatusMsg({ text: 'Error: ' + errMsg, type: 'error' });
                       } finally {
                         setIsInvoking(false);
                       }
@@ -2548,7 +2555,14 @@ export default function Phase3Ops({
                     setLoginPassword('');
                     if (typeof loadEmployees === 'function') loadEmployees();
                   } catch (err) {
-                    setLoginStatusMsg({ text: 'Error: ' + err.message, type: 'error' });
+                    let errMsg = err.message;
+                    if (err.context && typeof err.context.json === 'function') {
+                      try {
+                        const errBody = await err.context.json();
+                        if (errBody.error) errMsg = `[${errBody.step || 'unknown'}] ${errBody.error}`;
+                      } catch (e) {}
+                    }
+                    setLoginStatusMsg({ text: 'Error: ' + errMsg, type: 'error' });
                   } finally {
                     setIsInvoking(false);
                   }
