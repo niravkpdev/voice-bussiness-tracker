@@ -108,7 +108,7 @@ function getSupabaseConfigError() {
   return '';
 }
 
-function getSupabaseClient() {
+export function getSupabaseClient() {
   const configError = getSupabaseConfigError();
   if (configError) {
     if (!supabaseConfig.url && !supabaseConfig.anonKey) {

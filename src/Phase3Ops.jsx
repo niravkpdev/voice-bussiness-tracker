@@ -4,7 +4,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { normalizeAmount, sanitizeText, validateEmail, validatePhone } from './security.js';
 import { readScopedString, writeScopedString } from './storageScope.js';
-import { createEmployeeLogin, resetEmployeePassword, disableEmployeeLogin } from './supabaseClient.js';
+import { createEmployeeLogin, resetEmployeePassword, disableEmployeeLogin, getSupabaseClient } from './supabaseClient.js';
 
 const ORDER_KEY = 'phase3Orders';
 const EMPLOYEE_KEY = 'phase3Employees';
@@ -2425,7 +2425,9 @@ export default function Phase3Ops({
                       setIsInvoking(true);
                       console.log("Calling create-employee-login");
                       try {
-                        const { data, error } = await globalThis.supabase.functions.invoke('create-employee-login', {
+                        const supabase = getSupabaseClient();
+                        if (!supabase?.functions) throw new Error("Supabase functions not available. Check client initialization.");
+                        const { data, error } = await supabase.functions.invoke('create-employee-login', {
                           body: {
                             employee_id: selectedEmployee.id,
                             business_id: profile?.businessId || 'default',
@@ -2529,7 +2531,9 @@ export default function Phase3Ops({
                   setIsInvoking(true);
                   console.log("Calling create-employee-login");
                   try {
-                    const { data, error } = await globalThis.supabase.functions.invoke('create-employee-login', {
+                    const supabase = getSupabaseClient();
+                    if (!supabase?.functions) throw new Error("Supabase functions not available. Check client initialization.");
+                    const { data, error } = await supabase.functions.invoke('create-employee-login', {
                       body: {
                         employee_id: loginManageModal.id,
                         business_id: profile?.businessId || 'default',
