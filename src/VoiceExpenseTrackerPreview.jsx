@@ -105,7 +105,7 @@ const VOICE_ALERTS_KEY = 'voiceLowStockAlertsEnabled';
 const DEFAULT_PROFILE = {
   name: 'Trinetr Business Suite',
   tagline: 'Cash book and party khata for small business',
-  logo: '/assets/logo.svg',
+  logo: '/assets/trinetr-logo.jpg',
   owner: 'Business Owner',
   email: 'trinetr1901@gmail.com',
   phone: '+918488943771',

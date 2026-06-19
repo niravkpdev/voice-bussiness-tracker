@@ -11,35 +11,35 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/assets/logo.svg",
+      "src": "/assets/trinetr-logo.jpg",
       "sizes": "any",
-      "type": "image/svg+xml",
+      "type": "image/jpeg",
       "purpose": "any maskable"
     },
     {
-      "src": "/assets/icon-192.png",
+      "src": "/assets/trinetr-logo.jpg",
       "sizes": "192x192",
-      "type": "image/png",
+      "type": "image/jpeg",
       "purpose": "any maskable"
     },
     {
-      "src": "/assets/icon-512.png",
+      "src": "/assets/trinetr-logo.jpg",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/jpeg",
       "purpose": "any maskable"
     }
   ],
   "screenshots": [
     {
-      "src": "/assets/og-image.svg",
+      "src": "/assets/trinetr-logo.jpg",
       "sizes": "1200x630",
-      "type": "image/svg+xml",
+      "type": "image/jpeg",
       "form_factor": "wide"
     },
     {
-      "src": "/assets/splash.svg",
+      "src": "/assets/trinetr-logo.jpg",
       "sizes": "1080x1920",
-      "type": "image/svg+xml",
+      "type": "image/jpeg",
       "form_factor": "narrow"
     }
   ],
