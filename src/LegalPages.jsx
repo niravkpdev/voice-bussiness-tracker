@@ -17,7 +17,7 @@ const LEGAL_COPY = {
     title: 'Terms & Conditions',
     updated: 'Last updated: June 1, 2026',
     sections: [
-      ['Business Use', 'Voice Business Tracker is a business productivity and bookkeeping tool. Users are responsible for verifying entries, invoices, tax reports, and financial decisions before use.'],
+      ['Business Use', 'Trinetr Business Suite is a business productivity and bookkeeping tool. Users are responsible for verifying entries, invoices, tax reports, and financial decisions before use.'],
       ['No Professional Advice', 'AI insights, GST summaries, profit calculations, and recommendations are informational and are not legal, tax, audit, or accounting advice.'],
       ['User Responsibility', 'You must keep login credentials secure, review generated transactions before saving, and ensure business data is accurate.'],
       ['Acceptable Use', 'Do not use the app to store illegal content, attack systems, bypass security rules, or process data without permission.'],
@@ -47,10 +47,10 @@ const LEGAL_COPY = {
   },
   'about-app': {
     eyebrow: 'About',
-    title: 'About Voice Business Tracker',
+    title: 'About Trinetr Business Suite',
     updated: 'Manage Your Business with Voice Commands',
     sections: [
-      ['Purpose', 'Voice Business Tracker helps Indian small businesses record transactions, track inventory, manage customers, create invoices, review reports, and understand business health through a simple voice-first workflow.'],
+      ['Purpose', 'Trinetr Business Suite helps Indian small businesses record transactions, track inventory, manage customers, create invoices, review reports, and understand business health through a simple voice-first workflow.'],
       ['Platform', 'The app is designed as a mobile-first PWA with Supabase-ready authentication, RLS-protected database storage, PDF exports, and Play Store readiness foundations.'],
       ['Company Contact', 'Support: trinetr1901@gmail.com / +918488943771'],
     ],

@@ -6,6 +6,6 @@
   <path d="M540 1084V1168" stroke="white" stroke-width="42" stroke-linecap="round"/>
   <path d="M432 1168H648" stroke="white" stroke-width="42" stroke-linecap="round"/>
   <path d="M704 988L800 892L886 944L1010 800" stroke="#3B82F6" stroke-width="48" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="540" y="1288" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="64" font-weight="800" text-anchor="middle">Voice Business Tracker</text>
+  <text x="540" y="1288" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="64" font-weight="800" text-anchor="middle">Trinetr Business Suite</text>
   <text x="540" y="1362" fill="#475569" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="500" text-anchor="middle">Manage Your Business with Voice Commands</text>
 </svg>

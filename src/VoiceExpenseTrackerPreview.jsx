@@ -103,7 +103,7 @@ const INVENTORY_KEY = 'businessInventory';
 const ORDERS_KEY = 'businessOrders';
 const VOICE_ALERTS_KEY = 'voiceLowStockAlertsEnabled';
 const DEFAULT_PROFILE = {
-  name: 'Voice Business Tracker',
+  name: 'Trinetr Business Suite',
   tagline: 'Cash book and party khata for small business',
   logo: '/assets/logo.svg',
   owner: 'Business Owner',
@@ -3574,7 +3574,7 @@ export default function VoiceExpenseTrackerPreview() {
 
   const downloadFullBackup = () => {
     const backup = {
-      app: 'Voice Business Tracker',
+      app: 'Trinetr Business Suite',
       version: 2,
       exportedAt: new Date().toISOString(),
       storageLocation: {
@@ -3932,7 +3932,7 @@ export default function VoiceExpenseTrackerPreview() {
         <header className="saas-nav">
           <a className="saas-logo" href="#home" onClick={() => setAuthView('landing')}>
             <img src={profile.logo} alt="" />
-            <span>Voice Business Tracker</span>
+            <span>Trinetr Business Suite</span>
           </a>
           <nav>
             <a href="#features">Features</a>
@@ -4170,7 +4170,7 @@ export default function VoiceExpenseTrackerPreview() {
             </section>
 
             <footer className="saas-footer" id="help">
-              <span>Voice Business Tracker</span>
+              <span>Trinetr Business Suite</span>
               <nav>
                 <button type="button" onClick={() => setAuthView('privacy-policy')}>Privacy Policy</button>
                 <button type="button" onClick={() => setAuthView('terms-conditions')}>Terms of Service</button>
@@ -4288,7 +4288,7 @@ export default function VoiceExpenseTrackerPreview() {
         <header className="saas-nav">
           <a className="saas-logo" href="#home" onClick={logout}>
             <img src={profile.logo} alt="" />
-            <span>Voice Business Tracker</span>
+            <span>Trinetr Business Suite</span>
           </a>
         </header>
         <section className="auth-page">
@@ -4504,7 +4504,7 @@ export default function VoiceExpenseTrackerPreview() {
         <div className="sidebar-brand">
           <img className="sidebar-logo" src={profile.logo} alt="" />
           <div>
-            <strong>Voice Business Tracker</strong>
+            <strong>Trinetr Business Suite</strong>
             <span>Business Console</span>
           </div>
           <button className="drawer-close-button" type="button" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)}>

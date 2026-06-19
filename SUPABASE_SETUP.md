@@ -1,6 +1,6 @@
 # Supabase Free Tier Setup Guide
 
-Use this guide to run Voice Business Tracker without Google Cloud billing.
+Use this guide to run Trinetr Business Suite without Google Cloud billing.
 
 ## 1. Create A Supabase Project
 

@@ -7,7 +7,7 @@
   <path d="M171 229V249" stroke="white" stroke-width="12" stroke-linecap="round"/>
   <path d="M143 249H199" stroke="white" stroke-width="12" stroke-linecap="round"/>
   <path d="M217 210L244 183L269 198L307 154" stroke="#3B82F6" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="112" y="340" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="72" font-weight="800">Voice Business Tracker</text>
+  <text x="112" y="340" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="72" font-weight="800">Trinetr Business Suite</text>
   <text x="112" y="420" fill="#475569" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="500">Manage Your Business with Voice Commands</text>
   <rect x="112" y="470" width="278" height="54" rx="16" fill="#4F46E5"/>
   <text x="142" y="506" fill="white" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">AI-powered business ERP</text>
