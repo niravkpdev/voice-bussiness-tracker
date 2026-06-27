@@ -4620,7 +4620,7 @@ export default function VoiceExpenseTrackerPreview() {
             
             {/* Quick Add Dropdown */}
             <div className="saas-dropdown-container">
-              <button className="btn btn-primary" style={{ padding: '8px 14px', borderRadius: '8px', fontSize: '13px' }}>
+              <button type="button" className="btn btn-primary" style={{ padding: '8px 14px', borderRadius: '8px', fontSize: '13px' }} onClick={() => setStatus('Quick Add menu ready')}>
                 <Plus size={16} /> Quick Add <ChevronDown size={14} style={{ opacity: 0.7 }} />
               </button>
               <div className="saas-dropdown-menu">
@@ -4910,7 +4910,7 @@ export default function VoiceExpenseTrackerPreview() {
                                 <div style={{ fontWeight: '600', fontSize: '13px', color: 'var(--text-primary)' }}>{item.item}</div>
                                 <div style={{ fontSize: '11px', color: 'var(--danger)' }}>{item.stock} left (Min: {item.alert})</div>
                               </div>
-                              <button className="btn btn-secondary hover-scale" style={{ padding: '4px 10px', fontSize: '11px' }}>Restock</button>
+                              <button type="button" className="btn btn-secondary hover-scale" style={{ padding: '4px 10px', fontSize: '11px' }} onClick={() => setStatus('Restock workflow coming soon')}>Restock</button>
                             </div>
                           ))}
                         </div>
@@ -5007,7 +5007,7 @@ export default function VoiceExpenseTrackerPreview() {
                           <Bell size={18} color="var(--brand-primary)" /> Notifications 
                           <span className="badge badge-danger" style={{ fontSize: '10px', padding: '2px 6px' }}>2 New</span>
                         </h2>
-                        <button className="btn btn-ghost" style={{ padding: '4px', fontSize: '11px' }}>Mark all read</button>
+                        <button type="button" className="btn btn-ghost" style={{ padding: '4px', fontSize: '11px' }} onClick={() => setStatus('Notifications marked as read')}>Mark all read</button>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         {[
@@ -5504,7 +5504,7 @@ export default function VoiceExpenseTrackerPreview() {
                       <p className="panel-hint">Manage customers, suppliers, financial standing, and interactions.</p>
                     </div>
                     <div className="inline-actions">
-                      <button className="primary-button"><Plus size={16}/> New Party</button>
+                      <button type="button" className="primary-button" onClick={() => setStatus('Add Customer drawer coming soon')}><Plus size={16}/> New Party</button>
                     </div>
                   </div>
                   
@@ -5514,9 +5514,9 @@ export default function VoiceExpenseTrackerPreview() {
                       <input type="text" className="crm-search-input" placeholder="Search by name, phone, or GST..." />
                     </div>
                     <div className="crm-toolbar-actions">
-                      <button className="secondary-button"><Filter size={16}/> Filters</button>
-                      <button className="secondary-button"><Tag size={16}/> Tags</button>
-                      <button className="secondary-button"><Download size={16}/> Export</button>
+                      <button type="button" className="secondary-button" onClick={() => setStatus('Filters coming soon')}><Filter size={16}/> Filters</button>
+                      <button type="button" className="secondary-button" onClick={() => setStatus('Tags coming soon')}><Tag size={16}/> Tags</button>
+                      <button type="button" className="secondary-button" onClick={() => setStatus('Export coming soon')}><Download size={16}/> Export</button>
                     </div>
                   </div>
 
@@ -5607,8 +5607,8 @@ export default function VoiceExpenseTrackerPreview() {
                       <ArrowLeft size={16} /> Back to List
                     </button>
                     <div className="crm-toolbar-actions">
-                      <button className="secondary-button"><Edit3 size={16} /> Edit Profile</button>
-                      <button className="primary-button"><Plus size={16} /> Create Invoice</button>
+                      <button type="button" className="secondary-button" onClick={() => setStatus('Edit Profile coming soon')}><Edit3 size={16} /> Edit Profile</button>
+                      <button type="button" className="primary-button" onClick={() => { setStatus('Redirecting to New Invoice'); setActiveTab('invoices'); }}><Plus size={16} /> Create Invoice</button>
                     </div>
                   </div>
                   
@@ -5661,8 +5661,8 @@ export default function VoiceExpenseTrackerPreview() {
                        <hr style={{ border: 'none', borderTop: '1px solid var(--border-subtle)', margin: '8px 0' }} />
                        
                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                         <button className="secondary-button" style={{ width: '100%', justifyContent: 'center' }}><MessageCircle size={16} /> Send WhatsApp</button>
-                         <button className="secondary-button" style={{ width: '100%', justifyContent: 'center' }}><Mail size={16} /> Send Email</button>
+                         <button type="button" className="secondary-button" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setStatus('WhatsApp integration coming soon')}><MessageCircle size={16} /> Send WhatsApp</button>
+                         <button type="button" className="secondary-button" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setStatus('Email integration coming soon')}><Mail size={16} /> Send Email</button>
                        </div>
                     </div>
                     
@@ -5761,7 +5761,7 @@ export default function VoiceExpenseTrackerPreview() {
                               <h3 style={{ fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#b45309' }}>
                                 <Star size={18} /> Pinned Note
                               </h3>
-                              <button className="icon-button" style={{ color: '#b45309' }}><Edit3 size={16}/></button>
+                              <button type="button" className="icon-button" style={{ color: '#b45309' }} onClick={() => setStatus('Edit coming soon')}><Edit3 size={16}/></button>
                             </div>
                             <p style={{ fontSize: '14px', color: '#92400e', lineHeight: '1.6' }}>
                               Customer prefers deliveries on weekends. Ensure GST invoice is always emailed to their finance department (finance@company.com) immediately after dispatch.
@@ -5774,7 +5774,7 @@ export default function VoiceExpenseTrackerPreview() {
                               <h3 style={{ fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <Paperclip size={18} className="text-secondary" /> Documents
                               </h3>
-                              <button className="secondary-button" style={{ padding: '4px 8px', fontSize: '12px' }}><Plus size={14}/> Upload</button>
+                              <button type="button" className="secondary-button" style={{ padding: '4px 8px', fontSize: '12px' }} onClick={() => setStatus('Upload coming soon')}><Plus size={14}/> Upload</button>
                             </div>
                             
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>

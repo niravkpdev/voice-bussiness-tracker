@@ -1753,9 +1753,9 @@ export default function Phase2ERP({
                 />
               </div>
               <div className="crm-toolbar-actions">
-                <button className="secondary-button"><Filter size={16}/> Filters</button>
-                <button className="secondary-button"><Tag size={16}/> Tags</button>
-                <button className="secondary-button"><Download size={16}/> Export</button>
+                <button type="button" className="secondary-button" onClick={() => onStatus('Filters coming soon')}><Filter size={16}/> Filters</button>
+                <button type="button" className="secondary-button" onClick={() => onStatus('Tags coming soon')}><Tag size={16}/> Tags</button>
+                <button type="button" className="secondary-button" onClick={() => onStatus('Export coming soon')}><Download size={16}/> Export</button>
               </div>
             </div>
 
@@ -1857,7 +1857,7 @@ export default function Phase2ERP({
               </button>
               <div className="crm-toolbar-actions">
                 <button className="secondary-button" onClick={() => editPerson(selectedCrmPerson, formKind)}><Edit3 size={16} /> Edit Profile</button>
-                {isCustomer && <button className="primary-button"><Plus size={16} /> Create Invoice</button>}
+                {isCustomer && <button type="button" className="primary-button" onClick={() => { onStatus('Redirecting to New Invoice'); setActiveTab('invoices'); }}><Plus size={16} /> Create Invoice</button>}
               </div>
             </div>
             
@@ -2001,7 +2001,7 @@ export default function Phase2ERP({
                         <h3 style={{ fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#b45309' }}>
                           <Star size={18} /> Pinned Note
                         </h3>
-                        <button className="icon-button" style={{ color: '#b45309' }}><Edit3 size={16}/></button>
+                        <button type="button" className="icon-button" style={{ color: '#b45309' }} onClick={() => onStatus('Edit coming soon')}><Edit3 size={16}/></button>
                       </div>
                       <p style={{ fontSize: '14px', color: '#92400e', lineHeight: '1.6' }}>
                         {selectedCrmPerson?.notes || 'No notes added for this profile yet. Click edit to add specific instructions or details.'}
@@ -2014,7 +2014,7 @@ export default function Phase2ERP({
                         <h3 style={{ fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <Paperclip size={18} className="text-secondary" /> Documents
                         </h3>
-                        <button className="secondary-button" style={{ padding: '4px 8px', fontSize: '12px' }}><Plus size={14}/> Upload</button>
+                        <button type="button" className="secondary-button" style={{ padding: '4px 8px', fontSize: '12px' }} onClick={() => onStatus('Upload coming soon')}><Plus size={14}/> Upload</button>
                       </div>
                       
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -2044,7 +2044,7 @@ export default function Phase2ERP({
     return (
       <section className="phase2-stack fade-in" id="analytics">
         <div className="erp-hero"><div><span className="eyebrow">Analytics Center</span><h2>Revenue, expense, profit, customer growth, and product performance</h2></div></div>
-        <div className="analytics-filter"><button>Daily</button><button>Weekly</button><button className="active">Monthly</button><button>Quarterly</button><button>Yearly</button></div>
+        <div className="analytics-filter"><button type="button" onClick={() => onStatus('Timeframe filter coming soon')}>Daily</button><button type="button" onClick={() => onStatus('Timeframe filter coming soon')}>Weekly</button><button type="button" className="active" onClick={() => onStatus('Timeframe filter coming soon')}>Monthly</button><button type="button" onClick={() => onStatus('Timeframe filter coming soon')}>Quarterly</button><button type="button" onClick={() => onStatus('Timeframe filter coming soon')}>Yearly</button></div>
         <section className="content-grid">
           <article className="panel"><h2>Revenue Trend</h2><SmallBars data={analytics} valueKey="revenue" /></article>
           <article className="panel"><h2>Expense Trend</h2><SmallBars data={analytics} valueKey="expense" colorClass="danger" /></article>
