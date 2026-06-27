@@ -4516,8 +4516,8 @@ export default function VoiceExpenseTrackerPreview() {
         <div className="sidebar-brand" style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px solid var(--border-subtle)' }}>
           {profile.logo ? <img src={profile.logo} alt="" style={{ width: '28px', height: '28px', borderRadius: '6px', objectFit: 'cover' }} /> : <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'var(--brand-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700' }}>T</div>}
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <strong style={{ fontSize: '14px', fontWeight: '600', lineHeight: '1.2' }}>Trinetr Suite</strong>
-            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{profile.businessName || 'Business Console'}</span>
+            <strong style={{ fontSize: '14px', fontWeight: '600', lineHeight: '1.2' }}>Trinetr</strong>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Business Suite</span>
           </div>
           <button className="drawer-close-button" type="button" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', fontSize: '20px', cursor: 'pointer' }}>
             ×

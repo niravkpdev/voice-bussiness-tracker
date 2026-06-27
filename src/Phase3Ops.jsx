@@ -145,7 +145,7 @@ function formatCurrency(amount) {
 function encodeUpi({ pa, pn, am, tn }) {
   const params = new URLSearchParams({
     pa: pa || 'business@upi',
-    pn: pn || 'Voice Business Tracker',
+    pn: pn || 'Trinetr Business Suite',
     am: String(Number(am) || 0),
     cu: 'INR',
     tn: tn || 'Business payment',
