@@ -153,6 +153,11 @@ export default function Phase2ERP({
   const [selectedCrmPerson, setSelectedCrmPerson] = useState(null);
   const [showPersonDrawer, setShowPersonDrawer] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [productProfileTab, setProductProfileTab] = useState('Overview');
+  const [inventorySearch, setInventorySearch] = useState('');
+  const [inventoryCategoryFilter, setInventoryCategoryFilter] = useState('All');
+  const [inventoryStatusFilter, setInventoryStatusFilter] = useState('All');
   const [cloudSettings, setCloudSettings] = useState(() =>
     readObject(CLOUD_BACKUP_KEY, { connected: false, email: '', autoBackup: false, lastBackup: '' })
   );
@@ -908,110 +913,355 @@ export default function Phase2ERP({
   if (activeTab === 'inventory') {
     return (
       <section className="phase2-stack fade-in" id="inventory">
-        <div className="erp-hero">
-          <div>
-            <span className="eyebrow">Inventory Management</span>
-            <h2>Product master, stock control, and AI inventory alerts</h2>
+        <div className="inventory-premium-header">
+          <div className="hrms-header-title">
+            <h2>Inventory Management</h2>
+            <p>Manage products, stock levels, valuation, reorder alerts, and suppliers.</p>
           </div>
-          <div className="erp-hero-actions">
-            <strong>{inventoryStats.totalProducts} products</strong>
-            <span>{formatCurrency(inventoryStats.value)} inventory value</span>
+          <div className="hrms-header-actions">
+            <button className="primary-button" onClick={() => setEditingProduct({})}>+ Add Product</button>
+            <button className="secondary-button" onClick={() => onStatus('Import opening soon')}>Import</button>
+            <button className="secondary-button" onClick={() => onStatus('Export opening soon')}>Export</button>
+            <button className="secondary-button" onClick={() => onStatus('Report opening soon')}>Stock Report</button>
           </div>
         </div>
-        <div className="summary-grid report-summary">
-          <div className="summary-card"><span>Total Products</span><strong>{inventoryStats.totalProducts}</strong></div>
-          <div className="summary-card"><span>Inventory Value</span><strong>{formatCurrency(inventoryStats.value)}</strong></div>
-          <div className="summary-card"><span>Low Stock</span><strong>{inventoryStats.lowStock}</strong></div>
-          <div className="summary-card"><span>Out Of Stock</span><strong>{inventoryStats.outOfStock}</strong></div>
-        </div>
-        <section className="content-grid">
-          <article className="panel">
-            <h2>{editingProduct ? 'Edit Product' : 'Product Master'}</h2>
-            <form onSubmit={saveProduct} key={editingProduct?.id || 'new-product'}>
-              <div className="form-grid">
-                <input name="name" defaultValue={editingProduct?.name || ''} placeholder="Product name" />
-                <input name="category" defaultValue={editingProduct?.category || ''} placeholder="Category" />
-                <input name="sku" defaultValue={editingProduct?.sku || ''} placeholder="SKU code" />
-                <select name="unit" defaultValue={editingProduct?.unit || 'pcs'}>
-                  <option value="pcs">Pieces</option>
-                  <option value="kg">Kg</option>
-                  <option value="ltr">Litre</option>
-                  <option value="box">Box</option>
-                  <option value="set">Set</option>
-                </select>
-                <input name="purchasePrice" type="number" defaultValue={editingProduct?.purchasePrice ?? ''} placeholder="Purchase price" />
-                <input name="sellingPrice" type="number" defaultValue={editingProduct?.sellingPrice ?? ''} placeholder="Selling price" />
-                <input name="currentStock" type="number" defaultValue={editingProduct?.currentStock ?? ''} placeholder="Current stock" />
-                <input name="minStock" type="number" defaultValue={editingProduct?.minStock ?? ''} placeholder="Minimum stock" />
-                <div className="wide-field"><input name="image" type="file" accept="image/*" /></div>
-              </div>
-              <div className="inline-actions">
-                <button className="manual-button" type="submit">{editingProduct ? 'Update Product' : 'Save Product'}</button>
-                {editingProduct && (
-                  <button className="secondary-button compact-button" type="button" onClick={() => setEditingProduct(null)}>
-                    Cancel
-                  </button>
-                )}
-              </div>
-            </form>
-          </article>
-          <article className="panel">
-            <h2>Stock Transactions</h2>
-            <form onSubmit={stockTransaction}>
-              <div className="form-grid">
-                <select name="productId">
-                  <option value="">Select product</option>
-                  {scopedProducts.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}
-                </select>
-                <select name="type">
-                  <option>Stock In</option>
-                  <option>Stock Out</option>
-                  <option>Adjustment</option>
-                </select>
-                <input name="qty" type="number" placeholder="Quantity" />
-                <input name="note" placeholder="Reason / note" />
-              </div>
-              <button className="secondary-button" type="submit">Update Stock</button>
-            </form>
-            <div className="suggestion-list">
-              {erpAI.lowStock.slice(0, 4).map((product) => <div key={product.id}>Low stock alert: {product.name} has {product.currentStock} {product.unit}</div>)}
+
+        <div className="inventory-kpi-grid">
+          <div className="kpi-card">
+            <div className="kpi-icon-wrap" style={{ background: '#eff6ff', color: '#2563eb' }}>📦</div>
+            <div className="kpi-content">
+              <span>Total Products</span>
+              <strong className="kpi-value">{inventoryStats.totalProducts}</strong>
+              <div className="kpi-trend trend-neutral">Master catalog</div>
             </div>
-          </article>
-        </section>
-        <section className="panel">
-          <h2>Inventory List</h2>
-          <div className="erp-table-wrap">
-            <table className="statement-table">
-              <thead><tr><th>Product</th><th>Category</th><th>SKU</th><th>Stock</th><th>Purchase</th><th>Selling</th><th>Value</th><th>Actions</th></tr></thead>
-              <tbody>
-                {scopedProducts.map((product) => (
-                  <tr key={product.id}>
-                    <td><div className="product-cell">{product.image && <img src={product.image} alt="" />}<strong>{product.name}</strong></div></td>
-                    <td>{product.category}</td>
-                    <td>{product.sku}</td>
-                    <td>{product.currentStock} {product.unit}</td>
-                    <td>{formatCurrency(product.purchasePrice)}</td>
-                    <td>{formatCurrency(product.sellingPrice)}</td>
-                    <td>{formatCurrency(product.currentStock * product.purchasePrice)}</td>
-                    <td>
-                      <div className="voucher-actions">
-                        <button className="share-entry-button" type="button" onClick={() => editProduct(product)}>Edit</button>
-                        <button className="delete-entry-button" type="button" onClick={() => deleteProduct(product)}>Delete</button>
+          </div>
+          <div className="kpi-card">
+            <div className="kpi-icon-wrap" style={{ background: '#f0fdf4', color: '#16a34a' }}>💰</div>
+            <div className="kpi-content">
+              <span>Total Stock Value</span>
+              <strong className="kpi-value">{formatCurrency(inventoryStats.value)}</strong>
+              <div className="kpi-trend trend-up">Current valuation</div>
+            </div>
+          </div>
+          <div className="kpi-card">
+            <div className="kpi-icon-wrap" style={{ background: '#fffbeb', color: '#d97706' }}>⚠️</div>
+            <div className="kpi-content">
+              <span>Low Stock Items</span>
+              <strong className="kpi-value">{inventoryStats.lowStock}</strong>
+              <div className="kpi-trend trend-down">Needs reorder</div>
+            </div>
+          </div>
+          <div className="kpi-card">
+            <div className="kpi-icon-wrap" style={{ background: '#fef2f2', color: '#dc2626' }}>🚫</div>
+            <div className="kpi-content">
+              <span>Out of Stock</span>
+              <strong className="kpi-value">{inventoryStats.outOfStock}</strong>
+              <div className="kpi-trend trend-down">Zero inventory</div>
+            </div>
+          </div>
+          <div className="kpi-card">
+            <div className="kpi-icon-wrap" style={{ background: '#faf5ff', color: '#9333ea' }}>🔥</div>
+            <div className="kpi-content">
+              <span>Fast Moving</span>
+              <strong className="kpi-value">{erpAI.bestProducts.length}</strong>
+              <div className="kpi-trend trend-up">High velocity</div>
+            </div>
+          </div>
+          <div className="kpi-card">
+            <div className="kpi-icon-wrap" style={{ background: '#ecfeff', color: '#0891b2' }}>🔄</div>
+            <div className="kpi-content">
+              <span>Inventory Turnover</span>
+              <strong className="kpi-value">{erpAI.bestProducts.length > 0 ? 'High' : 'Low'}</strong>
+              <div className="kpi-trend trend-neutral">Sales velocity</div>
+            </div>
+          </div>
+          <div className="kpi-card">
+            <div className="kpi-icon-wrap" style={{ background: '#f0fdfa', color: '#0d9488' }}>📥</div>
+            <div className="kpi-content">
+              <span>Purchase Value</span>
+              <strong className="kpi-value">{formatCurrency(inventoryStats.value)}</strong>
+              <div className="kpi-trend trend-neutral">At cost</div>
+            </div>
+          </div>
+          <div className="kpi-card">
+            <div className="kpi-icon-wrap" style={{ background: '#fdf4ff', color: '#c026d3' }}>📈</div>
+            <div className="kpi-content">
+              <span>Sales Value</span>
+              <strong className="kpi-value">{formatCurrency(scopedProducts.reduce((sum, p) => sum + ((p.currentStock || 0) * (p.sellingPrice || 0)), 0))}</strong>
+              <div className="kpi-trend trend-up">Potential revenue</div>
+            </div>
+          </div>
+        </div>
+        {scopedProducts.length === 0 ? (
+          <div className="hrms-empty-state" style={{ marginTop: '32px' }}>
+            <div className="empty-icon" style={{ fontSize: '64px', marginBottom: '16px', opacity: 0.5 }}>📦</div>
+            <h3>No products yet</h3>
+            <p>Start by adding your first product to track stock, pricing and inventory value.</p>
+            <div style={{ marginTop: '24px', display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button className="primary-button" onClick={() => setEditingProduct({})}>+ Add Product</button>
+              <button className="secondary-button" onClick={() => onStatus('Import opening soon')}>Import Excel</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="hrms-filters" style={{ marginBottom: '24px' }}>
+              <div className="hrms-search-box">
+                <span>🔍</span>
+                <input 
+                  type="text" 
+                  placeholder="Search products by name or SKU..." 
+                  value={inventorySearch}
+                  onChange={(e) => setInventorySearch(e.target.value)}
+                />
+              </div>
+              <div className="hrms-filter-dropdowns">
+                <select value={inventoryCategoryFilter} onChange={(e) => setInventoryCategoryFilter(e.target.value)}>
+                  <option value="All">All Categories</option>
+                  {Array.from(new Set(scopedProducts.map(p => p.category).filter(Boolean))).map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+                <select value={inventoryStatusFilter} onChange={(e) => setInventoryStatusFilter(e.target.value)}>
+                  <option value="All">All Statuses</option>
+                  <option value="In Stock">In Stock</option>
+                  <option value="Low Stock">Low Stock</option>
+                  <option value="Out of Stock">Out of Stock</option>
+                </select>
+              </div>
+            </div>
+
+            <section className="panel" style={{ padding: 0, overflow: 'hidden' }}>
+              <div className="erp-table-wrap">
+                <table className="statement-table hrms-directory-table">
+                  <thead>
+                    <tr>
+                      <th>Product Info</th>
+                      <th>Category</th>
+                      <th>SKU</th>
+                      <th>Stock Status</th>
+                      <th>Qty</th>
+                      <th>Purchase</th>
+                      <th>Selling</th>
+                      <th>Value</th>
+                      <th style={{ textAlign: 'right' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {scopedProducts.filter(p => {
+                      const matchesSearch = !inventorySearch || (p.name || '').toLowerCase().includes(inventorySearch.toLowerCase()) || (p.sku || '').toLowerCase().includes(inventorySearch.toLowerCase());
+                      const matchesCategory = inventoryCategoryFilter === 'All' || p.category === inventoryCategoryFilter;
+                      let status = 'In Stock';
+                      if ((p.currentStock || 0) <= 0) status = 'Out of Stock';
+                      else if ((p.currentStock || 0) <= (p.minStock || 0)) status = 'Low Stock';
+                      const matchesStatus = inventoryStatusFilter === 'All' || status === inventoryStatusFilter;
+                      return matchesSearch && matchesCategory && matchesStatus;
+                    }).map((product) => {
+                      let status = 'In Stock';
+                      let badgeClass = 'success';
+                      if ((product.currentStock || 0) <= 0) { status = 'Out of Stock'; badgeClass = 'danger'; }
+                      else if ((product.currentStock || 0) <= (product.minStock || 0)) { status = 'Low Stock'; badgeClass = 'warning'; }
+
+                      return (
+                      <tr key={product.id} className="directory-row" onClick={() => setSelectedProduct(product)} style={{ cursor: 'pointer' }}>
+                        <td>
+                          <div className="directory-employee-info">
+                            <div className="directory-avatar" style={{ borderRadius: '8px' }}>
+                              {product.image ? <img src={product.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '📦'}
+                            </div>
+                            <div className="directory-name">
+                              <strong>{product.name}</strong>
+                              <span>{product.unit ? `Per ${product.unit}` : 'Standard Unit'}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td>{product.category || '-'}</td>
+                        <td><code style={{ fontSize: '12px', background: 'var(--bg-secondary)', padding: '2px 6px', borderRadius: '4px' }}>{product.sku || 'N/A'}</code></td>
+                        <td><span className={`hrms-status-badge ${badgeClass}`}>{status}</span></td>
+                        <td><strong>{product.currentStock || 0}</strong> {product.unit}</td>
+                        <td>{formatCurrency(product.purchasePrice)}</td>
+                        <td>{formatCurrency(product.sellingPrice)}</td>
+                        <td><strong>{formatCurrency((product.currentStock || 0) * (product.purchasePrice || 0))}</strong></td>
+                        <td style={{ textAlign: 'right' }}>
+                          <div className="directory-actions" onClick={e => e.stopPropagation()}>
+                            <button className="icon-btn" onClick={() => editProduct(product)} title="Edit Product">✏️</button>
+                            <button className="icon-btn" onClick={() => deleteProduct(product)} title="Delete Product">🗑️</button>
+                          </div>
+                        </td>
+                      </tr>
+                    )})}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </>
+        )}
+
+        {editingProduct && createPortal(
+          <div className="hrms-drawer-overlay" onClick={() => setEditingProduct(null)}>
+            <div className="hrms-drawer-content" onClick={(e) => e.stopPropagation()}>
+              <div className="hrms-drawer-header">
+                <h2>{editingProduct.id ? 'Edit Product' : 'Add Product'}</h2>
+                <button className="close-button" type="button" onClick={() => setEditingProduct(null)}>×</button>
+              </div>
+              <form onSubmit={saveProduct} key={editingProduct?.id || 'new-product'} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                <div className="hrms-drawer-body">
+                  <div className="form-group">
+                    <label>Product Name</label>
+                    <input name="name" defaultValue={editingProduct?.name || ''} placeholder="e.g. Wireless Mouse" required />
+                  </div>
+                  <div className="form-group-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div className="form-group">
+                      <label>SKU / Code</label>
+                      <input name="sku" defaultValue={editingProduct?.sku || ''} placeholder="e.g. WM-01" />
+                    </div>
+                    <div className="form-group">
+                      <label>Category</label>
+                      <input name="category" defaultValue={editingProduct?.category || ''} placeholder="e.g. Electronics" />
+                    </div>
+                  </div>
+                  <div className="form-group-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div className="form-group">
+                      <label>Purchase Price</label>
+                      <input name="purchasePrice" type="number" step="0.01" defaultValue={editingProduct?.purchasePrice ?? ''} placeholder="0.00" />
+                    </div>
+                    <div className="form-group">
+                      <label>Selling Price</label>
+                      <input name="sellingPrice" type="number" step="0.01" defaultValue={editingProduct?.sellingPrice ?? ''} placeholder="0.00" />
+                    </div>
+                  </div>
+                  <div className="form-group-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                    <div className="form-group">
+                      <label>Current Stock</label>
+                      <input name="currentStock" type="number" defaultValue={editingProduct?.currentStock ?? ''} placeholder="0" />
+                    </div>
+                    <div className="form-group">
+                      <label>Min Stock (Alert)</label>
+                      <input name="minStock" type="number" defaultValue={editingProduct?.minStock ?? ''} placeholder="0" />
+                    </div>
+                    <div className="form-group">
+                      <label>Unit</label>
+                      <select name="unit" defaultValue={editingProduct?.unit || 'pcs'}>
+                        <option value="pcs">Pieces</option>
+                        <option value="kg">Kg</option>
+                        <option value="ltr">Litre</option>
+                        <option value="box">Box</option>
+                        <option value="set">Set</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label>Product Image</label>
+                    <input name="image" type="file" accept="image/*" />
+                  </div>
+                </div>
+                <div className="hrms-drawer-footer">
+                  <button className="secondary-button" type="button" onClick={() => setEditingProduct(null)}>Cancel</button>
+                  <button className="primary-button" type="submit">Save Product</button>
+                </div>
+              </form>
+            </div>
+          </div>, document.body
+        )}
+
+        {selectedProduct && createPortal(
+          <div className="hrms-drawer-overlay" onClick={() => setSelectedProduct(null)}>
+            <div className="hrms-drawer-content profile-drawer" onClick={(e) => e.stopPropagation()}>
+              <div className="hrms-drawer-header" style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                <div className="directory-avatar" style={{ width: '64px', height: '64px', borderRadius: '12px', background: 'var(--bg-secondary)' }}>
+                  {selectedProduct.image ? <img src={selectedProduct.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }} /> : '📦'}
+                </div>
+                <div>
+                  <h2 style={{ margin: '0 0 4px 0' }}>{selectedProduct.name}</h2>
+                  <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>SKU: {selectedProduct.sku || 'N/A'} • {selectedProduct.category || 'Uncategorized'}</p>
+                </div>
+                <div style={{ marginLeft: 'auto' }}>
+                  <button className="close-button" type="button" onClick={() => setSelectedProduct(null)}>×</button>
+                </div>
+              </div>
+              <div className="hrms-drawer-body no-padding">
+                <div className="hrms-profile-tabs">
+                  <button type="button" className={productProfileTab === 'Overview' ? 'active' : ''} onClick={() => setProductProfileTab('Overview')}>Overview</button>
+                  <button type="button" className={productProfileTab === 'Stock Movement' ? 'active' : ''} onClick={() => setProductProfileTab('Stock Movement')}>Stock Movement</button>
+                </div>
+                <div className="hrms-tab-content-area" style={{ padding: '24px' }}>
+                  {productProfileTab === 'Overview' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                      <div className="hrms-kpi-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: 0 }}>
+                        <div className="kpi-card" style={{ padding: '16px' }}>
+                          <div className="kpi-content">
+                            <span>Current Stock</span>
+                            <strong style={{ fontSize: '24px' }}>{selectedProduct.currentStock || 0} {selectedProduct.unit}</strong>
+                          </div>
+                        </div>
+                        <div className="kpi-card" style={{ padding: '16px' }}>
+                          <div className="kpi-content">
+                            <span>Stock Value</span>
+                            <strong style={{ fontSize: '24px' }}>{formatCurrency((selectedProduct.currentStock || 0) * (selectedProduct.purchasePrice || 0))}</strong>
+                          </div>
+                        </div>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-        <section className="panel">
-          <h2>AI Inventory Insights</h2>
-          <div className="ai-checker-grid">
-            <div className="ai-list good"><h3>Fast Moving</h3>{erpAI.bestProducts.map((p) => <p key={p.id}>{p.name}: {p.soldQty} sold</p>)}</div>
-            <div className="ai-list watch"><h3>Slow / Dead Stock</h3>{erpAI.deadStock.slice(0, 6).map((p) => <p key={p.id}>{p.name}: no sales recorded</p>)}</div>
-          </div>
-        </section>
+                      
+                      <article className="panel" style={{ margin: 0 }}>
+                        <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px' }}>Quick Stock Update</h3>
+                        <form onSubmit={(e) => { e.preventDefault(); stockTransaction(e); setSelectedProduct(null); }}>
+                          <input type="hidden" name="productId" value={selectedProduct.id} />
+                          <div className="form-group-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                            <select name="type" required>
+                              <option value="Stock In">Stock In</option>
+                              <option value="Stock Out">Stock Out</option>
+                              <option value="Adjustment">Adjustment</option>
+                            </select>
+                            <input name="qty" type="number" placeholder="Qty" required min="1" />
+                          </div>
+                          <input name="note" placeholder="Reason / note (e.g. Received from supplier)" style={{ marginBottom: '12px', width: '100%' }} />
+                          <button className="primary-button" type="submit" style={{ width: '100%' }}>Confirm Update</button>
+                        </form>
+                      </article>
+
+                      <div className="form-group-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                        <div>
+                          <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: 'var(--text-secondary)' }}>Purchase Price</p>
+                          <p style={{ margin: 0, fontWeight: 500 }}>{formatCurrency(selectedProduct.purchasePrice)}</p>
+                        </div>
+                        <div>
+                          <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: 'var(--text-secondary)' }}>Selling Price</p>
+                          <p style={{ margin: 0, fontWeight: 500 }}>{formatCurrency(selectedProduct.sellingPrice)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {productProfileTab === 'Stock Movement' && (
+                    <div className="stock-movement-timeline">
+                      {stockTxns.filter(tx => tx.productId === selectedProduct.id).length > 0 ? (
+                        stockTxns.filter(tx => tx.productId === selectedProduct.id).sort((a,b) => new Date(b.date) - new Date(a.date)).map(tx => (
+                          <div key={tx.id} style={{ display: 'flex', gap: '16px', padding: '16px 0', borderBottom: '1px solid var(--border-subtle)' }}>
+                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: tx.type === 'Stock Out' ? '#fef2f2' : '#f0fdf4', color: tx.type === 'Stock Out' ? '#dc2626' : '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              {tx.type === 'Stock Out' ? '↘' : '↗'}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <p style={{ margin: '0 0 4px 0', fontWeight: 500 }}>{tx.type} • {tx.qty} {selectedProduct.unit}</p>
+                              <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>{tx.note || 'No note provided'}</p>
+                            </div>
+                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                              {new Date(tx.date).toLocaleDateString()}
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '24px' }}>No stock movements recorded yet.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="hrms-drawer-footer">
+                <button className="secondary-button" type="button" onClick={() => setSelectedProduct(null)}>Close</button>
+                <button className="primary-button" type="button" onClick={() => { setSelectedProduct(null); editProduct(selectedProduct); }}>Edit Product</button>
+              </div>
+            </div>
+          </div>, document.body
+        )}
       </section>
     );
   }

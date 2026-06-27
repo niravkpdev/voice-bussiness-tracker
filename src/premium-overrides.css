@@ -937,3 +937,26 @@ tr:hover td {
 .hrms-tab-content-area { padding: 24px; }
 .hrms-pagination-bar { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 24px; }
 .page-indicator { font-size: 14px; color: var(--text-secondary); font-weight: 500; }
+/* 19. INVENTORY REDESIGN */
+.inventory-premium-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 24px;
+  border-radius: var(--radius-lg);
+}
+.inventory-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+}
+.inventory-kpi-grid .kpi-card {
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+}
