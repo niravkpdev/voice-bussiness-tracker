@@ -1676,14 +1676,18 @@ export default function Phase3Ops({
 
     return (
       <section className="phase3-stack fade-in" id="employees">
-        <div className="phase3-hero hrms-hero">
-          <div>
-            <span className="eyebrow">HRMS Phase A</span>
-            <h2>Employee Master and Professional HR Profiles</h2>
-            <p>Foundation for HRMS with structured employee records, profile tabs, notes, and role-aware access.</p>
+        <header className="hrms-premium-header">
+          <div className="hrms-header-title">
+            <span className="eyebrow">HRMS Enterprise</span>
+            <h2>Employees</h2>
+            <p>Manage employee profiles, attendance, leave, documents, payroll and login access.</p>
           </div>
-          <strong>{employees.filter((employee) => (employee.status || 'Active') === 'Active').length} active</strong>
-        </div>
+          <div className="hrms-header-actions">
+            {canManageEmployees && <button className="primary-button" onClick={() => setEditingEmployee({})}>+ Add Employee</button>}
+            <button className="secondary-button" onClick={() => window.print()}>Export</button>
+            <button className="secondary-button" onClick={() => {}}>Attendance Report</button>
+          </div>
+        </header>
 
         {!canViewEmployeeMaster && (
           <section className="notice error">
@@ -1713,95 +1717,174 @@ export default function Phase3Ops({
           </div>
         )}
 
-        {canViewEmployeeMaster && <section className="hrms-summary-grid">
-          <div className="summary-card"><span>Total Employees</span><strong>{accessibleEmployees.length}</strong></div>
-          <div className="summary-card"><span>Active</span><strong>{accessibleEmployees.filter((employee) => (employee.status || 'Active') === 'Active').length}</strong></div>
-          <div className="summary-card"><span>Departments</span><strong>{Math.max(0, employeeDepartments.length - 1)}</strong></div>
-          <div className="summary-card"><span>Monthly Payroll</span><strong>{canViewSalary ? formatCurrency(payrollTotal) : 'Restricted'}</strong></div>
-        </section>}
-
-        {canManageEmployees && (
-          <section className="panel hrms-master-panel">
-            <div className="section-header">
-              <div>
-                <h2>{editingEmployee ? 'Edit Employee Master' : 'Add Employee Master'}</h2>
-                <p className="panel-hint">Capture basic, work, salary, shift, reporting, and internal notes.</p>
+        {canViewEmployeeMaster && (
+          <section className="hrms-kpi-grid">
+            <div className="kpi-card">
+              <div className="kpi-icon">👥</div>
+              <div className="kpi-content">
+                <span>Total Employees</span>
+                <strong>{accessibleEmployees.length}</strong>
               </div>
-              <span>{editingEmployee ? 'Editing' : 'New'}</span>
             </div>
-            <form onSubmit={saveEmployee} key={editingEmployee?.id || 'new-employee'}>
-              <div className="form-grid hrms-form-grid">
-                <div>
-                  <label className="field-label" htmlFor="employee_id">Employee ID</label>
-                  <input id="employee_id" name="employee_id" defaultValue={employeeCode(currentEmployee) || createEmployeeCode(employees)} placeholder="EMP-0001" />
-                </div>
-                <div>
-                  <label className="field-label" htmlFor="full_name">Full Name</label>
-                  <input id="full_name" name="full_name" defaultValue={employeeDisplayName(currentEmployee) === 'Employee' ? '' : employeeDisplayName(currentEmployee)} placeholder="Employee full name" required />
-                </div>
-                <div>
-                  <label className="field-label" htmlFor="mobile_number">Mobile Number</label>
-                  <input id="mobile_number" name="mobile_number" defaultValue={employeeMobile(currentEmployee)} placeholder="+91 mobile number" required />
-                </div>
-                <div>
-                  <label className="field-label" htmlFor="email">Email</label>
-                  <input id="email" name="email" type="email" defaultValue={currentEmployee.email || ''} placeholder="employee@example.com" />
-                </div>
-                <div className="wide-field">
-                  <label className="field-label" htmlFor="address">Address</label>
-                  <textarea id="address" name="address" defaultValue={currentEmployee.address || ''} placeholder="Employee address" />
-                </div>
-                <div>
-                  <label className="field-label" htmlFor="department">Department</label>
-                  <input id="department" name="department" defaultValue={currentEmployee.department || ''} placeholder="Inventory, Sales, Admin" />
-                </div>
-                <div>
-                  <label className="field-label" htmlFor="designation">Designation</label>
-                  <input id="designation" name="designation" defaultValue={employeeDesignation(currentEmployee)} placeholder="Store Manager" />
-                </div>
-                <div>
-                  <label className="field-label" htmlFor="joining_date">Joining Date</label>
-                  <input id="joining_date" name="joining_date" type="date" defaultValue={currentEmployee.joiningDate || currentEmployee.joining_date || ''} />
-                </div>
-                <div>
-                  <label className="field-label" htmlFor="salary">Salary</label>
-                  <input id="salary" name="salary" type="number" min="0" defaultValue={currentEmployee.salary ?? ''} placeholder="Monthly salary" />
-                </div>
-                <div>
-                  <label className="field-label" htmlFor="advance">Advance</label>
-                  <input id="advance" name="advance" type="number" min="0" defaultValue={currentEmployee.advance ?? ''} placeholder="Advance paid" />
-                </div>
-                <div>
-                  <label className="field-label" htmlFor="shift_timing">Shift Timing</label>
-                  <input id="shift_timing" name="shift_timing" defaultValue={currentEmployee.shiftTiming || currentEmployee.shift_timing || ''} placeholder="10:00 AM - 7:00 PM" />
-                </div>
-                <div>
-                  <label className="field-label" htmlFor="reporting_manager">Reporting Manager</label>
-                  <input id="reporting_manager" name="reporting_manager" defaultValue={currentEmployee.reportingManager || currentEmployee.reporting_manager || ''} placeholder="Manager name" />
-                </div>
-                <div>
-                  <label className="field-label" htmlFor="status">Status</label>
-                  <select id="status" name="status" defaultValue={currentEmployee.status || 'Active'}>
-                    {EMPLOYEE_STATUSES.map((status) => <option key={status}>{status}</option>)}
-                  </select>
-                </div>
-                <div className="wide-field">
-                  <label className="field-label" htmlFor="notes">Description / Notes</label>
-                  <textarea
-                    id="notes"
-                    name="notes"
-                    defaultValue={currentEmployee.notes || currentEmployee.description || ''}
-                    placeholder="Good performer, handles inventory and customer support. Eligible for increment after December 2026."
-                  />
-                </div>
+            <div className="kpi-card">
+              <div className="kpi-icon">✅</div>
+              <div className="kpi-content">
+                <span>Active Employees</span>
+                <strong>{accessibleEmployees.filter((employee) => (employee.status || 'Active') === 'Active').length}</strong>
               </div>
-              <div className="inline-actions">
-                <button className="manual-button" type="submit">{editingEmployee ? 'Update Employee' : 'Save Employee'}</button>
-                {editingEmployee && <button className="secondary-button compact-button" type="button" onClick={() => setEditingEmployee(null)}>Cancel</button>}
+            </div>
+            <div className="kpi-card">
+              <div className="kpi-icon">📍</div>
+              <div className="kpi-content">
+                <span>Present Today</span>
+                <strong>{accessibleEmployees.filter(e => attendanceByEmployeeToday.get(e.id)?.status === 'Present').length}</strong>
               </div>
-            </form>
+            </div>
+            <div className="kpi-card">
+              <div className="kpi-icon">❌</div>
+              <div className="kpi-content">
+                <span>Absent Today</span>
+                <strong>{accessibleEmployees.filter(e => attendanceByEmployeeToday.get(e.id)?.status === 'Absent').length}</strong>
+              </div>
+            </div>
+            <div className="kpi-card">
+              <div className="kpi-icon">🏖️</div>
+              <div className="kpi-content">
+                <span>On Leave</span>
+                <strong>{accessibleEmployees.filter(e => attendanceByEmployeeToday.get(e.id)?.status === 'Leave').length}</strong>
+              </div>
+            </div>
+            <div className="kpi-card">
+              <div className="kpi-icon">🔐</div>
+              <div className="kpi-content">
+                <span>Pending Logins</span>
+                <strong>{accessibleEmployees.filter(e => !e.email || e.email.trim() === '').length}</strong>
+              </div>
+            </div>
           </section>
         )}
+
+        {canManageEmployees && editingEmployee && createPortal(
+          <div className="hrms-drawer-overlay" onClick={() => setEditingEmployee(null)}>
+            <div className="hrms-drawer-content" onClick={(e) => e.stopPropagation()}>
+              <div className="hrms-drawer-header">
+                <h2>{editingEmployee.id ? 'Edit Employee' : 'Add Employee'}</h2>
+                <button className="icon-button" onClick={() => setEditingEmployee(null)}>✕</button>
+              </div>
+              
+              <div className="hrms-drawer-body">
+                <form id="employeeForm" onSubmit={saveEmployee} key={editingEmployee?.id || 'new-employee'}>
+                  
+                  <div className="hrms-form-section">
+                    <h3 className="section-title">Basic Information</h3>
+                    <div className="form-grid hrms-form-grid">
+                      <div>
+                        <label className="field-label" htmlFor="employee_id">Employee ID</label>
+                        <input id="employee_id" name="employee_id" defaultValue={employeeCode(currentEmployee) || createEmployeeCode(employees)} placeholder="EMP-0001" />
+                      </div>
+                      <div>
+                        <label className="field-label" htmlFor="full_name">Full Name</label>
+                        <input id="full_name" name="full_name" defaultValue={employeeDisplayName(currentEmployee) === 'Employee' ? '' : employeeDisplayName(currentEmployee)} placeholder="Employee full name" required />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="hrms-form-section">
+                    <h3 className="section-title">Contact Information</h3>
+                    <div className="form-grid hrms-form-grid">
+                      <div>
+                        <label className="field-label" htmlFor="mobile_number">Mobile Number</label>
+                        <input id="mobile_number" name="mobile_number" defaultValue={employeeMobile(currentEmployee)} placeholder="+91 mobile number" required />
+                      </div>
+                      <div>
+                        <label className="field-label" htmlFor="email">Email</label>
+                        <input id="email" name="email" type="email" defaultValue={currentEmployee.email || ''} placeholder="employee@example.com" />
+                      </div>
+                      <div className="wide-field">
+                        <label className="field-label" htmlFor="address">Address</label>
+                        <textarea id="address" name="address" defaultValue={currentEmployee.address || ''} placeholder="Employee address" rows="2" />
+                      </div>
+                      <div className="wide-field">
+                        <label className="field-label" htmlFor="emergency_contact">Emergency Contact</label>
+                        <input id="emergency_contact" name="emergency_contact" defaultValue={currentEmployee.emergencyContact || currentEmployee.emergency_contact || ''} placeholder="Name & Phone" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="hrms-form-section">
+                    <h3 className="section-title">Job Details</h3>
+                    <div className="form-grid hrms-form-grid">
+                      <div>
+                        <label className="field-label" htmlFor="department">Department</label>
+                        <input id="department" name="department" defaultValue={currentEmployee.department || ''} placeholder="Inventory, Sales, Admin" />
+                      </div>
+                      <div>
+                        <label className="field-label" htmlFor="designation">Designation</label>
+                        <input id="designation" name="designation" defaultValue={employeeDesignation(currentEmployee)} placeholder="Store Manager" />
+                      </div>
+                      <div>
+                        <label className="field-label" htmlFor="joining_date">Joining Date</label>
+                        <input id="joining_date" name="joining_date" type="date" defaultValue={currentEmployee.joiningDate || currentEmployee.joining_date || ''} />
+                      </div>
+                      <div>
+                        <label className="field-label" htmlFor="reporting_manager">Reporting Manager</label>
+                        <input id="reporting_manager" name="reporting_manager" defaultValue={currentEmployee.reportingManager || currentEmployee.reporting_manager || ''} placeholder="Manager name" />
+                      </div>
+                      <div>
+                        <label className="field-label" htmlFor="status">Status</label>
+                        <select id="status" name="status" defaultValue={currentEmployee.status || 'Active'}>
+                          {EMPLOYEE_STATUSES.map((status) => <option key={status}>{status}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="hrms-form-section">
+                    <h3 className="section-title">Salary & Operations</h3>
+                    <div className="form-grid hrms-form-grid">
+                      <div>
+                        <label className="field-label" htmlFor="salary">Salary</label>
+                        <input id="salary" name="salary" type="number" min="0" defaultValue={currentEmployee.salary ?? ''} placeholder="Monthly salary" />
+                      </div>
+                      <div>
+                        <label className="field-label" htmlFor="advance">Advance</label>
+                        <input id="advance" name="advance" type="number" min="0" defaultValue={currentEmployee.advance ?? ''} placeholder="Advance paid" />
+                      </div>
+                      <div>
+                        <label className="field-label" htmlFor="shift_timing">Shift Timing</label>
+                        <input id="shift_timing" name="shift_timing" defaultValue={currentEmployee.shiftTiming || currentEmployee.shift_timing || ''} placeholder="10:00 AM - 7:00 PM" />
+                      </div>
+                      <div className="wide-field">
+                        <label className="field-label" htmlFor="bank_details">Bank Details</label>
+                        <textarea id="bank_details" name="bank_details" defaultValue={currentEmployee.bankDetails || currentEmployee.bank_details || ''} placeholder="Account No, IFSC, Bank Name" rows="2" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="hrms-form-section">
+                    <h3 className="section-title">Additional Notes</h3>
+                    <div className="form-grid hrms-form-grid">
+                      <div className="wide-field">
+                        <textarea
+                          id="notes"
+                          name="notes"
+                          defaultValue={currentEmployee.notes || currentEmployee.description || ''}
+                          placeholder="Good performer, handles inventory and customer support..."
+                          rows="3"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </form>
+              </div>
+
+              <div className="hrms-drawer-footer">
+                <button className="secondary-button" type="button" onClick={() => setEditingEmployee(null)}>Cancel</button>
+                <button className="primary-button" type="submit" form="employeeForm">{editingEmployee.id ? 'Save Changes' : 'Save Employee'}</button>
+              </div>
+            </div>
+          </div>
+        , document.body)}
 
         {requestUpdateModal && (
           <div className="modal-overlay">
@@ -1865,59 +1948,86 @@ export default function Phase3Ops({
           </section>
         )}
 
-        {canViewEmployeeMaster && <section className="panel hrms-directory-panel">
-          <div className="section-header">
+        {canViewEmployeeMaster && <section className="hrms-directory-panel">
+          <div className="hrms-directory-header">
             <div>
               <h2>Employee Directory</h2>
               <p className="panel-hint">Search, filter, and open employee profiles.</p>
             </div>
-            <span>{filteredEmployees.length} results</span>
-          </div>
-          <div className="hrms-toolbar">
-            <input value={employeeSearch} onChange={(event) => setEmployeeSearch(event.target.value)} placeholder="Search employee, ID, department, mobile..." />
-            <select value={employeeDepartmentFilter} onChange={(event) => setEmployeeDepartmentFilter(event.target.value)}>
-              {employeeDepartments.map((department) => <option key={department}>{department}</option>)}
-            </select>
-            <select value={employeeStatusFilter} onChange={(event) => setEmployeeStatusFilter(event.target.value)}>
-              <option>All</option>
-              {EMPLOYEE_STATUSES.map((status) => <option key={status}>{status}</option>)}
-            </select>
+            <div className="hrms-toolbar">
+              <div className="hrms-search-box">
+                <span className="search-icon">🔍</span>
+                <input value={employeeSearch} onChange={(event) => setEmployeeSearch(event.target.value)} placeholder="Search employee, ID, department..." />
+              </div>
+              <select value={employeeDepartmentFilter} onChange={(event) => setEmployeeDepartmentFilter(event.target.value)} className="hrms-filter-select">
+                <option value="All">All Departments</option>
+                {employeeDepartments.filter(d => d !== 'All').map((department) => <option key={department} value={department}>{department}</option>)}
+              </select>
+              <select value={employeeStatusFilter} onChange={(event) => setEmployeeStatusFilter(event.target.value)} className="hrms-filter-select">
+                <option value="All">All Statuses</option>
+                {EMPLOYEE_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
+              </select>
+            </div>
           </div>
 
           {accessibleEmployees.length === 0 ? (
-            <div className="empty-state">No employees yet. Add your first employee master record.</div>
+            <div className="hrms-empty-state">
+              <div className="empty-icon">📁</div>
+              <h3>No employees yet</h3>
+              <p>Add your first employee to manage attendance, leave and documents.</p>
+              {canManageEmployees && <button className="primary-button" onClick={() => setEditingEmployee({})}>+ Add Employee</button>}
+            </div>
           ) : visiblePaginatedEmployees.length === 0 ? (
-            <div className="empty-state">No employees match the selected filters.</div>
+            <div className="hrms-empty-state">
+              <div className="empty-icon">🔍</div>
+              <h3>No employees found</h3>
+              <p>No employees match the selected filters. Try adjusting your search.</p>
+              <button className="secondary-button" onClick={() => { setEmployeeSearch(''); setEmployeeDepartmentFilter('All'); setEmployeeStatusFilter('All'); }}>Clear Filters</button>
+            </div>
           ) : (
-            <div className="hrms-employee-grid">
+            <div className="hrms-employee-premium-grid">
               {visiblePaginatedEmployees.map((employee) => {
                 const todayEntry = attendanceByEmployeeToday.get(employee.id);
                 return (
-                  <article className={`hrms-employee-card ${selectedEmployee?.id === employee.id ? 'selected' : ''}`} key={employee.id}>
-                    <div className="hrms-employee-card-head">
-                      <div className="hrms-avatar">{employeeDisplayName(employee).slice(0, 1).toUpperCase()}</div>
-                      <div>
+                  <article className="hrms-employee-premium-card" key={employee.id}>
+                    <div className="hrms-card-top">
+                      <div className="hrms-card-avatar">{employeeDisplayName(employee).slice(0, 1).toUpperCase()}</div>
+                      <div className="hrms-card-identity">
                         <strong>{employeeDisplayName(employee)}</strong>
-                        <p>{employeeCode(employee)} · {employee.department || 'No department'}</p>
+                        <p>{employeeDesignation(employee) || 'Designation pending'}</p>
                       </div>
-                      <span className={`hrms-status ${(employee.status || 'Active').toLowerCase()}`}>{employee.status || 'Active'}</span>
+                      <div className="hrms-card-badges">
+                        <span className={`hrms-badge status-${(employee.status || 'Active').toLowerCase()}`}>{employee.status || 'Active'}</span>
+                      </div>
                     </div>
-                    <div className="hrms-employee-meta">
-                      <span>{employeeDesignation(employee) || 'Designation pending'}</span>
-                      <span>{employeeMobile(employee) || 'Mobile pending'}</span>
-                      {canViewSalary && <span>{formatCurrency(employee.salary)} salary</span>}
-                      <span className={`attendance-pill ${todayEntry?.status === 'Absent' ? 'absent' : todayEntry?.status === 'Present' ? 'present' : ''}`}>
-                        {attendanceStatusLabel(todayEntry?.status)} today
-                      </span>
+                    
+                    <div className="hrms-card-body">
+                      <div className="info-row">
+                        <span className="info-icon">🆔</span>
+                        <span className="info-text">{employeeCode(employee)}</span>
+                      </div>
+                      <div className="info-row">
+                        <span className="info-icon">🏢</span>
+                        <span className="info-text">{employee.department || 'No department'}</span>
+                      </div>
+                      <div className="info-row">
+                        <span className="info-icon">📞</span>
+                        <span className="info-text">{employeeMobile(employee) || 'Mobile pending'}</span>
+                      </div>
+                      <div className="info-row">
+                        <span className="info-icon">📅</span>
+                        <span className="info-text">
+                          <span className={`attendance-dot ${todayEntry?.status === 'Absent' ? 'absent' : todayEntry?.status === 'Present' ? 'present' : 'leave'}`}></span>
+                          {attendanceStatusLabel(todayEntry?.status)} today
+                        </span>
+                      </div>
                     </div>
-                    <div className="voucher-actions">
-                      <button className="share-entry-button" type="button" onClick={() => { setSelectedEmployee(employee); setEmployeeProfileTab(EMPLOYEE_PROFILE_TABS[0]); }}>Profile</button>
-                      <button className="share-entry-button" type="button" onClick={() => { setSelectedEmployee(employee); setEmployeeProfileTab('Documents'); }}>Documents</button>
-                      {canManageEmployees && <button className="share-entry-button" type="button" onClick={() => setEditingEmployee(employee)}>Edit</button>}
-                      {canManageEmployees && <button className="share-entry-button" type="button" onClick={() => { setLoginManageModal(employee); setLoginEmail(employee?.email || ''); setLoginPassword(''); setLoginStatusMsg({ text: '', type: '' }); }}>Manage Login</button>}
-                      {canManageEmployees && <button className="share-entry-button" type="button" onClick={() => markAttendance(employee, 'Present')}>Present</button>}
-                      {canManageEmployees && <button className="share-entry-button" type="button" onClick={() => markAttendance(employee, 'Absent')}>Absent</button>}
-                      {canManageEmployees && <button className="delete-entry-button" type="button" onClick={() => deleteEmployee(employee)}>Delete</button>}
+
+                    <div className="hrms-card-actions">
+                      <button className="icon-action-btn" title="View Profile" onClick={() => { setSelectedEmployee(employee); setEmployeeProfileTab(EMPLOYEE_PROFILE_TABS[0]); }}>👤 Profile</button>
+                      {canManageEmployees && <button className="icon-action-btn" title="Edit Employee" onClick={() => setEditingEmployee(employee)}>✏️ Edit</button>}
+                      {canManageEmployees && <button className="icon-action-btn" title="Mark Present" onClick={() => markAttendance(employee, 'Present')}>✅ In</button>}
+                      {canManageEmployees && <button className="icon-action-btn" title="Mark Absent" onClick={() => markAttendance(employee, 'Absent')}>❌ Out</button>}
                     </div>
                   </article>
                 );
@@ -1925,11 +2035,13 @@ export default function Phase3Ops({
             </div>
           )}
 
-          <div className="hrms-pagination">
-            <button className="secondary-button compact-button" type="button" disabled={employeePage <= 1} onClick={() => setEmployeePage((page) => Math.max(1, page - 1))}>Previous</button>
-            <span>Page {employeePage} of {employeePageCount}</span>
-            <button className="secondary-button compact-button" type="button" disabled={employeePage >= employeePageCount} onClick={() => setEmployeePage((page) => Math.min(employeePageCount, page + 1))}>Next</button>
-          </div>
+          {visiblePaginatedEmployees.length > 0 && (
+            <div className="hrms-pagination-bar">
+              <button className="secondary-button" disabled={employeePage <= 1} onClick={() => setEmployeePage((page) => Math.max(1, page - 1))}>← Previous</button>
+              <span className="page-indicator">Page {employeePage} of {employeePageCount}</span>
+              <button className="secondary-button" disabled={employeePage >= employeePageCount} onClick={() => setEmployeePage((page) => Math.min(employeePageCount, page + 1))}>Next →</button>
+            </div>
+          )}
         </section>}
 
         {canViewEmployeeMaster && (
@@ -2197,35 +2309,39 @@ export default function Phase3Ops({
         )}
 
         {canViewEmployeeMaster && selectedEmployee && createPortal(
-          <div className="modal-backdrop" style={{ zIndex: 9998 }}>
-            <div className="modal-content hrms-profile-modal" style={{ maxWidth: '900px', width: '95vw', maxHeight: '90vh', overflowY: 'auto', padding: 0 }}>
-              <section className="panel hrms-profile-panel" style={{ border: 'none', boxShadow: 'none', margin: 0 }}>
-                <div className="hrms-profile-header">
-              <div className="hrms-avatar large">{employeeDisplayName(selectedEmployee).slice(0, 1).toUpperCase()}</div>
-              <div>
-                <span className="eyebrow">Employee Profile</span>
-                <h2>{employeeDisplayName(selectedEmployee)}</h2>
-                <p>{employeeCode(selectedEmployee)} · {employeeDesignation(selectedEmployee) || 'Designation pending'} · {selectedEmployee.department || 'Department pending'}</p>
+          <div className="hrms-drawer-overlay" onClick={() => setSelectedEmployee(null)}>
+            <div className="hrms-drawer-content profile-drawer" onClick={(e) => e.stopPropagation()}>
+              <div className="hrms-drawer-header">
+                <div className="hrms-profile-drawer-head">
+                  <div className="hrms-avatar large">{employeeDisplayName(selectedEmployee).slice(0, 1).toUpperCase()}</div>
+                  <div>
+                    <span className="eyebrow">Employee Profile</span>
+                    <h2>{employeeDisplayName(selectedEmployee)}</h2>
+                    <p>{employeeCode(selectedEmployee)} · {employeeDesignation(selectedEmployee) || 'Designation pending'} · {selectedEmployee.department || 'Department pending'}</p>
+                  </div>
+                </div>
+                <button className="icon-button" onClick={() => setSelectedEmployee(null)}>✕</button>
               </div>
-              <button className="secondary-button compact-button" type="button" onClick={() => setSelectedEmployee(null)}>Close</button>
-            </div>
-            <div className="hrms-tabs">
-              {EMPLOYEE_PROFILE_TABS.map((tab) => {
-                if (tab === 'Login & Access' && !canManageEmployees) return null;
-                return (
-                  <button className={employeeProfileTab === tab ? 'active' : ''} key={tab} type="button" onClick={() => {
-                    setEmployeeProfileTab(tab);
-                    setLoginStatusMsg({ text: '', type: '' });
-                    setLoginEmail(selectedEmployee?.email || '');
-                    setLoginPassword('');
-                  }}>
-                    {tab}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="hrms-tab-card">
-              {employeeProfileTab === 'Personal Information' && (
+
+              <div className="hrms-drawer-body no-padding">
+                <div className="hrms-profile-tabs">
+                  {EMPLOYEE_PROFILE_TABS.map((tab) => {
+                    if (tab === 'Login & Access' && !canManageEmployees) return null;
+                    return (
+                      <button className={`hrms-tab-btn ${employeeProfileTab === tab ? 'active' : ''}`} key={tab} type="button" onClick={() => {
+                        setEmployeeProfileTab(tab);
+                        setLoginStatusMsg({ text: '', type: '' });
+                        setLoginEmail(selectedEmployee?.email || '');
+                        setLoginPassword('');
+                      }}>
+                        {tab}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="hrms-tab-content-area">
+                  {employeeProfileTab === 'Personal Information' && (
                 <div style={{ position: 'relative' }}>
                   {staffEmployeeIds.has(selectedEmployee.id) && (
                     <button className="primary-button" style={{ position: 'absolute', top: '-3rem', right: '0' }} onClick={() => setRequestUpdateModal(selectedEmployee)}>Request Update</button>
@@ -2513,7 +2629,6 @@ export default function Phase3Ops({
                 </article>
               )}
             </div>
-              </section>
             </div>
           </div>, document.body
         )}
