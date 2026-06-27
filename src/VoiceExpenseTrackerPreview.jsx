@@ -2,7 +2,7 @@ import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { 
   Activity, ArrowUpRight, ArrowDownRight, DollarSign, CreditCard, 
   TrendingUp, Users, Package, FileText, Bell, CheckSquare, 
-  Clock, Plus, ShoppingBag, Truck
+  Clock, Plus, ShoppingBag, Truck, Search, Settings, HelpCircle, LogOut, User, ChevronDown
 } from 'lucide-react';
 import {
   LEDGERS_KEY,
@@ -4597,19 +4597,47 @@ export default function VoiceExpenseTrackerPreview() {
               <strong style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{activePageTitle}</strong>
             </div>
           </div>
-          <div className="topbar-search" style={{ flex: 1, maxWidth: '400px', position: 'relative' }}>
-            <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>⌕</span>
-            <input type="search" placeholder="Search..." aria-label="Search business records" style={{ width: '100%', padding: '8px 12px 8px 36px', borderRadius: '6px', border: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)', fontSize: '14px' }} />
+          <div className="search-wrapper">
+            <Search size={16} className="search-icon" />
+            <input type="search" placeholder="Search customers, invoices, inventory..." aria-label="Search business records" />
+            <div className="search-shortcut">Ctrl + K</div>
           </div>
-          <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <button className="btn btn-secondary" style={{ padding: '6px 12px', borderRadius: '6px', fontSize: '13px', fontWeight: '500' }}>Share</button>
-            <a href="#notifications" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '50%', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', textDecoration: 'none' }}>
-              <Bell size={16} />
-            </a>
-            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--brand-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }} onClick={() => { window.location.hash = 'profile-settings'; }}>
-              {(profile.owner || authUser?.email || 'A')[0].toUpperCase()}
+          <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            
+            {/* Quick Add Dropdown */}
+            <div className="saas-dropdown-container">
+              <button className="btn btn-primary" style={{ padding: '8px 14px', borderRadius: '8px', fontSize: '13px' }}>
+                <Plus size={16} /> Quick Add <ChevronDown size={14} style={{ opacity: 0.7 }} />
+              </button>
+              <div className="saas-dropdown-menu">
+                <a href="#new-invoice" className="saas-dropdown-item"><FileText size={16} /> New Invoice</a>
+                <a href="#new-customer" className="saas-dropdown-item"><Users size={16} /> New Customer</a>
+                <a href="#new-product" className="saas-dropdown-item"><Package size={16} /> New Product</a>
+                <a href="#new-employee" className="saas-dropdown-item"><User size={16} /> New Employee</a>
+                <div className="saas-dropdown-divider"></div>
+                <a href="#record-expense" className="saas-dropdown-item"><DollarSign size={16} /> Record Expense</a>
+              </div>
             </div>
-            <button onClick={logout} style={{ marginLeft: '8px', fontSize: '13px', color: 'var(--text-muted)', background: 'transparent', border: 'none', cursor: 'pointer' }}>Logout</button>
+
+            <a href="#notifications" className="hover-scale" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: '50%', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', textDecoration: 'none', background: 'var(--bg-secondary)' }}>
+              <Bell size={18} />
+            </a>
+
+            {/* Profile Dropdown */}
+            <div className="saas-dropdown-container">
+              <div className="hover-scale" style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--brand-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '600', fontSize: '14px', cursor: 'pointer', border: '2px solid transparent', outline: 'none' }} tabIndex="0">
+                {(profile.owner || authUser?.email || 'A')[0].toUpperCase()}
+              </div>
+              <div className="saas-dropdown-menu">
+                <a href="#profile-settings" className="saas-dropdown-item"><User size={16} /> My Profile</a>
+                <a href="#company-settings" className="saas-dropdown-item"><Settings size={16} /> Company Settings</a>
+                <a href="#preferences" className="saas-dropdown-item"><CheckSquare size={16} /> Preferences</a>
+                <a href="#help-center" className="saas-dropdown-item"><HelpCircle size={16} /> Help Center</a>
+                <div className="saas-dropdown-divider"></div>
+                <button onClick={logout} className="saas-dropdown-item danger"><LogOut size={16} /> Logout</button>
+              </div>
+            </div>
+
           </div>
         </header>
 
