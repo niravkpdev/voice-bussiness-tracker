@@ -21,28 +21,53 @@ export function SetupWizard({ onComplete, profile, updateProfile }) {
   
   const [addDemoData, setAddDemoData] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState('');
 
   const handleFinish = async () => {
+    if (loading) return;
     setLoading(true);
+    let sampleDataSuccess = true;
+    
     try {
       if (addDemoData) {
-        window.demoData = generateSampleData();
+        try {
+          window.demoData = generateSampleData();
+        } catch (demoErr) {
+          console.error('Failed to generate sample data', demoErr);
+          sampleDataSuccess = false;
+        }
       }
       
-      await updateProfile({
-        name: businessName,
-        businessType,
-        industry,
-        country,
-        currency,
-        setupCompleted: true,
-      });
+      try {
+        await updateProfile({
+          name: businessName,
+          businessType,
+          industry,
+          country,
+          currency,
+          setupCompleted: true,
+        });
+      } catch (profileErr) {
+        console.error('Failed to update profile', profileErr);
+        // We continue even if saving to cloud failed, because the wrapper will have saved to localStorage
+      }
       
-      onComplete(addDemoData);
+      if (!sampleDataSuccess) {
+        setToast('Sample data could not be added, but your workspace is ready.');
+      } else {
+        setToast('Workspace setup complete.');
+      }
+      
+      setTimeout(() => {
+        onComplete(addDemoData && sampleDataSuccess);
+      }, 1500);
+      
     } catch (e) {
       console.error(e);
-    } finally {
-      setLoading(false);
+      setToast('An unexpected error occurred. Proceeding to Dashboard.');
+      setTimeout(() => {
+        onComplete(false);
+      }, 1500);
     }
   };
 
@@ -191,6 +216,11 @@ export function SetupWizard({ onComplete, profile, updateProfile }) {
           )}
         </div>
 
+        {toast && (
+          <div style={{ padding: '12px 24px', background: 'var(--brand-primary)', color: 'white', textAlign: 'center', fontWeight: 500, fontSize: '14px' }}>
+            {toast}
+          </div>
+        )}
         {/* Footer */}
         <div style={{ padding: '20px 32px', borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)', display: 'flex', justifyContent: 'space-between' }}>
           <button 

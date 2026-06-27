@@ -4646,7 +4646,18 @@ export default function VoiceExpenseTrackerPreview() {
                 setShowTour(true);
               }
             }}
-            updateProfile={saveUserProfile}
+            updateProfile={async (data) => {
+              try {
+                localStorage.setItem('TRINETR_PROFILE', JSON.stringify({...profile, ...data}));
+              } catch(e) {}
+              if (authUser?.uid) {
+                try {
+                  await saveUserProfile(authUser.uid, {...profile, ...data});
+                } catch(e) {
+                  console.error('Failed to save setup to cloud:', e);
+                }
+              }
+            }}
           />
         )}
         {showTour && <GuidedTour onFinish={() => setShowTour(false)} />}
