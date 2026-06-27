@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Users, Plus, Search, Filter, Tag, Download, MoreHorizontal, ArrowLeft, ArrowUpRight,
   Edit3, Phone, Mail, MapPin, MessageCircle, Star, AlertCircle, CheckCircle,
@@ -1136,7 +1137,7 @@ export default function Phase2ERP({
       <section className="phase2-stack fade-in crm-container" id={activeTab} style={{ background: 'transparent', border: 'none', boxShadow: 'none', padding: 0 }}>
         
         {/* RIGHT SIDE DRAWER FOR ADD/EDIT CUSTOMER */}
-        {(showPersonDrawer || currentEdit) && (
+        {(showPersonDrawer || currentEdit) && typeof document !== 'undefined' && createPortal(
           <div className="crm-drawer-overlay" onClick={() => { setShowPersonDrawer(false); setEditingPerson(null); }}>
             <div className="crm-drawer-content" onClick={(e) => e.stopPropagation()}>
               <div className="crm-drawer-header">
@@ -1187,7 +1188,8 @@ export default function Phase2ERP({
                 </div>
               </form>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* LIST VIEW OR PROFILE VIEW */}

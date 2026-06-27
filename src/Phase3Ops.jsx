@@ -626,7 +626,7 @@ export default function Phase3Ops({
       bank_details: sanitizeText(form.get('bank_details'), 300),
       notes: sanitizeText(form.get('notes'), 1200),
       description: sanitizeText(form.get('notes'), 1200),
-      businessId: current?.businessId || 'default',
+      businessId: current?.businessId || activeBusinessId || 'default',
       createdAt: current?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -644,9 +644,11 @@ export default function Phase3Ops({
       return;
     }
     try {
+      if (typeof onStatus === 'function') onStatus('Saving employee...');
       await persistRecord('employees', employee, 'Employee save failed');
+      if (typeof onStatus === 'function') onStatus('Employee saved successfully!');
     } catch (error) {
-      onStatus(error?.message || 'Employee save failed');
+      if (typeof onStatus === 'function') onStatus(error?.message || 'Employee save failed');
       return;
     }
     setEmployees((items) => [employee, ...items.filter((item) => item.id !== employee.id)]);
