@@ -832,6 +832,14 @@ export default function VoiceExpenseTrackerPreview() {
   const [authLoading, setAuthLoading] = useState(false);
   const [appLoading, setAppLoading] = useState(true);
   const [transactionsLoading, setTransactionsLoading] = useState(false);
+  const [quickNote, setQuickNote] = useState(() => {
+    try {
+      return localStorage.getItem('trinetr-quick-notes') || '';
+    } catch {
+      return '';
+    }
+  });
+
   
   // CRM Module State
   const [selectedCrmCustomer, setSelectedCrmCustomer] = useState(null);
@@ -4616,12 +4624,12 @@ export default function VoiceExpenseTrackerPreview() {
                 <Plus size={16} /> Quick Add <ChevronDown size={14} style={{ opacity: 0.7 }} />
               </button>
               <div className="saas-dropdown-menu">
-                <a href="#new-invoice" className="saas-dropdown-item"><FileText size={16} /> New Invoice</a>
-                <a href="#new-customer" className="saas-dropdown-item"><Users size={16} /> New Customer</a>
-                <a href="#new-product" className="saas-dropdown-item"><Package size={16} /> New Product</a>
-                <a href="#new-employee" className="saas-dropdown-item"><User size={16} /> New Employee</a>
+                <button type="button" onClick={() => { setActiveTab('invoices'); setMobileNavOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><FileText size={16} /> New Invoice</button>
+                <button type="button" onClick={() => { setActiveTab('customers'); setStatus('Add Customer drawer coming soon'); setMobileNavOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Users size={16} /> New Customer</button>
+                <button type="button" onClick={() => { setActiveTab('inventory'); setStatus('Navigate to Inventory to add Product'); setMobileNavOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Package size={16} /> New Product</button>
+                <button type="button" onClick={() => { setActiveTab('employees'); setStatus('Navigate to Employees to add Employee'); setMobileNavOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><User size={16} /> New Employee</button>
                 <div className="saas-dropdown-divider"></div>
-                <a href="#record-expense" className="saas-dropdown-item"><DollarSign size={16} /> Record Expense</a>
+                <button type="button" onClick={() => { setActiveTab('voucher-entry'); setMobileNavOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><DollarSign size={16} /> Record Expense</button>
               </div>
             </div>
 
@@ -4635,12 +4643,12 @@ export default function VoiceExpenseTrackerPreview() {
                 {(profile.owner || authUser?.email || 'A')[0].toUpperCase()}
               </div>
               <div className="saas-dropdown-menu">
-                <a href="#profile-settings" className="saas-dropdown-item"><User size={16} /> My Profile</a>
-                <a href="#company-settings" className="saas-dropdown-item"><Settings size={16} /> Company Settings</a>
-                <a href="#preferences" className="saas-dropdown-item"><CheckSquare size={16} /> Preferences</a>
-                <a href="#help-center" className="saas-dropdown-item"><HelpCircle size={16} /> Help Center</a>
+                <button type="button" onClick={() => setStatus('Profile page coming soon')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><User size={16} /> My Profile</button>
+                <button type="button" onClick={() => setActiveTab('app-settings')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Settings size={16} /> Company Settings</button>
+                <button type="button" onClick={() => setStatus('Preferences coming soon')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><CheckSquare size={16} /> Preferences</button>
+                <button type="button" onClick={() => setStatus('Help Center coming soon')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><HelpCircle size={16} /> Help Center</button>
                 <div className="saas-dropdown-divider"></div>
-                <button onClick={logout} className="saas-dropdown-item danger"><LogOut size={16} /> Logout</button>
+                <button type="button" onClick={logout} className="saas-dropdown-item danger" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><LogOut size={16} /> Logout</button>
               </div>
             </div>
 
@@ -4804,7 +4812,12 @@ export default function VoiceExpenseTrackerPreview() {
                           { label: 'Add Product', desc: 'Inventory', icon: Package, path: 'inventory', color: '#8b5cf6', bg: '#f5f3ff' },
                           { label: 'Payroll', desc: 'Pay staff', icon: Briefcase, path: 'employees', color: '#06b6d4', bg: '#ecfeff' }
                         ].map(action => (
-                          <button key={action.label} onClick={() => { window.location.hash = action.path; }} className="hover-scale" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '16px', gap: '8px', border: '1px solid var(--border-subtle)', borderRadius: '12px', background: 'var(--bg-secondary)', cursor: 'pointer', textAlign: 'left' }}>
+                          <button key={action.label} onClick={() => { 
+                            setActiveTab(action.path);
+                            if (action.path === 'customers') setStatus('Add Customer drawer coming soon');
+                            if (action.path === 'inventory') setStatus('Navigate to Inventory to add Product');
+                            if (action.path === 'employees') setStatus('Navigate to Employees for Payroll');
+                          }} className="hover-scale" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '16px', gap: '8px', border: '1px solid var(--border-subtle)', borderRadius: '12px', background: 'var(--bg-secondary)', cursor: 'pointer', textAlign: 'left' }}>
                             <div style={{ padding: '8px', background: action.bg, color: action.color, borderRadius: '8px' }}>
                               <action.icon size={20} />
                             </div>
@@ -4982,8 +4995,9 @@ export default function VoiceExpenseTrackerPreview() {
                     <div className="glass-panel" style={{ padding: '24px', margin: 0 }}>
                       <div className="panel-header">
                         <h2 className="panel-title"><FileText size={18} color="var(--brand-primary)" /> Quick Notes</h2>
+                        <button type="button" className="btn btn-ghost" style={{ padding: '4px 12px', fontSize: '12px', background: 'var(--bg-secondary)' }} onClick={() => { localStorage.setItem('trinetr-quick-notes', quickNote); setStatus('Note saved securely'); }}>Save Note</button>
                       </div>
-                      <textarea placeholder="Jot down quick thoughts here..." style={{ width: '100%', height: '100px', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)', fontSize: '13px', resize: 'none' }}></textarea>
+                      <textarea placeholder="Jot down quick thoughts here..." value={quickNote} onChange={(e) => setQuickNote(e.target.value)} style={{ width: '100%', height: '100px', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)', fontSize: '13px', resize: 'none' }}></textarea>
                     </div>
 
                     {/* SECTION 5: NOTIFICATION CENTER */}
@@ -5530,7 +5544,7 @@ export default function VoiceExpenseTrackerPreview() {
                                   <h3 style={{ fontSize: '16px', marginBottom: '8px' }}>No Customers Yet</h3>
                                   <p className="text-secondary" style={{ fontSize: '14px', maxWidth: '300px', margin: '0 auto' }}>Your CRM pipeline is empty. Add a customer to start tracking relationships.</p>
                                 </div>
-                                <button className="primary-button" style={{ marginTop: '8px' }}><Plus size={16}/> Add Customer</button>
+                                <button type="button" className="primary-button" style={{ marginTop: '8px' }} onClick={() => setStatus('Add Customer drawer coming soon')}><Plus size={16}/> Add Customer</button>
                               </div>
                             </td>
                           </tr>
