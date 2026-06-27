@@ -1112,7 +1112,7 @@ export default function Phase2ERP({
                 <h2>{editingProduct.id ? 'Edit Product' : 'Add Product'}</h2>
                 <button className="close-button" type="button" onClick={() => setEditingProduct(null)}>×</button>
               </div>
-              <form onSubmit={saveProduct} key={editingProduct?.id || 'new-product'} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+              <form onSubmit={saveProduct} key={editingProduct?.id || 'new-product'} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
                 <div className="hrms-drawer-body">
                   <div className="form-group">
                     <label>Product Name</label>
