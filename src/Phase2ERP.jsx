@@ -396,6 +396,11 @@ export default function Phase2ERP({
       onStatus('Product name required');
       return;
     }
+    
+    if (product.sku && scopedProducts.some(p => p.id !== product.id && (p.sku || '').toLowerCase() === product.sku.toLowerCase())) {
+      onStatus('Product with this SKU already exists');
+      return;
+    }
 
     try {
       const saved = await onCloudRecord?.('inventory', product.id, {
@@ -964,7 +969,9 @@ export default function Phase2ERP({
             <div className="kpi-content">
               <span>Fast Moving</span>
               <strong className="kpi-value">{erpAI.bestProducts.length}</strong>
-              <div className="kpi-trend trend-up">High velocity</div>
+              <div className={`kpi-trend ${erpAI.bestProducts.length > 0 ? 'trend-up' : 'trend-neutral'}`}>
+                {erpAI.bestProducts.length > 0 ? 'High velocity' : 'No items yet'}
+              </div>
             </div>
           </div>
           <div className="kpi-card">
@@ -972,7 +979,9 @@ export default function Phase2ERP({
             <div className="kpi-content">
               <span>Inventory Turnover</span>
               <strong className="kpi-value">{erpAI.bestProducts.length > 0 ? 'High' : 'Low'}</strong>
-              <div className="kpi-trend trend-neutral">Sales velocity</div>
+              <div className={`kpi-trend ${erpAI.bestProducts.length > 0 ? 'trend-up' : 'trend-warning'}`}>
+                Sales velocity
+              </div>
             </div>
           </div>
           <div className="kpi-card">

@@ -960,3 +960,5 @@ tr:hover td {
   gap: 16px;
   padding: 20px;
 }
+
+.kpi-trend.trend-warning { color: var(--warning); }
