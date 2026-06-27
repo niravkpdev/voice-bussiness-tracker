@@ -2,7 +2,9 @@ import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { 
   Activity, ArrowUpRight, ArrowDownRight, DollarSign, CreditCard, 
   TrendingUp, Users, Package, FileText, Bell, CheckSquare, 
-  Clock, Plus, ShoppingBag, Truck, Search, Settings, HelpCircle, LogOut, User, ChevronDown
+  Clock, Plus, ShoppingBag, Truck, Search, Settings, HelpCircle, 
+  LogOut, User, ChevronDown, Calendar, Lightbulb, CheckCircle, AlertCircle,
+  CalendarDays, Gift, Briefcase, MapPin, Star, Sparkles, TrendingDown, Sun, Cloud
 } from 'lucide-react';
 import {
   LEDGERS_KEY,
@@ -4682,11 +4684,12 @@ export default function VoiceExpenseTrackerPreview() {
           
           {activeTab === 'dashboard' && (
             <section className="erp-dashboard fade-in" id="dashboard" style={{ padding: '24px 0', display: 'flex', flexDirection: 'column', gap: '32px' }}>
+              
+              {/* Dashboard Header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
                 <div>
                   <h1 style={{ fontSize: '28px', fontWeight: '700', letterSpacing: '-0.02em', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    Dashboard 
-                    <span className="badge badge-success" style={{ fontSize: '12px', padding: '4px 10px' }}>Active</span>
+                    Dashboard <span className="badge badge-success" style={{ fontSize: '12px', padding: '4px 10px' }}>Active</span>
                   </h1>
                   <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '15px' }}>
                     Welcome back, {profile.owner || 'Admin'}. Here is your executive summary.
@@ -4704,221 +4707,310 @@ export default function VoiceExpenseTrackerPreview() {
 
               {!browserSupported && (
                 <div className="notice error animate-fade-in" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <Activity size={20} />
-                  Your browser does not support voice recognition. Please use Google Chrome.
+                  <Activity size={20} /> Your browser does not support voice recognition. Please use Google Chrome.
                 </div>
               )}
 
               {transactionsLoading ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
-                  {[1, 2, 3, 4].map(i => <div key={i} className="skeleton" style={{ height: '140px' }} />)}
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map(i => <div key={i} className="skeleton" style={{ height: '140px' }} />)}
                 </div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
+                <div className="dashboard-grid-layout">
                   
-                  {/* Revenue Widget */}
-                  <article className="stat-card hover-scale" style={{ padding: '24px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                      <span className="widget-label">Today's Revenue</span>
-                      <div style={{ padding: '8px', background: 'var(--success-bg)', color: 'var(--success)', borderRadius: '12px' }}>
-                        <DollarSign size={20} />
-                      </div>
-                    </div>
-                    <div className="widget-value">{formatCurrency(stats.monthlySales > 0 ? (stats.monthlySales / 30) * 1.2 : 12450)}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                      <span className="badge badge-success"><TrendingUp size={12} style={{ marginRight: '4px' }} /> +12.5%</span>
-                      from yesterday
-                    </div>
-                  </article>
-
-                  {/* Monthly Revenue */}
-                  <article className="stat-card hover-scale" style={{ padding: '24px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                      <span className="widget-label">Monthly Revenue</span>
-                      <div style={{ padding: '8px', background: 'var(--brand-secondary)', color: 'var(--brand-primary)', borderRadius: '12px' }}>
-                        <Activity size={20} />
-                      </div>
-                    </div>
-                    <div className="widget-value">{formatCurrency(stats.monthlySales || 345000)}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                      <span className="badge badge-success"><ArrowUpRight size={12} style={{ marginRight: '4px' }} /> +8.2%</span>
-                      vs last month
-                    </div>
-                  </article>
-
-                  {/* Outstanding Payments */}
-                  <article className="stat-card hover-scale" style={{ padding: '24px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                      <span className="widget-label">Outstanding</span>
-                      <div style={{ padding: '8px', background: 'var(--warning-bg)', color: 'var(--warning)', borderRadius: '12px' }}>
-                        <Clock size={20} />
-                      </div>
-                    </div>
-                    <div className="widget-value">{formatCurrency(receivableTotal || 45200)}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                      <span>12 pending invoices</span>
-                    </div>
-                  </article>
-
-                  {/* Cash Flow */}
-                  <article className="stat-card hover-scale" style={{ padding: '24px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                      <span className="widget-label">Net Cash Flow</span>
-                      <div style={{ padding: '8px', background: 'var(--brand-secondary)', color: 'var(--brand-primary)', borderRadius: '12px' }}>
-                        <CreditCard size={20} />
-                      </div>
-                    </div>
-                    <div className="widget-value">{formatCurrency(monthlyNetProfit || 85000)}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                      <span className={monthlyNetProfit >= 0 || true ? "badge badge-success" : "badge badge-danger"}>
-                        {monthlyNetProfit >= 0 || true ? <ArrowUpRight size={12} style={{ marginRight: '4px' }} /> : <ArrowDownRight size={12} style={{ marginRight: '4px' }} />}
-                        {Math.abs(netProfitGrowth || 5.4)}%
-                      </span>
-                      trajectory
-                    </div>
-                  </article>
-                </div>
-              )}
-
-              {/* Complex Grids */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '24px', alignItems: 'start' }}>
-                
-                {/* Left Column */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                  
-                  {/* Main Chart Card */}
-                  <div className="glass-panel" style={{ padding: '24px', margin: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
-                      <div>
-                        <h2 style={{ fontSize: '18px', margin: '0 0 4px 0' }}>Revenue vs Expenses</h2>
-                        <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '14px' }}>Overview of your cash flow this year</p>
-                      </div>
-                      <select style={{ width: 'auto', padding: '6px 12px', borderRadius: '8px', background: 'var(--bg-primary)' }}>
-                        <option>This Year</option>
-                        <option>Last 6 Months</option>
-                      </select>
-                    </div>
-                    <ProfitTrendChart data={getLast6MonthsData(vouchers)} />
-                  </div>
-
-                  {/* Tables area */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-                    {/* Top Customers */}
-                    <div className="glass-panel" style={{ padding: '24px', margin: 0 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-                        <h2 style={{ fontSize: '16px', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <Users size={18} color="var(--brand-primary)" /> Top Customers
-                        </h2>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                        {(getTopCustomers(partySummary).length > 0 ? getTopCustomers(partySummary).slice(0, 4) : [
-                          { name: 'Acme Corp', value: 125000 },
-                          { name: 'Globex Inc', value: 98000 },
-                          { name: 'Soylent Ltd', value: 75400 }
-                        ]).map((c, i) => (
-                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px' }}>
-                            <div>
-                              <div style={{ fontWeight: '600', fontSize: '14px' }}>{c.name}</div>
-                              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Top Tier</div>
-                            </div>
-                            <strong style={{ fontSize: '14px' }}>{formatCurrency(c.value || c.amount || 0)}</strong>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Low Inventory */}
-                    <div className="glass-panel" style={{ padding: '24px', margin: 0 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-                        <h2 style={{ fontSize: '16px', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <Package size={18} color="var(--warning)" /> Low Inventory
-                        </h2>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                        {[
-                          { item: 'Printer Ink (Black)', stock: 2, alert: 5 },
-                          { item: 'A4 Paper Rims', stock: 12, alert: 20 },
-                          { item: 'Wireless Mouse', stock: 4, alert: 10 }
-                        ].map((item, i) => (
-                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px' }}>
-                            <div>
-                              <div style={{ fontWeight: '600', fontSize: '14px' }}>{item.item}</div>
-                              <div style={{ fontSize: '12px', color: 'var(--danger)' }}>{item.stock} left (Alert at {item.alert})</div>
-                            </div>
-                            <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: '12px' }}>Reorder</button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right Column */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                  
-                  {/* Quick Actions */}
-                  <div className="glass-panel" style={{ padding: '24px', margin: 0 }}>
-                    <h2 style={{ fontSize: '16px', margin: '0 0 16px 0' }}>Quick Actions</h2>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  {/* MAIN COLUMN (LEFT) */}
+                  <div className="dashboard-main-column">
+                    
+                    {/* SECTION 1: EXECUTIVE OVERVIEW (8 KPIs) */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
                       {[
-                        { label: 'Invoice', icon: FileText, path: 'invoices', color: '#3b82f6' },
-                        { label: 'Sale', icon: ShoppingBag, path: 'voucher-entry', color: '#10b981' },
-                        { label: 'Expense', icon: CreditCard, path: 'voucher-entry', color: '#ef4444' },
-                        { label: 'Supplier', icon: Truck, path: 'suppliers', color: '#f59e0b' }
-                      ].map(action => (
-                        <button key={action.label} onClick={() => { window.location.hash = action.path; }} className="btn btn-secondary hover-scale" style={{ display: 'flex', flexDirection: 'column', padding: '16px', gap: '8px', height: 'auto', border: '1px solid var(--border-subtle)' }}>
-                          <action.icon size={24} color={action.color} />
-                          <span style={{ fontSize: '13px', fontWeight: '600' }}>{action.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Recent Activity */}
-                  <div className="glass-panel" style={{ padding: '24px', margin: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', alignItems: 'center' }}>
-                      <h2 style={{ fontSize: '16px', margin: 0 }}>Recent Activity</h2>
-                      <button className="btn btn-ghost" onClick={() => { window.location.hash = 'day-book'; }} style={{ padding: '4px 8px', fontSize: '12px' }}>View All</button>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      {(recentVouchers.length > 0 ? recentVouchers.slice(0, 5) : [
-                        { type: 'RECEIPT', narration: 'Payment from Globex', date: 'Today, 10:42 AM', amount: 4500 },
-                        { type: 'PAYMENT', narration: 'Office Supplies', date: 'Today, 09:15 AM', amount: 1200 },
-                        { type: 'SALES', narration: 'Invoice #INV-202', date: 'Yesterday', amount: 8900 }
-                      ]).map((v, i) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                          <div style={{ padding: '8px', borderRadius: '50%', background: 'var(--bg-primary)', color: 'var(--text-secondary)' }}>
-                            <Bell size={16} />
+                        { title: 'Business Health', val: '92/100', icon: Star, color: 'var(--brand-primary)', bg: 'var(--brand-secondary)', trend: '+5 pts', up: true },
+                        { title: 'Monthly Revenue', val: formatCurrency(stats.monthlySales || 345000), icon: Activity, color: 'var(--success)', bg: 'var(--success-bg)', trend: '+12%', up: true },
+                        { title: 'Total Expenses', val: formatCurrency(stats.monthlyExpenses || 125000), icon: DollarSign, color: 'var(--danger)', bg: 'var(--danger-bg)', trend: '+4%', up: false },
+                        { title: 'Cash Flow', val: formatCurrency(monthlyNetProfit || 85000), icon: CreditCard, color: 'var(--brand-primary)', bg: 'var(--brand-secondary)', trend: 'Healthy', up: true },
+                        { title: 'Outstanding', val: formatCurrency(receivableTotal || 45200), icon: Clock, color: 'var(--warning)', bg: 'var(--warning-bg)', trend: '12 Pending', up: false },
+                        { title: 'Monthly Profit', val: formatCurrency((stats.monthlySales || 345000) - (stats.monthlyExpenses || 125000)), icon: TrendingUp, color: 'var(--success)', bg: 'var(--success-bg)', trend: '+8.2%', up: true },
+                        { title: 'Inventory Value', val: formatCurrency(945000), icon: Package, color: '#8b5cf6', bg: '#ede9fe', trend: 'Optimal', up: true },
+                        { title: 'Attendance', val: '92%', icon: Users, color: '#06b6d4', bg: '#cffafe', trend: '24/26 Present', up: true },
+                      ].map((kpi, i) => (
+                        <div key={i} className="glass-panel hover-scale" style={{ padding: '20px', margin: 0, position: 'relative', overflow: 'hidden' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                            <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-secondary)' }}>{kpi.title}</span>
+                            <div style={{ padding: '6px', background: kpi.bg, color: kpi.color, borderRadius: '8px' }}>
+                              <kpi.icon size={16} />
+                            </div>
                           </div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>{v.narration || v.type}</div>
-                            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{v.date}</div>
+                          <div style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '8px' }}>{kpi.val}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: '500', color: kpi.up ? 'var(--success)' : 'var(--text-muted)' }}>
+                            {kpi.up ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />} {kpi.trend}
                           </div>
-                          <div style={{ fontWeight: '600', fontSize: '14px', color: v.type === 'PAYMENT' || v.type === 'PURCHASE' ? 'var(--danger)' : 'var(--success)' }}>
-                            {formatCurrency(v.amount)}
-                          </div>
+                          {/* Sparkline Mock */}
+                          <svg style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: '40px', opacity: 0.15, pointerEvents: 'none' }} preserveAspectRatio="none" viewBox="0 0 100 20">
+                            <path d={`M0,20 Q25,${kpi.up ? 10 : 15} 50,15 T100,${kpi.up ? 5 : 18} L100,20 L0,20 Z`} fill={kpi.color} />
+                          </svg>
                         </div>
                       ))}
                     </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '24px' }}>
+                      {/* SECTION 8: FINANCIAL SUMMARY */}
+                      <div className="glass-panel" style={{ padding: '24px', margin: 0 }}>
+                        <div className="panel-header">
+                          <h2 className="panel-title"><Activity size={18} color="var(--brand-primary)" /> Financial Summary</h2>
+                          <select style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)', fontSize: '12px' }}>
+                            <option>This Year</option>
+                            <option>Last 6 Months</option>
+                          </select>
+                        </div>
+                        <ProfitTrendChart data={getLast6MonthsData(vouchers)} />
+                      </div>
+
+                      {/* SECTION 4: BUSINESS INSIGHTS */}
+                      <div className="glass-panel" style={{ padding: '24px', margin: 0 }}>
+                        <div className="panel-header">
+                          <h2 className="panel-title"><Sparkles size={18} color="#8b5cf6" /> AI Business Insights</h2>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          {[
+                            { text: 'Revenue increased 12% this week compared to last week.', icon: TrendingUp, class: 'trend-up' },
+                            { text: '3 High-value invoices are overdue. Consider sending reminders.', icon: AlertCircle, class: 'trend-down' },
+                            { text: 'Inventory for "A4 Paper Rims" is running extremely low.', icon: Package, class: 'trend-neutral' },
+                            { text: 'Cash flow is healthy. You have sufficient capital for upcoming payroll.', icon: CheckCircle, class: 'trend-up' }
+                          ].map((insight, i) => (
+                            <div key={i} className="insight-card">
+                              <insight.icon size={18} className={insight.class} style={{ flexShrink: 0, marginTop: '2px' }} />
+                              <span style={{ fontSize: '14px', lineHeight: '1.5', color: 'var(--text-primary)' }}>{insight.text}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* SECTION 3: QUICK ACTION CENTER */}
+                    <div className="glass-panel" style={{ padding: '24px', margin: 0 }}>
+                      <div className="panel-header">
+                        <h2 className="panel-title"><Plus size={18} color="var(--brand-primary)" /> Quick Action Center</h2>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '16px' }}>
+                        {[
+                          { label: 'New Invoice', desc: 'Create bill', icon: FileText, path: 'invoices', color: '#3b82f6', bg: '#eff6ff' },
+                          { label: 'Record Expense', desc: 'Add bill', icon: CreditCard, path: 'voucher-entry', color: '#ef4444', bg: '#fef2f2' },
+                          { label: 'Receive Payment', desc: 'Cash in', icon: DollarSign, path: 'voucher-entry', color: '#10b981', bg: '#ecfdf5' },
+                          { label: 'New Customer', desc: 'Add client', icon: Users, path: 'customers', color: '#f59e0b', bg: '#fffbeb' },
+                          { label: 'Add Product', desc: 'Inventory', icon: Package, path: 'inventory', color: '#8b5cf6', bg: '#f5f3ff' },
+                          { label: 'Payroll', desc: 'Pay staff', icon: Briefcase, path: 'employees', color: '#06b6d4', bg: '#ecfeff' }
+                        ].map(action => (
+                          <button key={action.label} onClick={() => { window.location.hash = action.path; }} className="hover-scale" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '16px', gap: '8px', border: '1px solid var(--border-subtle)', borderRadius: '12px', background: 'var(--bg-secondary)', cursor: 'pointer', textAlign: 'left' }}>
+                            <div style={{ padding: '8px', background: action.bg, color: action.color, borderRadius: '8px' }}>
+                              <action.icon size={20} />
+                            </div>
+                            <div>
+                              <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{action.label}</div>
+                              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{action.desc}</div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
+                      {/* SECTION 2: RECENT ACTIVITY */}
+                      <div className="glass-panel" style={{ padding: '24px', margin: 0 }}>
+                        <div className="panel-header">
+                          <h2 className="panel-title"><Activity size={18} color="var(--brand-primary)" /> Recent Activity</h2>
+                          <button className="btn btn-ghost" onClick={() => { window.location.hash = 'day-book'; }} style={{ padding: '4px 8px', fontSize: '12px' }}>View All</button>
+                        </div>
+                        <div className="timeline">
+                          {(recentVouchers.length > 0 ? recentVouchers.slice(0, 5) : [
+                            { type: 'SALES', narration: 'Invoice #INV-202 Created', date: 'Just now', amount: 8900, icon: FileText, color: '#3b82f6' },
+                            { type: 'RECEIPT', narration: 'Payment from Globex', date: '2 hours ago', amount: 4500, icon: DollarSign, color: '#10b981' },
+                            { type: 'USER', narration: 'New Customer Added', date: '4 hours ago', amount: null, icon: Users, color: '#f59e0b' },
+                            { type: 'PAYMENT', narration: 'Office Supplies Expense', date: 'Yesterday', amount: 1200, icon: CreditCard, color: '#ef4444' },
+                            { type: 'INVENTORY', narration: 'Inventory Updated', date: 'Yesterday', amount: null, icon: Package, color: '#8b5cf6' }
+                          ]).map((v, i) => {
+                            const Ico = v.icon || (v.type === 'SALES' ? FileText : v.type === 'RECEIPT' ? DollarSign : v.type === 'PAYMENT' ? CreditCard : Activity);
+                            const c = v.color || (v.type === 'PAYMENT' ? '#ef4444' : '#10b981');
+                            return (
+                              <div key={i} className="timeline-item">
+                                <div className="timeline-icon" style={{ color: c }}>
+                                  <Ico size={16} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{v.narration || v.type}</div>
+                                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{v.date}</div>
+                                </div>
+                                {v.amount && (
+                                  <div style={{ fontSize: '13px', fontWeight: '600', color: c }}>
+                                    {formatCurrency(v.amount)}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* SECTION 9: UPCOMING TASKS */}
+                      <div className="glass-panel" style={{ padding: '24px', margin: 0 }}>
+                        <div className="panel-header">
+                          <h2 className="panel-title"><CheckSquare size={18} color="var(--brand-primary)" /> Upcoming Tasks</h2>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                          {[
+                            { title: 'Tax Filing Preparation', due: 'Due Today', progress: 85, color: '#ef4444' },
+                            { title: 'Payroll Processing', due: 'Tomorrow', progress: 40, color: '#f59e0b' },
+                            { title: 'Supplier Payments', due: 'This Week', progress: 15, color: '#3b82f6' },
+                            { title: 'Inventory Audit', due: 'Next Week', progress: 0, color: '#10b981' }
+                          ].map((task, i) => (
+                            <div key={i} className="hover-scale" style={{ padding: '12px', border: '1px solid var(--border-subtle)', borderRadius: '8px', background: 'var(--bg-secondary)' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{task.title}</span>
+                                <span style={{ fontSize: '11px', fontWeight: '600', color: task.color }}>{task.due}</span>
+                              </div>
+                              <div className="progress-bar-bg">
+                                <div className="progress-bar-fill" style={{ width: `${task.progress}%`, background: task.color }}></div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
+                      {/* SECTION 6: LOW STOCK */}
+                      <div className="glass-panel" style={{ padding: '24px', margin: 0 }}>
+                        <div className="panel-header">
+                          <h2 className="panel-title"><Package size={18} color="var(--warning)" /> Low Stock Alerts</h2>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          {[
+                            { item: 'Printer Ink (Black)', stock: 2, alert: 5 },
+                            { item: 'A4 Paper Rims', stock: 12, alert: 20 },
+                            { item: 'Wireless Mouse', stock: 4, alert: 10 }
+                          ].map((item, i) => (
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px' }}>
+                              <div>
+                                <div style={{ fontWeight: '600', fontSize: '13px', color: 'var(--text-primary)' }}>{item.item}</div>
+                                <div style={{ fontSize: '11px', color: 'var(--danger)' }}>{item.stock} left (Min: {item.alert})</div>
+                              </div>
+                              <button className="btn btn-secondary hover-scale" style={{ padding: '4px 10px', fontSize: '11px' }}>Restock</button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* SECTION 7: EMPLOYEE OVERVIEW */}
+                      <div className="glass-panel" style={{ padding: '24px', margin: 0 }}>
+                        <div className="panel-header">
+                          <h2 className="panel-title"><Users size={18} color="#06b6d4" /> Employee Overview</h2>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                          <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-subtle)', textAlign: 'center' }}>
+                            <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--success)' }}>24</div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Present</div>
+                          </div>
+                          <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-subtle)', textAlign: 'center' }}>
+                            <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--danger)' }}>2</div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Absent</div>
+                          </div>
+                          <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-subtle)', textAlign: 'center' }}>
+                            <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--warning)' }}>1</div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Late</div>
+                          </div>
+                          <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-subtle)', textAlign: 'center' }}>
+                            <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--brand-primary)' }}>3</div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>On Leave</div>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                          <Gift size={14} color="#ec4899" /> <strong style={{ color: 'var(--text-primary)' }}>Rahul's</strong> birthday is tomorrow!
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Employees / Ops (Demo) */}
-                  <div className="glass-panel" style={{ padding: '24px', margin: 0 }}>
-                    <h2 style={{ fontSize: '16px', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <CheckSquare size={18} color="var(--brand-primary)" /> Team Overview
-                    </h2>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: 'var(--bg-primary)', borderRadius: '8px', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: '500' }}>Present Today</span>
-                      <span className="badge badge-success">24 / 26</span>
+                  {/* RIGHT COLUMN (SIDE PANEL) */}
+                  <div className="dashboard-side-column">
+                    
+                    {/* SECTION 10: TODAY'S AGENDA / CALENDAR */}
+                    <div className="glass-panel" style={{ padding: '24px', margin: 0 }}>
+                      <div className="panel-header">
+                        <h2 className="panel-title"><Calendar size={18} color="var(--brand-primary)" /> Today's Agenda</h2>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', padding: '12px', background: 'var(--brand-secondary)', borderRadius: '8px' }}>
+                        <div style={{ textAlign: 'center', minWidth: '45px' }}>
+                          <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--brand-primary)', textTransform: 'uppercase' }}>{new Date().toLocaleString('default', { month: 'short' })}</div>
+                          <div style={{ fontSize: '24px', fontWeight: '800', color: 'var(--brand-primary)', lineHeight: '1' }}>{new Date().getDate()}</div>
+                        </div>
+                        <div style={{ height: '30px', width: '2px', background: 'rgba(59, 130, 246, 0.2)' }}></div>
+                        <div>
+                          <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>{new Date().toLocaleString('default', { weekday: 'long' })}</div>
+                          <div style={{ fontSize: '12px', color: 'var(--brand-primary)' }}>3 Events scheduled</div>
+                        </div>
+                      </div>
+                      <div className="timeline">
+                        {[
+                          { time: '09:00 AM', title: 'Team Standup', type: 'meeting' },
+                          { time: '11:30 AM', title: 'Client Call: Acme Corp', type: 'call' },
+                          { time: '03:00 PM', title: 'Tax Review', type: 'task' }
+                        ].map((evt, i) => (
+                          <div key={i} className="timeline-item" style={{ gap: '12px' }}>
+                            <div className="timeline-icon" style={{ left: '-20px', color: 'var(--text-muted)', padding: '2px' }}><CheckCircle size={12} /></div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', width: '55px', flexShrink: 0, marginTop: '2px' }}>{evt.time}</div>
+                            <div style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-primary)' }}>{evt.title}</div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: 'var(--bg-primary)', borderRadius: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: '500' }}>Pending Leave Requests</span>
-                      <span className="badge badge-warning">3</span>
-                    </div>
-                  </div>
 
+                    {/* SECTION 10: WEATHER & NOTES */}
+                    <div className="glass-panel" style={{ padding: '24px', margin: 0, background: 'linear-gradient(135deg, #38bdf8 0%, #0284c7 100%)', color: 'white', border: 'none' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontSize: '13px', opacity: 0.9 }}>Mumbai, India</div>
+                          <div style={{ fontSize: '28px', fontWeight: '700' }}>32°C</div>
+                          <div style={{ fontSize: '13px', opacity: 0.9 }}>Partly Cloudy</div>
+                        </div>
+                        <Cloud size={48} opacity={0.9} />
+                      </div>
+                    </div>
+
+                    <div className="glass-panel" style={{ padding: '24px', margin: 0 }}>
+                      <div className="panel-header">
+                        <h2 className="panel-title"><FileText size={18} color="var(--brand-primary)" /> Quick Notes</h2>
+                      </div>
+                      <textarea placeholder="Jot down quick thoughts here..." style={{ width: '100%', height: '100px', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)', fontSize: '13px', resize: 'none' }}></textarea>
+                    </div>
+
+                    {/* SECTION 5: NOTIFICATION CENTER */}
+                    <div className="glass-panel" style={{ padding: '24px', margin: 0 }}>
+                      <div className="panel-header">
+                        <h2 className="panel-title">
+                          <Bell size={18} color="var(--brand-primary)" /> Notifications 
+                          <span className="badge badge-danger" style={{ fontSize: '10px', padding: '2px 6px' }}>2 New</span>
+                        </h2>
+                        <button className="btn btn-ghost" style={{ padding: '4px', fontSize: '11px' }}>Mark all read</button>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {[
+                          { title: 'Payment Received', desc: '₹4,500 from Globex Inc', unread: true },
+                          { title: 'Inventory Alert', desc: 'Black Ink is running low', unread: true },
+                          { title: 'System Update', desc: 'v2.4.1 has been deployed', unread: false }
+                        ].map((notif, i) => (
+                          <div key={i} className="hover-scale" style={{ display: 'flex', gap: '12px', padding: '12px', borderRadius: '8px', background: notif.unread ? 'var(--brand-secondary)' : 'var(--bg-secondary)', border: `1px solid ${notif.unread ? 'rgba(59, 130, 246, 0.2)' : 'var(--border-subtle)'}` }}>
+                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: notif.unread ? 'var(--brand-primary)' : 'transparent', marginTop: '6px', flexShrink: 0 }}></div>
+                            <div>
+                              <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{notif.title}</div>
+                              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{notif.desc}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                  </div>
                 </div>
-              </div>
+              )}
             </section>
           )}
 
