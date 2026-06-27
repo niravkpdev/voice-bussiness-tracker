@@ -626,29 +626,43 @@ export default function Phase3Ops({
       bank_details: sanitizeText(form.get('bank_details'), 300),
       notes: sanitizeText(form.get('notes'), 1200),
       description: sanitizeText(form.get('notes'), 1200),
-      businessId: current?.businessId || activeBusinessId || 'default',
+      businessId: current?.businessId || readScopedString('activeBusinessId') || 'default',
       createdAt: current?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
     const duplicateCode = employees.some((item) => item.id !== employee.id && employeeCode(item).toLowerCase() === employeeId.toLowerCase());
+    const duplicateEmail = email && employees.some((item) => item.id !== employee.id && item.email === email);
+    const duplicateMobile = mobileNumber && employees.some((item) => item.id !== employee.id && (item.mobileNumber === mobileNumber || item.mobile === mobileNumber || item.mobile_number === mobileNumber));
+
     if (!employee.fullName || !validatePhone(employee.mobileNumber)) {
-      onStatus('Enter valid employee name and mobile');
+      if (typeof onStatus === 'function') onStatus('Enter valid employee name and mobile');
       return;
     }
     if (email && !validateEmail(email)) {
-      onStatus('Enter a valid employee email');
+      if (typeof onStatus === 'function') onStatus('Enter a valid employee email');
       return;
     }
     if (duplicateCode) {
-      onStatus('Employee ID must be unique');
+      if (typeof onStatus === 'function') onStatus('Employee ID must be unique');
+      return;
+    }
+    if (duplicateEmail || duplicateMobile) {
+      if (typeof onStatus === 'function') onStatus('Employee with this email or mobile already exists.');
       return;
     }
     try {
       if (typeof onStatus === 'function') onStatus('Saving employee...');
       await persistRecord('employees', employee, 'Employee save failed');
-      if (typeof onStatus === 'function') onStatus('Employee saved successfully!');
+      if (typeof onStatus === 'function') onStatus('Employee added successfully.');
     } catch (error) {
-      if (typeof onStatus === 'function') onStatus(error?.message || 'Employee save failed');
+      if (typeof onStatus === 'function') {
+        const msg = error?.message || '';
+        if (msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('unique')) {
+          onStatus('Employee with this email or mobile already exists.');
+        } else {
+          onStatus(msg || 'Employee save failed');
+        }
+      }
       return;
     }
     setEmployees((items) => [employee, ...items.filter((item) => item.id !== employee.id)]);
