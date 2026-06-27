@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { 
-  Users, Plus, Search, Filter, Tag, Download, MoreHorizontal, ArrowLeft,
+  Users, Plus, Search, Filter, Tag, Download, MoreHorizontal, ArrowLeft, ArrowUpRight,
   Edit3, Phone, Mail, MapPin, MessageCircle, Star, AlertCircle, CheckCircle,
   Activity, FileText, CreditCard, Image as ImageIcon, Paperclip, X
 } from 'lucide-react';
@@ -1114,14 +1114,14 @@ export default function Phase2ERP({
 
   if (activeTab === 'crm' || activeTab === 'suppliers') {
     const isCustomer = peopleTab === 'customers';
-    const list = (isCustomer ? scopedCustomers : scopedSuppliers).filter(personMatchesSearch);
+    const list = (isCustomer ? scopedCustomers : scopedSuppliers)?.filter(personMatchesSearch) || [];
     const formKind = isCustomer ? 'customer' : 'supplier';
     const currentEdit = editingPerson?.type === formKind ? editingPerson : null;
     
-    const totalProfiles = isCustomer ? scopedCustomers.length : scopedSuppliers.length;
+    const totalProfiles = list.length;
     const totalOutstanding = isCustomer 
-      ? scopedCustomers.reduce((sum, item) => sum + (Number(item.outstandingAmount ?? item.outstanding) || 0), 0) 
-      : scopedSuppliers.reduce((sum, item) => sum + (Number(item.payableAmount) || 0), 0);
+      ? list.reduce((sum, item) => sum + (Number(item?.outstandingAmount ?? item?.outstanding) || 0), 0) 
+      : list.reduce((sum, item) => sum + (Number(item?.payableAmount) || 0), 0);
     
     return (
       <section className="phase2-stack fade-in crm-container" id={activeTab} style={{ background: 'transparent', border: 'none', boxShadow: 'none', padding: 0 }}>
@@ -1289,13 +1289,13 @@ export default function Phase2ERP({
                       if (tags.length === 0) tags.push({ label: 'Retail', class: 'retail' });
                       
                       return (
-                        <tr key={item.id} onClick={() => setSelectedCrmPerson(item)} style={{cursor: 'pointer'}}>
+                        <tr key={item?.id || i} onClick={() => setSelectedCrmPerson(item)} style={{cursor: 'pointer'}}>
                           <td>
                             <div className="crm-customer-cell">
-                              <div className="crm-avatar">{item.name.charAt(0).toUpperCase()}</div>
+                              <div className="crm-avatar">{(item?.name || 'U').charAt(0).toUpperCase()}</div>
                               <div>
-                                <div style={{ fontWeight: '600', color: 'var(--text-primary)', marginBottom: '4px' }}>{item.name}</div>
-                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>ID: {item.id.slice(0,6)} {item.gst && `• GST: ${item.gst}`}</div>
+                                <div style={{ fontWeight: '600', color: 'var(--text-primary)', marginBottom: '4px' }}>{item?.name || 'Unknown'}</div>
+                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>ID: {item?.id?.slice(0,6) || 'N/A'} {item?.gst && `• GST: ${item.gst}`}</div>
                               </div>
                             </div>
                           </td>
@@ -1354,9 +1354,9 @@ export default function Phase2ERP({
             <div className="profile-grid-layout fade-in">
               {/* Sidebar */}
               <div className="profile-sidebar">
-                 <div className="profile-avatar-large">{selectedCrmPerson.name.charAt(0).toUpperCase()}</div>
+                 <div className="profile-avatar-large">{(selectedCrmPerson?.name || 'U').charAt(0).toUpperCase()}</div>
                  <div style={{ textAlign: 'center' }}>
-                   <h2 style={{ fontSize: '20px', marginBottom: '4px' }}>{selectedCrmPerson.name}</h2>
+                   <h2 style={{ fontSize: '20px', marginBottom: '4px' }}>{selectedCrmPerson?.name || 'Unknown'}</h2>
                    <p className="text-secondary" style={{ fontSize: '14px' }}>{isCustomer ? 'Customer' : 'Supplier'} Profile</p>
                  </div>
                  
@@ -1416,7 +1416,7 @@ export default function Phase2ERP({
                         <CreditCard size={18} />
                       </div>
                     </div>
-                    <div className="kpi-value" style={{ fontSize: '24px', margin: '12px 0 4px' }}>{formatCurrency(selectedCrmPerson.openingBalance || 0)}</div>
+                    <div className="kpi-value" style={{ fontSize: '24px', margin: '12px 0 4px' }}>{formatCurrency(selectedCrmPerson?.openingBalance || 0)}</div>
                     <div className="kpi-trend trend-neutral" style={{ fontSize: '12px' }}>Account initialized</div>
                   </div>
                   
@@ -1427,8 +1427,8 @@ export default function Phase2ERP({
                         <AlertCircle size={18} />
                       </div>
                     </div>
-                    <div className="kpi-value" style={{ fontSize: '24px', margin: '12px 0 4px', color: (selectedCrmPerson.outstandingAmount ?? selectedCrmPerson.payableAmount) > 0 ? 'var(--danger)' : 'var(--text-primary)' }}>
-                      {formatCurrency(isCustomer ? selectedCrmPerson.outstandingAmount ?? selectedCrmPerson.outstanding ?? 0 : selectedCrmPerson.payableAmount || 0)}
+                    <div className="kpi-value" style={{ fontSize: '24px', margin: '12px 0 4px', color: ((selectedCrmPerson?.outstandingAmount ?? selectedCrmPerson?.payableAmount) || 0) > 0 ? 'var(--danger)' : 'var(--text-primary)' }}>
+                      {formatCurrency(isCustomer ? selectedCrmPerson?.outstandingAmount ?? selectedCrmPerson?.outstanding ?? 0 : selectedCrmPerson?.payableAmount || 0)}
                     </div>
                     <div className="kpi-trend trend-neutral" style={{ fontSize: '12px' }}>Current Balance</div>
                   </div>
@@ -1440,7 +1440,7 @@ export default function Phase2ERP({
                         <CheckCircle size={18} />
                       </div>
                     </div>
-                    <div className="kpi-value" style={{ fontSize: '16px', margin: '12px 0 4px', wordBreak: 'break-all' }}>{selectedCrmPerson.gst || 'Unregistered'}</div>
+                    <div className="kpi-value" style={{ fontSize: '16px', margin: '12px 0 4px', wordBreak: 'break-all' }}>{selectedCrmPerson?.gst || 'Unregistered'}</div>
                     <div className="kpi-trend text-secondary" style={{ fontSize: '12px' }}>B2B Profile</div>
                   </div>
                 </div>
@@ -1494,7 +1494,7 @@ export default function Phase2ERP({
                         <button className="icon-button" style={{ color: '#b45309' }}><Edit3 size={16}/></button>
                       </div>
                       <p style={{ fontSize: '14px', color: '#92400e', lineHeight: '1.6' }}>
-                        {selectedCrmPerson.notes || 'No notes added for this profile yet. Click edit to add specific instructions or details.'}
+                        {selectedCrmPerson?.notes || 'No notes added for this profile yet. Click edit to add specific instructions or details.'}
                       </p>
                     </div>
                     
