@@ -38,6 +38,10 @@ import {
   getDailyAndMonthlyStats,
   getPartySummary,
 } from './accounting';
+import { generateSampleData } from './sampleData.js';
+import { OnboardingChecklist } from './OnboardingChecklist.jsx';
+import { GuidedTour } from './GuidedTour.jsx';
+import { SetupWizard } from './SetupWizard.jsx';
 import { LegalPage, LEGAL_PAGE_IDS } from './LegalPages.jsx';
 import {
   createInvoiceWithStock,
@@ -1300,6 +1304,9 @@ export default function VoiceExpenseTrackerPreview() {
       setTransactionsLoading(true);
       setPeopleLoading(true);
       const loadModuleCollection = async (tableName) => {
+        if (scopedUser?.mode === 'demo' && window.demoData && window.demoData[tableName]) {
+          return { ok: true, tableName, rows: window.demoData[tableName] };
+        }
         try {
           const rows = await loadCloudCollection(scopedUser.uid, tableName);
           return { ok: true, tableName, rows };
@@ -2133,6 +2140,34 @@ export default function VoiceExpenseTrackerPreview() {
       setSecureError(message);
       setAuthNotice('');
       setStatus(message);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  
+  const startDemoMode = async () => {
+    setAuthLoading(true);
+    setSecureError('');
+    setAuthNotice('');
+    try {
+      window.demoData = generateSampleData();
+      const nextUser = {
+        uid: 'demo-user',
+        businessName: 'Demo Workspace',
+        ownerName: 'Demo User',
+        email: 'demo@trinetr.in',
+        role: 'Owner',
+        provider: 'Demo',
+        emailVerified: true,
+        loginAt: new Date().toISOString(),
+        mode: 'demo',
+      };
+      await applyAuthenticatedUser(nextUser, { restoreCloud: false });
+      setSecureError('Running in demo mode. Any changes will not affect production.');
+      setStatus('Demo mode active.');
+    } catch (error) {
+      setSecureError('Could not start demo mode.');
     } finally {
       setAuthLoading(false);
     }
@@ -4287,9 +4322,14 @@ export default function VoiceExpenseTrackerPreview() {
               </form>
               )}
               {authView !== 'reset-password' && (
-              <button className="saas-google-button" type="button" onClick={loginWithGoogle} disabled={authLoading}>
-                {authLoading ? 'Connecting...' : 'Continue with Google'}
-              </button>
+              <>
+                <button className="saas-google-button" type="button" onClick={loginWithGoogle} disabled={authLoading}>
+                  {authLoading ? 'Connecting...' : 'Continue with Google'}
+                </button>
+                <button className="saas-outline-button full mt-2" type="button" onClick={startDemoMode} disabled={authLoading}>
+                  🚀 Try Interactive Demo
+                </button>
+              </>
               )}
               <p>
                 {authView === 'reset-password'
@@ -4594,7 +4634,28 @@ export default function VoiceExpenseTrackerPreview() {
       </aside>
 
       <div className="workspace">
+        {(!profile.setupCompleted && authUser?.mode !== 'demo') && (
+          <SetupWizard 
+            profile={profile}
+            onComplete={(didAddDemoData) => {
+              setProfile({...profile, setupCompleted: true});
+              if (didAddDemoData) {
+                // Since data was added to window.demoData, we can reload to apply it, or manually set state.
+                window.location.reload();
+              } else {
+                setShowTour(true);
+              }
+            }}
+            updateProfile={saveUserProfile}
+          />
+        )}
+        {showTour && <GuidedTour onFinish={() => setShowTour(false)} />}
         <header className="topbar" style={{ padding: '12px 24px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px' }}>
+          {authUser?.mode === 'demo' && (
+            <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', background: 'var(--brand-primary)', color: 'white', padding: '4px 16px', fontSize: '12px', fontWeight: 600, borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px', zIndex: 100 }}>
+              Demo Mode
+            </div>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <button
               className="topbar-menu-button"
@@ -4698,6 +4759,15 @@ export default function VoiceExpenseTrackerPreview() {
             <section className="erp-dashboard fade-in" id="dashboard" style={{ padding: '24px 0', display: 'flex', flexDirection: 'column', gap: '32px' }}>
               
               {/* Dashboard Header */}
+              <OnboardingChecklist 
+                customers={cloudCustomers}
+                inventory={cloudInventory}
+                employees={cloudEmployees}
+                invoices={cloudInvoices}
+                payments={cloudPayments}
+                profile={profile}
+                setActiveTab={setActiveTab}
+              />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
                 <div>
                   <h1 style={{ fontSize: '28px', fontWeight: '700', letterSpacing: '-0.02em', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -5542,7 +5612,7 @@ export default function VoiceExpenseTrackerPreview() {
                                 </div>
                                 <div>
                                   <h3 style={{ fontSize: '16px', marginBottom: '8px' }}>No Customers Yet</h3>
-                                  <p className="text-secondary" style={{ fontSize: '14px', maxWidth: '300px', margin: '0 auto' }}>Your CRM pipeline is empty. Add a customer to start tracking relationships.</p>
+                                  <p className="text-secondary" style={{ fontSize: '14px', maxWidth: '300px', margin: '0 auto' }}>No customers yet. Add your first customer or import customers.</p>
                                 </div>
                                 <button type="button" className="primary-button" style={{ marginTop: '8px' }} onClick={() => setStatus('Add Customer drawer coming soon')}><Plus size={16}/> Add Customer</button>
                               </div>
