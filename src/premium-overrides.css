@@ -1,0 +1,275 @@
+/* PREMIUM SAAS OVERRIDES */
+
+/* 1. BUTTONS */
+button, .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+  outline: none;
+}
+button:focus-visible, .btn:focus-visible {
+  box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--brand-primary);
+}
+button:hover, .btn:hover {
+  transform: translateY(-1px);
+}
+button:active, .btn:active {
+  transform: translateY(0);
+}
+button:disabled, .btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Primary Button */
+.btn-primary, button[type="submit"], .save-btn, .submit-btn {
+  background-color: var(--brand-primary) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+}
+.btn-primary:hover, button[type="submit"]:hover, .save-btn:hover, .submit-btn:hover {
+  background-color: var(--brand-primary-hover) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+/* Secondary / Outline */
+.btn-secondary, .cancel-btn {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-strong) !important;
+}
+.btn-secondary:hover, .cancel-btn:hover {
+  background-color: var(--brand-secondary) !important;
+  border-color: var(--text-muted) !important;
+}
+
+/* Danger Button */
+.btn-danger, .delete-btn {
+  background-color: var(--danger) !important;
+  color: #fff !important;
+}
+.btn-danger:hover, .delete-btn:hover {
+  background-color: #dc2626 !important;
+}
+
+/* Ghost / Text Button */
+.btn-ghost {
+  background: transparent !important;
+  color: var(--text-secondary) !important;
+  box-shadow: none !important;
+}
+.btn-ghost:hover {
+  background: var(--brand-secondary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* 2. FORMS & INPUTS */
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+input[type="date"],
+select,
+textarea {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  outline: none;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
+}
+input:disabled, select:disabled, textarea:disabled {
+  background-color: var(--bg-tertiary);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* 3. TABLES */
+.table-wrapper, .party-table-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
+  box-shadow: var(--shadow-sm);
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+table, .statement-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  text-align: left;
+}
+th, td {
+  padding: 12px 16px;
+  font-size: 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+}
+th {
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+tr:last-child td {
+  border-bottom: none;
+}
+tr {
+  transition: background-color var(--transition-fast);
+}
+tr:hover td {
+  background-color: var(--bg-primary);
+}
+
+/* 4. BADGES / STATUS */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.badge-success { background: var(--success-bg); color: var(--success); }
+.badge-danger { background: var(--danger-bg); color: var(--danger); }
+.badge-warning { background: var(--warning-bg); color: var(--warning); }
+.badge-neutral { background: var(--brand-secondary); color: var(--text-secondary); }
+
+/* 5. EMPTY STATES */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-xl);
+  border: 1px dashed var(--border-strong);
+  margin: 24px 0;
+}
+.empty-state svg, .empty-state img {
+  width: 64px;
+  height: 64px;
+  color: var(--border-strong);
+  margin-bottom: 16px;
+}
+.empty-state h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+.empty-state p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  max-width: 400px;
+  margin: 0 auto 24px;
+}
+
+/* 6. SIDEBAR & HEADER */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-weight: 500;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+  margin-bottom: 4px;
+}
+.sidebar-nav-item:hover {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+.sidebar-nav-item.active {
+  background: var(--brand-primary);
+  color: #fff;
+  box-shadow: var(--shadow-sm);
+}
+
+/* 7. DASHBOARD WIDGETS */
+.widget-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+  margin: 8px 0;
+}
+.widget-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Utility overriding previous huge shadows */
+.stat-card {
+  box-shadow: var(--shadow-sm) !important;
+  border: 1px solid var(--border-subtle) !important;
+  background: var(--bg-secondary) !important;
+  border-radius: var(--radius-lg) !important;
+  transition: transform var(--transition-fast), box-shadow var(--transition-normal) !important;
+}
+.stat-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+/* Premium micro animations */
+.hover-scale {
+  transition: transform var(--transition-fast);
+}
+.hover-scale:hover {
+  transform: scale(1.02);
+}
