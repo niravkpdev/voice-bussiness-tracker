@@ -4,7 +4,8 @@ import {
   TrendingUp, Users, Package, FileText, Bell, CheckSquare, 
   Clock, Plus, ShoppingBag, Truck, Search, Settings, HelpCircle, 
   LogOut, User, ChevronDown, Calendar, Lightbulb, CheckCircle, AlertCircle,
-  CalendarDays, Gift, Briefcase, MapPin, Star, Sparkles, TrendingDown, Sun, Cloud
+  CalendarDays, Gift, Briefcase, MapPin, Star, Sparkles, TrendingDown, Sun, Cloud,
+  Filter, Tag, Download, Phone, Mail, MessageCircle, MoreHorizontal, Paperclip, Edit3, ArrowLeft, Image as ImageIcon
 } from 'lucide-react';
 import {
   LEDGERS_KEY,
@@ -831,6 +832,9 @@ export default function VoiceExpenseTrackerPreview() {
   const [authLoading, setAuthLoading] = useState(false);
   const [appLoading, setAppLoading] = useState(true);
   const [transactionsLoading, setTransactionsLoading] = useState(false);
+  
+  // CRM Module State
+  const [selectedCrmCustomer, setSelectedCrmCustomer] = useState(null);
   const [secureError, setSecureError] = useState('');
   const [authNotice, setAuthNotice] = useState('');
   const [verificationCooldown, setVerificationCooldown] = useState(0);
@@ -5477,60 +5481,317 @@ export default function VoiceExpenseTrackerPreview() {
           )}
 
           {activeTab === 'party-management' && (
-            <section className="panel fade-in" id="party-management">
-              <div className="section-header">
-                <div>
-                  <h2>Party Khata Management</h2>
-                  <p className="panel-hint">Track outstanding customer receivables, supplier payables, and sales histories.</p>
-                </div>
-                <span className="info-badge">{partySummary.length} Parties</span>
-              </div>
+            <section className="panel fade-in crm-container" id="party-management" style={{ background: 'transparent', border: 'none', boxShadow: 'none', padding: 0 }}>
+              {!selectedCrmCustomer ? (
+                <>
+                  <div className="section-header" style={{ background: 'var(--bg-primary)', padding: '24px', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-subtle)', marginBottom: '0' }}>
+                    <div>
+                      <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Users size={24} className="text-blue" /> CRM & Party Hub</h2>
+                      <p className="panel-hint">Manage customers, suppliers, financial standing, and interactions.</p>
+                    </div>
+                    <div className="inline-actions">
+                      <button className="primary-button"><Plus size={16}/> New Party</button>
+                    </div>
+                  </div>
+                  
+                  <div className="crm-toolbar">
+                    <div className="search-wrap" style={{ position: 'relative' }}>
+                      <Search size={16} style={{ position: 'absolute', left: 12, top: 10, color: 'var(--text-secondary)' }} />
+                      <input type="text" className="crm-search-input" placeholder="Search by name, phone, or GST..." />
+                    </div>
+                    <div className="crm-toolbar-actions">
+                      <button className="secondary-button"><Filter size={16}/> Filters</button>
+                      <button className="secondary-button"><Tag size={16}/> Tags</button>
+                      <button className="secondary-button"><Download size={16}/> Export</button>
+                    </div>
+                  </div>
 
-              <div className="party-table-wrap">
-                <table className="statement-table">
-                  <thead>
-                    <tr>
-                      <th>Party Name</th>
-                      <th>Type</th>
-                      <th>Total Invoices (Sales/Purchases)</th>
-                      <th>Total Payments Received/Made</th>
-                      <th>Outstanding Balance</th>
-                      <th>Last Active Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {partySummary.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="empty-state">No parties added yet. Go to Voucher Entry to add a customer or supplier.</td>
-                      </tr>
-                    ) : (
-                      partySummary.map((party) => {
-                        const isDebtor = party.group === 'Sundry Debtors';
-                        const balance = party.outstandingAmount;
-                        
-                        return (
-                          <tr key={party.id}>
-                            <td><strong>{party.name}</strong></td>
-                            <td>
-                              <span className={`badge ${isDebtor ? 'badge-debtor' : 'badge-creditor'}`}>
-                                {isDebtor ? 'Customer' : 'Supplier'}
-                              </span>
+                  <div className="crm-table-wrapper fade-in">
+                    <table className="crm-table">
+                      <thead>
+                        <tr>
+                          <th>Customer / Supplier</th>
+                          <th>Status & Tags</th>
+                          <th>Lifetime Value (LTV)</th>
+                          <th>Outstanding Balance</th>
+                          <th>Last Activity</th>
+                          <th style={{ textAlign: 'right' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {partySummary.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} style={{ padding: '60px 20px', textAlign: 'center' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+                                <div style={{ width: '80px', height: '80px', background: 'var(--bg-secondary)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <Users size={32} color="var(--text-secondary)" />
+                                </div>
+                                <div>
+                                  <h3 style={{ fontSize: '16px', marginBottom: '8px' }}>No Customers Yet</h3>
+                                  <p className="text-secondary" style={{ fontSize: '14px', maxWidth: '300px', margin: '0 auto' }}>Your CRM pipeline is empty. Add a customer to start tracking relationships.</p>
+                                </div>
+                                <button className="primary-button" style={{ marginTop: '8px' }}><Plus size={16}/> Add Customer</button>
+                              </div>
                             </td>
-                            <td>{formatCurrency(party.totalSales)}</td>
-                            <td>{formatCurrency(party.totalPayments)}</td>
-                            <td>
-                              <strong className={balance > 0 ? (isDebtor ? 'text-amber' : 'text-red') : 'text-green'}>
-                                {balance === 0 ? 'Settled' : isDebtor ? `${formatCurrency(balance)} Dr` : `${formatCurrency(Math.abs(balance))} Cr`}
-                              </strong>
-                            </td>
-                            <td>{party.lastTransactionDate}</td>
                           </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                        ) : (
+                          partySummary.map((party, i) => {
+                            const isDebtor = party.group === 'Sundry Debtors';
+                            const balance = party.outstandingAmount;
+                            // Mock CRM tags for demonstration
+                            const tags = [];
+                            if (party.totalSales > 50000) tags.push({ label: 'VIP', class: 'vip' });
+                            if (isDebtor && balance > 10000) tags.push({ label: 'High Risk', class: 'high-risk' });
+                            if (i % 3 === 0) tags.push({ label: 'Wholesale', class: 'wholesale' });
+                            if (tags.length === 0) tags.push({ label: 'Retail', class: 'retail' });
+                            
+                            return (
+                              <tr key={party.id} onClick={() => setSelectedCrmCustomer(party)} style={{cursor: 'pointer'}}>
+                                <td>
+                                  <div className="crm-customer-cell">
+                                    <div className="crm-avatar">{party.name.charAt(0).toUpperCase()}</div>
+                                    <div>
+                                      <div style={{ fontWeight: '600', color: 'var(--text-primary)', marginBottom: '4px' }}>{party.name}</div>
+                                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{isDebtor ? 'Customer' : 'Supplier'} • ID: {party.id.slice(0,6)}</div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td>
+                                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                    {tags.map((t, idx) => (
+                                      <span key={idx} className={`crm-tag ${t.class}`}>{t.label}</span>
+                                    ))}
+                                  </div>
+                                </td>
+                                <td style={{ fontWeight: '500' }}>{formatCurrency(party.totalSales + party.totalPayments)}</td>
+                                <td>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: balance === 0 ? 'var(--success)' : isDebtor ? 'var(--warning)' : 'var(--danger)' }}></div>
+                                    <strong style={{ color: balance === 0 ? 'var(--text-secondary)' : isDebtor ? 'var(--warning)' : 'var(--danger)' }}>
+                                      {balance === 0 ? 'Settled' : isDebtor ? `${formatCurrency(balance)}` : `${formatCurrency(Math.abs(balance))} Cr`}
+                                    </strong>
+                                  </div>
+                                </td>
+                                <td className="text-secondary">{party.lastTransactionDate || 'N/A'}</td>
+                                <td style={{ textAlign: 'right' }}>
+                                  <button className="icon-button" onClick={(e) => { e.stopPropagation(); }} title="Quick Actions">
+                                    <MoreHorizontal size={18} />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="crm-toolbar fade-in" style={{ border: 'none', padding: '0 0 16px 0', background: 'transparent' }}>
+                    <button className="secondary-button" onClick={() => setSelectedCrmCustomer(null)}>
+                      <ArrowLeft size={16} /> Back to List
+                    </button>
+                    <div className="crm-toolbar-actions">
+                      <button className="secondary-button"><Edit3 size={16} /> Edit Profile</button>
+                      <button className="primary-button"><Plus size={16} /> Create Invoice</button>
+                    </div>
+                  </div>
+                  
+                  <div className="profile-grid-layout fade-in">
+                    {/* Sidebar */}
+                    <div className="profile-sidebar">
+                       <div className="profile-avatar-large">{selectedCrmCustomer.name.charAt(0).toUpperCase()}</div>
+                       <div style={{ textAlign: 'center' }}>
+                         <h2 style={{ fontSize: '20px', marginBottom: '4px' }}>{selectedCrmCustomer.name}</h2>
+                         <p className="text-secondary" style={{ fontSize: '14px' }}>{selectedCrmCustomer.group === 'Sundry Debtors' ? 'Customer' : 'Supplier'}</p>
+                       </div>
+                       
+                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                         <span className="crm-tag vip">VIP</span>
+                         <span className="crm-tag retail">Active</span>
+                       </div>
+                       
+                       <hr style={{ border: 'none', borderTop: '1px solid var(--border-subtle)', margin: '8px 0' }} />
+                       
+                       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                           <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                             <Phone size={16} className="text-secondary" />
+                           </div>
+                           <div style={{ fontSize: '13px' }}>
+                             <div className="text-secondary">Phone</div>
+                             <div style={{ fontWeight: '500' }}>+91 98765 43210</div>
+                           </div>
+                         </div>
+                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                           <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                             <Mail size={16} className="text-secondary" />
+                           </div>
+                           <div style={{ fontSize: '13px' }}>
+                             <div className="text-secondary">Email</div>
+                             <div style={{ fontWeight: '500' }}>contact@company.com</div>
+                           </div>
+                         </div>
+                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                           <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                             <MapPin size={16} className="text-secondary" />
+                           </div>
+                           <div style={{ fontSize: '13px' }}>
+                             <div className="text-secondary">Location</div>
+                             <div style={{ fontWeight: '500' }}>Mumbai, Maharashtra</div>
+                           </div>
+                         </div>
+                       </div>
+                       
+                       <hr style={{ border: 'none', borderTop: '1px solid var(--border-subtle)', margin: '8px 0' }} />
+                       
+                       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                         <button className="secondary-button" style={{ width: '100%', justifyContent: 'center' }}><MessageCircle size={16} /> Send WhatsApp</button>
+                         <button className="secondary-button" style={{ width: '100%', justifyContent: 'center' }}><Mail size={16} /> Send Email</button>
+                       </div>
+                    </div>
+                    
+                    {/* Main Content */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                      {/* Financials Row */}
+                      <div className="dashboard-kpi-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                        <div className="kpi-card" style={{ padding: '20px' }}>
+                          <div className="kpi-header">
+                            <span className="text-secondary" style={{ fontSize: '13px', fontWeight: '500' }}>Lifetime Value</span>
+                            <div className="kpi-icon-wrap" style={{ background: 'rgba(59, 130, 246, 0.1)', color: 'var(--brand-primary)' }}>
+                              <Star size={18} />
+                            </div>
+                          </div>
+                          <div className="kpi-value" style={{ fontSize: '24px', margin: '12px 0 4px' }}>{formatCurrency(selectedCrmCustomer.totalSales + selectedCrmCustomer.totalPayments)}</div>
+                          <div className="kpi-trend trend-up" style={{ fontSize: '12px' }}><ArrowUpRight size={14}/> Top 10% Customer</div>
+                        </div>
+                        
+                        <div className="kpi-card" style={{ padding: '20px' }}>
+                          <div className="kpi-header">
+                            <span className="text-secondary" style={{ fontSize: '13px', fontWeight: '500' }}>Outstanding</span>
+                            <div className="kpi-icon-wrap" style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)' }}>
+                              <AlertCircle size={18} />
+                            </div>
+                          </div>
+                          <div className="kpi-value" style={{ fontSize: '24px', margin: '12px 0 4px', color: selectedCrmCustomer.outstandingAmount > 0 ? 'var(--danger)' : 'var(--text-primary)' }}>
+                            {formatCurrency(selectedCrmCustomer.outstandingAmount)}
+                          </div>
+                          <div className="kpi-trend trend-neutral" style={{ fontSize: '12px' }}>Credit Limit: ₹50,000</div>
+                        </div>
+                        
+                        <div className="kpi-card" style={{ padding: '20px' }}>
+                          <div className="kpi-header">
+                            <span className="text-secondary" style={{ fontSize: '13px', fontWeight: '500' }}>Last Payment</span>
+                            <div className="kpi-icon-wrap" style={{ background: 'rgba(16, 185, 129, 0.1)', color: 'var(--success)' }}>
+                              <CheckCircle size={18} />
+                            </div>
+                          </div>
+                          <div className="kpi-value" style={{ fontSize: '24px', margin: '12px 0 4px' }}>{selectedCrmCustomer.lastTransactionDate || 'None'}</div>
+                          <div className="kpi-trend text-secondary" style={{ fontSize: '12px' }}>Via UPI</div>
+                        </div>
+                      </div>
+                      
+                      {/* Timeline & Notes Grid */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+                        {/* Timeline */}
+                        <div className="panel" style={{ padding: '24px' }}>
+                          <h3 style={{ fontSize: '16px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Activity size={18} className="text-brand" /> CRM Activity
+                          </h3>
+                          <div className="timeline">
+                            <div className="timeline-item">
+                              <div className="timeline-icon" style={{ background: 'var(--brand-secondary)', color: 'var(--brand-primary)' }}>
+                                <FileText size={14} />
+                              </div>
+                              <div className="timeline-content">
+                                <div className="timeline-title">Invoice #INV-2024-089 Generated</div>
+                                <div className="timeline-time">Today, 10:30 AM</div>
+                              </div>
+                            </div>
+                            <div className="timeline-item">
+                              <div className="timeline-icon" style={{ background: '#ecfdf5', color: '#10b981' }}>
+                                <Phone size={14} />
+                              </div>
+                              <div className="timeline-content">
+                                <div className="timeline-title">Follow-up Call</div>
+                                <div className="timeline-time">Yesterday, 4:15 PM • Notes: Asked for discount on next bulk order.</div>
+                              </div>
+                            </div>
+                            <div className="timeline-item">
+                              <div className="timeline-icon" style={{ background: '#eff6ff', color: '#3b82f6' }}>
+                                <MessageCircle size={14} />
+                              </div>
+                              <div className="timeline-content">
+                                <div className="timeline-title">WhatsApp Message Sent</div>
+                                <div className="timeline-time">Oct 24, 2024 • Payment Reminder</div>
+                              </div>
+                            </div>
+                            <div className="timeline-item">
+                              <div className="timeline-icon" style={{ background: '#fef2f2', color: '#ef4444' }}>
+                                <CreditCard size={14} />
+                              </div>
+                              <div className="timeline-content">
+                                <div className="timeline-title">Payment Received</div>
+                                <div className="timeline-time">Oct 20, 2024 • ₹15,000 via NEFT</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Documents & Notes */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                          {/* Notes */}
+                          <div className="panel" style={{ padding: '24px', background: '#fffbeb', border: '1px solid #fde68a' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                              <h3 style={{ fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#b45309' }}>
+                                <Star size={18} /> Pinned Note
+                              </h3>
+                              <button className="icon-button" style={{ color: '#b45309' }}><Edit3 size={16}/></button>
+                            </div>
+                            <p style={{ fontSize: '14px', color: '#92400e', lineHeight: '1.6' }}>
+                              Customer prefers deliveries on weekends. Ensure GST invoice is always emailed to their finance department (finance@company.com) immediately after dispatch.
+                            </p>
+                          </div>
+                          
+                          {/* Documents */}
+                          <div className="panel" style={{ padding: '24px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                              <h3 style={{ fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Paperclip size={18} className="text-secondary" /> Documents
+                              </h3>
+                              <button className="secondary-button" style={{ padding: '4px 8px', fontSize: '12px' }}><Plus size={14}/> Upload</button>
+                            </div>
+                            
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                              <div className="doc-card">
+                                <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6' }}>
+                                  <FileText size={18} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ fontSize: '13px', fontWeight: '500' }}>GST_Certificate.pdf</div>
+                                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Added Oct 10 • 245 KB</div>
+                                </div>
+                                <Download size={16} className="text-secondary" />
+                              </div>
+                              <div className="doc-card">
+                                <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#fdf2f8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#db2777' }}>
+                                  <ImageIcon size={18} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ fontSize: '13px', fontWeight: '500' }}>Store_Front.jpg</div>
+                                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Added Oct 10 • 1.2 MB</div>
+                                </div>
+                                <Download size={16} className="text-secondary" />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
             </section>
           )}
 

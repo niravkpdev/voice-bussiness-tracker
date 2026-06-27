@@ -514,3 +514,175 @@ tr:hover td {
 .trend-up { color: var(--success); }
 .trend-down { color: var(--danger); }
 .trend-neutral { color: var(--warning); }
+
+/* 14. CRM LAYOUTS */
+.crm-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.crm-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 16px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.crm-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.crm-search-input {
+  padding: 8px 12px 8px 36px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
+  font-size: 14px;
+  width: 280px;
+  transition: all var(--transition-fast);
+}
+.crm-search-input:focus {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  outline: none;
+}
+
+.crm-table-wrapper {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  overflow-x: auto;
+  box-shadow: var(--shadow-sm);
+}
+
+.crm-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.crm-table th {
+  padding: 16px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  white-space: nowrap;
+}
+
+.crm-table td {
+  padding: 16px 20px;
+  font-size: 14px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
+}
+
+.crm-table tr:hover td {
+  background: var(--bg-secondary);
+}
+
+.crm-table tr:last-child td {
+  border-bottom: none;
+}
+
+.crm-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--brand-secondary);
+  color: var(--brand-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.crm-customer-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.crm-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.crm-tag.vip { background: #fdf2f8; color: #db2777; border: 1px solid #fbcfe8; }
+.crm-tag.wholesale { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+.crm-tag.retail { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
+.crm-tag.high-risk { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+
+/* 15. CRM PROFILE SPECIFICS */
+.profile-grid-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .profile-grid-layout {
+    grid-template-columns: 320px 1fr;
+  }
+}
+
+.profile-sidebar {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.profile-avatar-large {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--brand-secondary);
+  color: var(--brand-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 32px;
+  margin: 0 auto;
+}
+
+.doc-card {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-secondary);
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+.doc-card:hover {
+  border-color: var(--brand-primary);
+  background: var(--bg-primary);
+}
