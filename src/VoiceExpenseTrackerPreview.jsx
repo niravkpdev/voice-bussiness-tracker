@@ -914,6 +914,7 @@ export default function VoiceExpenseTrackerPreview() {
   const [profile, setProfile] = useState(DEFAULT_PROFILE);
   const [showTour, setShowTour] = useState(false);
   const [showPricing, setShowPricing] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
   const [upgradeModalFeature, setUpgradeModalFeature] = useState(null); // null means hidden, string means feature name
 
   const [browserSupported, setBrowserSupported] = useState(true);
@@ -3999,10 +4000,10 @@ export default function VoiceExpenseTrackerPreview() {
             <span>Trinetr Business Suite</span>
           </a>
           <nav>
-            <a href="#features">Features</a>
-            <a href="#pricing">Pricing</a>
+            <a href="#features" onClick={() => { if(authView !== 'landing') setAuthView('landing'); }}>Features</a>
+            <button type="button" onClick={() => setShowPricing(true)}>Pricing</button>
             <button type="button" onClick={() => setAuthView('about-app')}>About</button>
-            <button type="button" onClick={() => setAuthView('contact-us')}>Contact</button>
+            <button type="button" onClick={() => setShowContactModal(true)}>Contact</button>
             <button type="button" onClick={() => setAuthView('login')}>Login</button>
             <button className="saas-primary-button" type="button" onClick={() => setAuthView('register')}>
               Start Free
@@ -4239,7 +4240,7 @@ export default function VoiceExpenseTrackerPreview() {
                 <button type="button" onClick={() => setAuthView('privacy-policy')}>Privacy Policy</button>
                 <button type="button" onClick={() => setAuthView('terms-conditions')}>Terms of Service</button>
                 <button type="button" onClick={() => setAuthView('data-deletion')}>Data Deletion</button>
-                <button type="button" onClick={() => setAuthView('contact-us')}>Contact</button>
+                <button type="button" onClick={() => setShowContactModal(true)}>Contact</button>
               </nav>
             </footer>
           </>
@@ -4263,9 +4264,7 @@ export default function VoiceExpenseTrackerPreview() {
               {secureError && <div className="notice error">{secureError}</div>}
               {authView === 'login' && (
                 <div className="notice auth-help-note">
-                  Mobile login tip: use the same verified email, keep internet on, and open the production URL in Chrome:
-                  <br />
-                  <strong>https://voice-bussiness-tracker.vercel.app/react.html</strong>
+                  Use your registered email and password to access your dashboard.
                 </div>
               )}
               {authView === 'reset-password' ? (

@@ -7,7 +7,11 @@ export function PricingPage({ onClose, onUpgrade, isLoggedIn }) {
 
   const handleAction = (plan) => {
     if (plan === 'Enterprise') {
-      window.location.href = 'mailto:sales@trinetr.com?subject=Enterprise Inquiry';
+      if (onContactSales) {
+        onContactSales();
+      } else {
+        window.location.href = 'mailto:sales@trinetr.com?subject=Enterprise Inquiry';
+      }
       return;
     }
     
