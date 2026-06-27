@@ -175,6 +175,15 @@ export default function Phase2ERP({
   useEffect(() => writeArray(BUSINESS_KEY, businesses), [businesses]);
   useEffect(() => writeArray(NOTIFICATION_KEY, notifications), [notifications]);
   useEffect(() => writeObject(CLOUD_BACKUP_KEY, cloudSettings), [cloudSettings]);
+  
+  useEffect(() => {
+    if (showPersonDrawer || editingPerson) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [showPersonDrawer, editingPerson]);
   useEffect(() => {
     if (Array.isArray(cloudInventory)) {
       setProducts(cloudInventory);
@@ -1134,13 +1143,13 @@ export default function Phase2ERP({
                 <h3 style={{ margin: 0, fontSize: '18px' }}>
                   {currentEdit ? `Edit ${isCustomer ? 'Customer' : 'Supplier'}` : `Add ${isCustomer ? 'Customer' : 'Supplier'}`}
                 </h3>
-                <button className="icon-button" onClick={() => { setShowPersonDrawer(false); setEditingPerson(null); }}><X size={20}/></button>
+                <button type="button" className="icon-button" onClick={() => { setShowPersonDrawer(false); setEditingPerson(null); }}><X size={20}/></button>
               </div>
-              <form onSubmit={(event) => { savePerson(event, formKind); setShowPersonDrawer(false); }} key={`${formKind}-${currentEdit?.id || 'new'}`} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+              <form onSubmit={(event) => { savePerson(event, formKind); setShowPersonDrawer(false); }} key={`${formKind}-${currentEdit?.id || 'new'}`} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
                 <div className="crm-drawer-body">
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     <div>
-                      <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', marginBottom: '4px', display: 'block' }}>Basic Information</label>
+                      <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>Basic Information</label>
                       <input name="name" defaultValue={currentEdit?.name || ''} placeholder="Company or Person Name" required style={{ width: '100%', marginBottom: '12px' }} />
                       <div style={{ display: 'flex', gap: '12px' }}>
                         <input name="phone" defaultValue={contactPhone(currentEdit || {})} placeholder="Phone Number" style={{ flex: 1 }} />
