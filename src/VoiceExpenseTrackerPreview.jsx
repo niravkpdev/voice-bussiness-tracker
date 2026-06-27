@@ -912,8 +912,8 @@ export default function VoiceExpenseTrackerPreview() {
   const [manualAmount, setManualAmount] = useState('');
   const [manualText, setManualText] = useState('');
   const [profile, setProfile] = useState(DEFAULT_PROFILE);
+  const [showTour, setShowTour] = useState(false);
   const [browserSupported, setBrowserSupported] = useState(true);
-
   const [voucherType, setVoucherType] = useState('Receipt');
   const [voucherDate, setVoucherDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [voucherAmount, setVoucherAmount] = useState('');
@@ -4634,7 +4634,7 @@ export default function VoiceExpenseTrackerPreview() {
       </aside>
 
       <div className="workspace">
-        {(!profile.setupCompleted && authUser?.mode !== 'demo') && (
+        {(!profile?.setupCompleted && authUser?.mode !== 'demo') && (
           <SetupWizard 
             profile={profile}
             onComplete={(didAddDemoData) => {

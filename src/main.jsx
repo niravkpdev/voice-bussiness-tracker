@@ -4,9 +4,40 @@ import VoiceExpenseTrackerPreview from './VoiceExpenseTrackerPreview.jsx';
 import './styles.css';
 import './premium-overrides.css';
 
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("Uncaught error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '50px', textAlign: 'center', fontFamily: 'system-ui, sans-serif' }}>
+          <h2>Something went wrong.</h2>
+          <p>Please refresh the page or contact support.</p>
+          <button onClick={() => window.location.reload()} style={{ padding: '10px 20px', marginTop: '20px', cursor: 'pointer' }}>Refresh</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <VoiceExpenseTrackerPreview />
+    <ErrorBoundary>
+      <VoiceExpenseTrackerPreview />
+    </ErrorBoundary>
   </React.StrictMode>
 );
 
