@@ -358,6 +358,134 @@ export default function Phase2ERP({
     value: product.soldQty * product.sellingPrice,
   })), [erpAI.bestProducts]);
 
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importErrors, setImportErrors] = useState([]);
+  const [showStockReport, setShowStockReport] = useState(false);
+
+  const handleExportCSV = () => {
+    try {
+      const headers = ['Product Name', 'SKU', 'Category', 'Supplier', 'Current Stock', 'Minimum Stock', 'Purchase Price', 'Selling Price', 'Stock Value', 'Status'];
+      const rows = scopedProducts.map(p => {
+        let status = 'In Stock';
+        if ((p.currentStock || 0) <= 0) status = 'Out of Stock';
+        else if ((p.currentStock || 0) <= (p.minStock || 0)) status = 'Low Stock';
+        const value = (p.currentStock || 0) * (p.purchasePrice || 0);
+        return [
+          `"${(p.name || '').replace(/"/g, '""')}"`,
+          `"${(p.sku || '').replace(/"/g, '""')}"`,
+          `"${(p.category || '').replace(/"/g, '""')}"`,
+          `"${(p.supplier || '').replace(/"/g, '""')}"`,
+          p.currentStock || 0,
+          p.minStock || 0,
+          p.purchasePrice || 0,
+          p.sellingPrice || 0,
+          value,
+          status
+        ].join(',');
+      });
+      const csvContent = [headers.join(','), ...rows].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `trinetr-inventory-export-${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      onStatus('Export downloaded successfully');
+    } catch (e) {
+      onStatus(e?.message || 'Export failed');
+    }
+  };
+
+  const handleDownloadSample = () => {
+    try {
+      const headers = ['Product Name', 'SKU', 'Category', 'Purchase Price', 'Selling Price', 'Current Stock', 'Minimum Stock', 'Unit', 'Supplier'];
+      const sampleRow = ['Sample Mouse', 'M-001', 'Electronics', '15', '25', '100', '10', 'pcs', 'Tech Supplier Inc'];
+      const csvContent = [headers.join(','), sampleRow.join(',')].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `inventory-sample.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (e) {
+      onStatus(e?.message || 'Download failed');
+    }
+  };
+
+  const handleImportSubmit = async (e) => {
+    e.preventDefault();
+    setImportErrors([]);
+    const fileInput = e.target.elements.importFile;
+    const file = fileInput.files[0];
+    if (!file) return onStatus('Please select a file');
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const text = event.target.result;
+        const lines = text.split(/\r?\n/).filter(line => line.trim());
+        if (lines.length < 2) throw new Error('File is empty or missing data rows');
+        
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        
+        let newProducts = [];
+        let errors = [];
+        for (let i = 1; i < lines.length; i++) {
+          const row = lines[i].split(',').map(cell => cell.trim().replace(/^"|"$/g, ''));
+          const prodName = row[headers.indexOf('product name')];
+          const sku = row[headers.indexOf('sku')];
+          
+          if (!prodName) {
+            errors.push(`Row ${i}: Product Name is required`);
+            continue;
+          }
+          if (sku && scopedProducts.some(p => p.sku && p.sku.toLowerCase() === sku.toLowerCase()) || newProducts.some(p => p.sku && p.sku.toLowerCase() === sku.toLowerCase())) {
+            errors.push(`Row ${i}: Duplicate SKU '${sku}' found`);
+            continue;
+          }
+
+          newProducts.push({
+            id: createId('prd'),
+            businessId: activeBusinessId,
+            name: sanitizeText(prodName, 120),
+            sku: sanitizeText(sku, 60),
+            category: sanitizeText(row[headers.indexOf('category')] || 'General', 80),
+            purchasePrice: normalizeAmount(row[headers.indexOf('purchase price')]),
+            sellingPrice: normalizeAmount(row[headers.indexOf('selling price')]),
+            currentStock: normalizeAmount(row[headers.indexOf('current stock')]),
+            minStock: normalizeAmount(row[headers.indexOf('minimum stock')]),
+            unit: sanitizeText(row[headers.indexOf('unit')] || 'pcs', 24),
+            supplier: sanitizeText(row[headers.indexOf('supplier')], 80),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          });
+        }
+
+        if (errors.length > 0) {
+          setImportErrors(errors);
+          return;
+        }
+
+        for (let prod of newProducts) {
+          const saved = await onCloudRecord?.('inventory', prod.id, { ...prod, itemId: prod.id });
+          if (!saved) throw new Error(`Failed to save ${prod.name}`);
+        }
+
+        setProducts(items => [...newProducts, ...items]);
+        setShowImportModal(false);
+        onStatus('Products imported successfully.');
+      } catch (err) {
+        setImportErrors([err.message]);
+      }
+    };
+    reader.onerror = () => setImportErrors(['Failed to read file']);
+    reader.readAsText(file);
+  };
+
   const addNotification = async (title, body, type = 'System') => {
     const notification = { id: createId('ntf'), title, body, type, date: new Date().toISOString(), read: false };
     try {
@@ -925,9 +1053,9 @@ export default function Phase2ERP({
           </div>
           <div className="hrms-header-actions">
             <button className="primary-button" onClick={() => setEditingProduct({})}>+ Add Product</button>
-            <button className="secondary-button" onClick={() => onStatus('Import opening soon')}>Import</button>
-            <button className="secondary-button" onClick={() => onStatus('Export opening soon')}>Export</button>
-            <button className="secondary-button" onClick={() => onStatus('Report opening soon')}>Stock Report</button>
+            <button className="secondary-button" onClick={() => setShowImportModal(true)}>Import</button>
+            <button className="secondary-button" onClick={handleExportCSV}>Export</button>
+            <button className="secondary-button" onClick={() => setShowStockReport(true)}>Stock Report</button>
           </div>
         </div>
 
@@ -1008,7 +1136,7 @@ export default function Phase2ERP({
             <p>Start by adding your first product to track stock, pricing and inventory value.</p>
             <div style={{ marginTop: '24px', display: 'flex', gap: '12px', justifyContent: 'center' }}>
               <button className="primary-button" onClick={() => setEditingProduct({})}>+ Add Product</button>
-              <button className="secondary-button" onClick={() => onStatus('Import opening soon')}>Import Excel</button>
+              <button className="secondary-button" onClick={() => setShowImportModal(true)}>Import Excel</button>
             </div>
           </div>
         ) : (
@@ -1267,6 +1395,118 @@ export default function Phase2ERP({
               <div className="hrms-drawer-footer">
                 <button className="secondary-button" type="button" onClick={() => setSelectedProduct(null)}>Close</button>
                 <button className="primary-button" type="button" onClick={() => { setSelectedProduct(null); editProduct(selectedProduct); }}>Edit Product</button>
+              </div>
+            </div>
+          </div>, document.body
+        )}
+
+        {showImportModal && createPortal(
+          <div className="hrms-drawer-overlay" onClick={() => setShowImportModal(false)}>
+            <div className="hrms-drawer-content" onClick={(e) => e.stopPropagation()}>
+              <div className="hrms-drawer-header">
+                <h2>Import Products</h2>
+                <button className="close-button" type="button" onClick={() => setShowImportModal(false)}>×</button>
+              </div>
+              <form onSubmit={handleImportSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+                <div className="hrms-drawer-body">
+                  <p style={{ color: 'var(--text-secondary)' }}>Upload a CSV file to bulk import products. Ensure your file matches the expected format.</p>
+                  
+                  <div className="form-group">
+                    <label>Upload CSV File</label>
+                    <input type="file" name="importFile" accept=".csv" required />
+                  </div>
+                  
+                  {importErrors.length > 0 && (
+                    <div className="form-group" style={{ background: '#fef2f2', color: '#dc2626', padding: '12px', borderRadius: '8px', fontSize: '13px', maxHeight: '150px', overflowY: 'auto' }}>
+                      <strong style={{ display: 'block', marginBottom: '8px' }}>Import Errors:</strong>
+                      <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                        {importErrors.map((err, i) => <li key={i}>{err}</li>)}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div className="form-group" style={{ marginTop: '16px' }}>
+                    <strong>Required Columns:</strong>
+                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Product Name, SKU, Category, Purchase Price, Selling Price, Current Stock, Minimum Stock, Unit, Supplier</p>
+                  </div>
+                </div>
+                <div className="hrms-drawer-footer">
+                  <button className="secondary-button" type="button" onClick={handleDownloadSample}>Download Sample CSV</button>
+                  <button className="primary-button" type="submit">Import Products</button>
+                </div>
+              </form>
+            </div>
+          </div>, document.body
+        )}
+
+        {showStockReport && createPortal(
+          <div className="hrms-drawer-overlay" onClick={() => setShowStockReport(false)}>
+            <div className="hrms-drawer-content profile-drawer" style={{ maxWidth: '800px' }} onClick={(e) => e.stopPropagation()}>
+              <div className="hrms-drawer-header">
+                <h2>Stock Report</h2>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button className="secondary-button" onClick={() => window.print()}>Print</button>
+                  <button className="primary-button" onClick={handleExportCSV}>Download CSV</button>
+                  <button className="close-button" type="button" onClick={() => setShowStockReport(false)}>×</button>
+                </div>
+              </div>
+              <div className="hrms-drawer-body" style={{ background: 'var(--bg-secondary)' }}>
+                <div className="panel" style={{ padding: '24px' }}>
+                  <div className="hrms-kpi-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 0 }}>
+                    <div className="kpi-card" style={{ padding: '16px' }}>
+                      <div className="kpi-content">
+                        <span>Total Products</span>
+                        <strong>{scopedProducts.length}</strong>
+                      </div>
+                    </div>
+                    <div className="kpi-card" style={{ padding: '16px' }}>
+                      <div className="kpi-content">
+                        <span>Total Stock Value</span>
+                        <strong>{formatCurrency(inventoryStats.value)}</strong>
+                      </div>
+                    </div>
+                    <div className="kpi-card" style={{ padding: '16px' }}>
+                      <div className="kpi-content">
+                        <span>Low/Out of Stock</span>
+                        <strong style={{ color: 'var(--danger)' }}>{inventoryStats.lowStock + inventoryStats.outOfStock}</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="panel" style={{ padding: 0, overflow: 'hidden' }}>
+                  <table className="statement-table hrms-directory-table">
+                    <thead>
+                      <tr>
+                        <th>Product</th>
+                        <th>SKU</th>
+                        <th>Stock Status</th>
+                        <th>Qty</th>
+                        <th>Value</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {scopedProducts.length > 0 ? scopedProducts.map((p) => {
+                        let status = 'In Stock';
+                        let badgeClass = 'success';
+                        if ((p.currentStock || 0) <= 0) { status = 'Out of Stock'; badgeClass = 'danger'; }
+                        else if ((p.currentStock || 0) <= (p.minStock || 0)) { status = 'Low Stock'; badgeClass = 'warning'; }
+
+                        return (
+                          <tr key={p.id}>
+                            <td><strong>{p.name}</strong></td>
+                            <td><code style={{ fontSize: '12px', background: 'var(--bg-secondary)', padding: '2px 6px', borderRadius: '4px' }}>{p.sku || 'N/A'}</code></td>
+                            <td><span className={`hrms-status-badge ${badgeClass}`}>{status}</span></td>
+                            <td><strong>{p.currentStock || 0}</strong> {p.unit}</td>
+                            <td>{formatCurrency((p.currentStock || 0) * (p.purchasePrice || 0))}</td>
+                          </tr>
+                        );
+                      }) : (
+                        <tr><td colSpan="5" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-secondary)' }}>No products available for reporting.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>, document.body
