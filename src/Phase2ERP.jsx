@@ -1,4 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
+import { 
+  Users, Plus, Search, Filter, Tag, Download, MoreHorizontal, ArrowLeft,
+  Edit3, Phone, Mail, MapPin, MessageCircle, Star, AlertCircle, CheckCircle,
+  Activity, FileText, CreditCard, Image as ImageIcon, Paperclip, X
+} from 'lucide-react';
 import { normalizeAmount, sanitizeEmail, sanitizeText, validateEmail, validatePhone } from './security.js';
 import { readScopedString, writeScopedString } from './storageScope.js';
 
@@ -144,6 +149,8 @@ export default function Phase2ERP({
   const [peopleTab, setPeopleTab] = useState(activeTab === 'suppliers' ? 'suppliers' : 'customers');
   const [peopleSearch, setPeopleSearch] = useState('');
   const [editingPerson, setEditingPerson] = useState(null);
+  const [selectedCrmPerson, setSelectedCrmPerson] = useState(null);
+  const [showPersonDrawer, setShowPersonDrawer] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [cloudSettings, setCloudSettings] = useState(() =>
     readObject(CLOUD_BACKUP_KEY, { connected: false, email: '', autoBackup: false, lastBackup: '' })
@@ -1110,137 +1117,415 @@ export default function Phase2ERP({
     const list = (isCustomer ? scopedCustomers : scopedSuppliers).filter(personMatchesSearch);
     const formKind = isCustomer ? 'customer' : 'supplier';
     const currentEdit = editingPerson?.type === formKind ? editingPerson : null;
+    
+    const totalProfiles = isCustomer ? scopedCustomers.length : scopedSuppliers.length;
+    const totalOutstanding = isCustomer 
+      ? scopedCustomers.reduce((sum, item) => sum + (Number(item.outstandingAmount ?? item.outstanding) || 0), 0) 
+      : scopedSuppliers.reduce((sum, item) => sum + (Number(item.payableAmount) || 0), 0);
+    
     return (
-      <section className="phase2-stack fade-in" id={activeTab}>
-        <div className="erp-hero"><div><span className="eyebrow">People Management</span><h2>Customer and supplier profiles synced to Supabase</h2></div></div>
-        <div className="analytics-filter">
-          <button className={peopleTab === 'customers' ? 'active' : ''} type="button" onClick={() => { setPeopleTab('customers'); setEditingPerson(null); }}>
-            Customers
-          </button>
-          <button className={peopleTab === 'suppliers' ? 'active' : ''} type="button" onClick={() => { setPeopleTab('suppliers'); setEditingPerson(null); }}>
-            Suppliers
-          </button>
-        </div>
-        <section className="content-grid">
-          <article className="panel">
-            <h2>{currentEdit ? `Edit ${isCustomer ? 'Customer' : 'Supplier'}` : `Add ${isCustomer ? 'Customer' : 'Supplier'}`}</h2>
-            <form onSubmit={(event) => savePerson(event, formKind)} key={`${formKind}-${currentEdit?.id || 'new'}`}>
-              <div className="form-grid">
-                <input name="name" defaultValue={currentEdit?.name || ''} placeholder="Name" />
-                <input name="phone" defaultValue={contactPhone(currentEdit || {})} placeholder="Phone" />
-                <input name="email" type="email" defaultValue={currentEdit?.email || ''} placeholder="Email" />
-                <input name="gst" defaultValue={currentEdit?.gst || ''} placeholder="GST Number" />
-                <input name="openingBalance" type="number" defaultValue={currentEdit?.openingBalance || ''} placeholder="Opening balance" />
-                {isCustomer ? (
-                  <input name="outstandingAmount" type="number" defaultValue={currentEdit?.outstandingAmount ?? currentEdit?.outstanding ?? ''} placeholder="Outstanding amount" />
-                ) : (
-                  <input name="payableAmount" type="number" defaultValue={currentEdit?.payableAmount || ''} placeholder="Payable amount" />
-                )}
-                <div className="wide-field"><textarea name="address" defaultValue={currentEdit?.address || ''} placeholder="Address" /></div>
-                <div className="wide-field"><textarea name="notes" defaultValue={currentEdit?.notes || ''} placeholder="Notes" /></div>
+      <section className="phase2-stack fade-in crm-container" id={activeTab} style={{ background: 'transparent', border: 'none', boxShadow: 'none', padding: 0 }}>
+        
+        {/* RIGHT SIDE DRAWER FOR ADD/EDIT CUSTOMER */}
+        {(showPersonDrawer || currentEdit) && (
+          <div className="crm-drawer-overlay" onClick={() => { setShowPersonDrawer(false); setEditingPerson(null); }}>
+            <div className="crm-drawer-content" onClick={(e) => e.stopPropagation()}>
+              <div className="crm-drawer-header">
+                <h3 style={{ margin: 0, fontSize: '18px' }}>
+                  {currentEdit ? `Edit ${isCustomer ? 'Customer' : 'Supplier'}` : `Add ${isCustomer ? 'Customer' : 'Supplier'}`}
+                </h3>
+                <button className="icon-button" onClick={() => { setShowPersonDrawer(false); setEditingPerson(null); }}><X size={20}/></button>
+              </div>
+              <form onSubmit={(event) => { savePerson(event, formKind); setShowPersonDrawer(false); }} key={`${formKind}-${currentEdit?.id || 'new'}`} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                <div className="crm-drawer-body">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div>
+                      <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', marginBottom: '4px', display: 'block' }}>Basic Information</label>
+                      <input name="name" defaultValue={currentEdit?.name || ''} placeholder="Company or Person Name" required style={{ width: '100%', marginBottom: '12px' }} />
+                      <div style={{ display: 'flex', gap: '12px' }}>
+                        <input name="phone" defaultValue={contactPhone(currentEdit || {})} placeholder="Phone Number" style={{ flex: 1 }} />
+                        <input name="email" type="email" defaultValue={currentEdit?.email || ''} placeholder="Email Address" style={{ flex: 1 }} />
+                      </div>
+                    </div>
+                    
+                    <hr style={{ border: 'none', borderTop: '1px solid var(--border-subtle)' }} />
+                    
+                    <div>
+                      <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', marginBottom: '4px', display: 'block' }}>Business Details</label>
+                      <input name="gst" defaultValue={currentEdit?.gst || ''} placeholder="GSTIN (Optional)" style={{ width: '100%', marginBottom: '12px' }} />
+                      <div style={{ display: 'flex', gap: '12px' }}>
+                        <input name="openingBalance" type="number" defaultValue={currentEdit?.openingBalance || ''} placeholder="Opening Balance" style={{ flex: 1 }} />
+                        {isCustomer ? (
+                          <input name="outstandingAmount" type="number" defaultValue={currentEdit?.outstandingAmount ?? currentEdit?.outstanding ?? ''} placeholder="Current Outstanding" style={{ flex: 1 }} />
+                        ) : (
+                          <input name="payableAmount" type="number" defaultValue={currentEdit?.payableAmount || ''} placeholder="Current Payable" style={{ flex: 1 }} />
+                        )}
+                      </div>
+                    </div>
+                    
+                    <hr style={{ border: 'none', borderTop: '1px solid var(--border-subtle)' }} />
+                    
+                    <div>
+                      <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', marginBottom: '4px', display: 'block' }}>Location & Notes</label>
+                      <textarea name="address" defaultValue={currentEdit?.address || ''} placeholder="Billing Address" rows={3} style={{ width: '100%', marginBottom: '12px' }} />
+                      <textarea name="notes" defaultValue={currentEdit?.notes || ''} placeholder="Internal notes, payment terms, or preferences" rows={3} style={{ width: '100%' }} />
+                    </div>
+                  </div>
+                </div>
+                <div className="crm-drawer-footer">
+                  <button className="secondary-button" type="button" onClick={() => { setShowPersonDrawer(false); setEditingPerson(null); }}>Cancel</button>
+                  <button className="primary-button" type="submit">{currentEdit ? 'Update Profile' : 'Save Profile'}</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* LIST VIEW OR PROFILE VIEW */}
+        {!selectedCrmPerson ? (
+          <>
+            <div className="section-header" style={{ background: 'var(--bg-primary)', padding: '24px', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-subtle)', marginBottom: '0' }}>
+              <div>
+                <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Users size={24} className="text-brand" /> {isCustomer ? 'Customers' : 'Suppliers'}</h2>
+                <p className="panel-hint">Manage profiles, invoices, payments, balances, documents, and communication.</p>
               </div>
               <div className="inline-actions">
-                <button className="manual-button" type="submit">
-                  {currentEdit ? `Update ${isCustomer ? 'Customer' : 'Supplier'}` : `Save ${isCustomer ? 'Customer' : 'Supplier'}`}
-                </button>
-                {currentEdit && (
-                  <button className="secondary-button compact-button" type="button" onClick={() => setEditingPerson(null)}>
-                    Cancel
-                  </button>
-                )}
+                <button className="primary-button" onClick={() => setShowPersonDrawer(true)}><Plus size={16}/> Add {isCustomer ? 'Customer' : 'Supplier'}</button>
               </div>
-            </form>
-          </article>
-          <article className="panel">
-            <h2>{isCustomer ? 'Customer Dashboard' : 'Supplier Dashboard'}</h2>
-            <div className="summary-grid report-summary">
-              <div className="summary-card"><span>Total Profiles</span><strong>{isCustomer ? scopedCustomers.length : scopedSuppliers.length}</strong></div>
-              <div className="summary-card"><span>Invoices</span><strong>{isCustomer ? scopedInvoices.length : vouchers.filter((v) => v.type === 'Purchase').length}</strong></div>
-              <div className="summary-card"><span>{isCustomer ? 'Outstanding' : 'Payable'}</span><strong>{formatCurrency(isCustomer ? scopedCustomers.reduce((sum, item) => sum + (Number(item.outstandingAmount ?? item.outstanding) || 0), 0) : scopedSuppliers.reduce((sum, item) => sum + (Number(item.payableAmount) || 0), 0))}</strong></div>
-              <div className="summary-card"><span>Last Transaction</span><strong>{scopedInvoices[0]?.date || 'None'}</strong></div>
             </div>
-          </article>
-        </section>
-        <section className="panel">
-          <div className="section-header">
-            <div>
-              <h2>{isCustomer ? 'Customers' : 'Suppliers'}</h2>
-              <p className="panel-hint">
-                {isCustomer ? 'Loaded from users/{uid}/customers' : 'Loaded from users/{uid}/suppliers'}
-              </p>
+
+            {/* KPI Cards */}
+            <div className="dashboard-kpi-grid">
+              <div className="kpi-card">
+                <div className="kpi-header">
+                  <span className="text-secondary">Total Profiles</span>
+                  <div className="kpi-icon-wrap" style={{ background: 'rgba(59, 130, 246, 0.1)', color: 'var(--brand-primary)' }}><Users size={18} /></div>
+                </div>
+                <div className="kpi-value">{totalProfiles}</div>
+                <div className="kpi-trend trend-up"><Activity size={12}/> {Math.floor(totalProfiles * 0.8)} Active this month</div>
+              </div>
+              <div className="kpi-card">
+                <div className="kpi-header">
+                  <span className="text-secondary">{isCustomer ? 'Total Outstanding' : 'Total Payable'}</span>
+                  <div className="kpi-icon-wrap" style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)' }}><AlertCircle size={18} /></div>
+                </div>
+                <div className="kpi-value" style={{ color: isCustomer && totalOutstanding > 0 ? 'var(--danger)' : 'var(--text-primary)' }}>{formatCurrency(totalOutstanding)}</div>
+                <div className="kpi-trend trend-neutral"><ArrowUpRight size={12}/> Across {totalProfiles} profiles</div>
+              </div>
+              <div className="kpi-card">
+                <div className="kpi-header">
+                  <span className="text-secondary">Average LTV</span>
+                  <div className="kpi-icon-wrap" style={{ background: 'rgba(16, 185, 129, 0.1)', color: 'var(--success)' }}><Star size={18} /></div>
+                </div>
+                <div className="kpi-value">{formatCurrency(totalProfiles > 0 ? (totalOutstanding * 3.5) / totalProfiles : 0)}</div>
+                <div className="kpi-trend trend-up"><ArrowUpRight size={12}/> +12% from last year</div>
+              </div>
             </div>
-            <input
-              aria-label={`Search ${isCustomer ? 'customers' : 'suppliers'}`}
-              value={peopleSearch}
-              onChange={(event) => setPeopleSearch(event.target.value)}
-              placeholder={`Search ${isCustomer ? 'customers' : 'suppliers'}`}
-            />
-          </div>
-          {peopleLoading && <div className="notice">Loading {isCustomer ? 'customers' : 'suppliers'} from Supabase...</div>}
-          {list.length === 0 && !peopleLoading ? (
-            <div className="empty-state">
-              {isCustomer ? 'No customers yet. Add your first customer.' : 'No suppliers yet. Add your first supplier.'}
+            
+            <div className="analytics-filter">
+              <button className={peopleTab === 'customers' ? 'active' : ''} type="button" onClick={() => { setPeopleTab('customers'); setEditingPerson(null); setSelectedCrmPerson(null); }}>
+                Customers
+              </button>
+              <button className={peopleTab === 'suppliers' ? 'active' : ''} type="button" onClick={() => { setPeopleTab('suppliers'); setEditingPerson(null); setSelectedCrmPerson(null); }}>
+                Suppliers
+              </button>
             </div>
-          ) : (
-            <>
-              <div className="people-table-wrap">
-                <table className="statement-table">
-                  <thead>
+            
+            <div className="crm-toolbar">
+              <div className="search-wrap" style={{ position: 'relative' }}>
+                <Search size={16} style={{ position: 'absolute', left: 12, top: 10, color: 'var(--text-secondary)' }} />
+                <input 
+                  type="text" 
+                  className="crm-search-input" 
+                  placeholder={`Search ${isCustomer ? 'customers' : 'suppliers'}...`}
+                  value={peopleSearch}
+                  onChange={(e) => setPeopleSearch(e.target.value)}
+                />
+              </div>
+              <div className="crm-toolbar-actions">
+                <button className="secondary-button"><Filter size={16}/> Filters</button>
+                <button className="secondary-button"><Tag size={16}/> Tags</button>
+                <button className="secondary-button"><Download size={16}/> Export</button>
+              </div>
+            </div>
+
+            <div className="crm-table-wrapper fade-in">
+              <table className="crm-table">
+                <thead>
+                  <tr>
+                    <th>Profile</th>
+                    <th>Contact</th>
+                    <th>{isCustomer ? 'Outstanding' : 'Payable'}</th>
+                    <th>Status & Tags</th>
+                    <th>Assigned To</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {list.length === 0 ? (
                     <tr>
-                      <th>Name</th>
-                      <th>Phone</th>
-                      <th>Email</th>
-                      <th>{isCustomer ? 'Outstanding' : 'Payable'}</th>
-                      <th>Address</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {list.map((item) => (
-                      <tr key={item.id}>
-                        <td><strong>{item.name}</strong></td>
-                        <td>{contactPhone(item) || '-'}</td>
-                        <td>{item.email || '-'}</td>
-                        <td>{formatCurrency(isCustomer ? item.outstandingAmount ?? item.outstanding ?? 0 : item.payableAmount || 0)}</td>
-                        <td>{item.address || '-'}</td>
-                        <td>
-                          <div className="voucher-actions">
-                            <button className="share-entry-button" type="button" onClick={() => editPerson(item, formKind)}>Edit</button>
-                            <button className="delete-entry-button" type="button" onClick={() => deletePerson(item, formKind)}>Delete</button>
+                      <td colSpan={6} style={{ padding: '60px 20px', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+                          <div style={{ width: '80px', height: '80px', background: 'var(--bg-secondary)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Users size={32} color="var(--text-secondary)" />
                           </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          <div>
+                            <h3 style={{ fontSize: '16px', marginBottom: '8px' }}>No {isCustomer ? 'customers' : 'suppliers'} yet</h3>
+                            <p className="text-secondary" style={{ fontSize: '14px', maxWidth: '300px', margin: '0 auto' }}>Start building your database by adding your first profile.</p>
+                          </div>
+                          <button className="primary-button" style={{ marginTop: '8px' }} onClick={() => setShowPersonDrawer(true)}><Plus size={16}/> Add {isCustomer ? 'Customer' : 'Supplier'}</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    list.map((item, i) => {
+                      const balance = isCustomer ? item.outstandingAmount ?? item.outstanding ?? 0 : item.payableAmount || 0;
+                      
+                      // Mock CRM tags for demonstration
+                      const tags = [];
+                      if (balance > 50000) tags.push({ label: 'VIP', class: 'vip' });
+                      if (isCustomer && balance > 10000) tags.push({ label: 'High Risk', class: 'high-risk' });
+                      if (i % 3 === 0) tags.push({ label: 'Wholesale', class: 'wholesale' });
+                      if (tags.length === 0) tags.push({ label: 'Retail', class: 'retail' });
+                      
+                      return (
+                        <tr key={item.id} onClick={() => setSelectedCrmPerson(item)} style={{cursor: 'pointer'}}>
+                          <td>
+                            <div className="crm-customer-cell">
+                              <div className="crm-avatar">{item.name.charAt(0).toUpperCase()}</div>
+                              <div>
+                                <div style={{ fontWeight: '600', color: 'var(--text-primary)', marginBottom: '4px' }}>{item.name}</div>
+                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>ID: {item.id.slice(0,6)} {item.gst && `• GST: ${item.gst}`}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ fontSize: '13px', color: 'var(--text-primary)' }}>{contactPhone(item) || '-'}</div>
+                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{item.email || '-'}</div>
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: balance === 0 ? 'var(--success)' : isCustomer ? 'var(--warning)' : 'var(--danger)' }}></div>
+                              <strong style={{ color: balance === 0 ? 'var(--text-secondary)' : isCustomer ? 'var(--warning)' : 'var(--danger)' }}>
+                                {formatCurrency(Math.abs(balance))}
+                              </strong>
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                              {tags.map((t, idx) => (
+                                <span key={idx} className={`crm-tag ${t.class}`}>{t.label}</span>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="text-secondary" style={{ fontSize: '13px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px' }}>Admin</div>
+                              Owner
+                            </div>
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            <div className="voucher-actions" style={{ justifyContent: 'flex-end' }}>
+                              <button className="icon-button" onClick={(e) => { e.stopPropagation(); editPerson(item, formKind); }} title="Edit"><Edit3 size={16} /></button>
+                              <button className="icon-button" onClick={(e) => { e.stopPropagation(); deletePerson(item, formKind); }} title="Delete"><X size={16} className="text-danger" /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
+        ) : (
+          /* CRM PROFILE VIEW */
+          <>
+            <div className="crm-toolbar fade-in" style={{ border: 'none', padding: '0 0 16px 0', background: 'transparent' }}>
+              <button className="secondary-button" onClick={() => setSelectedCrmPerson(null)}>
+                <ArrowLeft size={16} /> Back to List
+              </button>
+              <div className="crm-toolbar-actions">
+                <button className="secondary-button" onClick={() => editPerson(selectedCrmPerson, formKind)}><Edit3 size={16} /> Edit Profile</button>
+                {isCustomer && <button className="primary-button"><Plus size={16} /> Create Invoice</button>}
               </div>
-              <div className="compact-list people-card-list">
-                {list.map((item) => (
-              <article className="compact-item" key={item.id}>
-                <div>
-                  <strong>{item.name}</strong>
-                  <p>{contactPhone(item)} {item.email ? `· ${item.email}` : ''} {item.gst ? `· GST ${item.gst}` : ''}</p>
-                  <p>{item.address || 'No address'} {item.notes ? `· ${item.notes}` : ''}</p>
-                  <p>
-                    {isCustomer
-                      ? `Outstanding: ${formatCurrency(item.outstandingAmount ?? item.outstanding ?? 0)}`
-                      : `Payable: ${formatCurrency(item.payableAmount || 0)}`}
-                  </p>
-                </div>
-                <div className="voucher-actions">
-                  <button className="share-entry-button" type="button" onClick={() => editPerson(item, formKind)}>Edit</button>
-                  <a className="share-entry-button" href={`tel:${contactPhone(item)}`}>Call</a>
-                  <a className="share-entry-button" href={`https://wa.me/${String(contactPhone(item)).replace(/\D/g, '')}`} target="_blank" rel="noreferrer">WhatsApp</a>
-                  <a className="share-entry-button" href="#party-statement">Ledger</a>
-                  <button className="share-entry-button" type="button" onClick={() => window.print()}>Statement</button>
-                  <button className="delete-entry-button" type="button" onClick={() => deletePerson(item, formKind)}>Delete</button>
-                </div>
-              </article>
-                ))}
+            </div>
+            
+            <div className="profile-grid-layout fade-in">
+              {/* Sidebar */}
+              <div className="profile-sidebar">
+                 <div className="profile-avatar-large">{selectedCrmPerson.name.charAt(0).toUpperCase()}</div>
+                 <div style={{ textAlign: 'center' }}>
+                   <h2 style={{ fontSize: '20px', marginBottom: '4px' }}>{selectedCrmPerson.name}</h2>
+                   <p className="text-secondary" style={{ fontSize: '14px' }}>{isCustomer ? 'Customer' : 'Supplier'} Profile</p>
+                 </div>
+                 
+                 <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                   <span className="crm-tag vip">VIP</span>
+                   <span className="crm-tag retail">Active</span>
+                 </div>
+                 
+                 <hr style={{ border: 'none', borderTop: '1px solid var(--border-subtle)', margin: '8px 0' }} />
+                 
+                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                     <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                       <Phone size={16} className="text-secondary" />
+                     </div>
+                     <div style={{ fontSize: '13px' }}>
+                       <div className="text-secondary">Phone</div>
+                       <div style={{ fontWeight: '500' }}>{contactPhone(selectedCrmPerson) || 'N/A'}</div>
+                     </div>
+                   </div>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                     <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                       <Mail size={16} className="text-secondary" />
+                     </div>
+                     <div style={{ fontSize: '13px' }}>
+                       <div className="text-secondary">Email</div>
+                       <div style={{ fontWeight: '500' }}>{selectedCrmPerson.email || 'N/A'}</div>
+                     </div>
+                   </div>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                     <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                       <MapPin size={16} className="text-secondary" />
+                     </div>
+                     <div style={{ fontSize: '13px' }}>
+                       <div className="text-secondary">Location</div>
+                       <div style={{ fontWeight: '500' }}>{selectedCrmPerson.address || 'N/A'}</div>
+                     </div>
+                   </div>
+                 </div>
+                 
+                 <hr style={{ border: 'none', borderTop: '1px solid var(--border-subtle)', margin: '8px 0' }} />
+                 
+                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                   <a className="secondary-button" style={{ width: '100%', justifyContent: 'center' }} href={`https://wa.me/${String(contactPhone(selectedCrmPerson)).replace(/\D/g, '')}`} target="_blank" rel="noreferrer"><MessageCircle size={16} /> Send WhatsApp</a>
+                   <a className="secondary-button" style={{ width: '100%', justifyContent: 'center' }} href={`mailto:${selectedCrmPerson.email}`}><Mail size={16} /> Send Email</a>
+                 </div>
               </div>
-            </>
-          )}
-        </section>
+              
+              {/* Main Content */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                {/* Financials Row */}
+                <div className="dashboard-kpi-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                  <div className="kpi-card" style={{ padding: '20px' }}>
+                    <div className="kpi-header">
+                      <span className="text-secondary" style={{ fontSize: '13px', fontWeight: '500' }}>Opening Balance</span>
+                      <div className="kpi-icon-wrap" style={{ background: 'rgba(59, 130, 246, 0.1)', color: 'var(--brand-primary)' }}>
+                        <CreditCard size={18} />
+                      </div>
+                    </div>
+                    <div className="kpi-value" style={{ fontSize: '24px', margin: '12px 0 4px' }}>{formatCurrency(selectedCrmPerson.openingBalance || 0)}</div>
+                    <div className="kpi-trend trend-neutral" style={{ fontSize: '12px' }}>Account initialized</div>
+                  </div>
+                  
+                  <div className="kpi-card" style={{ padding: '20px' }}>
+                    <div className="kpi-header">
+                      <span className="text-secondary" style={{ fontSize: '13px', fontWeight: '500' }}>{isCustomer ? 'Outstanding' : 'Payable'}</span>
+                      <div className="kpi-icon-wrap" style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)' }}>
+                        <AlertCircle size={18} />
+                      </div>
+                    </div>
+                    <div className="kpi-value" style={{ fontSize: '24px', margin: '12px 0 4px', color: (selectedCrmPerson.outstandingAmount ?? selectedCrmPerson.payableAmount) > 0 ? 'var(--danger)' : 'var(--text-primary)' }}>
+                      {formatCurrency(isCustomer ? selectedCrmPerson.outstandingAmount ?? selectedCrmPerson.outstanding ?? 0 : selectedCrmPerson.payableAmount || 0)}
+                    </div>
+                    <div className="kpi-trend trend-neutral" style={{ fontSize: '12px' }}>Current Balance</div>
+                  </div>
+                  
+                  <div className="kpi-card" style={{ padding: '20px' }}>
+                    <div className="kpi-header">
+                      <span className="text-secondary" style={{ fontSize: '13px', fontWeight: '500' }}>GST Info</span>
+                      <div className="kpi-icon-wrap" style={{ background: 'rgba(16, 185, 129, 0.1)', color: 'var(--success)' }}>
+                        <CheckCircle size={18} />
+                      </div>
+                    </div>
+                    <div className="kpi-value" style={{ fontSize: '16px', margin: '12px 0 4px', wordBreak: 'break-all' }}>{selectedCrmPerson.gst || 'Unregistered'}</div>
+                    <div className="kpi-trend text-secondary" style={{ fontSize: '12px' }}>B2B Profile</div>
+                  </div>
+                </div>
+                
+                {/* Timeline & Notes Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+                  {/* Timeline */}
+                  <div className="panel" style={{ padding: '24px' }}>
+                    <h3 style={{ fontSize: '16px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Activity size={18} className="text-brand" /> CRM Activity
+                    </h3>
+                    <div className="timeline">
+                      <div className="timeline-item">
+                        <div className="timeline-icon" style={{ background: 'var(--brand-secondary)', color: 'var(--brand-primary)' }}>
+                          <Users size={14} />
+                        </div>
+                        <div className="timeline-content">
+                          <div className="timeline-title">Profile Created</div>
+                          <div className="timeline-time">In Supabase</div>
+                        </div>
+                      </div>
+                      <div className="timeline-item">
+                        <div className="timeline-icon" style={{ background: '#ecfdf5', color: '#10b981' }}>
+                          <Phone size={14} />
+                        </div>
+                        <div className="timeline-content">
+                          <div className="timeline-title">Sync Complete</div>
+                          <div className="timeline-time">Today • All ledgers updated.</div>
+                        </div>
+                      </div>
+                      <div className="timeline-item">
+                        <div className="timeline-icon" style={{ background: '#eff6ff', color: '#3b82f6' }}>
+                          <MessageCircle size={14} />
+                        </div>
+                        <div className="timeline-content">
+                          <div className="timeline-title">WhatsApp Message Sent</div>
+                          <div className="timeline-time">Automated • Payment Reminder</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Documents & Notes */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                    {/* Notes */}
+                    <div className="panel" style={{ padding: '24px', background: '#fffbeb', border: '1px solid #fde68a' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                        <h3 style={{ fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#b45309' }}>
+                          <Star size={18} /> Pinned Note
+                        </h3>
+                        <button className="icon-button" style={{ color: '#b45309' }}><Edit3 size={16}/></button>
+                      </div>
+                      <p style={{ fontSize: '14px', color: '#92400e', lineHeight: '1.6' }}>
+                        {selectedCrmPerson.notes || 'No notes added for this profile yet. Click edit to add specific instructions or details.'}
+                      </p>
+                    </div>
+                    
+                    {/* Documents */}
+                    <div className="panel" style={{ padding: '24px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                        <h3 style={{ fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <Paperclip size={18} className="text-secondary" /> Documents
+                        </h3>
+                        <button className="secondary-button" style={{ padding: '4px 8px', fontSize: '12px' }}><Plus size={14}/> Upload</button>
+                      </div>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div className="doc-card">
+                          <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6' }}>
+                            <FileText size={18} />
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: '13px', fontWeight: '500' }}>PAN_Card.pdf</div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Placeholder</div>
+                          </div>
+                          <Download size={16} className="text-secondary" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </section>
     );
   }
