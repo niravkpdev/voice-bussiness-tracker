@@ -163,7 +163,6 @@ const SALES_LEDGER_ID = 'ledger-sales';
 const MATERIAL_LEDGER_ID = 'ledger-material';
 const DEFAULT_EXPENSE_LEDGER_ID = 'ledger-misc-expense';
 const APP_TABS = [
-  'acquisition',
   'dashboard',
   'company-setup',
   'masters',
@@ -825,9 +824,13 @@ export default function VoiceExpenseTrackerPreview() {
       if (import.meta.env.PROD) {
         return null;
       }
-      const storedUser = JSON.parse(localStorage.getItem(AUTH_KEY) || 'null');
-      if (storedUser?.uid || storedUser?.email) {
-        setStorageScope(storedUser.uid || storedUser.email);
+      try {
+        const storedUser = JSON.parse(localStorage.getItem(AUTH_KEY) || 'null');
+        if (storedUser?.uid || storedUser?.email) {
+          setStorageScope(storedUser.uid || storedUser.email);
+        }
+      } catch (e) {
+        console.error("Auth key parse error", e);
       }
       return storedUser;
     } catch {
@@ -4730,7 +4733,6 @@ export default function VoiceExpenseTrackerPreview() {
                 <button type="button" onClick={() => setActiveTab('billing')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><CreditCard size={16} /> Billing & Plans</button>
                 <button type="button" onClick={() => setActiveTab('analytics')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Activity size={16} /> Analytics</button>
                 <button type="button" onClick={() => setStatus('Preferences coming soon')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><CheckSquare size={16} /> Preferences</button>
-                <button type="button" onClick={() => { setActiveTab('acquisition'); setIsProfileMenuOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: 'var(--brand-primary)' }}><Briefcase size={16} /> Buyer Readiness</button>
                 <button type="button" onClick={() => { setIsHelpCenterOpen(true); setIsProfileMenuOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><HelpCircle size={16} /> Help Center</button>
                 <div className="saas-dropdown-divider"></div>
                 <button type="button" onClick={logout} className="saas-dropdown-item danger" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><LogOut size={16} /> Logout</button>
@@ -6384,7 +6386,6 @@ export default function VoiceExpenseTrackerPreview() {
           )}
 
 
-          {activeTab === 'acquisition' && <AcquisitionPackage />}
           {activeTab === 'profile-settings' && (
             <section className="panel profile-editor fade-in" id="profile-settings">
               <div className="section-header">

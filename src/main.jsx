@@ -24,6 +24,11 @@ class ErrorBoundary extends React.Component {
         <div style={{ padding: '50px', textAlign: 'center', fontFamily: 'system-ui, sans-serif' }}>
           <h2>Something went wrong.</h2>
           <p>Please refresh the page or contact support.</p>
+          <pre style={{ color: 'red', textAlign: 'left', padding: '20px', overflow: 'auto', background: '#ffebee', borderRadius: '8px', marginTop: '20px' }}>
+            {this.state.error && this.state.error.toString()}
+            <br />
+            {this.state.errorInfo && this.state.errorInfo.componentStack}
+          </pre>
           <button onClick={() => window.location.reload()} style={{ padding: '10px 20px', marginTop: '20px', cursor: 'pointer' }}>Refresh</button>
         </div>
       );
