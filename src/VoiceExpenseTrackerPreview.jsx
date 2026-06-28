@@ -4647,10 +4647,13 @@ export default function VoiceExpenseTrackerPreview() {
       </aside>
 
       <div className="workspace">
-        {(!profile?.setupCompleted && authUser?.mode !== 'demo') && (
+        {(!onboardingCompleted && authUser?.mode !== 'demo') && (
           <SetupWizard 
             profile={profile}
             onComplete={(didAddDemoData) => {
+              setOnboardingCompleted(true);
+              const userId = authUser?.uid || authUser?.email || 'demo';
+              localStorage.setItem(`trinetr_onboarding_completed_${userId}`, 'true');
               setProfile({...profile, setupCompleted: true});
               if (didAddDemoData) {
                 // Since data was added to window.demoData, we can reload to apply it, or manually set state.
@@ -6778,6 +6781,18 @@ export default function VoiceExpenseTrackerPreview() {
                   <p>Download a JSON package of your invoices, settings, and party histories.</p>
                   <button className="secondary-button compact-button" type="button" onClick={downloadFullBackup}>
                     Download Backup JSON
+                  </button>
+                </article>
+                <article className="settings-card">
+                  <h3>Workspace Setup</h3>
+                  <p>Restart the onboarding process if you need to configure your company details again.</p>
+                  <button className="secondary-button compact-button" type="button" onClick={() => {
+                    setOnboardingCompleted(false);
+                    const userId = authUser?.uid || authUser?.email || 'demo';
+                    localStorage.setItem(`trinetr_onboarding_completed_${userId}`, 'false');
+                    setProfile({...profile, setupCompleted: false});
+                  }}>
+                    Restart Onboarding
                   </button>
                 </article>
                 <article className="settings-card">
