@@ -589,7 +589,29 @@ export default function Phase2ERP({
       return { ...product, currentStock: Math.max(0, nextStock) };
     });
     const updatedProduct = updatedProducts.find((product) => product.id === productId);
-    const stockEntry = { id: createId('stk'), businessId: activeBusinessId, productId, type, qty, note: sanitizeText(form.get('note'), 180), date: today() };
+    const previousProduct = products.find((product) => product.id === productId);
+    const stockEntry = { 
+      id: createId('stk'), 
+      businessId: activeBusinessId, 
+      productId, 
+      type, 
+      qty, 
+      note: sanitizeText(form.get('note'), 180), 
+      date: today(),
+      
+      // Standardized schema fields requested by user
+      type: type === 'Stock In' ? 'stock_in' : type === 'Stock Out' ? 'stock_out' : 'adjustment',
+      product_id: productId,
+      product_name: previousProduct?.name || '',
+      quantity: qty,
+      previous_stock: previousProduct?.currentStock || 0,
+      new_stock: updatedProduct?.currentStock || 0,
+      reason: sanitizeText(form.get('note'), 180) || type,
+      supplier_id: '',
+      date: today(),
+      company_id: activeBusinessId || 'default',
+      business_id: activeBusinessId || 'default'
+    };
     if (updatedProduct) {
       try {
         const saved = await onCloudRecord?.('inventory', updatedProduct.id, {
@@ -789,6 +811,25 @@ export default function Phase2ERP({
       total,
       paid,
       balance: total - paid,
+      
+      // Standardized schema fields requested by user
+      type: 'invoice',
+      invoice_number: editingInvoiceId
+        ? scopedInvoices.find((item) => item.id === editingInvoiceId)?.invoiceNo
+        : `INV-${new Date().getFullYear()}-${String(scopedInvoices.length + 1).padStart(4, '0')}`,
+      customer_id: invoiceDraft.customerId,
+      customer_name: customers.find(c => c.id === invoiceDraft.customerId)?.name || '',
+      items: invoiceDraft.lines,
+      subtotal: taxable,
+      tax: gstTotal,
+      discount: invoiceDraft.lines.reduce((sum, line) => sum + (Number(line.discount) || 0), 0),
+      paid_amount: paid,
+      balance_due: total - paid,
+      invoice_date: today(),
+      due_date: invoiceDraft.dueDate,
+      company_id: activeBusinessId || 'default',
+      business_id: activeBusinessId || 'default',
+      notes: sanitizeText(invoiceDraft.terms, 360) || TERMS
     };
     const productsAfterInvoice = products.map((product) => {
       const sold = invoice.lines.filter((line) => line.productId === product.id).reduce((sum, line) => sum + line.qty, 0);

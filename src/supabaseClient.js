@@ -1337,17 +1337,28 @@ export async function saveCloudRecord(uid, tableName, id, data) {
   });
 
   try {
+    console.log(`[DEBUG_SUPABASE] [saveCloudRecord] Saving to table: ${tableName}`);
+    console.log(`[DEBUG_SUPABASE] [saveCloudRecord] Payload:`, row.data);
+
     const { error } = await withCloudTimeout(
       client.from(tableName).upsert(row, { onConflict: 'user_id,id' }),
       { path, uid, currentSupabaseUserUid: currentUid, operation: `upsert:${tableName}` }
     );
-    if (error) throw error;
+    if (error) {
+      console.error(`[DEBUG_SUPABASE] [saveCloudRecord] ERROR:`, error);
+      throw error;
+    }
 
     const { data: savedRow, error: verifyError } = await withCloudTimeout(
       client.from(tableName).select('*').eq('user_id', uid).eq('id', id).single(),
       { path, uid, currentSupabaseUserUid: currentUid, operation: `select:${tableName}:verify` }
     );
-    if (verifyError) throw verifyError;
+    if (verifyError) {
+      console.error(`[DEBUG_SUPABASE] [saveCloudRecord] VERIFY ERROR:`, verifyError);
+      throw verifyError;
+    }
+
+    console.log(`[DEBUG_SUPABASE] [saveCloudRecord] SUCCESS. Response row:`, savedRow);
     if (!savedRow) {
       const error = new Error(`Supabase write verification failed: row not found at ${path}`);
       error.code = 'supabase/verification-failed';

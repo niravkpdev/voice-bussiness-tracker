@@ -2898,10 +2898,27 @@ export default function VoiceExpenseTrackerPreview() {
     }
 
     if (authUser?.uid) {
+      const debitLine = (voucher.lines || []).find((line) => Number(line.debit) > 0) || {};
+      const creditLine = (voucher.lines || []).find((line) => Number(line.credit) > 0) || {};
+
       const transactionPayload = {
         ...voucher,
         transactionId: voucher.id,
         userId: authUser.uid,
+        // Standardized schema fields requested by user
+        type: 'voucher',
+        voucher_type: voucher.type || 'Journal',
+        date: voucher.date,
+        amount: voucher.amount || Number(debitLine.debit || 0),
+        cash_bank: (voucher.type === 'Receipt' ? debitLine.ledgerId : voucher.type === 'Payment' ? creditLine.ledgerId : null) || '',
+        debit_account: debitLine.ledgerId || '',
+        credit_account: creditLine.ledgerId || '',
+        party_id: (voucher.type === 'Receipt' ? creditLine.ledgerId : voucher.type === 'Payment' ? debitLine.ledgerId : null) || '',
+        party_name: '',
+        narration: voucher.narration || '',
+        company_id: activeBusinessId || 'default',
+        business_id: activeBusinessId || 'default',
+        created_at: voucher.date ? `${voucher.date}T12:00:00.000Z` : new Date().toISOString()
       };
       const supabasePath = `users/${authUser.uid}/transactions/${voucher.id}`;
 

@@ -1412,6 +1412,70 @@ export default function Phase3Ops({
     }
   };
 
+  const recordPayment = async (invoice) => {
+    try {
+      const payment = {
+        id: createId('pay'),
+        businessId: activeBusinessId,
+        invoiceId: invoice.id,
+        invoiceNo: invoice.invoiceNo,
+        amount: invoice.balance || invoice.total,
+        mode: 'UPI',
+        date: today(),
+        status: 'Marked Paid',
+
+        // Standardized schema fields requested by user
+        type: 'payment',
+        invoice_id: invoice.id,
+        payment_method: 'UPI',
+        company_id: activeBusinessId || 'default',
+        business_id: activeBusinessId || 'default'
+      };
+      
+      const saved = await onCloudRecord?.('payments', payment.id, payment);
+      if (!saved) throw new Error('Payment save failed');
+      
+      setPayments((items) => [payment, ...items]);
+      onStatus(`Payment recorded for ${invoice.invoiceNo}`);
+      await logAudit(`Payment recorded for ${invoice.invoiceNo}`, 'Payments');
+    } catch (err) {
+      onStatus(err.message || 'Action failed');
+    }
+  };
+
+  const savePaymentEdit = async (event) => {
+    event.preventDefault();
+    if (!editingPayment) return;
+    const form = new FormData(event.currentTarget);
+    const amount = normalizeAmount(form.get('amount'));
+    const date = form.get('date');
+    const mode = form.get('mode');
+    const status = form.get('status');
+    
+    try {
+      const updatedPayment = {
+        ...editingPayment,
+        amount,
+        date,
+        mode,
+        status,
+        
+        // Standardized fields
+        payment_method: mode,
+      };
+      
+      const saved = await onCloudRecord?.('payments', updatedPayment.id, updatedPayment);
+      if (!saved) throw new Error('Payment update failed');
+      
+      setPayments((items) => items.map(p => p.id === updatedPayment.id ? updatedPayment : p));
+      setEditingPayment(null);
+      onStatus(`Payment updated`);
+      await logAudit(`Payment updated for ${updatedPayment.invoiceNo || updatedPayment.id}`, 'Payments');
+    } catch (err) {
+      onStatus(err.message || 'Action failed');
+    }
+  };
+
   const deletePayment = async (payment) => {
     if (!confirm(`Delete ${payment.invoiceNo || 'payment'}?`)) {
       return;
