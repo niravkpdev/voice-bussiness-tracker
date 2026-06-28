@@ -354,13 +354,67 @@ function redactAuthResponse(value) {
   }));
 }
 
-function rowToAppRecord(row) {
+function rowToAppRecord(row, tableName) {
   if (!row) {
     return null;
   }
   const data = row.data && typeof row.data === 'object' ? row.data : {};
+  let normalized = { ...data };
+
+  // Apply table-specific normalizations
+  if (tableName === 'transactions') {
+    normalized = {
+      ...normalized,
+      type: normalized.type || normalized.voucher_type || 'Journal',
+      date: normalized.date || row.created_at?.slice(0, 10),
+      amount: normalized.amount !== undefined ? normalized.amount : (normalized.lines?.[0]?.debit || 0),
+      narration: normalized.narration || '',
+      debitLedgerId: normalized.debit_account || normalized.lines?.find((l) => l.debit > 0)?.ledgerId || '',
+      creditLedgerId: normalized.credit_account || normalized.lines?.find((l) => l.credit > 0)?.ledgerId || '',
+      partyLedgerId: normalized.party_id || '',
+      partyName: normalized.party_name || '',
+    };
+  } else if (tableName === 'invoices') {
+    normalized = {
+      ...normalized,
+      invoiceNo: normalized.invoice_number || normalized.invoiceNo,
+      customerName: normalized.customer_name || normalized.customerName,
+      customerId: normalized.customer_id || normalized.customerId,
+      taxable: normalized.subtotal || normalized.taxable || 0,
+      gstTotal: normalized.tax || normalized.gstTotal || 0,
+      total: normalized.total !== undefined ? normalized.total : 0,
+      paid: normalized.paid_amount || normalized.paid || 0,
+      balance: normalized.balance_due !== undefined ? normalized.balance_due : normalized.balance,
+      dueDate: normalized.due_date || normalized.dueDate,
+      date: normalized.invoice_date || normalized.date,
+      lines: normalized.items || normalized.lines || [],
+      terms: normalized.notes || normalized.terms || '',
+    };
+  } else if (tableName === 'orders') {
+    normalized = {
+      ...normalized,
+      orderNo: normalized.order_number || normalized.orderNo,
+      customerName: normalized.customer_name || normalized.customerName || normalized.customer,
+      total: normalized.total || normalized.amount || 0,
+    };
+  } else if (tableName === 'payments') {
+    normalized = {
+      ...normalized,
+      invoiceId: normalized.invoice_id || normalized.invoiceId,
+      mode: normalized.payment_method || normalized.mode || 'UPI',
+    };
+  } else if (tableName === 'stock_transactions') {
+    normalized = {
+      ...normalized,
+      type: normalized.type === 'stock_in' ? 'Stock In' : normalized.type === 'stock_out' ? 'Stock Out' : normalized.type === 'adjustment' ? 'Adjustment' : normalized.type,
+      productId: normalized.product_id || normalized.productId,
+      qty: normalized.quantity || normalized.qty || 0,
+      note: normalized.reason || normalized.note || '',
+    };
+  }
+
   return {
-    ...data,
+    ...normalized,
     id: data.id || row.id,
     userId: row.user_id,
     ownerUid: row.user_id,
@@ -1574,7 +1628,7 @@ export async function loadCloudCollection(uid, tableName) {
     count: (data || []).length,
   });
 
-  return (data || []).map(rowToAppRecord).filter(Boolean);
+  return (data || []).map((row) => rowToAppRecord(row, tableName)).filter(Boolean);
 }
 
 function normalizeCompanyMember(row) {
@@ -1832,7 +1886,7 @@ export async function loadUserProfileSettings(uid) {
     { path, uid, currentSupabaseUserUid: user?.id || null, operation: 'select:settings:profile' }
   );
   if (error) throw error;
-  return rowToAppRecord(data);
+  return rowToAppRecord(data, 'settings');
 }
 
 

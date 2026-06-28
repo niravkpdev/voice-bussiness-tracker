@@ -2914,7 +2914,9 @@ export default function VoiceExpenseTrackerPreview() {
         debit_account: debitLine.ledgerId || '',
         credit_account: creditLine.ledgerId || '',
         party_id: (voucher.type === 'Receipt' ? creditLine.ledgerId : voucher.type === 'Payment' ? debitLine.ledgerId : null) || '',
-        party_name: '',
+        party_name: (voucher.type === 'Receipt' ? (ledgers.find(l => l.id === creditLine.ledgerId)?.name || '') : voucher.type === 'Payment' ? (ledgers.find(l => l.id === debitLine.ledgerId)?.name || '') : ''),
+        display_debit_account: ledgers.find(l => l.id === debitLine.ledgerId)?.name || '',
+        display_credit_account: ledgers.find(l => l.id === creditLine.ledgerId)?.name || '',
         narration: voucher.narration || '',
         company_id: activeBusinessId || 'default',
         business_id: activeBusinessId || 'default',
@@ -4776,14 +4778,15 @@ export default function VoiceExpenseTrackerPreview() {
               <button type="button" className="btn btn-primary" style={{ padding: '8px 14px', borderRadius: '8px', fontSize: '13px' }} onClick={() => setStatus('Quick Add menu ready')}>
                 <Plus size={16} /> Quick Add <ChevronDown size={14} style={{ opacity: 0.7 }} />
               </button>
-              <div className="saas-dropdown-menu">
-                <button type="button" onClick={() => { setActiveTab('invoices'); setMobileNavOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><FileText size={16} /> New Invoice</button>
-                <button type="button" onClick={() => checkLimit('customers', cloudCustomers.length, () => { setActiveTab('customers'); trackEvent('Customer added'); setStatus('Add Customer drawer coming soon'); setMobileNavOpen(false); })} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Users size={16} /> New Customer</button>
-                <button type="button" onClick={() => checkLimit('products', Object.keys(partySummary).length, () => { setActiveTab('inventory'); trackEvent('Product added'); setStatus('Navigate to Inventory to add Product'); setMobileNavOpen(false); })} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Package size={16} /> New Product</button>
-                <button type="button" onClick={() => checkLimit('employees', 0, () => { setActiveTab('employees'); trackEvent('Employee added'); setStatus('Navigate to Employees to add Employee'); setMobileNavOpen(false); })} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><User size={16} /> New Employee</button>
-                <div className="saas-dropdown-divider"></div>
-                <button type="button" onClick={() => { setActiveTab('voucher-entry'); setMobileNavOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><DollarSign size={16} /> Record Expense</button>
-              </div>
+                <div className="saas-dropdown-menu">
+                  <button type="button" onClick={() => { setActiveTab('invoices'); setMobileNavOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><FileText size={16} /> New Invoice</button>
+                  <button type="button" onClick={() => { setActiveTab('orders'); setMobileNavOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Package size={16} /> New Order</button>
+                  <button type="button" onClick={() => checkLimit('customers', cloudCustomers.length, () => { setActiveTab('customers'); trackEvent('Customer added'); setStatus('Add Customer drawer coming soon'); setMobileNavOpen(false); })} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Users size={16} /> New Customer</button>
+                  <button type="button" onClick={() => checkLimit('products', Object.keys(partySummary).length, () => { setActiveTab('inventory'); trackEvent('Product added'); setStatus('Navigate to Inventory to add Product'); setMobileNavOpen(false); })} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Package size={16} /> New Product</button>
+                  <button type="button" onClick={() => checkLimit('employees', 0, () => { setActiveTab('employees'); trackEvent('Employee added'); setStatus('Navigate to Employees to add Employee'); setMobileNavOpen(false); })} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><User size={16} /> New Employee</button>
+                  <div className="saas-dropdown-divider"></div>
+                  <button type="button" onClick={() => { setActiveTab('voucher-entry'); setMobileNavOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><DollarSign size={16} /> Record Expense</button>
+                </div>
             </div>
 
             <a href="#notifications" className="hover-scale" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: '50%', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', textDecoration: 'none', background: 'var(--bg-secondary)' }}>
@@ -4970,10 +4973,10 @@ export default function VoiceExpenseTrackerPreview() {
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '16px' }}>
                         {[
                           { label: 'New Invoice', desc: 'Create bill', icon: FileText, path: 'invoices', color: '#3b82f6', bg: '#eff6ff' },
+                          { label: 'New Order', desc: 'Add order', icon: Package, path: 'orders', color: '#10b981', bg: '#ecfdf5' },
                           { label: 'Record Expense', desc: 'Add bill', icon: CreditCard, path: 'voucher-entry', color: '#ef4444', bg: '#fef2f2' },
                           { label: 'Receive Payment', desc: 'Cash in', icon: DollarSign, path: 'voucher-entry', color: '#10b981', bg: '#ecfdf5' },
                           { label: 'New Customer', desc: 'Add client', icon: Users, path: 'customers', color: '#f59e0b', bg: '#fffbeb' },
-                          { label: 'Add Product', desc: 'Inventory', icon: Package, path: 'inventory', color: '#8b5cf6', bg: '#f5f3ff' },
                           { label: 'Payroll', desc: 'Pay staff', icon: Briefcase, path: 'employees', color: '#06b6d4', bg: '#ecfeff' }
                         ].map(action => (
                           <button key={action.label} onClick={() => { 

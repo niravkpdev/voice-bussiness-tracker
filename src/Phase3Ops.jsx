@@ -567,6 +567,43 @@ export default function Phase3Ops({
     event.currentTarget.reset();
   };
 
+  const convertOrderToInvoice = async (order) => {
+    try {
+      const invoiceNo = `INV-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(4, '0')}`;
+      const newInvoice = {
+        id: 'inv-' + Math.random().toString(36).substring(2, 9),
+        type: 'invoice',
+        invoice_number: invoiceNo,
+        order_id: order.id,
+        customer_name: order.customer,
+        customer_mobile: order.mobile,
+        items: [{ description: order.details, amount: Number(order.amount) || 0 }],
+        subtotal: Number(order.amount) || 0,
+        tax: 0,
+        discount: 0,
+        total: Number(order.amount) || 0,
+        paid_amount: 0,
+        balance_due: Number(order.amount) || 0,
+        status: 'Unpaid',
+        invoice_date: new Date().toISOString().slice(0, 10),
+        due_date: new Date().toISOString().slice(0, 10),
+        created_from: 'order'
+      };
+      await persistRecord('invoices', newInvoice, 'Failed to convert order to invoice');
+      
+      const updatedOrder = {
+        ...order,
+        status: 'Invoiced',
+        timeline: [{ status: 'Invoiced', date: new Date().toLocaleString(), note: 'Converted to Invoice ' + invoiceNo }, ...(order.timeline || [])],
+        updatedAt: new Date().toISOString(),
+      };
+      await persistRecord('orders', updatedOrder, 'Failed to update order status');
+      if (onStatus) onStatus(`Order converted to Invoice ${invoiceNo}`);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   const advanceOrder = async (order) => {
     const currentIndex = ORDER_STAGES.indexOf(order.status);
     const nextStatus = ORDER_STAGES[Math.min(currentIndex + 1, ORDER_STAGES.length - 1)];
@@ -1682,6 +1719,7 @@ export default function Phase3Ops({
                 <div><strong>{order.orderNo} · {order.customer}</strong><p>{order.status} · Delivery {order.deliveryDate} · {formatCurrency(order.amount)}</p><p>{order.timeline[0]?.date}: {order.timeline[0]?.note}</p></div>
                 <div className="voucher-actions">
                   <button className="share-entry-button" type="button" onClick={() => advanceOrder(order)}>Next Stage</button>
+                  <button className="share-entry-button" type="button" onClick={() => convertOrderToInvoice(order)}>Convert to Invoice</button>
                   <button className="share-entry-button" type="button" onClick={() => setEditingOrder(order)}>Edit</button>
                   <a className="share-entry-button" href={whatsappUrl(order.mobile, `Your order ${order.orderNo} status: ${order.status}`)} target="_blank" rel="noreferrer">Update Customer</a>
                   <button className="delete-entry-button" type="button" onClick={() => deleteOrder(order)}>Delete</button>
