@@ -4734,7 +4734,7 @@ export default function VoiceExpenseTrackerPreview() {
                 <button type="button" onClick={() => setActiveTab('billing')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><CreditCard size={16} /> Billing & Plans</button>
                 <button type="button" onClick={() => setActiveTab('analytics')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Activity size={16} /> Analytics</button>
                 <button type="button" onClick={() => setStatus('Preferences coming soon')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><CheckSquare size={16} /> Preferences</button>
-                <button type="button" onClick={() => setStatus('Help Center coming soon')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><HelpCircle size={16} /> Help Center</button>
+                <button type="button" onClick={() => { window.location.hash = 'help-center'; setIsProfileMenuOpen(false); setActiveTab('help-center'); console.log('Help Center clicked'); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><HelpCircle size={16} /> Help Center</button>
                 <div className="saas-dropdown-divider"></div>
                 <button type="button" onClick={logout} className="saas-dropdown-item danger" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><LogOut size={16} /> Logout</button>
               </div>
