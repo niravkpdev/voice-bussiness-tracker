@@ -3047,7 +3047,7 @@ export default function VoiceExpenseTrackerPreview() {
       return;
     }
 
-    if (!profile?.company) {
+    if (!profile?.name) {
       setStatus('Please select or create a company before saving vouchers.');
       setSecureError('Please select or create a company before saving vouchers.');
       return;
@@ -3521,7 +3521,7 @@ export default function VoiceExpenseTrackerPreview() {
       return;
     }
     
-    if (!profile?.company) {
+    if (!profile?.name) {
       setStatus('Please select or create a company before adding parties.');
       setSecureError('Please select or create a company before adding parties.');
       return;
@@ -3540,7 +3540,8 @@ export default function VoiceExpenseTrackerPreview() {
         name: ledger.name,
         group: ledger.group,
         type: newPartyType,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        business_id: 'default'
       };
       const collectionName = newPartyType === 'supplier' ? 'suppliers' : 'customers';
       
@@ -5382,10 +5383,21 @@ export default function VoiceExpenseTrackerPreview() {
           {activeTab === 'voucher-entry' && (
             <section className="content-grid fade-in" id="voucher-entry">
               <article className="panel">
-                <h2>{editingVoucher ? 'Edit Voucher' : 'Voucher Entry'}</h2>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <h2>{editingVoucher ? 'Edit Voucher' : 'Voucher Entry'}</h2>
+                  <div style={{ fontSize: '12px', background: 'var(--bg-secondary)', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border-subtle)' }}>
+                    {profile?.name ? (
+                      <span className="text-secondary">Active company: <strong>{profile.name}</strong></span>
+                    ) : (
+                      <>
+                        <span className="text-secondary" style={{ color: 'var(--text-error)', marginRight: '8px' }}>No company selected</span>
+                        <button type="button" className="secondary-button compact-button" onClick={() => setActiveTab('company-setup')}>Go to Company Setup</button>
+                      </>
+                    )}
+                  </div>
+                </div>
                 <p className="panel-hint">
-                  Receipt / Payment = cash. Sales / Purchase = credit (party khata). Every voucher balances debit and
-                  credit.
+                  Receipt / Payment = cash. Sales / Purchase = credit (party khata). Every voucher balances debit and credit.
                 </p>
                 <form onSubmit={saveVoucherEntry}>
                   <div className="form-grid">
@@ -5636,6 +5648,72 @@ export default function VoiceExpenseTrackerPreview() {
                     Add Party Ledger
                   </button>
                 </form>
+              </article>
+
+              <article className="panel" style={{ marginTop: '24px' }}>
+                <h2>Recent Voucher Entries</h2>
+                <div className="table-responsive">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Amount</th>
+                        <th>Account</th>
+                        <th>Narration</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {vouchers.slice(0, 5).map(v => {
+                        const amount = Math.abs(v.lines.find(l => l.ledgerId === CASH_LEDGER_ID || l.ledgerId === v.partyId)?.amount || 0);
+                        const accountName = ledgers.find(l => l.id === v.partyId)?.name || 'Unknown';
+                        return (
+                          <tr key={v.id}>
+                            <td>{new Date(v.date).toLocaleDateString()}</td>
+                            <td>{v.type}</td>
+                            <td>₹{amount.toFixed(2)}</td>
+                            <td>{accountName}</td>
+                            <td>{v.narration}</td>
+                          </tr>
+                        );
+                      })}
+                      {vouchers.length === 0 && (
+                        <tr>
+                          <td colSpan="5" style={{ textAlign: 'center', padding: '24px' }} className="text-secondary">No recent vouchers found.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </article>
+
+              <article className="panel" style={{ marginTop: '24px' }}>
+                <h2>Party Ledger List</h2>
+                <div className="table-responsive">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Party Name</th>
+                        <th>Party Type</th>
+                        <th>Group</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {getPartyLedgers(ledgers).slice(0, 5).map(ledger => (
+                        <tr key={ledger.id}>
+                          <td>{ledger.name}</td>
+                          <td>{ledger.group === 'Sundry Creditors' ? 'Supplier' : 'Customer'}</td>
+                          <td>{ledger.group}</td>
+                        </tr>
+                      ))}
+                      {getPartyLedgers(ledgers).length === 0 && (
+                        <tr>
+                          <td colSpan="3" style={{ textAlign: 'center', padding: '24px' }} className="text-secondary">No party ledgers found.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </article>
             </section>
           )}
