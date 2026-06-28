@@ -163,6 +163,8 @@ const SALES_LEDGER_ID = 'ledger-sales';
 const MATERIAL_LEDGER_ID = 'ledger-material';
 const DEFAULT_EXPENSE_LEDGER_ID = 'ledger-misc-expense';
 const APP_TABS = [
+  'help',
+  'help-center',
   'dashboard',
   'company-setup',
   'masters',
@@ -941,7 +943,8 @@ export default function VoiceExpenseTrackerPreview() {
   const [aiQuestion, setAiQuestion] = useState('');
   const [aiAnswer, setAiAnswer] = useState('Ask about profit, loss, cash balance, party balance, or type a calculation.');
   const [activeTab, setActiveTab] = useState(() => {
-    const hash = window.location.hash.slice(1);
+    let hash = window.location.hash.slice(1);
+    if (hash === 'help') hash = 'help-center';
     return APP_TABS.includes(hash) ? hash : 'dashboard';
   });
   const [voiceConfirmation, setVoiceConfirmation] = useState(null);
@@ -1073,7 +1076,8 @@ export default function VoiceExpenseTrackerPreview() {
 
   useEffect(() => {
     const handleHashChange = () => {
-      const hash = window.location.hash.slice(1);
+      let hash = window.location.hash.slice(1);
+      if (hash === 'help') hash = 'help-center';
       if (hash && APP_TABS.includes(hash)) {
         setActiveTab(hash);
         const section = SIDEBAR_SECTIONS.find((group) => group.children.some((child) => child.tab === hash));
@@ -6382,6 +6386,7 @@ export default function VoiceExpenseTrackerPreview() {
             </section>
           )}
 
+          {activeTab === 'help-center' && <HelpCenter onBack={() => setActiveTab('dashboard')} onContact={() => setShowContactModal(true)} />}
           {activeTab === 'profile-settings' && (
             <section className="panel profile-editor fade-in" id="profile-settings">
               <div className="section-header">

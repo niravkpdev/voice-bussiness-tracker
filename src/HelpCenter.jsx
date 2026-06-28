@@ -28,7 +28,7 @@ export function HelpCenter({ onBack, onContact }) {
       </button>
       <h2 style={{ fontSize: '2rem', marginBottom: '16px' }}>{selectedArticle}</h2>
       <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6' }}>
-        Support articles are currently being drafted by our documentation team.
+        <strong>Article coming soon!</strong><br/><br/>Support articles are currently being drafted by our documentation team.
         If you need immediate assistance with this topic, please reach out to our support team directly.
       </p>
       <div style={{ marginTop: '32px' }}>
