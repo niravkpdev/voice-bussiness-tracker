@@ -1,90 +1,81 @@
 import React, { useState } from 'react';
-import { Search, ChevronRight, BookOpen, Users, Package, FileText, Settings, PlayCircle, CreditCard, LifeBuoy } from 'lucide-react';
 
-export function HelpCenter({ onBack, onContact }) {
+export function HelpCenter() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedArticle, setSelectedArticle] = useState(null);
 
   const categories = [
-    { id: 'getting-started', title: 'Getting Started', icon: <PlayCircle size={24} />, articles: ['How to set up your profile', 'Navigating the dashboard', 'Quick Add basics'] },
-    { id: 'company-setup', title: 'Company Setup', icon: <Settings size={24} />, articles: ['Adding your company details', 'Managing permissions', 'Exporting data'] },
-    { id: 'customers', title: 'Customers', icon: <Users size={24} />, articles: ['How to add your first customer', 'Managing customer notes', 'Deleting a customer'] },
-    { id: 'inventory', title: 'Inventory', icon: <Package size={24} />, articles: ['How to add a product', 'Tracking stock levels', 'How to export inventory'] },
-    { id: 'employees', title: 'Employees & HRMS', icon: <Users size={24} />, articles: ['Adding an employee', 'How to mark employee attendance', 'Managing payroll'] },
-    { id: 'orders', title: 'Orders & Invoices', icon: <FileText size={24} />, articles: ['How to create an invoice', 'Sending invoices via email', 'Tracking payments'] },
-    { id: 'billing', title: 'Billing', icon: <CreditCard size={24} />, articles: ['Upgrading your plan', 'Managing payment methods', 'Viewing past invoices'] },
-    { id: 'troubleshooting', title: 'Troubleshooting', icon: <LifeBuoy size={24} />, articles: ['How to use demo mode', 'Resetting your password', 'Contacting support'] }
+    { title: 'Getting Started', articles: ['How to set up your profile', 'Navigating the dashboard', 'Quick Add basics'] },
+    { title: 'Company Setup', articles: ['Adding your company details', 'Managing permissions', 'Exporting data'] },
+    { title: 'Customers', articles: ['How to add your first customer', 'Managing customer notes', 'Deleting a customer'] },
+    { title: 'Inventory', articles: ['How to add a product', 'Tracking stock levels', 'How to export inventory'] },
+    { title: 'Employees & HRMS', articles: ['Adding an employee', 'How to mark employee attendance', 'Managing payroll'] },
+    { title: 'Orders & Invoices', articles: ['How to create an invoice', 'Sending invoices via email', 'Tracking payments'] },
+    { title: 'Billing', articles: ['Upgrading your plan', 'Managing payment methods', 'Viewing past invoices'] },
+    { title: 'Troubleshooting', articles: ['How to use demo mode', 'Resetting your password', 'Contacting support'] }
   ];
 
-  const handleSearch = (e) => {
-    if (e && e.target) {
-      setSearchQuery((e.target.value || '').toLowerCase());
-    }
+  const goBack = () => {
+    window.location.hash = 'dashboard';
+  };
+
+  const goContact = () => {
+    alert('Contact Support coming soon. Please email support@trinetr.com.');
   };
 
   if (selectedArticle) {
     return (
-      <div className="fade-in" style={{ padding: '40px', maxWidth: '800px', margin: '0 auto', background: 'var(--bg-primary)', borderRadius: '12px' }}>
-        <button className="secondary-button" style={{ marginBottom: '24px' }} onClick={() => setSelectedArticle(null)}>
-          &larr; Back to Help Center
-        </button>
-        <h2 style={{ fontSize: '2rem', marginBottom: '16px' }}>{selectedArticle}</h2>
-        <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6' }}>
-          <strong>Article coming soon!</strong><br/><br/>Support articles are currently being drafted by our documentation team.
-          If you need immediate assistance with this topic, please reach out to our support team directly.
-        </p>
-        <div style={{ marginTop: '32px' }}>
-          <button className="saas-primary-button" onClick={() => { if(onContact) onContact(); }}>Contact Support</button>
+      <div style={{ padding: '60px 20px', minHeight: '100vh', background: 'var(--bg-secondary)', fontFamily: 'sans-serif' }}>
+        <div style={{ maxWidth: '800px', margin: '0 auto', background: '#fff', padding: '40px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+          <button onClick={() => setSelectedArticle(null)} style={{ padding: '8px 16px', marginBottom: '20px', cursor: 'pointer', background: '#eee', border: 'none', borderRadius: '4px' }}>
+            &larr; Back to Help Center
+          </button>
+          <h2>{selectedArticle}</h2>
+          <p style={{ lineHeight: '1.6', marginTop: '20px', color: '#555' }}>
+            <strong>Article coming soon!</strong><br/><br/>
+            Support articles are currently being drafted by our documentation team.
+          </p>
+          <button onClick={goContact} style={{ padding: '10px 20px', marginTop: '20px', cursor: 'pointer', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '4px' }}>
+            Contact Support
+          </button>
         </div>
       </div>
     );
   }
 
-  const filteredCategories = categories.filter(cat => {
-    if (!cat || !cat.title || !cat.articles) return false;
-    return cat.title.toLowerCase().includes(searchQuery) || 
-           cat.articles.some(art => art && typeof art === 'string' && art.toLowerCase().includes(searchQuery));
-  });
+  const filteredCategories = categories.filter(c => 
+    c.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    c.articles.some(a => a.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   return (
-    <section className="saas-section fade-in" style={{ padding: '60px 20px', minHeight: '100vh', background: 'var(--bg-secondary)' }}>
-      <div className="saas-container" style={{ maxWidth: '1000px' }}>
+    <div style={{ padding: '60px 20px', minHeight: '100vh', background: 'var(--bg-secondary)', fontFamily: 'sans-serif' }}>
+      <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
         
-        <header style={{ textAlign: 'center', marginBottom: '48px' }}>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: 700, marginBottom: '16px' }}>Help Center</h1>
-          <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', marginBottom: '32px' }}>
-            Find answers, guides, and troubleshooting tips for Trinetr Business Suite.
-          </p>
-          
-          <div style={{ position: 'relative', maxWidth: '600px', margin: '0 auto' }}>
-            <Search size={20} style={{ position: 'absolute', left: '16px', top: '16px', color: 'var(--text-muted)' }} />
-            <input 
-              type="text" 
-              placeholder="Search for articles..." 
-              value={searchQuery}
-              onChange={handleSearch}
-              style={{ width: '100%', padding: '16px 16px 16px 48px', fontSize: '1rem', borderRadius: '999px', border: '1px solid var(--border-subtle)', background: 'var(--bg-primary)' }}
-            />
-          </div>
-        </header>
+        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+          <h1>Help Center</h1>
+          <p style={{ color: '#555', marginBottom: '20px' }}>Find guides and support for Trinetr Business Suite.</p>
+          <input 
+            type="text" 
+            placeholder="Search help articles..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{ width: '100%', maxWidth: '500px', padding: '12px 20px', fontSize: '16px', borderRadius: '24px', border: '1px solid #ccc' }}
+          />
+        </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '24px' }}>
-          {filteredCategories.map(category => (
-            <div key={category.id || Math.random()} style={{ background: 'var(--bg-primary)', padding: '24px', borderRadius: '12px', border: '1px solid var(--border-subtle)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', color: 'var(--brand-primary)' }}>
-                {category.icon || <BookOpen size={24} />}
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)' }}>{category.title}</h3>
-              </div>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {category.articles.map((article, idx) => (
-                  <li key={`${article}-${idx}`}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+          {filteredCategories.map((cat, idx) => (
+            <div key={idx} style={{ background: '#fff', padding: '24px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+              <h3 style={{ marginTop: 0, color: '#111' }}>{cat.title}</h3>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {cat.articles.map((art, artIdx) => (
+                  <li key={artIdx} style={{ marginBottom: '10px' }}>
                     <button 
-                      type="button" 
-                      onClick={() => setSelectedArticle(article)}
-                      style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', textAlign: 'left' }}
+                      onClick={() => setSelectedArticle(art)}
+                      style={{ background: 'none', border: 'none', padding: 0, color: '#2563eb', cursor: 'pointer', textAlign: 'left' }}
                     >
-                      <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{article}</span>
-                      <ChevronRight size={16} />
+                      {art}
                     </button>
                   </li>
                 ))}
@@ -93,15 +84,16 @@ export function HelpCenter({ onBack, onContact }) {
           ))}
         </div>
 
-        <div style={{ marginTop: '64px', textAlign: 'center' }}>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>Can't find what you're looking for?</p>
-          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
-            <button className="saas-primary-button" onClick={() => { if(onContact) onContact(); }}>Contact Support</button>
-            <button className="secondary-button" onClick={() => { if(onBack) onBack(); }}>Back to Home</button>
-          </div>
+        <div style={{ marginTop: '50px', textAlign: 'center' }}>
+          <button onClick={goContact} style={{ padding: '10px 20px', marginRight: '10px', cursor: 'pointer', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '4px' }}>
+            Contact Support
+          </button>
+          <button onClick={goBack} style={{ padding: '10px 20px', cursor: 'pointer', background: '#eee', color: '#333', border: 'none', borderRadius: '4px' }}>
+            Back to Dashboard
+          </button>
         </div>
 
       </div>
-    </section>
+    </div>
   );
 }
