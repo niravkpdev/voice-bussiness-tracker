@@ -818,29 +818,37 @@ export default function Phase2ERP({
         ? scopedInvoices.find((item) => item.id === editingInvoiceId)?.invoiceNo
         : `INV-${new Date().getFullYear()}-${String(scopedInvoices.length + 1).padStart(4, '0')}`,
       customer_id: invoiceDraft.customerId,
-      customer_name: customers.find(c => c.id === invoiceDraft.customerId)?.name || '',
+      customer_name: scopedCustomers.find((c) => c.id === invoiceDraft.customerId)?.name || '',
+      customer_mobile: scopedCustomers.find((c) => c.id === invoiceDraft.customerId)?.mobile || '',
       items: invoiceDraft.lines,
       subtotal: taxable,
       tax: gstTotal,
-      discount: invoiceDraft.lines.reduce((sum, line) => sum + (Number(line.discount) || 0), 0),
+      discount: 0,
       paid_amount: paid,
       balance_due: total - paid,
+      status: invoiceDraft.status,
       invoice_date: today(),
       due_date: invoiceDraft.dueDate,
-      company_id: activeBusinessId || 'default',
-      business_id: activeBusinessId || 'default',
-      notes: sanitizeText(invoiceDraft.terms, 360) || TERMS
+      notes: sanitizeText(invoiceDraft.terms, 360) || TERMS,
+      created_from: 'direct'
     };
+
     const productsAfterInvoice = products.map((product) => {
-      const sold = invoice.lines.filter((line) => line.productId === product.id).reduce((sum, line) => sum + line.qty, 0);
+      const line = invoice.lines.find((l) => l.productId === product.id);
+      const sold = line ? line.qty : 0;
       return sold ? { ...product, currentStock: Math.max(0, product.currentStock - sold) } : product;
     });
     const affectedProducts = productsAfterInvoice
       .filter((product) => invoice.lines.some((line) => line.productId === product.id));
+
+    console.log('Invoice submit started');
+    console.log('Invoice payload:', invoice);
+
     try {
-      let shouldUseLegacyInvoiceSave = !onAtomicInvoiceWithStock;
+      let rpcSuccess = false;
       if (onAtomicInvoiceWithStock) {
         try {
+          console.log('Attempting atomic RPC invoice save...');
           const result = await onAtomicInvoiceWithStock(
             invoice,
             affectedProducts.map((product) => ({
@@ -848,36 +856,37 @@ export default function Phase2ERP({
               itemId: product.id,
             }))
           );
-          if (!result?.invoice) {
-            throw new Error('Atomic invoice save failed');
+          if (!result || !result.invoice) {
+            throw new Error('Atomic invoice RPC did not return a saved invoice.');
           }
+          console.log('Supabase insert response (RPC):', result);
+          rpcSuccess = true;
         } catch (error) {
-          const errorText = `${error?.code || ''} ${error?.message || ''}`;
-          if (!/create_invoice_with_stock|schema cache|function.*not found|pgrst202|42883/i.test(errorText)) {
-            throw error;
-          }
-          shouldUseLegacyInvoiceSave = true;
-          onStatus('Phase 1 RPC migration is not installed yet. Saving invoice with legacy flow for now.');
+          console.warn('RPC invoice save failed. Falling back to legacy upsert.', error);
         }
       }
 
-      if (shouldUseLegacyInvoiceSave) {
+      if (!rpcSuccess) {
+        console.log('Attempting legacy upsert for invoice...');
         const invoiceSaved = await onCloudRecord?.('invoices', invoice.id, invoice);
         if (!invoiceSaved) {
-          throw new Error('Invoice save failed');
+          throw new Error('Invoice legacy upsert returned falsy');
         }
+        console.log('Supabase insert response (legacy invoice):', invoiceSaved);
+        
         await Promise.all(affectedProducts.map(async (product) => {
           const saved = await onCloudRecord?.('inventory', product.id, {
             ...product,
             itemId: product.id,
           });
           if (!saved) {
-            throw new Error('Invoice stock update failed');
+            console.warn('Invoice stock update failed for product:', product.id);
           }
         }));
       }
     } catch (error) {
-      onStatus(error?.message || 'Invoice save failed');
+      console.error('Supabase insert error:', error);
+      onStatus(`Failed to create invoice: ${error?.message || 'Unknown error'}`);
       return;
     }
     setInvoices(editingInvoiceId ? invoices.map((item) => (item.id === editingInvoiceId ? invoice : item)) : [invoice, ...invoices]);
