@@ -1,4 +1,50 @@
+// Legal content should be reviewed by a qualified legal professional before production use.
 const LEGAL_COPY = {
+  'refund-policy': {
+    eyebrow: 'Refund Policy',
+    title: 'Refund Policy',
+    updated: 'Last updated: June 1, 2026',
+    sections: [
+      ['General Policy', 'We offer a 14-day money-back guarantee for all new subscriptions.'],
+      ['Cancellations', 'You may cancel your subscription at any time. Cancellations take effect at the end of the current billing cycle.'],
+      ['Contact', 'For refund requests, please contact support@trinetr.com.']
+    ]
+  },
+  'cookie-policy': {
+    eyebrow: 'Cookie Policy',
+    title: 'Cookie Policy',
+    updated: 'Last updated: June 1, 2026',
+    sections: [
+      ['Essential Cookies', 'We use essential cookies to maintain your login session and secure your account.'],
+      ['Analytics Cookies', 'If you consent, we use anonymous analytics to understand feature usage and improve the product.'],
+      ['Managing Cookies', 'You can disable analytics tracking from your Profile Settings at any time.']
+    ]
+  },
+  'acceptable-use': {
+    eyebrow: 'Acceptable Use',
+    title: 'Acceptable Use Policy',
+    updated: 'Last updated: June 1, 2026',
+    sections: [
+      ['Prohibited Activities', 'You may not use Trinetr Business Suite for any illegal, abusive, or fraudulent activities.'],
+      ['Fair Use', 'API usage and automated access are subject to fair use limits to ensure stability for all users.'],
+      ['Enforcement', 'Violation of this policy may result in immediate account suspension or termination.']
+    ]
+  },
+  'trust-center': {
+    eyebrow: 'Trust Center',
+    title: 'Trust & Security',
+    updated: 'Last updated: June 1, 2026',
+    sections: [
+      ['Data Security', 'Designed with security best practices in mind. All data is encrypted in transit and at rest.'],
+      ['User Privacy', 'We never sell your business data. Your privacy is a core principle.'],
+      ['Account Protection', 'We utilize modern authentication standards and role-based access control (RBAC).'],
+      ['Supabase Secure Backend', 'Our infrastructure is backed by Supabase, providing enterprise-grade row-level security.'],
+      ['Data Ownership', 'Your data belongs to you. You can export or request full deletion of your records at any time.'],
+      ['Backups & Audit Logs', 'System activity is logged and core databases are backed up automatically to prevent data loss.'],
+      ['Responsible AI Use', 'AI processing is strictly opt-in and limited to transactional context. We do not use your private data to train public models.'],
+      ['Contact Security Team', 'Report vulnerabilities or security concerns to security@trinetr.com.']
+    ]
+  },
   'privacy-policy': {
     eyebrow: 'Privacy Policy',
     title: 'Privacy Policy',

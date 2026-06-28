@@ -4263,7 +4263,9 @@ export default function VoiceExpenseTrackerPreview() {
               </h1>
               {authNotice && <div className="notice">{authNotice}</div>}
               {secureError && <div className="notice error">{secureError}</div>}
-              {authView === 'login' && (
+              {authView === 'help-center' ? (
+                <HelpCenter onBack={() => setAuthView('landing')} onContact={() => setShowContactModal(true)} />
+              ) : authView === 'login' && (
                 <div className="notice auth-help-note">
                   Use your registered email and password to access your dashboard.
                 </div>
@@ -4311,7 +4313,9 @@ export default function VoiceExpenseTrackerPreview() {
                   placeholder="Enter your password"
                   autoComplete={authView === 'login' ? 'current-password' : 'new-password'}
                 />
-                {authView === 'login' && (
+                {authView === 'help-center' ? (
+                <HelpCenter onBack={() => setAuthView('landing')} onContact={() => setShowContactModal(true)} />
+              ) : authView === 'login' && (
                   <div className="auth-row">
                     <label><input type="checkbox" /> Remember me</label>
                     <button type="button" onClick={() => setAuthView('reset-password')} disabled={!supabaseEnabled}>
