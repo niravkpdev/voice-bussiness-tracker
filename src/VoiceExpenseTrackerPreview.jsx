@@ -2547,6 +2547,25 @@ export default function VoiceExpenseTrackerPreview() {
   }, []);
 
   useEffect(() => {
+    try {
+      const userId = authUser?.uid || authUser?.email || 'demo';
+      const storageKey = `trinetr_onboarding_completed_${userId}`;
+      const isCompleted = localStorage.getItem(storageKey) === 'true';
+      
+      const hasCompany = Boolean(profile?.owner && profile?.company);
+      const hasData = (cloudCustomers?.length > 0) || (cloudInventory?.length > 0) || (cloudEmployees?.length > 0);
+      
+      if (isCompleted || hasCompany || hasData || profile?.setupCompleted) {
+        setOnboardingCompleted(true);
+        localStorage.setItem(storageKey, 'true');
+      }
+    } catch (e) {
+      console.error("Onboarding logic error:", e);
+      setOnboardingCompleted(true);
+    }
+  }, [authUser, profile, cloudCustomers, cloudInventory, cloudEmployees]);
+
+  useEffect(() => {
     const handleOnline = () => setOffline(false);
     const handleOffline = () => setOffline(true);
     window.addEventListener('online', handleOnline);
