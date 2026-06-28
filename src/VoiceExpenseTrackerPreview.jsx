@@ -163,8 +163,6 @@ const SALES_LEDGER_ID = 'ledger-sales';
 const MATERIAL_LEDGER_ID = 'ledger-material';
 const DEFAULT_EXPENSE_LEDGER_ID = 'ledger-misc-expense';
 const APP_TABS = [
-  'help',
-  'help-center',
   'dashboard',
   'company-setup',
   'masters',
@@ -917,6 +915,7 @@ export default function VoiceExpenseTrackerPreview() {
   const [showTour, setShowTour] = useState(false);
   const [showPricing, setShowPricing] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
+  const [isHelpCenterOpen, setIsHelpCenterOpen] = useState(false);
   const [upgradeModalFeature, setUpgradeModalFeature] = useState(null); // null means hidden, string means feature name
 
   const [browserSupported, setBrowserSupported] = useState(true);
@@ -4267,9 +4266,7 @@ export default function VoiceExpenseTrackerPreview() {
               </h1>
               {authNotice && <div className="notice">{authNotice}</div>}
               {secureError && <div className="notice error">{secureError}</div>}
-              {authView === 'help-center' ? (
-                <HelpCenter onBack={() => setAuthView('landing')} onContact={() => setShowContactModal(true)} />
-              ) : authView === 'login' && (
+              {authView === 'login' && (
                 <div className="notice auth-help-note">
                   Use your registered email and password to access your dashboard.
                 </div>
@@ -4317,9 +4314,7 @@ export default function VoiceExpenseTrackerPreview() {
                   placeholder="Enter your password"
                   autoComplete={authView === 'login' ? 'current-password' : 'new-password'}
                 />
-                {authView === 'help-center' ? (
-                <HelpCenter onBack={() => setAuthView('landing')} onContact={() => setShowContactModal(true)} />
-              ) : authView === 'login' && (
+                {authView === 'login' && (
                   <div className="auth-row">
                     <label><input type="checkbox" /> Remember me</label>
                     <button type="button" onClick={() => setAuthView('reset-password')} disabled={!supabaseEnabled}>
@@ -4734,7 +4729,7 @@ export default function VoiceExpenseTrackerPreview() {
                 <button type="button" onClick={() => setActiveTab('billing')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><CreditCard size={16} /> Billing & Plans</button>
                 <button type="button" onClick={() => setActiveTab('analytics')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Activity size={16} /> Analytics</button>
                 <button type="button" onClick={() => setStatus('Preferences coming soon')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><CheckSquare size={16} /> Preferences</button>
-                <button type="button" onClick={() => { window.location.hash = 'help-center'; setIsProfileMenuOpen(false); setActiveTab('help-center'); console.log('Help Center clicked'); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><HelpCircle size={16} /> Help Center</button>
+                <button type="button" onClick={() => { setIsHelpCenterOpen(true); setIsProfileMenuOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><HelpCircle size={16} /> Help Center</button>
                 <div className="saas-dropdown-divider"></div>
                 <button type="button" onClick={logout} className="saas-dropdown-item danger" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><LogOut size={16} /> Logout</button>
               </div>
@@ -6386,7 +6381,7 @@ export default function VoiceExpenseTrackerPreview() {
             </section>
           )}
 
-          {activeTab === 'help-center' && <HelpCenter onBack={() => setActiveTab('dashboard')} onContact={() => setShowContactModal(true)} />}
+
           {activeTab === 'profile-settings' && (
             <section className="panel profile-editor fade-in" id="profile-settings">
               <div className="section-header">
