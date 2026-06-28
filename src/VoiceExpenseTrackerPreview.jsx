@@ -2191,6 +2191,7 @@ export default function VoiceExpenseTrackerPreview() {
         }
         await applyAuthenticatedUser(supabaseUser);
         setStatus('Signed in with Google');
+      trackEvent('Login successful');
         return;
       }
 
@@ -4001,11 +4002,11 @@ export default function VoiceExpenseTrackerPreview() {
           </a>
           <nav>
             <a href="#features" onClick={() => { if(authView !== 'landing') setAuthView('landing'); }}>Features</a>
-            <button type="button" onClick={() => setShowPricing(true)}>Pricing</button>
+            <button type="button" onClick={() => { trackPageView('pricing-modal'); setShowPricing(true); }}>Pricing</button>
             <button type="button" onClick={() => setAuthView('about-app')}>About</button>
             <button type="button" onClick={() => setShowContactModal(true)}>Contact</button>
             <button type="button" onClick={() => setAuthView('login')}>Login</button>
-            <button className="saas-primary-button" type="button" onClick={() => setAuthView('register')}>
+            <button className="saas-primary-button" type="button" onClick={() => { trackEvent('Signup started'); setAuthView('register'); }}>
               Start Free
             </button>
           </nav>
@@ -4139,7 +4140,7 @@ export default function VoiceExpenseTrackerPreview() {
                   Track income, expenses, customers, inventory, and business performance using natural voice commands.
                 </p>
                 <div className="saas-hero-actions">
-                  <button className="saas-primary-button" type="button" onClick={() => setAuthView('register')}>
+                  <button className="saas-primary-button" type="button" onClick={() => { trackEvent('Signup started'); setAuthView('register'); }}>
                     Start Free
                   </button>
                   <button className="saas-secondary-button" type="button" onClick={() => setAuthView('login')}>
@@ -4226,7 +4227,7 @@ export default function VoiceExpenseTrackerPreview() {
                     <strong>{plan}</strong>
                     <h3>{index === 0 ? 'Free' : index === 1 ? '₹499/mo' : 'Custom'}</h3>
                     <p>{index === 0 ? 'Voice entries and reports' : index === 1 ? 'ERP, invoices, inventory, AI' : 'Security, roles, integrations'}</p>
-                    <button className={index === 1 ? 'saas-primary-button' : 'saas-secondary-button'} type="button" onClick={() => setAuthView('register')}>
+                    <button className={index === 1 ? 'saas-primary-button' : 'saas-secondary-button'} type="button" onClick={() => { trackEvent('Signup started'); setAuthView('register'); }}>
                       Start
                     </button>
                   </article>
@@ -4331,7 +4332,7 @@ export default function VoiceExpenseTrackerPreview() {
                 <button className="saas-outline-button full mt-2" type="button" onClick={startDemoMode} disabled={authLoading}>
                   🚀 Try Interactive Demo
                 </button>
-                <button className="secondary-button full mt-2" type="button" onClick={() => setShowPricing(true)} disabled={authLoading}>
+                <button className="secondary-button full mt-2" type="button" onClick={() => { trackPageView('pricing-modal'); setShowPricing(true); }} disabled={authLoading}>
                   View Pricing
                 </button>
               </>
@@ -4702,9 +4703,9 @@ export default function VoiceExpenseTrackerPreview() {
               </button>
               <div className="saas-dropdown-menu">
                 <button type="button" onClick={() => { setActiveTab('invoices'); setMobileNavOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><FileText size={16} /> New Invoice</button>
-                <button type="button" onClick={() => checkLimit('customers', cloudCustomers.length, () => { setActiveTab('customers'); setStatus('Add Customer drawer coming soon'); setMobileNavOpen(false); })} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Users size={16} /> New Customer</button>
-                <button type="button" onClick={() => checkLimit('products', Object.keys(partySummary).length, () => { setActiveTab('inventory'); setStatus('Navigate to Inventory to add Product'); setMobileNavOpen(false); })} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Package size={16} /> New Product</button>
-                <button type="button" onClick={() => checkLimit('employees', 0, () => { setActiveTab('employees'); setStatus('Navigate to Employees to add Employee'); setMobileNavOpen(false); })} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><User size={16} /> New Employee</button>
+                <button type="button" onClick={() => checkLimit('customers', cloudCustomers.length, () => { setActiveTab('customers'); trackEvent('Customer added'); setStatus('Add Customer drawer coming soon'); setMobileNavOpen(false); })} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Users size={16} /> New Customer</button>
+                <button type="button" onClick={() => checkLimit('products', Object.keys(partySummary).length, () => { setActiveTab('inventory'); trackEvent('Product added'); setStatus('Navigate to Inventory to add Product'); setMobileNavOpen(false); })} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Package size={16} /> New Product</button>
+                <button type="button" onClick={() => checkLimit('employees', 0, () => { setActiveTab('employees'); trackEvent('Employee added'); setStatus('Navigate to Employees to add Employee'); setMobileNavOpen(false); })} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><User size={16} /> New Employee</button>
                 <div className="saas-dropdown-divider"></div>
                 <button type="button" onClick={() => { setActiveTab('voucher-entry'); setMobileNavOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><DollarSign size={16} /> Record Expense</button>
               </div>
@@ -4723,6 +4724,7 @@ export default function VoiceExpenseTrackerPreview() {
                 <button type="button" onClick={() => setStatus('Profile page coming soon')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><User size={16} /> My Profile</button>
                 <button type="button" onClick={() => setActiveTab('app-settings')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Settings size={16} /> Company Settings</button>
                 <button type="button" onClick={() => setActiveTab('billing')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><CreditCard size={16} /> Billing & Plans</button>
+                <button type="button" onClick={() => setActiveTab('analytics')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Activity size={16} /> Analytics</button>
                 <button type="button" onClick={() => setStatus('Preferences coming soon')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><CheckSquare size={16} /> Preferences</button>
                 <button type="button" onClick={() => setStatus('Help Center coming soon')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><HelpCircle size={16} /> Help Center</button>
                 <div className="saas-dropdown-divider"></div>
@@ -5591,7 +5593,7 @@ export default function VoiceExpenseTrackerPreview() {
                       <p className="panel-hint">Manage customers, suppliers, financial standing, and interactions.</p>
                     </div>
                     <div className="inline-actions">
-                      <button type="button" className="primary-button" onClick={() => checkLimit('customers', cloudCustomers.length, () => setStatus('Add Customer drawer coming soon'))}><Plus size={16}/> New Party</button>
+                      <button type="button" className="primary-button" onClick={() => checkLimit('customers', cloudCustomers.length, () => { trackEvent('Customer added'); setStatus('Add Customer drawer coming soon'); })}><Plus size={16}/> New Party</button>
                     </div>
                   </div>
                   
@@ -5631,7 +5633,7 @@ export default function VoiceExpenseTrackerPreview() {
                                   <h3 style={{ fontSize: '16px', marginBottom: '8px' }}>No Customers Yet</h3>
                                   <p className="text-secondary" style={{ fontSize: '14px', maxWidth: '300px', margin: '0 auto' }}>No customers yet. Add your first customer or import customers.</p>
                                 </div>
-                                <button type="button" className="primary-button" style={{ marginTop: '8px' }} onClick={() => checkLimit('customers', cloudCustomers.length, () => setStatus('Add Customer drawer coming soon'))}><Plus size={16}/> Add Customer</button>
+                                <button type="button" className="primary-button" style={{ marginTop: '8px' }} onClick={() => checkLimit('customers', cloudCustomers.length, () => { trackEvent('Customer added'); setStatus('Add Customer drawer coming soon'); })}><Plus size={16}/> Add Customer</button>
                               </div>
                             </td>
                           </tr>
