@@ -5665,8 +5665,10 @@ export default function VoiceExpenseTrackerPreview() {
                     </thead>
                     <tbody>
                       {vouchers.slice(0, 5).map(v => {
-                        const amount = Math.abs(v.lines.find(l => l.ledgerId === CASH_LEDGER_ID || l.ledgerId === v.partyId)?.amount || 0);
-                        const accountName = ledgers.find(l => l.id === v.partyId)?.name || 'Unknown';
+                        const cashLine = v.lines?.find(l => l.ledgerId === CASH_LEDGER_ID);
+                        const partyLine = v.lines?.find(l => l.ledgerId !== CASH_LEDGER_ID && l.ledgerId !== MATERIAL_LEDGER_ID);
+                        const amount = Math.abs((cashLine ? (cashLine.debit || cashLine.credit) : (partyLine ? (partyLine.debit || partyLine.credit) : 0)) || 0);
+                        const accountName = partyLine ? (ledgers.find(l => l.id === partyLine.ledgerId)?.name || 'Unknown') : 'Unknown';
                         return (
                           <tr key={v.id}>
                             <td>{new Date(v.date).toLocaleDateString()}</td>
