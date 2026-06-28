@@ -2943,10 +2943,12 @@ export default function VoiceExpenseTrackerPreview() {
           });
           return nextVouchers;
         });
-        setStatus('Transaction saved to Supabase');
+        setStatus('Voucher saved successfully.');
         return true;
       } catch (error) {
         const message = publicSafeError(error, 'Cloud transaction save failed. Please try again.');
+        setStatus(message);
+        setSecureError(message);
         debugError('[Transaction save error]', {
           currentSupabaseUserUid: authUser.uid,
           path: supabasePath,
@@ -3039,8 +3041,15 @@ export default function VoiceExpenseTrackerPreview() {
 
   const saveVoucherEntry = async (event) => {
     event.preventDefault();
+    console.log("Voucher submit started", { voucherType, voucherAmount, voucherNarration });
 
     if (!requireSensitiveAccess('voucher entry')) {
+      return;
+    }
+
+    if (!profile?.company) {
+      setStatus('Please select or create a company before saving vouchers.');
+      setSecureError('Please select or create a company before saving vouchers.');
       return;
     }
 
@@ -3504,18 +3513,59 @@ export default function VoiceExpenseTrackerPreview() {
     setManualText(text);
   };
 
-  const addParty = (event) => {
+  const addParty = async (event) => {
     event.preventDefault();
+    console.log("Party submit started", { newPartyName, newPartyType });
+
+    if (!requireSensitiveAccess('add party')) {
+      return;
+    }
+    
+    if (!profile?.company) {
+      setStatus('Please select or create a company before adding parties.');
+      setSecureError('Please select or create a company before adding parties.');
+      return;
+    }
+    
+    if (!newPartyName || !newPartyName.trim()) {
+      setStatus('Party name is required.');
+      return;
+    }
 
     try {
       const { ledgers: nextLedgers, ledger } = addPartyLedger(newPartyName, newPartyType);
+      
+      const payload = {
+        id: ledger.id,
+        name: ledger.name,
+        group: ledger.group,
+        type: newPartyType,
+        createdAt: new Date().toISOString()
+      };
+      const collectionName = newPartyType === 'supplier' ? 'suppliers' : 'customers';
+      
+      console.log("Party insert payload:", payload);
+      
+      let savedToCloud = false;
+      try {
+        savedToCloud = await saveAuthenticatedCloudRecord(collectionName, ledger.id, payload);
+      } catch (cloudErr) {
+        console.error("Party Supabase error:", cloudErr);
+        setStatus(`Party "${ledger.name}" already exists or could not be saved to cloud.`);
+        setSecureError(cloudErr.message || 'Party already exists or cloud error');
+        return;
+      }
+      
+      console.log("Party Supabase response:", savedToCloud);
+      
       setLedgers(nextLedgers);
       setVoucherPartyId(ledger.id);
       setStatementLedgerId(ledger.id);
       setUseSalesInsteadOfParty(false);
       setNewPartyName('');
-      setStatus(`Party "${ledger.name}" added`);
+      setStatus(`Party ledger added successfully.`);
     } catch (error) {
+      console.error("Party save error:", error);
       setStatus(error.message);
     }
   };
