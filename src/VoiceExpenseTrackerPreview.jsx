@@ -3123,17 +3123,13 @@ export default function VoiceExpenseTrackerPreview() {
     };
 
     if (supabaseEnabled && authUser?.uid) {
-      const { error } = await supabase.from("transactions").insert({
-        id: voucherId,
-        user_id: authUser.uid,
-        data: newVoucherData
-      });
-
-      if (error) {
-        console.error("Voucher insert error", error);
-        setSecureError(`Supabase Error: ${error.message}`);
+      const saved = await saveCloudRecord(authUser.uid, "transactions", voucherId, newVoucherData);
+      if (!saved) {
+        console.error("Voucher insert error");
+        setSecureError("Supabase Error: Failed to save voucher");
         return;
       }
+      console.log("Saving to table: transactions\nSUCCESS");
     }
 
     saveVoucher(newVoucherData);
@@ -3474,13 +3470,9 @@ export default function VoiceExpenseTrackerPreview() {
 
     if (supabaseEnabled && authUser?.uid) {
       try {
-        const { error } = await supabase.from('transactions').insert({
-          id: voucherId,
-          user_id: authUser.uid,
-          data: newVoucher
-        });
-        if (error) {
-          console.error("Dashboard entry save error", error);
+        const saved = await saveCloudRecord(authUser.uid, "transactions", voucherId, newVoucher);
+        if (!saved) {
+          console.error("Dashboard entry save error");
           setSecureError("Failed to save dashboard entry to cloud");
           return;
         }
