@@ -3474,59 +3474,55 @@ export default function VoiceExpenseTrackerPreview() {
       setStatus('Please write entry details before saving');
       return;
     }
-
-    if (manualType === 'Income' && amount > 0) {
-      const savedVoucher = await saveReceiptOrPayment({
-        type: 'Receipt',
-        amount,
-        narration: text,
-        cashLedgerId: CASH_LEDGER_ID,
-        counterLedgerId: voucherPartyId && !useSalesInsteadOfParty ? voucherPartyId : SALES_LEDGER_ID,
-        source: 'manual',
-      });
-      if (!savedVoucher) {
-        return;
-      }
-      setTranscript(text);
-      setManualText('');
-      setManualAmount('');
+    
+    if (amount <= 0) {
+      setStatus('Please enter a valid amount');
       return;
     }
 
-    if (manualType === 'Expense' && amount > 0) {
-      const savedVoucher = await saveReceiptOrPayment({
-        type: 'Payment',
-        amount,
-        narration: text,
-        cashLedgerId: CASH_LEDGER_ID,
-        counterLedgerId: voucherExpenseId,
-        source: 'manual',
-      });
-      if (!savedVoucher) {
-        return;
-      }
-      setTranscript(text);
-      setManualText('');
-      setManualAmount('');
-      return;
-    }
-
-    if ((manualType === 'Expense' || manualType === 'Income') && amount <= 0) {
-      setStatus('Please enter an amount for income or expense');
-      return;
-    }
-
-    saveLog({
+    const voucherId = `vch-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+    const newVoucher = {
+      id: voucherId,
       type: manualType,
-      text,
-      amount,
-      date: new Date().toLocaleString(),
-    });
+      date: new Date().toISOString().slice(0, 10),
+      amount: amount,
+      narration: text,
+      lines: [], 
+      source: "dashboard",
+      userId: authUser?.uid || 'guest',
+      ownerUid: authUser?.uid || 'guest',
+      transactionId: `txn-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
 
+    if (supabaseEnabled && authUser?.uid) {
+      try {
+        const { error } = await supabase.from('transactions').insert({
+          id: voucherId,
+          user_id: authUser.uid,
+          data: newVoucher
+        });
+        if (error) {
+          console.error("Dashboard entry save error", error);
+          setSecureError("Failed to save dashboard entry to cloud");
+          return;
+        }
+      } catch (err) {
+        console.error("Dashboard entry catch error", err);
+        setSecureError("Exception while saving dashboard entry");
+        return;
+      }
+    }
+
+    // Persist locally for immediate UI update in Day Book / Recent Entries
+    saveVoucher(newVoucher);
+    
     setTranscript(text);
-    setStatus('Note saved');
+    setStatus(`Saved ${manualType} of ${formatCurrency(amount)}`);
     setManualText('');
     setManualAmount('');
+    trackEvent('Dashboard entry saved');
   };
 
   const fillManualTemplate = (type, amount, text) => {
