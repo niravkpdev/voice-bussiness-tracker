@@ -3524,19 +3524,21 @@ export default function VoiceExpenseTrackerPreview() {
           balance: 0,
           opening_balance: 0
         };
-        const collectionName = 'customers'; // Unified party table
+        const collectionName = newPartyType === 'supplier' ? 'suppliers' : 'customers';
       
-      console.log("Party insert payload:", payload);
+      console.log(`Party insert payload for ${collectionName}:`, payload);
       
       let savedToCloud = false;
       try {
-        savedToCloud = await saveAuthenticatedCloudRecord(collectionName, ledger.id, payload);
+        if (authUser?.uid) {
+          savedToCloud = await saveAuthenticatedCloudRecord(collectionName, ledger.id, payload);
+        }
       } catch (cloudErr) {
-        console.error("Party Supabase error:", cloudErr);
-        setStatus(`Party "${ledger.name}" already exists or could not be saved to cloud.`);
-        setSecureError(cloudErr.message || 'Party already exists or cloud error');
+        console.error(`Party Supabase error [${collectionName}]:`, cloudErr);
+        setStatus(`Failed to add ${newPartyType}: ${cloudErr.message || 'Unknown error'}`);
+        setSecureError(cloudErr.message || 'Unknown error');
         return;
-      }
+        }
       
       console.log("Party Supabase response:", savedToCloud);
       

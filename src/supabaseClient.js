@@ -414,7 +414,7 @@ function rowToAppRecord(row, tableName) {
 
   // Apply table-specific normalizations
   if (tableName === 'transactions') {
-    normalized = normalizeTransaction(row);    } else if (tableName === 'customers') {
+    normalized = normalizeTransaction(row);    } else if (tableName === 'customers' || tableName === 'suppliers') {
       normalized = {
         ...normalized,
         name: data.name || data.customerName || data.partyName || "Unnamed",
