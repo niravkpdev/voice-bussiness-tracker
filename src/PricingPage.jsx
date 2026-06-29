@@ -6,7 +6,7 @@ export function PricingPage({ onClose, onUpgrade, isLoggedIn }) {
   const [toast, setToast] = useState('');
 
   const handleAction = (plan) => {
-    trackEvent('Upgrade clicked', { plan, billingCycle });
+    if (typeof window !== 'undefined' && window.trackEvent) window.trackEvent('Upgrade clicked', { plan, billingCycle });
     if (plan === 'Enterprise') {
       if (onContactSales) {
         onContactSales();

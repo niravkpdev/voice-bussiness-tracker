@@ -812,7 +812,17 @@ function CircularHealthScore({ score }) {
 
 const checkLimit = (feature, currentCount, onSuccess) => { if (onSuccess) onSuccess(); return true; };
 
-const trackEvent = typeof window !== 'undefined' && window.trackEvent ? window.trackEvent : (() => {});
+const safeMoney = (val) => { const n = Number(val); return Number.isFinite(n) ? n : 0; };
+const safeTrackEvent = (...args) => {
+  try {
+    if (typeof window !== 'undefined' && typeof window.trackEvent === 'function') {
+      window.trackEvent(...args);
+    }
+  } catch (e) {
+    console.warn("Tracking failed:", e);
+  }
+};
+const trackEvent = safeTrackEvent;
 
 export default function VoiceExpenseTrackerPreview() {
   const [authView, setAuthView] = useState(() => {
@@ -3507,12 +3517,14 @@ export default function VoiceExpenseTrackerPreview() {
       const payload = {
         id: ledger.id,
         name: ledger.name,
-        group: ledger.group,
+        group: newPartyType === 'supplier' ? 'Sundry Creditors' : 'Sundry Debtors',
         type: newPartyType,
         createdAt: new Date().toISOString(),
-        business_id: 'default'
-      };
-      const collectionName = newPartyType === 'supplier' ? 'suppliers' : 'customers';
+        business_id: 'default',
+          balance: 0,
+          opening_balance: 0
+        };
+        const collectionName = 'customers'; // Unified party table
       
       console.log("Party insert payload:", payload);
       
@@ -5761,7 +5773,8 @@ export default function VoiceExpenseTrackerPreview() {
                         ) : (
                             ([...(cloudCustomers || []), ...(cloudSuppliers || [])]).map((party, i) => {
                               const isDebtor = party.group === 'Sundry Debtors';
-                              const balance = party.balance || party.outstandingAmount || 0;
+                              const balance = safeMoney(party.balance || party.outstandingAmount || party.opening_balance || 0);
+                              const ltv = safeMoney(party.lifetimeValue || party.ltv || party.totalSales || 0);
                             // Mock CRM tags for demonstration
                             const tags = [];
                             if (party.totalSales > 50000) tags.push({ label: 'VIP', class: 'vip' });
@@ -5775,8 +5788,12 @@ export default function VoiceExpenseTrackerPreview() {
                                   <div className="crm-customer-cell">
                                     <div className="crm-avatar">{party.name.charAt(0).toUpperCase()}</div>
                                     <div>
-                                      <div style={{ fontWeight: '600', color: 'var(--text-primary)', marginBottom: '4px' }}>{party.name}</div>
-                                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{isDebtor ? 'Customer' : 'Supplier'} • ID: {party.id.slice(0,6)}</div>
+                                      <div style={{ fontWeight: '600', color: 'var(--text-primary)', marginBottom: '4px' }}>
+                                          {party.name} <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 'normal', marginLeft: '4px' }}>#{party.id?.slice(0,4)}</span>
+                                        </div>
+                                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                          {isDebtor ? 'Customer' : 'Supplier'} • Added: {party.createdAt ? new Date(party.createdAt).toLocaleDateString() : 'N/A'}
+                                        </div>
                                     </div>
                                   </div>
                                 </td>
@@ -5787,7 +5804,7 @@ export default function VoiceExpenseTrackerPreview() {
                                     ))}
                                   </div>
                                 </td>
-                                <td style={{ fontWeight: '500' }}>{formatCurrency(party.totalSales + party.totalPayments)}</td>
+                                <td style={{ fontWeight: '500' }}>{formatCurrency(ltv)}</td>
                                 <td>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                     <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: balance === 0 ? 'var(--success)' : isDebtor ? 'var(--warning)' : 'var(--danger)' }}></div>
@@ -5798,9 +5815,22 @@ export default function VoiceExpenseTrackerPreview() {
                                 </td>
                                 <td className="text-secondary">{party.lastTransactionDate || 'N/A'}</td>
                                 <td style={{ textAlign: 'right' }}>
-                                  <button className="icon-button" onClick={(e) => { e.stopPropagation(); }} title="Quick Actions">
-                                    <MoreHorizontal size={18} />
-                                  </button>
+                                  <div style={{ position: 'relative' }}>
+                                    <button className="icon-button" onClick={(e) => { e.stopPropagation(); setActiveActionMenuId(activeActionMenuId === party.id ? null : party.id); }} title="Quick Actions">
+                                      <MoreHorizontal size={18} />
+                                    </button>
+                                    {activeActionMenuId === party.id && <div style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99}} onClick={(e) => { e.stopPropagation(); setActiveActionMenuId(null); }} />}
+                                    {activeActionMenuId === party.id && (
+                                      <div className="dropdown-menu fade-in" style={{ position: 'absolute', right: 0, top: '100%', zIndex: 100, background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', padding: '4px', minWidth: '160px', textAlign: 'left' }}>
+                                        <button type="button" className="saas-dropdown-item" onClick={(e) => { e.stopPropagation(); setSelectedCrmCustomer(party); setActiveActionMenuId(null); }} style={{ width: '100%', padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', color: 'var(--text-primary)' }}>View Profile</button>
+                                        <button type="button" className="saas-dropdown-item" onClick={(e) => { e.stopPropagation(); setStatus('Coming soon'); setActiveActionMenuId(null); }} style={{ width: '100%', padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', color: 'var(--text-primary)' }}>Edit Profile</button>
+                                        <button type="button" className="saas-dropdown-item" onClick={(e) => { e.stopPropagation(); setStatus('Coming soon'); setActiveActionMenuId(null); }} style={{ width: '100%', padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', color: 'var(--text-primary)' }}>Create Invoice</button>
+                                        <button type="button" className="saas-dropdown-item" onClick={(e) => { e.stopPropagation(); setActiveTab('vouchers'); setVoucherPartyId(party.id); setActiveActionMenuId(null); }} style={{ width: '100%', padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', color: 'var(--text-primary)' }}>Add Voucher</button>
+                                        <button type="button" className="saas-dropdown-item" onClick={(e) => { e.stopPropagation(); setStatus('Coming soon'); setActiveActionMenuId(null); }} style={{ width: '100%', padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', color: 'var(--text-primary)' }}>View Ledger</button>
+                                        <button type="button" className="saas-dropdown-item" onClick={(e) => { e.stopPropagation(); setStatus('Coming soon'); setActiveActionMenuId(null); }} style={{ width: '100%', padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', color: 'var(--danger)' }}>Delete Party</button>
+                                      </div>
+                                    )}
+                                  </div>
                                 </td>
                               </tr>
                             );
@@ -5887,7 +5917,7 @@ export default function VoiceExpenseTrackerPreview() {
                               <Star size={18} />
                             </div>
                           </div>
-                          <div className="kpi-value" style={{ fontSize: '24px', margin: '12px 0 4px' }}>{formatCurrency(selectedCrmCustomer.totalSales + selectedCrmCustomer.totalPayments)}</div>
+                          <div className="kpi-value" style={{ fontSize: '24px', margin: '12px 0 4px' }}>{formatCurrency(safeMoney(selectedCrmCustomer.lifetimeValue || selectedCrmCustomer.ltv || selectedCrmCustomer.totalSales || 0))}</div>
                           <div className="kpi-trend trend-up" style={{ fontSize: '12px' }}><ArrowUpRight size={14}/> Top 10% Customer</div>
                         </div>
                         

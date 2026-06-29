@@ -117,6 +117,7 @@ function SmallBars({ data, valueKey, colorClass = 'primary' }) {
   );
 }
 
+const safeMoney = (val) => { const n = Number(val); return Number.isFinite(n) ? n : 0; };
 export default function Phase2ERP({
   activeTab,
   profile,
@@ -1864,7 +1865,7 @@ export default function Phase2ERP({
                     </tr>
                   ) : (
                     list.map((item, i) => {
-                      const balance = isCustomer ? item.outstandingAmount ?? item.outstanding ?? 0 : item.payableAmount || 0;
+                      const balance = isCustomer ? safeMoney(item.outstandingAmount ?? item.outstanding ?? item.balance ?? 0) : safeMoney(item.payableAmount || item.balance || 0);
                       
                       // Mock CRM tags for demonstration
                       const tags = [];
