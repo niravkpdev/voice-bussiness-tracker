@@ -1,23 +1,43 @@
 class VoiceProcessor extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this.audioChunks = [];
+    this.isRecording = true; // Default to recording, controlled by lifecycle if needed
+
+    this.port.onmessage = (event) => {
+      if (event.data.command === 'STOP_RECORDING' || event.data.command === 'EXPORT') {
+        // Send collected audio data back to main thread
+        this.port.postMessage({ type: 'AUDIO_DATA', data: this.audioChunks });
+        // Clear the array for the next session
+        this.audioChunks = [];
+      } else if (event.data.command === 'START_RECORDING') {
+        this.audioChunks = [];
+        this.isRecording = true;
+      }
+    };
+  }
+
   process(inputs, outputs, parameters) {
     const input = inputs[0];
     
-    // Check if we have audio channels in the input
     if (input.length > 0) {
       const channelData = input[0];
-      let sum = 0;
       
-      // Compute the Root Mean Square (RMS) volume for the chunk
+      // Store a clone of the Float32Array buffer because the Web Audio API 
+      // reuses the original buffer on subsequent frames
+      if (this.isRecording) {
+        this.audioChunks.push(new Float32Array(channelData));
+      }
+
+      let sum = 0;
       for (let i = 0; i < channelData.length; i++) {
         sum += channelData[i] * channelData[i];
       }
       const rms = Math.sqrt(sum / channelData.length);
       
-      // Post the volume metric back to the main thread
-      this.port.postMessage({ volume: rms });
+      this.port.postMessage({ type: 'VOLUME', volume: rms });
     }
     
-    // Keep the processor alive
     return true;
   }
 }
