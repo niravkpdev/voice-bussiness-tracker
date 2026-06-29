@@ -1621,7 +1621,7 @@ export async function loadCloudCollection(uid, tableName) {
   let error;
   try {
     const result = await withCloudTimeout(
-      client.from(tableName).select('*').eq('user_id', uid).order('updated_at', { ascending: false }),
+      client.from(tableName).select('id, user_id, data, created_at, updated_at').eq('user_id', uid).order('updated_at', { ascending: false }),
       { path, uid, currentSupabaseUserUid: user?.id || null, operation: `select:${tableName}` }
     );
     data = result.data;
