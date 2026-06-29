@@ -34,7 +34,7 @@ const CLOUD_TABLES = new Set([
   'settings',
 ]);
 
-const CLOUD_TIMEOUT_MS = 10_000;
+const CLOUD_TIMEOUT_MS = 25_000;
 const CLOUD_TIMEOUT_MESSAGE = 'Supabase write timed out. Please check Supabase project, RLS policies, API keys, or env variables.';
 const HRMS_DOCUMENT_BUCKET = import.meta.env.VITE_SUPABASE_HRMS_BUCKET || 'hrms-documents';
 
@@ -486,14 +486,14 @@ async function syncUserProfileBestEffort(uid, profile) {
 }
 
 function pathFor(uid, tableName, id = '') {
-  if (tableName === 'settings') {
-    return `users/${uid}/settings/${id || 'profile'}`;
+    if (tableName === 'settings') {
+      return `settings/${uid}/${id || 'profile'}`;
+    }
+    if (tableName === 'debug_tests') {
+      return `debug_tests/${uid}/${id || 'test'}`;
+    }
+    return `${tableName}/${uid}${id ? `/${id}` : ''}`;
   }
-  if (tableName === 'debug_tests') {
-    return `users/${uid}/debug/${id || 'test'}`;
-  }
-  return `users/${uid}/${tableName}${id ? `/${id}` : ''}`;
-}
 
 function mapAuthError(error) {
   const code = String(error?.code || error?.name || '').toLowerCase();
