@@ -1,3 +1,4 @@
+import { useVoiceManager } from './hooks/useVoiceManager';
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { 
   Activity, ArrowUpRight, ArrowDownRight, DollarSign, CreditCard, 
