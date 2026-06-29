@@ -959,6 +959,7 @@ export default function VoiceExpenseTrackerPreview() {
   });
   const [dayBookToDate, setDayBookToDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [aiQuestion, setAiQuestion] = useState('');
+  const [activeActionMenuId, setActiveActionMenuId] = useState(null);
   const [aiAnswer, setAiAnswer] = useState('Ask about profit, loss, cash balance, party balance, or type a calculation.');
   const [activeTab, setActiveTab] = useState(() => {
     let hash = window.location.hash.slice(1);
@@ -5785,13 +5786,13 @@ export default function VoiceExpenseTrackerPreview() {
                             if (tags.length === 0) tags.push({ label: 'Retail', class: 'retail' });
                             
                             return (
-                              <tr key={party.id} onClick={() => setSelectedCrmCustomer(party)} style={{cursor: 'pointer'}}>
+                              <tr key={party?.id || Math.random()} onClick={() => setSelectedCrmCustomer(party)} style={{cursor: 'pointer'}}>
                                 <td>
                                   <div className="crm-customer-cell">
-                                    <div className="crm-avatar">{party.name.charAt(0).toUpperCase()}</div>
+                                    <div className="crm-avatar">{(party?.name || 'Unnamed').charAt(0).toUpperCase()}</div>
                                     <div>
                                       <div style={{ fontWeight: '600', color: 'var(--text-primary)', marginBottom: '4px' }}>
-                                          {party.name} <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 'normal', marginLeft: '4px' }}>#{party.id?.slice(0,4)}</span>
+                                          {party?.name || 'Unnamed'} <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 'normal', marginLeft: '4px' }}>#{party.id?.slice(0,4)}</span>
                                         </div>
                                         <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                                           {isDebtor ? 'Customer' : 'Supplier'} • Added: {party.createdAt ? new Date(party.createdAt).toLocaleDateString() : 'N/A'}
