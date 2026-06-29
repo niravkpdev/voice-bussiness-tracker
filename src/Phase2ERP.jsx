@@ -242,14 +242,30 @@ export default function Phase2ERP({
     () => invoices.filter((invoice) => (invoice.businessId || 'default') === activeBusinessId),
     [activeBusinessId, invoices]
   );
-  const scopedCustomers = useMemo(
-    () => customers.filter((customer) => (customer.businessId || 'default') === activeBusinessId),
-    [activeBusinessId, customers]
-  );
-  const scopedSuppliers = useMemo(
-    () => suppliers.filter((supplier) => (supplier.businessId || 'default') === activeBusinessId),
-    [activeBusinessId, suppliers]
-  );
+  const scopedCustomers = useMemo(() => {
+    const activeScope = activeBusinessId || 'default';
+    const filtered = customers.filter((customer) => {
+      const isOwner = customer.user_id === cloudUserId || customer.ownerUid === cloudUserId || customer.userId === cloudUserId;
+      if (cloudUserId && !isOwner) return false;
+
+      const customerCompanyId = customer.company_id || customer.businessId || customer.business_id || 'default';
+      if (!customer.company_id && customerCompanyId === 'default') return true;
+      return customerCompanyId === activeScope;
+    });
+    console.log('[CRM Filter] Customers before:', customers.length, 'After:', filtered.length, 'ActiveScope:', activeScope);
+    return filtered;
+  }, [activeBusinessId, customers, cloudUserId]);
+
+  const scopedSuppliers = useMemo(() => {
+    const activeScope = activeBusinessId || 'default';
+    return suppliers.filter((supplier) => {
+      const isOwner = supplier.user_id === cloudUserId || supplier.ownerUid === cloudUserId || supplier.userId === cloudUserId;
+      if (cloudUserId && !isOwner) return false;
+      const supplierCompanyId = supplier.company_id || supplier.businessId || supplier.business_id || 'default';
+      if (!supplier.company_id && supplierCompanyId === 'default') return true;
+      return supplierCompanyId === activeScope;
+    });
+  }, [activeBusinessId, suppliers, cloudUserId]);
 
   const invoiceTotals = useMemo(() => scopedInvoices.reduce(
     (summary, invoice) => {
@@ -677,7 +693,11 @@ export default function Phase2ERP({
     const person = {
       id,
       [isCustomer ? 'customerId' : 'supplierId']: id,
-      businessId: activeBusinessId,
+      businessId: activeBusinessId || 'default',
+      business_id: activeBusinessId || 'default',
+      company_id: activeBusinessId || null,
+      ownerUid: cloudUserId || '',
+      userId: cloudUserId || '',
       name,
       phone,
       mobile: phone,

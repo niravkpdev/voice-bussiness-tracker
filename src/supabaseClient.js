@@ -406,6 +406,11 @@ function rowToAppRecord(row, tableName) {
   }
   const data = row.data && typeof row.data === 'object' ? row.data : {};
   let normalized = { ...data };
+  
+  if (row.id) normalized.id = row.id;
+  if (row.user_id) normalized.user_id = row.user_id;
+  if (row.created_at) normalized.created_at = row.created_at;
+  if (row.updated_at) normalized.updated_at = row.updated_at;
 
   // Apply table-specific normalizations
   if (tableName === 'transactions') {
