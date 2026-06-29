@@ -810,6 +810,8 @@ function CircularHealthScore({ score }) {
   );
 }
 
+const checkLimit = (feature, currentCount, onSuccess) => { if (onSuccess) onSuccess(); return true; };
+
 export default function VoiceExpenseTrackerPreview() {
   const [authView, setAuthView] = useState(() => {
     if (isPasswordRecoveryRoute()) {
