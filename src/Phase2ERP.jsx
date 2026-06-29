@@ -252,7 +252,12 @@ export default function Phase2ERP({
       if (!customer.company_id && customerCompanyId === 'default') return true;
       return customerCompanyId === activeScope;
     });
-    console.log('[CRM Filter] Customers before:', customers.length, 'After:', filtered.length, 'ActiveScope:', activeScope);
+    console.log('[CRM Filter] activeBusinessId:', activeBusinessId, 'cloudUserId:', cloudUserId);
+    console.log('[CRM Filter] fetched customer count:', customers.length);
+    customers.forEach(c => {
+      console.log('[CRM Filter] customer ' + c.name + ' - company_id:', c.company_id, 'business_id:', c.businessId || c.business_id, 'ownerUid:', c.ownerUid);
+    });
+    console.log('[CRM Filter] mapped customer count / final displayed:', filtered.length);
     return filtered;
   }, [activeBusinessId, customers, cloudUserId]);
 

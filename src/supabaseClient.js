@@ -414,17 +414,21 @@ function rowToAppRecord(row, tableName) {
 
   // Apply table-specific normalizations
   if (tableName === 'transactions') {
-    normalized = normalizeTransaction(row);
-  } else if (tableName === 'customers') {
-    normalized = {
-      ...normalized,
-      name: normalized.name,
-      type: normalized.type,
-      group: normalized.group,
-      phone: normalized.phone || normalized.mobile || '',
-      balance: normalized.balance || normalized.opening_balance || 0,
-    };
-  } else if (tableName === 'invoices') {
+    normalized = normalizeTransaction(row);    } else if (tableName === 'customers') {
+      normalized = {
+        ...normalized,
+        name: data.name || data.customerName || data.partyName || "Unnamed",
+        type: data.type || "customer",
+        group: data.group || "Sundry Debtors",
+        phone: data.phone || data.mobile || "",
+        balance: Number(data.balance || data.opening_balance || 0),
+        company_id: data.company_id || null,
+        business_id: data.business_id || "default",
+        ownerUid: data.ownerUid || row.user_id,
+        createdAt: row.created_at,
+        raw: data
+      };
+    } else if (tableName === 'invoices') {
     normalized = {
       ...normalized,
       invoiceNo: normalized.invoice_number || normalized.invoiceNo,

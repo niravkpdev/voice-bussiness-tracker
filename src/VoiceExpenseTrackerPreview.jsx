@@ -4667,11 +4667,18 @@ export default function VoiceExpenseTrackerPreview() {
       </aside>
 
       <div className="workspace">
-        {(!profile?.setupCompleted && authUser?.mode !== 'demo') && (
+        {(!profile?.setupCompleted && authUser?.mode !== 'demo' && !profile?.workspaceSetupCompleted && !profile?.onboardingCompleted && (!cloudBusinesses || cloudBusinesses.length === 0)) && (
           <SetupWizard 
             profile={profile}
             onComplete={(didAddDemoData) => {
-              setProfile({...profile, setupCompleted: true});
+              const updatedProfile = {...profile, setupCompleted: true, onboardingCompleted: true, workspaceSetupCompleted: true};
+              setProfile(updatedProfile);
+              if (authUser?.uid) {
+                saveAuthenticatedCloudRecord('settings', 'profile', updatedProfile);
+                try {
+                  localStorage.setItem('TRINETR_PROFILE', JSON.stringify(updatedProfile));
+                } catch (e) {}
+              }
               if (didAddDemoData) {
                 // Since data was added to window.demoData, we can reload to apply it, or manually set state.
                 window.location.reload();
@@ -5417,16 +5424,23 @@ export default function VoiceExpenseTrackerPreview() {
                           Cash / Bank
                         </label>
                         <select
-                          id="voucher-cash"
-                          value={voucherCashId}
-                          onChange={(event) => setVoucherCashId(event.target.value)}
-                        >
-                          {cashLedgers.map((ledger) => (
-                            <option key={ledger.id} value={ledger.id}>
-                              {ledger.name}
-                            </option>
-                          ))}
-                        </select>
+                            id="voucher-cash"
+                            className="saas-input"
+                            style={{ backgroundColor: '#fff', color: '#111827', zIndex: 10, minHeight: '44px', width: '100%', appearance: 'auto' }}
+                            value={voucherCashId || 'ledger-cash'}
+                            onChange={(event) => setVoucherCashId(event.target.value)}
+                          >
+                            {cashLedgers.length > 0 ? cashLedgers.map((ledger) => (
+                              <option key={ledger.id} value={ledger.id}>
+                                {ledger.name}
+                              </option>
+                            )) : (
+                              <>
+                                <option value="ledger-cash">Cash</option>
+                                <option value="ledger-bank">Bank</option>
+                              </>
+                            )}
+                          </select>
                       </div>
                     )}
                     {voucherType === 'Receipt' ? (
@@ -5729,7 +5743,7 @@ export default function VoiceExpenseTrackerPreview() {
                         </tr>
                       </thead>
                       <tbody>
-                        {partySummary.length === 0 ? (
+                        {([...(cloudCustomers || []), ...(cloudSuppliers || [])]).length === 0 ? (
                           <tr>
                             <td colSpan={6} style={{ padding: '60px 20px', textAlign: 'center' }}>
                               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
@@ -5745,9 +5759,9 @@ export default function VoiceExpenseTrackerPreview() {
                             </td>
                           </tr>
                         ) : (
-                          partySummary.map((party, i) => {
-                            const isDebtor = party.group === 'Sundry Debtors';
-                            const balance = party.outstandingAmount;
+                            ([...(cloudCustomers || []), ...(cloudSuppliers || [])]).map((party, i) => {
+                              const isDebtor = party.group === 'Sundry Debtors';
+                              const balance = party.balance || party.outstandingAmount || 0;
                             // Mock CRM tags for demonstration
                             const tags = [];
                             if (party.totalSales > 50000) tags.push({ label: 'VIP', class: 'vip' });
