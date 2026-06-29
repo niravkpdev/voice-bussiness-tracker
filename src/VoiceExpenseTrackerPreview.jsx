@@ -987,7 +987,6 @@ export default function VoiceExpenseTrackerPreview() {
   });
   const [dayBookToDate, setDayBookToDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [aiQuestion, setAiQuestion] = useState('');
-  const { state, waveRef, startListening, stopListening, error } = useVoiceManager();
 
   const [activeActionMenuId, setActiveActionMenuId] = useState(null);
   const [aiAnswer, setAiAnswer] = useState('Ask about profit, loss, cash balance, party balance, or type a calculation.');
@@ -997,6 +996,12 @@ export default function VoiceExpenseTrackerPreview() {
     return APP_TABS.includes(hash) ? hash : 'dashboard';
   });
   const [voiceConfirmation, setVoiceConfirmation] = useState(null);
+
+  const { state, waveRef, startListening, stopListening, error } = useVoiceManager({
+    activeBusinessId: authUser?.businessId || 'default',
+    onCommandParsed: (parsed) => setVoiceConfirmation(parsed)
+  });
+
   const [activeReportTab, setActiveReportTab] = useState('pnl');
   const [openSidebarSections, setOpenSidebarSections] = useState({
     overview: true,
@@ -7052,7 +7057,6 @@ export default function VoiceExpenseTrackerPreview() {
               stopListening();
             } else {
               startListening();
-              startVoiceRecognition();
             }
           }}
           type="button"

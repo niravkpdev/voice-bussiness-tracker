@@ -1,6 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { encodeWAV, sendVoiceToAI } from '../services/voiceProcessing';
+
 
 export type VoiceState = 'idle' | 'listening' | 'processing' | 'success' | 'error';
+
+interface UseVoiceManagerProps {
+  activeBusinessId: string;
+  onCommandParsed?: (parsedData: any) => void;
+}
 
 interface UseVoiceManagerResult {
   state: VoiceState;
@@ -10,7 +17,7 @@ interface UseVoiceManagerResult {
   error: string | null;
 }
 
-export function useVoiceManager(): UseVoiceManagerResult {
+export function useVoiceManager(props: UseVoiceManagerProps): UseVoiceManagerResult {
   const [state, setState] = useState<VoiceState>('idle');
   const [error, setError] = useState<string | null>(null);
 
@@ -62,9 +69,13 @@ export function useVoiceManager(): UseVoiceManagerResult {
     }
   }, []);
 
-  const stopListening = useCallback(async () => {
+  const stopListening = useCallback(() => {
     setState((prev) => (prev === 'listening' ? 'processing' : prev));
-    await cleanupAudioGraph();
+    if (workletNodeRef.current) {
+      workletNodeRef.current.port.postMessage({ command: 'STOP_RECORDING' });
+    } else {
+      cleanupAudioGraph();
+    }
   }, [cleanupAudioGraph]);
 
   const startListening = useCallback(async () => {
@@ -101,7 +112,29 @@ export function useVoiceManager(): UseVoiceManagerResult {
         await audioCtx.resume();
       }
 
-      workletNode.port.onmessage = (event: MessageEvent<{ volume: number }>) => {
+      workletNode.port.onmessage = async (event: MessageEvent<any>) => {
+        if (event.data.type === 'AUDIO_DATA') {
+          try {
+            const chunks = event.data.data;
+            const sampleRate = audioCtxRef.current?.sampleRate || 44100;
+            const audioBlob = encodeWAV(chunks, sampleRate);
+            
+            // Edge Function Call
+            const parsedResponse = await sendVoiceToAI(audioBlob, props.activeBusinessId);
+            
+            setState('success');
+            if (props.onCommandParsed) {
+              props.onCommandParsed(parsedResponse);
+            }
+          } catch (err: any) {
+            console.error('AI Processing Failed:', err);
+            setError(err.message || 'Failed to parse voice command');
+            setState('error');
+          }
+          await cleanupAudioGraph();
+          return;
+        }
+        
         const { volume } = event.data;
         
         if (waveRef.current && audioCtxRef.current?.state === 'running') {
