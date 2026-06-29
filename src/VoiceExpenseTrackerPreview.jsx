@@ -812,6 +812,8 @@ function CircularHealthScore({ score }) {
 
 const checkLimit = (feature, currentCount, onSuccess) => { if (onSuccess) onSuccess(); return true; };
 
+const trackEvent = typeof window !== 'undefined' && window.trackEvent ? window.trackEvent : (() => {});
+
 export default function VoiceExpenseTrackerPreview() {
   const [authView, setAuthView] = useState(() => {
     if (isPasswordRecoveryRoute()) {
@@ -1456,28 +1458,9 @@ export default function VoiceExpenseTrackerPreview() {
         const message = `Supabase table load failed for ${firstFailure.tableName}. Run the latest supabase-schema.sql and refresh.`;
         setSecureError(message);
         setStatus(message);
-        setCloudCustomers([]);
-        setCloudSuppliers([]);
-        setCloudInventory([]);
-        setCloudStockTransactions([]);
-        setCloudInvoices([]);
-        setCloudOrders([]);
-        setCloudEmployees([]);
-        setCloudAttendance([]);
-        setCloudLeaveBalances([]);
-        setCloudLeaveRequests([]);
-        setCloudHolidays([]);
-        setCloudSalaryHistory([]);
-        setCloudPayslips([]);
-        setCloudEmployeeDocuments([]);
-        setCloudPayments([]);
-        setCloudAuditLogs([]);
-        setCloudSubscription(null);
-        setCloudSecurity(null);
-        setCloudDevices([]);
-        setCloudOfflineQueue([]);
-        setCloudBusinesses([]);
-        setCloudNotifications([]);
+        if (typeof trackEvent === 'function') {
+          trackEvent('SUPABASE_LOAD_FAILURE', { table: firstFailure.tableName });
+        }
       }
       cloudTransactions = transactionsResult.ok ? transactions : null;
       cloudProfile = profileSettingsResult.ok ? profileSettingsResult.profileRows : null;
