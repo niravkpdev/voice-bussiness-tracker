@@ -825,6 +825,33 @@ const safeTrackEvent = (...args) => {
 const trackEvent = safeTrackEvent;
 
 export default function VoiceExpenseTrackerPreview() {
+  // Auto-complete setup to prevent modals from showing
+  if (typeof window !== 'undefined') {
+    if (!localStorage.getItem('workspaceSetupCompleted')) {
+      localStorage.setItem('workspaceSetupCompleted', 'true');
+      localStorage.setItem('onboardingCompleted', 'true');
+      localStorage.setItem('setupCompleted', 'true');
+      try {
+        // Attempt to update settings table if possible but don't block
+        const safeSave = async () => {
+          if (window.supabase) {
+            const { data: { session } } = await window.supabase.auth.getSession();
+            if (session?.user) {
+              await window.supabase.from('settings').upsert({
+                user_id: session.user.id,
+                data: { workspaceSetupCompleted: true, onboardingCompleted: true, setupCompleted: true },
+                updated_at: new Date().toISOString()
+              });
+            }
+          }
+        };
+        safeSave();
+      } catch (e) {
+        console.warn('Silent settings update failed', e);
+      }
+    }
+  }
+
   const [authView, setAuthView] = useState(() => {
     if (isPasswordRecoveryRoute()) {
       return 'new-password';
@@ -4682,7 +4709,7 @@ export default function VoiceExpenseTrackerPreview() {
       </aside>
 
       <div className="workspace">
-        {(!profile?.setupCompleted && authUser?.mode !== 'demo' && !profile?.workspaceSetupCompleted && !profile?.onboardingCompleted && (!cloudBusinesses || cloudBusinesses.length === 0)) && (
+        {false && (
           <SetupWizard 
             profile={profile}
             onComplete={(didAddDemoData) => {
@@ -4828,15 +4855,7 @@ export default function VoiceExpenseTrackerPreview() {
             <section className="erp-dashboard fade-in" id="dashboard" style={{ padding: '24px 0', display: 'flex', flexDirection: 'column', gap: '32px' }}>
               
               {/* Dashboard Header */}
-              <OnboardingChecklist 
-                customers={cloudCustomers}
-                inventory={cloudInventory}
-                employees={cloudEmployees}
-                invoices={cloudInvoices}
-                payments={cloudPayments}
-                profile={profile}
-                setActiveTab={setActiveTab}
-              />
+              {/* Dashboard Setup Guide removed per request */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
                 <div>
                   <h1 style={{ fontSize: '28px', fontWeight: '700', letterSpacing: '-0.02em', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '12px' }}>
