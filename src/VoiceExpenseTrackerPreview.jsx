@@ -1273,7 +1273,7 @@ export default function VoiceExpenseTrackerPreview() {
           salaryHistoryResult,
           payslipsResult,
           employeeDocumentsResult,
-        ] = await Promise.all([
+        ] = (await Promise.allSettled([
           loadEmployeeCollection('employees'),
           loadEmployeeCollection('attendance'),
           loadEmployeeCollection('leave_balances'),
@@ -1282,7 +1282,7 @@ export default function VoiceExpenseTrackerPreview() {
           loadEmployeeCollection('salary_history'),
           loadEmployeeCollection('payslips'),
           loadEmployeeCollection('employee_documents'),
-        ]);
+        ])).map(res => res.status === 'fulfilled' ? res.value : { ok: false, rows: [] });
         setCloudEmployees(employeesResult.ok ? employeesResult.rows : []);
         setCloudAttendance(attendanceResult.ok ? attendanceResult.rows : []);
         setCloudLeaveBalances(leaveBalancesResult.ok ? leaveBalancesResult.rows : []);
@@ -1377,7 +1377,7 @@ export default function VoiceExpenseTrackerPreview() {
         businessesResult,
         notificationsResult,
         profileSettingsResult,
-      ] = await Promise.all([
+      ] = (await Promise.allSettled([
         loadModuleCollection('transactions'),
         loadModuleCollection('customers'),
         loadModuleCollection('suppliers'),
@@ -1402,7 +1402,7 @@ export default function VoiceExpenseTrackerPreview() {
         loadModuleCollection('businesses'),
         loadModuleCollection('notifications'),
         loadProfileSettings(),
-      ]);
+      ])).map(res => res.status === 'fulfilled' ? res.value : { ok: false, rows: [] });
       const transactions = transactionsResult.ok ? transactionsResult.rows : [];
       const customers = customersResult.ok ? customersResult.rows : [];
       const suppliers = suppliersResult.ok ? suppliersResult.rows : [];
@@ -3088,85 +3088,61 @@ export default function VoiceExpenseTrackerPreview() {
       return;
     }
 
-    try {
-      let savedVoucher = null;
-      if (editingVoucher) {
-        const voucher = buildEditedVoucher({
-          type: voucherType,
-          amount,
-          narration,
-          date: voucherDate,
-        });
-        savedVoucher = await persistVoucher(voucher) ? voucher : null;
-      } else if (voucherType === 'Receipt') {
-        const creditLedgerId = useSalesInsteadOfParty
-          ? SALES_LEDGER_ID
-          : voucherPartyId || SALES_LEDGER_ID;
+    let selectedLedgerId = "ledger-sales";
+    if (voucherType === 'Receipt' || voucherType === 'Sales') {
+      selectedLedgerId = useSalesInsteadOfParty ? SALES_LEDGER_ID : (voucherPartyId || SALES_LEDGER_ID);
+    } else if (voucherType === 'Payment' || voucherType === 'Purchase') {
+      selectedLedgerId = useExpenseInsteadOfSupplier ? (voucherExpenseId || MATERIAL_LEDGER_ID) : (voucherPartyId || voucherExpenseId || MATERIAL_LEDGER_ID);
+    }
 
-        savedVoucher = await saveReceiptOrPayment({
-          type: 'Receipt',
-          amount,
-          narration,
-          cashLedgerId: voucherCashId,
-          counterLedgerId: creditLedgerId,
-          source: 'manual',
-          date: voucherDate,
-        });
-      } else if (voucherType === 'Payment') {
-        const debitLedgerId = useExpenseInsteadOfSupplier
-          ? voucherExpenseId
-          : voucherPartyId || voucherExpenseId;
-
-        savedVoucher = await saveReceiptOrPayment({
-          type: 'Payment',
-          amount,
-          narration,
-          cashLedgerId: voucherCashId,
-          counterLedgerId: debitLedgerId,
-          source: 'manual',
-          date: voucherDate,
-        });
-      } else if (voucherType === 'Sales') {
-        if (!voucherPartyId || useSalesInsteadOfParty) {
-          setStatus('Select a customer party for credit sale');
-          return;
+    const voucherId = `vch-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+    const newVoucherData = {
+      id: voucherId,
+      transactionId: voucherId,
+      type: voucherType || "Receipt",
+      date: voucherDate,
+      amount: Number(amount),
+      narration: narration,
+      source: "dashboard",
+      userId: authUser?.uid || 'guest',
+      ownerUid: authUser?.uid || 'guest',
+      lines: [
+        {
+          ledgerId: voucherCashId || "ledger-cash",
+          debit: (voucherType === 'Receipt' || voucherType === 'Sales') ? Number(amount) : 0,
+          credit: (voucherType === 'Payment' || voucherType === 'Purchase') ? Number(amount) : 0
+        },
+        {
+          ledgerId: selectedLedgerId,
+          debit: (voucherType === 'Payment' || voucherType === 'Purchase') ? Number(amount) : 0,
+          credit: (voucherType === 'Receipt' || voucherType === 'Sales') ? Number(amount) : 0
         }
+      ],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
 
-        const voucher = createVoucher({
-          type: 'Sales',
-          amount,
-          narration,
-          lines: buildCreditSaleLines(amount, voucherPartyId, SALES_LEDGER_ID),
-          source: 'manual',
-          date: voucherDate,
-        });
-        savedVoucher = await persistVoucher(voucher) ? voucher : null;
-      } else if (voucherType === 'Purchase') {
-        if (!voucherPartyId || useExpenseInsteadOfSupplier) {
-          setStatus('Select a supplier party for credit purchase');
-          return;
-        }
+    if (supabaseEnabled && authUser?.uid) {
+      const { error } = await supabase.from("transactions").insert({
+        id: voucherId,
+        user_id: authUser.uid,
+        data: newVoucherData
+      });
 
-        const voucher = createVoucher({
-          type: 'Purchase',
-          amount,
-          narration,
-          lines: buildCreditPurchaseLines(amount, voucherExpenseId || MATERIAL_LEDGER_ID, voucherPartyId),
-          source: 'manual',
-          date: voucherDate,
-        });
-        savedVoucher = await persistVoucher(voucher) ? voucher : null;
-      }
-
-      if (!savedVoucher) {
+      if (error) {
+        console.error("Voucher insert error", error);
+        setSecureError(`Supabase Error: ${error.message}`);
         return;
       }
-      setVoucherAmount('');
-      setVoucherNarration('');
-      setEditingVoucher(null);
-    } catch (error) {
-      setStatus(error.message);
     }
+
+    saveVoucher(newVoucherData);
+    await refreshVouchers();
+
+    setVoucherAmount('');
+    setVoucherNarration('');
+    setEditingVoucher(null);
+    setStatus('Saved successfully');
   };  const handleSaveVoiceConfirmation = async (confirmedData) => {
     if (!requireSensitiveAccess('voice saving')) {
       return;

@@ -410,6 +410,15 @@ function rowToAppRecord(row, tableName) {
   // Apply table-specific normalizations
   if (tableName === 'transactions') {
     normalized = normalizeTransaction(row);
+  } else if (tableName === 'customers') {
+    normalized = {
+      ...normalized,
+      name: normalized.name,
+      type: normalized.type,
+      group: normalized.group,
+      phone: normalized.phone || normalized.mobile || '',
+      balance: normalized.balance || normalized.opening_balance || 0,
+    };
   } else if (tableName === 'invoices') {
     normalized = {
       ...normalized,
