@@ -354,6 +354,52 @@ function redactAuthResponse(value) {
   }));
 }
 
+export function normalizeTransaction(row) {
+  if (!row) return null;
+  const data = row.data && typeof row.data === 'object' ? row.data : {};
+  
+  // Base fields from JSONB data
+  const id = data.id || row.id;
+  const date = data.date || row.created_at?.slice(0, 10) || new Date().toISOString().slice(0, 10);
+  const type = data.voucher_type || data.type || 'Journal'; // Use voucher_type if 'type' was overwritten as 'voucher'
+  const amount = Number(data.amount || 0);
+  const narration = data.narration || '';
+  const lines = Array.isArray(data.lines) ? data.lines : [];
+  
+  // Extract ledger details from lines if available, fallback to legacy schema fields
+  const debitLine = lines.find((l) => Number(l.debit) > 0) || {};
+  const creditLine = lines.find((l) => Number(l.credit) > 0) || {};
+  
+  const debitLedgerId = debitLine.ledgerId || data.debit_account || '';
+  const creditLedgerId = creditLine.ledgerId || data.credit_account || '';
+  const debitAmount = Number(debitLine.debit || 0);
+  const creditAmount = Number(creditLine.credit || 0);
+  
+  // Fallback names (will be fully resolved in the UI when cross-referencing ledgers array)
+  const debitLedgerName = data.display_debit_account || '';
+  const creditLedgerName = data.display_credit_account || '';
+  const partyLedgerId = data.party_id || (type === 'Receipt' ? creditLedgerId : type === 'Payment' ? debitLedgerId : '');
+  const partyName = data.party_name || '';
+
+  return {
+    ...data, // Keep original fields for backward compatibility
+    id,
+    date,
+    type,
+    amount,
+    narration,
+    lines,
+    debitLedgerId,
+    creditLedgerId,
+    debitLedgerName,
+    creditLedgerName,
+    partyLedgerId,
+    partyName,
+    debitAmount,
+    creditAmount
+  };
+}
+
 function rowToAppRecord(row, tableName) {
   if (!row) {
     return null;
@@ -363,31 +409,20 @@ function rowToAppRecord(row, tableName) {
 
   // Apply table-specific normalizations
   if (tableName === 'transactions') {
-    normalized = {
-      ...normalized,
-      type: normalized.type || normalized.voucher_type || 'Journal',
-      date: normalized.date || row.created_at?.slice(0, 10),
-      amount: normalized.amount !== undefined ? normalized.amount : (normalized.lines?.[0]?.debit || 0),
-      narration: normalized.narration || '',
-      debitLedgerId: normalized.debit_account || normalized.lines?.find((l) => l.debit > 0)?.ledgerId || '',
-      creditLedgerId: normalized.credit_account || normalized.lines?.find((l) => l.credit > 0)?.ledgerId || '',
-      partyLedgerId: normalized.party_id || '',
-      partyName: normalized.party_name || '',
-    };
+    normalized = normalizeTransaction(row);
   } else if (tableName === 'invoices') {
     normalized = {
       ...normalized,
       invoiceNo: normalized.invoice_number || normalized.invoiceNo,
       customerName: normalized.customer_name || normalized.customerName,
       customerId: normalized.customer_id || normalized.customerId,
-      taxable: normalized.subtotal || normalized.taxable || 0,
-      gstTotal: normalized.tax || normalized.gstTotal || 0,
-      total: normalized.total !== undefined ? normalized.total : 0,
-      paid: normalized.paid_amount || normalized.paid || 0,
-      balance: normalized.balance_due !== undefined ? normalized.balance_due : normalized.balance,
-      dueDate: normalized.due_date || normalized.dueDate,
-      date: normalized.invoice_date || normalized.date,
-      lines: normalized.items || normalized.lines || [],
+      taxable: Number(normalized.subtotal || normalized.taxable || 0),
+      gstTotal: Number(normalized.tax || normalized.gstTotal || 0),
+      total: normalized.total !== undefined ? Number(normalized.total) : 0,
+      paid: Number(normalized.paid_amount || normalized.paid || 0),
+      balance: normalized.balance_due !== undefined ? Number(normalized.balance_due) : Number(normalized.balance || 0),
+      dueDate: normalized.due_date || normalized.dueDate || '',
+      lines: Array.isArray(normalized.items) ? normalized.items : (Array.isArray(normalized.lines) ? normalized.lines : []),
       terms: normalized.notes || normalized.terms || '',
     };
   } else if (tableName === 'orders') {

@@ -84,6 +84,7 @@ import {
   uploadHrmsDocument,
   removeCompanyMember,
   employeeChangePassword,
+  normalizeTransaction,
 } from './supabaseClient.js';
 import {
   canRunRateLimitedAction,
@@ -1567,7 +1568,7 @@ export default function VoiceExpenseTrackerPreview() {
     switch (collectionName) {
       case 'transactions':
         setVouchers((items) => sortVouchersNewestFirst([
-          { ...data, id },
+          normalizeTransaction({ data: { ...data, id } }) || { ...data, id },
           ...(items || []).filter((item) => item.id !== id),
         ]));
         break;
