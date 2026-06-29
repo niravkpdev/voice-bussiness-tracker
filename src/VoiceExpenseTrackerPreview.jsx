@@ -986,6 +986,8 @@ export default function VoiceExpenseTrackerPreview() {
   });
   const [dayBookToDate, setDayBookToDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [aiQuestion, setAiQuestion] = useState('');
+  const { state, waveRef, startListening, stopListening, error } = useVoiceManager();
+
   const [activeActionMenuId, setActiveActionMenuId] = useState(null);
   const [aiAnswer, setAiAnswer] = useState('Ask about profit, loss, cash balance, party balance, or type a calculation.');
   const [activeTab, setActiveTab] = useState(() => {
@@ -7029,16 +7031,44 @@ export default function VoiceExpenseTrackerPreview() {
         <a className={activeTab === 'profile-settings' ? 'active' : ''} href="#profile-settings">Profile</a>
       </nav>
 
-      {/* Floating Microphone Action Button */}
-      <button 
-        className={`floating-mic-btn ${status === 'Listening...' ? 'listening' : ''}`}
-        onClick={startVoiceRecognition}
-        type="button"
-        title="Click to record transactions"
-      >
-        <span className="mic-icon">🎤</span>
-        {status === 'Listening...' && <span className="pulse-ring"></span>}
-      </button>
+      {/* High-Performance Voice Manager Widget */}
+      <div className="voice-manager-widget" style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 1000, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+        {state === 'idle' && (
+          <div className="voice-prompt" style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+            Tap mic to speak
+          </div>
+        )}
+        {state === 'error' && (
+          <div className="voice-error" style={{ color: 'red', background: 'var(--bg-secondary)', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+            {error || 'Error accessing microphone'}
+          </div>
+        )}
+        <button 
+          className="floating-mic-btn"
+          disabled={state === 'processing'}
+          onClick={() => {
+            if (state === 'listening') {
+              stopListening();
+            } else {
+              startListening();
+              startVoiceRecognition();
+            }
+          }}
+          type="button"
+          style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'var(--primary-color)', color: 'white', border: 'none', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 12px rgba(37, 99, 235, 0.4)', cursor: state === 'processing' ? 'not-allowed' : 'pointer', position: 'relative' }}
+        >
+          {state === 'idle' && <span className="mic-icon" style={{ fontSize: '24px' }}>🎤</span>}
+          {state === 'listening' && (
+            <div 
+              ref={waveRef} 
+              style={{ width: '20px', height: '4px', background: 'white', borderRadius: '2px', transition: 'transform 0.05s ease-out', transformOrigin: 'center' }} 
+            />
+          )}
+          {state === 'processing' && (
+            <div className="spinner" style={{ width: '24px', height: '24px', border: '3px solid rgba(255,255,255,0.3)', borderTop: '3px solid white', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+          )}
+        </button>
+      </div>
 
       {/* Confirmation Modal Popup backdrop */}
       {voiceConfirmation && (
