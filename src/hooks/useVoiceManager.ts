@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { encodeWAV, sendVoiceToAI } from '../services/voiceProcessing';
-
+import { getSupabaseClient } from '../supabaseClient';
 
 export type VoiceState = 'idle' | 'listening' | 'processing' | 'success' | 'error';
 
@@ -20,160 +19,116 @@ interface UseVoiceManagerResult {
 export function useVoiceManager(props: UseVoiceManagerProps): UseVoiceManagerResult {
   const [state, setState] = useState<VoiceState>('idle');
   const [error, setError] = useState<string | null>(null);
-
   const waveRef = useRef<HTMLDivElement | null>(null);
-
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const workletNodeRef = useRef<AudioWorkletNode | null>(null);
-  const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
-
-  const cleanupAudioGraph = useCallback(async () => {
-    if (workletNodeRef.current) {
-      try {
-        workletNodeRef.current.port.close();
-        workletNodeRef.current.disconnect();
-      } catch (e) {
-        console.warn('Error releasing worklet node resources', e);
-      }
-      workletNodeRef.current = null;
-    }
-
-    if (sourceNodeRef.current) {
-      try {
-        sourceNodeRef.current.disconnect();
-      } catch (e) {
-        console.warn('Error disconnecting audio source node', e);
-      }
-      sourceNodeRef.current = null;
-    }
-
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-
-    if (audioCtxRef.current) {
-      if (audioCtxRef.current.state !== 'closed') {
-        try {
-          await audioCtxRef.current.close();
-        } catch (e) {
-          console.warn('Error closing AudioContext gracefully', e);
-        }
-      }
-      audioCtxRef.current = null;
-    }
-
-    if (waveRef.current) {
-      waveRef.current.style.transform = 'scaleY(1)';
-    }
-  }, []);
+  const recognitionRef = useRef<any>(null);
 
   const stopListening = useCallback(() => {
     setState((prev) => (prev === 'listening' ? 'processing' : prev));
-    if (workletNodeRef.current) {
-      workletNodeRef.current.port.postMessage({ command: 'STOP_RECORDING' });
-    } else {
-      cleanupAudioGraph();
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
     }
-  }, [cleanupAudioGraph]);
+  }, []);
 
   const startListening = useCallback(async () => {
     try {
       setError(null);
       setState('listening');
 
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContextClass) {
-        throw new Error('Web Audio API is not supported in this browser.');
-      }
-      
-      const audioCtx = new AudioContextClass();
-      audioCtxRef.current = audioCtx;
-
-      await audioCtx.audioWorklet.addModule('/processor.js');
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      });
-      streamRef.current = stream;
-
-      const source = audioCtx.createMediaStreamSource(stream);
-      sourceNodeRef.current = source;
-
-      const workletNode = new AudioWorkletNode(audioCtx, 'voice-processor');
-      workletNodeRef.current = workletNode;
-
-      if (audioCtx.state === 'suspended') {
-        await audioCtx.resume();
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        throw new Error('Voice recognition is not supported in this browser.');
       }
 
-      workletNode.port.onmessage = async (event: MessageEvent<any>) => {
-        if (event.data.type === 'AUDIO_DATA') {
-          try {
-            const chunks = event.data.data;
-            if (!chunks || chunks.length === 0) {
-              setState('idle');
-              setError('Please enter a command first.');
-              cleanupAudioGraph();
-              return;
-            }
-            const sampleRate = audioCtxRef.current?.sampleRate || 44100;
-            const audioBlob = encodeWAV(chunks, sampleRate);
-            
-            // Edge Function Call
-            const parsedResponse = await sendVoiceToAI(audioBlob, props.activeBusinessId);
-            
-            setState('success');
-            if (props.onCommandParsed) {
-              props.onCommandParsed(parsedResponse);
-            }
-          } catch (err: any) {
-            console.error('AI Processing Failed', err);
-            setError('AI service is currently unavailable.');
-            setState('error');
-            setTimeout(() => {
-              setState('idle');
-              setError(null);
-            }, 4000);
-          }
-          await cleanupAudioGraph();
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'en-IN';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      recognitionRef.current = recognition;
+
+      recognition.onstart = () => {
+        if (waveRef.current) waveRef.current.style.transform = 'scaleY(2)';
+      };
+
+      recognition.onresult = async (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        const cleanTranscript = String(transcript || "").trim();
+
+        if (waveRef.current) waveRef.current.style.transform = 'scaleY(1)';
+        setState('processing');
+
+        if (!cleanTranscript) {
+          console.warn("Voice command skipped: empty transcript");
+          setError("Please speak or enter a command first.");
+          setState('idle');
           return;
         }
-        
-        const { volume } = event.data;
-        
-        if (waveRef.current && audioCtxRef.current?.state === 'running') {
-          const scaleFactor = 1 + volume * 10; 
-          
-          requestAnimationFrame(() => {
-            if (waveRef.current) {
-              waveRef.current.style.transform = `scaleY(${Math.min(scaleFactor, 3)})`;
-            }
-          });
+
+        const payload = {
+          transcript: cleanTranscript,
+          command: cleanTranscript,
+          text: cleanTranscript,
+          userId: null,
+          businessId: props.activeBusinessId || "default",
+          source: "voice-manager",
+          timestamp: new Date().toISOString()
+        };
+
+        console.log("parse-voice-command payload:", payload);
+
+        const supabase = getSupabaseClient();
+        const { data, error } = await supabase.functions.invoke("parse-voice-command", {
+          body: payload
+        });
+
+        if (error) {
+          console.error("parse-voice-command failed:", { error, payload });
+          setError("AI service is currently unavailable.");
+          setState('error');
+          setTimeout(() => {
+            setState('idle');
+            setError(null);
+          }, 4000);
+          return;
+        }
+
+        setState('success');
+        if (props.onCommandParsed) {
+          props.onCommandParsed(data);
         }
       };
 
-      source.connect(workletNode);
-      workletNode.connect(audioCtx.destination);
+      recognition.onerror = (event: any) => {
+        console.error('Speech recognition error', event.error);
+        if (event.error !== 'aborted') {
+          setError(`Microphone error: ${event.error}`);
+          setState('error');
+        }
+        if (waveRef.current) waveRef.current.style.transform = 'scaleY(1)';
+      };
+
+      recognition.onend = () => {
+        if (state === 'listening') {
+          setState('idle');
+        }
+        if (waveRef.current) waveRef.current.style.transform = 'scaleY(1)';
+      };
+
+      recognition.start();
 
     } catch (err: any) {
       console.error('Microphone initialization failed:', err);
       setError(err.message || 'Failed to initialize microphone');
       setState('error');
-      await cleanupAudioGraph();
     }
-  }, [cleanupAudioGraph]);
+  }, [props.activeBusinessId, props.onCommandParsed, state]);
 
   useEffect(() => {
     return () => {
-      cleanupAudioGraph();
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
     };
-  }, [cleanupAudioGraph]);
+  }, []);
 
   return {
     state,
