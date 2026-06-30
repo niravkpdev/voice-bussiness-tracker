@@ -15,6 +15,20 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const input = body.transcript || body.command || body.text || body.message || "";
     const businessId = body.businessId || "default";
+    const userId = body.userId;
+
+    if (!userId) {
+      return new Response(
+        JSON.stringify({
+          error: "Missing userId",
+          received: body
+        }),
+        {
+          status: 422,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
 
     if (!String(input).trim()) {
       return new Response(
