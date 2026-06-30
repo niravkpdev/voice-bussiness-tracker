@@ -12,12 +12,22 @@ serve(async (req) => {
   }
 
   try {
-    const formData = await req.formData()
+    let formData;
+    try {
+      formData = await req.formData()
+    } catch (formError) {
+      console.error('Failed to parse form data:', formError)
+      return new Response(JSON.stringify({ error: 'Failed to read multipart/form-data payload', details: formError.message }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
     const audioFile = formData.get('audio')
     const businessId = formData.get('businessId')
 
     if (!audioFile) {
-      return new Response(JSON.stringify({ error: 'No audio file provided' }), {
+      return new Response(JSON.stringify({ error: 'No audio file provided in form data' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
@@ -25,36 +35,49 @@ serve(async (req) => {
 
     const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')
     if (!OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY is not set in environment variables.')
+      return new Response(JSON.stringify({ error: 'Server configuration error: Missing OPENAI_API_KEY secret.' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
+    let transcript = '';
+    
     // Step 1: Transcribe audio using Whisper
-    const whisperFormData = new FormData()
-    whisperFormData.append('file', audioFile, 'voice-command.wav')
-    whisperFormData.append('model', 'whisper-1')
-    whisperFormData.append('language', 'en')
+    try {
+      const whisperFormData = new FormData()
+      whisperFormData.append('file', audioFile, 'voice-command.wav')
+      whisperFormData.append('model', 'whisper-1')
+      whisperFormData.append('language', 'en')
 
-    const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
-      },
-      body: whisperFormData,
-    })
+      const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${OPENAI_API_KEY}`
+        },
+        body: whisperFormData,
+      })
 
-    if (!whisperResponse.ok) {
-      const errorText = await whisperResponse.text()
-      console.error('Whisper API Error:', errorText)
-      throw new Error(`Whisper API failed: ${whisperResponse.status}`)
+      if (!whisperResponse.ok) {
+        const errorText = await whisperResponse.text()
+        console.error('Whisper API Error:', errorText)
+        throw new Error(`Whisper API failed with status ${whisperResponse.status}: ${errorText}`)
+      }
+
+      const whisperData = await whisperResponse.json()
+      transcript = whisperData.text
+      console.log('Transcript:', transcript)
+    } catch (whisperError) {
+      console.error('Whisper step failed:', whisperError)
+      return new Response(JSON.stringify({ error: 'Failed to transcribe audio via OpenAI Whisper.', details: whisperError.message }), {
+        status: 502,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
-
-    const whisperData = await whisperResponse.json()
-    const transcript = whisperData.text
-
-    console.log('Transcript:', transcript)
 
     // Step 2: Parse intent using GPT
-    const systemPrompt = `You are a highly intelligent accounting assistant. Parse the following transcript into a structured JSON ledger entry.
+    try {
+      const systemPrompt = `You are a highly intelligent accounting assistant. Parse the following transcript into a structured JSON ledger entry.
 The user is dictating a business transaction (expense or income).
 Output ONLY valid JSON.
 Schema:
@@ -66,7 +89,7 @@ Schema:
   "customer": string,
   "date": "YYYY-MM-DD",
   "narration": string,
-  "confidence": number (0.0 to 1.0),
+  "confidence": number,
   "unclear": boolean
 }
 Rules:
@@ -76,42 +99,50 @@ Rules:
 - "unclear" is true if you cannot confidently determine the amount or party.
 `
 
-    const gptResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: transcript }
-        ],
-        temperature: 0,
-        response_format: { type: "json_object" }
+      const gptResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: transcript }
+          ],
+          temperature: 0,
+          response_format: { type: "json_object" }
+        })
       })
-    })
 
-    if (!gptResponse.ok) {
-      const errorText = await gptResponse.text()
-      console.error('GPT API Error:', errorText)
-      throw new Error(`GPT API failed: ${gptResponse.status}`)
+      if (!gptResponse.ok) {
+        const errorText = await gptResponse.text()
+        console.error('GPT API Error:', errorText)
+        throw new Error(`GPT API failed with status ${gptResponse.status}: ${errorText}`)
+      }
+
+      const gptData = await gptResponse.json()
+      const parsedIntent = JSON.parse(gptData.choices[0].message.content)
+
+      // Inject transcript into response for UI display
+      parsedIntent.transcript = transcript
+      if (parsedIntent.confidence === undefined) parsedIntent.confidence = 0.95
+
+      return new Response(JSON.stringify(parsedIntent), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    } catch (gptError) {
+      console.error('GPT parsing failed:', gptError)
+      return new Response(JSON.stringify({ error: 'Failed to extract JSON intent via GPT-4o-mini.', details: gptError.message, transcript }), {
+        status: 502,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
-    const gptData = await gptResponse.json()
-    const parsedIntent = JSON.parse(gptData.choices[0].message.content)
-
-    // Inject transcript into response for UI display
-    parsedIntent.transcript = transcript
-    if (parsedIntent.confidence === undefined) parsedIntent.confidence = 0.95
-
-    return new Response(JSON.stringify(parsedIntent), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
   } catch (error) {
-    console.error('Edge Function Error:', error)
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error('Edge Function Fatal Error:', error)
+    return new Response(JSON.stringify({ error: 'Internal Server Error', details: error.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
