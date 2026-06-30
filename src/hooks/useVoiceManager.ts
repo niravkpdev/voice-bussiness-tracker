@@ -130,6 +130,10 @@ export function useVoiceManager(props: UseVoiceManagerProps): UseVoiceManagerRes
             console.error('AI Processing Failed:', err);
             setError(err.message || 'Failed to parse voice command');
             setState('error');
+            setTimeout(() => {
+              setState('idle');
+              setError(null);
+            }, 4000);
           }
           await cleanupAudioGraph();
           return;
