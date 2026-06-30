@@ -116,6 +116,12 @@ export function useVoiceManager(props: UseVoiceManagerProps): UseVoiceManagerRes
         if (event.data.type === 'AUDIO_DATA') {
           try {
             const chunks = event.data.data;
+            if (!chunks || chunks.length === 0) {
+              setState('idle');
+              setError('Please enter a command first.');
+              cleanupAudioGraph();
+              return;
+            }
             const sampleRate = audioCtxRef.current?.sampleRate || 44100;
             const audioBlob = encodeWAV(chunks, sampleRate);
             
@@ -127,8 +133,8 @@ export function useVoiceManager(props: UseVoiceManagerProps): UseVoiceManagerRes
               props.onCommandParsed(parsedResponse);
             }
           } catch (err: any) {
-            console.error('AI Processing Failed:', err);
-            setError(err.message || 'Failed to parse voice command');
+            console.error('AI Processing Failed', err);
+            setError('AI service is currently unavailable.');
             setState('error');
             setTimeout(() => {
               setState('idle');
