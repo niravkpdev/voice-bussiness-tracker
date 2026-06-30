@@ -36,7 +36,7 @@ serve(async (req) => {
     const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')
     if (!OPENAI_API_KEY) {
       return new Response(JSON.stringify({ error: 'Server configuration error: Missing OPENAI_API_KEY secret.' }), {
-        status: 500,
+        status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
@@ -70,7 +70,7 @@ serve(async (req) => {
     } catch (whisperError) {
       console.error('Whisper step failed:', whisperError)
       return new Response(JSON.stringify({ error: 'Failed to transcribe audio via OpenAI Whisper.', details: whisperError.message }), {
-        status: 502,
+        status: 422,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
@@ -135,7 +135,7 @@ Rules:
     } catch (gptError) {
       console.error('GPT parsing failed:', gptError)
       return new Response(JSON.stringify({ error: 'Failed to extract JSON intent via GPT-4o-mini.', details: gptError.message, transcript }), {
-        status: 502,
+        status: 422,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
@@ -143,7 +143,7 @@ Rules:
   } catch (error) {
     console.error('Edge Function Fatal Error:', error)
     return new Response(JSON.stringify({ error: 'Internal Server Error', details: error.message }), {
-      status: 500,
+      status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
