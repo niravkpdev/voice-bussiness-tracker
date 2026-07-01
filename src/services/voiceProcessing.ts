@@ -62,6 +62,12 @@ export async function sendVoiceToAI(audioBlob: Blob, activeBusinessId: string): 
   formData.append('audio', audioBlob, 'voice-command.wav');
   formData.append('businessId', activeBusinessId);
 
+  const voiceEnabled = import.meta.env.VITE_ENABLE_VOICE_ASSISTANT === 'true';
+  if (!voiceEnabled) {
+    console.log("Voice assistant disabled via feature flag in voiceProcessing.");
+    return { success: false, message: "Voice assistant is disabled." };
+  }
+
   const { data, error } = await supabase.functions.invoke('parse-voice-command', {
     body: formData,
   });

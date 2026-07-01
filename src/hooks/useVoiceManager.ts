@@ -86,13 +86,20 @@ export function useVoiceManager(props: UseVoiceManagerProps): UseVoiceManagerRes
 
         console.log("parse-voice-command payload:", payload);
 
+        const voiceEnabled = import.meta.env.VITE_ENABLE_VOICE_ASSISTANT === 'true';
+        if (!voiceEnabled) {
+          console.log("Voice assistant disabled via feature flag.");
+          setState('idle');
+          return;
+        }
+
         const { data, error } = await supabase.functions.invoke("parse-voice-command", {
           body: payload
         });
 
         if (error) {
           console.error("parse-voice-command failed:", { error, payload });
-          setError("AI service is currently unavailable.");
+          // setError("AI service is currently unavailable."); // Disabled per user request
           setState('error');
           setTimeout(() => {
             setState('idle');
