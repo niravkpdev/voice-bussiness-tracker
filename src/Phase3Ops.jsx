@@ -246,7 +246,7 @@ export default function Phase3Ops({
   const [isInvoking, setIsInvoking] = useState(false);
   const [employeeStatusFilter, setEmployeeStatusFilter] = useState('All');
   const [employeePage, setEmployeePage] = useState(1);
-  const resolveActiveBusinessId = () => {
+  const getActiveBusinessId = () => {
     return (
       (typeof selectedBusiness !== 'undefined' ? selectedBusiness?.id : null) ||
       (typeof activeBusiness !== 'undefined' ? activeBusiness?.id : null) ||
@@ -258,7 +258,7 @@ export default function Phase3Ops({
       'default'
     );
   };
-  const activeBusinessId = resolveActiveBusinessId();
+  const activeBusinessId = getActiveBusinessId();
 
   const [attendanceEmployeeFilter, setAttendanceEmployeeFilter] = useState('All');
   const [attendanceMonthFilter, setAttendanceMonthFilter] = useState(monthKey());

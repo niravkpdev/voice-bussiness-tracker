@@ -959,7 +959,7 @@ export default function VoiceExpenseTrackerPreview() {
   const [manualAmount, setManualAmount] = useState('');
   const [manualText, setManualText] = useState('');
   const [profile, setProfile] = useState(DEFAULT_PROFILE);
-  const resolveActiveBusinessId = () => {
+  const getActiveBusinessId = () => {
     return (
       (typeof selectedBusiness !== 'undefined' ? selectedBusiness?.id : null) ||
       (typeof activeBusiness !== 'undefined' ? activeBusiness?.id : null) ||
@@ -971,7 +971,7 @@ export default function VoiceExpenseTrackerPreview() {
       'default'
     );
   };
-  const activeBusinessId = resolveActiveBusinessId();
+  const activeBusinessId = getActiveBusinessId();
 
   const [showTour, setShowTour] = useState(false);
   const [showPricing, setShowPricing] = useState(false);
@@ -4800,13 +4800,13 @@ export default function VoiceExpenseTrackerPreview() {
                 <Plus size={16} /> Quick Add <ChevronDown size={14} style={{ opacity: 0.7 }} />
               </button>
                 <div className="saas-dropdown-menu">
-                  <button type="button" onClick={() => { setActiveTab('invoices'); setMobileNavOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><FileText size={16} /> New Invoice</button>
-                  <button type="button" onClick={() => { setActiveTab('orders'); setMobileNavOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Package size={16} /> New Order</button>
+                  <button type="button" onClick={() => { setActiveTab('invoices'); window.location.hash = 'invoices'; setMobileNavOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><FileText size={16} /> New Invoice</button>
+                  <button type="button" onClick={() => { setActiveTab('orders'); window.location.hash = 'orders'; setMobileNavOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Package size={16} /> New Order</button>
                   <button type="button" onClick={() => checkLimit('customers', cloudCustomers.length, () => { setActiveTab('crm'); window.location.hash = 'crm'; setMobileNavOpen(false); })} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Users size={16} /> New Customer</button>
                   <button type="button" onClick={() => checkLimit('products', Object.keys(partySummary).length, () => { setActiveTab('inventory'); window.location.hash = 'inventory'; setMobileNavOpen(false); })} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Package size={16} /> New Product</button>
                   <button type="button" onClick={() => checkLimit('employees', 0, () => { setActiveTab('employees'); window.location.hash = 'employees'; setMobileNavOpen(false); })} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><User size={16} /> New Employee</button>
                   <div className="saas-dropdown-divider"></div>
-                  <button type="button" onClick={() => { setActiveTab('voucher-entry'); setMobileNavOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><DollarSign size={16} /> Record Expense</button>
+                  <button type="button" onClick={() => { setActiveTab('voucher-entry'); window.location.hash = 'voucher-entry'; setMobileNavOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><DollarSign size={16} /> Record Expense</button>
                 </div>
             </div>
 
@@ -4835,21 +4835,19 @@ export default function VoiceExpenseTrackerPreview() {
         </header>
 
         <main className="page-shell">
-          {cloudBusinesses.length === 0 && !['profile-settings', 'company-setup'].includes(activeTab) ? (
-            <section className="panel fade-in" style={{ textAlign: 'center', padding: '64px 24px', gridColumn: '1 / -1', marginTop: '32px' }}>
-              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏢</div>
-              <h2 style={{ marginBottom: '8px' }}>Welcome to Trinetr Business Suite</h2>
-              <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>Please set up or select a business profile to start managing your operations.</p>
-              <button 
-                type="button" 
-                className="primary-btn" 
-                onClick={() => { window.location.hash = 'company-setup'; setActiveTab('company-setup'); }}
-              >
-                Go to Profile Settings
-              </button>
-            </section>
-          ) : (
-            <>
+          {cloudBusinesses.length === 0 && !['profile-settings', 'company-setup'].includes(activeTab) && (
+              <section className="panel fade-in" style={{ textAlign: 'center', padding: '32px 24px', gridColumn: '1 / -1', marginBottom: '24px', border: '2px dashed var(--border-subtle)' }}>
+                <h2 style={{ marginBottom: '8px' }}>Welcome to Trinetr Business Suite</h2>
+                <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>Please set up or select a business profile to unlock all features.</p>
+                <button 
+                  type="button" 
+                  className="primary-btn" 
+                  onClick={() => { window.location.hash = 'company-setup'; setActiveTab('company-setup'); }}
+                >
+                  Go to Profile Settings
+                </button>
+              </section>
+            )}
           <section className="mobile-start-panel" aria-label="Mobile quick start">
             <div>
               <span className="eyebrow">{activeSidebarSection?.label || 'Overview'}</span>
@@ -7055,8 +7053,6 @@ export default function VoiceExpenseTrackerPreview() {
                 <a className="secondary-button compact-link" href="#profile-settings">Profile</a>
               </div>
             </section>
-          )}
-                </>
           )}
         </main>
       </div>

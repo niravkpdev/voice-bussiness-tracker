@@ -172,7 +172,7 @@ export default function Phase2ERP({
   });
   const [editingInvoiceId, setEditingInvoiceId] = useState('');
   const [dateFilter, setDateFilter] = useState({ from: `${today().slice(0, 7)}-01`, to: today() });
-  const resolveActiveBusinessId = () => {
+  const getActiveBusinessId = () => {
     return (
       (typeof selectedBusiness !== 'undefined' ? selectedBusiness?.id : null) ||
       (typeof activeBusiness !== 'undefined' ? activeBusiness?.id : null) ||
@@ -184,7 +184,7 @@ export default function Phase2ERP({
       'default'
     );
   };
-  const [activeBusinessId, setActiveBusinessId] = useState(() => resolveActiveBusinessId());
+  const [activeBusinessId, setActiveBusinessId] = useState(() => getActiveBusinessId());
 
   useEffect(() => writeArray(PRODUCT_KEY, products), [products]);
   useEffect(() => writeArray(STOCK_TXN_KEY, stockTxns), [stockTxns]);
