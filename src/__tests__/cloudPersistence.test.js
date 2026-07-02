@@ -209,9 +209,9 @@ beforeEach(() => {
 });
 
 const crudModules = [
-  { table: 'customers', label: 'Customer', base: { id: 'cus-test-1', type: 'customer', name: 'Test Customer', phone: '+919999999999', businessId: 'default' }, edit: { name: 'Edited Customer' } },
-  { table: 'suppliers', label: 'Supplier', base: { id: 'sup-test-1', type: 'supplier', name: 'Test Supplier', phone: '+918888888888', businessId: 'default' }, edit: { name: 'Edited Supplier' } },
-  { table: 'inventory', label: 'Inventory item', base: { id: 'item-test-1', itemId: 'item-test-1', name: 'Test Item', currentStock: 10, businessId: 'default' }, edit: { currentStock: 14 } },
+  { table: 'customers', label: 'Customer', base: { id: 'cus-test-1', type: 'customer', name: 'Test Customer', phone: '+919999999999', businessId: null }, edit: { name: 'Edited Customer' } },
+  { table: 'suppliers', label: 'Supplier', base: { id: 'sup-test-1', type: 'supplier', name: 'Test Supplier', phone: '+918888888888', businessId: null }, edit: { name: 'Edited Supplier' } },
+  { table: 'inventory', label: 'Inventory item', base: { id: 'item-test-1', itemId: 'item-test-1', name: 'Test Item', currentStock: 10, businessId: null }, edit: { currentStock: 14 } },
   {
     table: 'employees',
     label: 'Employee',
@@ -239,7 +239,7 @@ const crudModules = [
       status: 'Active',
       notes: 'Handles inventory support.',
       description: 'Handles inventory support.',
-      businessId: 'default',
+      businessId: null,
     },
     edit: { designation: 'Manager', role: 'Manager', status: 'Inactive', notes: 'Promoted to manager track.' },
   },
@@ -257,7 +257,7 @@ const crudModules = [
       working_hours: 8,
       lateMark: false,
       late_mark: false,
-      businessId: 'default',
+      businessId: null,
     },
     edit: { status: 'Half Day', workingHours: 4, working_hours: 4 },
   },
@@ -276,7 +276,7 @@ const crudModules = [
       used_leaves: 0,
       remainingLeaves: 6,
       remaining_leaves: 6,
-      businessId: 'default',
+      businessId: null,
     },
     edit: { usedLeaves: 1, used_leaves: 1, remainingLeaves: 5, remaining_leaves: 5 },
   },
@@ -296,7 +296,7 @@ const crudModules = [
       totalDays: 1,
       total_days: 1,
       status: 'Pending',
-      businessId: 'default',
+      businessId: null,
     },
     edit: { status: 'Approved', approvedBy: 'owner@example.com' },
   },
@@ -310,7 +310,7 @@ const crudModules = [
       holidayDate: '2026-08-15',
       holiday_date: '2026-08-15',
       description: 'Test holiday',
-      businessId: 'default',
+      businessId: null,
     },
     edit: { description: 'Edited holiday' },
   },
@@ -329,7 +329,7 @@ const crudModules = [
       salary_type: 'Monthly',
       incrementAmount: 1000,
       increment_amount: 1000,
-      businessId: 'default',
+      businessId: null,
     },
     edit: { salaryAmount: 27500, salary_amount: 27500, remarks: 'Annual increment' },
   },
@@ -351,7 +351,7 @@ const crudModules = [
       status: 'Generated',
       storagePath: '',
       storage_path: '',
-      businessId: 'default',
+      businessId: null,
     },
     edit: { status: 'Uploaded', storagePath: 'user/default/emp-test-1/Payslips/test.pdf', storage_path: 'user/default/emp-test-1/Payslips/test.pdf' },
   },
@@ -370,13 +370,13 @@ const crudModules = [
       storage_path: 'user/default/emp-test-1/Offer-Letter/test.pdf',
       fileType: 'application/pdf',
       file_type: 'application/pdf',
-      businessId: 'default',
+      businessId: null,
     },
     edit: { notes: 'Verified copy' },
   },
-  { table: 'orders', label: 'Order', base: { id: 'ord-test-1', orderNo: 'ORD-TEST-1', customer: 'Test Customer', status: 'New Order', businessId: 'default' }, edit: { status: 'Delivered' } },
-  { table: 'invoices', label: 'Invoice', base: { id: 'inv-test-1', invoiceNo: 'INV-TEST-1', customerId: 'cus-test-1', total: 500, status: 'Unpaid', businessId: 'default' }, edit: { status: 'Paid', paid: 500, balance: 0 } },
-  { table: 'transactions', label: 'Voucher transaction', base: { id: 'txn-test-1', type: 'Receipt', amount: 500, narration: 'Test receipt', businessId: 'default' }, edit: { narration: 'Edited receipt' } },
+  { table: 'orders', label: 'Order', base: { id: 'ord-test-1', orderNo: 'ORD-TEST-1', customer: 'Test Customer', status: 'New Order', businessId: null }, edit: { status: 'Delivered' } },
+  { table: 'invoices', label: 'Invoice', base: { id: 'inv-test-1', invoiceNo: 'INV-TEST-1', customerId: 'cus-test-1', total: 500, status: 'Unpaid', businessId: null }, edit: { status: 'Paid', paid: 500, balance: 0 } },
+  { table: 'transactions', label: 'Voucher transaction', base: { id: 'txn-test-1', type: 'Receipt', amount: 500, narration: 'Test receipt', businessId: null }, edit: { narration: 'Edited receipt' } },
 ];
 
 describe('cloud persistence create/edit/delete/refresh flows', () => {
@@ -415,7 +415,7 @@ describe('payment RPC accounting-critical flows', () => {
       amount: 500,
       date: '2026-06-15',
       userId: mockState.currentUser.id,
-      businessId: 'default',
+      businessId: null,
     };
     const ledgerPosting = {
       id: 'txn-pay-test-1',
@@ -423,7 +423,7 @@ describe('payment RPC accounting-critical flows', () => {
       amount: 500,
       date: payment.date,
       paymentId: payment.id,
-      businessId: 'default',
+      businessId: null,
     };
 
     await expect(postPaymentWithLedger(mockState.currentUser.id, payment, ledgerPosting))

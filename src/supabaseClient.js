@@ -202,7 +202,7 @@ export async function createEmployeeLogin(email, password, employeeId, businessI
       p_email: email,
       p_password: password,
       p_employee_id: employeeId,
-      p_business_id: businessId || 'default',
+      p_business_id: businessId,
     }),
     { operation: 'rpc:create_employee_login' }
   );
@@ -221,7 +221,7 @@ export async function resetEmployeePassword(employeeId, businessId, newPassword)
   const { data, error } = await withCloudTimeout(
     client.rpc('reset_employee_password', {
       p_employee_id: employeeId,
-      p_business_id: businessId || 'default',
+      p_business_id: businessId,
       p_new_password: newPassword,
     }),
     { operation: 'rpc:reset_employee_password' }
@@ -241,7 +241,7 @@ export async function disableEmployeeLogin(employeeId, businessId) {
   const { data, error } = await withCloudTimeout(
     client.rpc('disable_employee_login', {
       p_employee_id: employeeId,
-      p_business_id: businessId || 'default',
+      p_business_id: businessId,
     }),
     { operation: 'rpc:disable_employee_login' }
   );
@@ -423,7 +423,7 @@ function rowToAppRecord(row, tableName) {
         phone: data.phone || data.mobile || "",
         balance: Number(data.balance || data.opening_balance || 0),
         company_id: data.company_id || null,
-        business_id: data.business_id || "default",
+        business_id: data.business_id,
         ownerUid: data.ownerUid || row.user_id,
         createdAt: row.created_at,
         raw: data
@@ -1538,7 +1538,7 @@ function safeStorageSegment(value, fallback = 'file') {
     .slice(0, 120) || fallback;
 }
 
-export function buildHrmsStoragePath({ uid, businessId = 'default', employeeId, category = 'documents', fileName }) {
+export function buildHrmsStoragePath({ uid, businessId, employeeId, category = 'documents', fileName }) {
   return [
     safeStorageSegment(uid, 'user'),
     safeStorageSegment(businessId, 'default'),
@@ -1689,7 +1689,7 @@ function normalizeCompanyMember(row) {
   return {
     id: row.id,
     ownerUserId: row.owner_user_id,
-    businessId: row.business_id || 'default',
+    businessId: row.business_id,
     userId: row.user_id || '',
     name: row.display_name || row.member_name || '',
     email: row.invited_email || row.member_email || '',
@@ -1702,7 +1702,7 @@ function normalizeCompanyMember(row) {
   };
 }
 
-export async function loadCompanyMembers(uid, businessId = 'default') {
+export async function loadCompanyMembers(uid, businessId) {
   const client = getSupabaseClient();
   const user = await getCurrentSupabaseUser(client);
   const currentUid = user?.id || null;
@@ -1757,7 +1757,7 @@ export async function inviteCompanyMember(uid, member) {
   const client = getSupabaseClient();
   const user = await getCurrentSupabaseUser(client);
   const currentUid = user?.id || null;
-  const path = `company_members/${uid}/${member?.businessId || 'default'}`;
+  const path = `company_members/${uid}/${member?.businessId}`;
 
   if (!client || !uid || !member?.email) {
     throw new Error('Missing Supabase client, owner uid, or member email for invite.');
@@ -1769,7 +1769,7 @@ export async function inviteCompanyMember(uid, member) {
   const { data, error } = await withCloudTimeout(
     client.rpc('invite_company_member', {
       p_owner_user_id: uid,
-      p_business_id: member.businessId || 'default',
+      p_business_id: member.businessId,
       p_email: sanitizeEmail(member.email),
       p_name: sanitizeText(member.name || ''),
       p_role: member.role || 'staff',
@@ -1834,7 +1834,7 @@ function normalizeEmployeeMapping(row) {
   return {
     id: row.id,
     ownerUserId: row.owner_user_id,
-    businessId: row.business_id || 'default',
+    businessId: row.business_id,
     userId: row.user_id,
     employeeId: row.employee_id,
     employeeEmail: sanitizeEmail(row.employee_email || ''),
@@ -1866,7 +1866,7 @@ export async function loadCurrentEmployeeMapping() {
   return normalizeEmployeeMapping(data);
 }
 
-export async function loadEmployeeUserMappings(uid, businessId = 'default') {
+export async function loadEmployeeUserMappings(uid, businessId) {
   const client = getSupabaseClient();
   const user = await getCurrentSupabaseUser(client);
   if (!client || !uid || user?.id !== uid) return [];
@@ -1892,7 +1892,7 @@ export async function linkEmployeeUserMapping(uid, mapping) {
   const { data, error } = await withCloudTimeout(
     client.rpc('link_employee_user_by_email', {
       p_owner_user_id: uid,
-      p_business_id: mapping.businessId || 'default',
+      p_business_id: mapping.businessId,
       p_employee_id: mapping.employeeId,
       p_employee_email: sanitizeEmail(mapping.email),
     }),
@@ -1909,7 +1909,7 @@ export async function logEmployeeSelfServiceEvent(uid, event) {
   const { error } = await withCloudTimeout(
     client.rpc('log_employee_self_service_event', {
       p_owner_user_id: uid,
-      p_business_id: event.businessId || 'default',
+      p_business_id: event.businessId,
       p_employee_id: event.employeeId,
       p_action: event.action,
       p_module: event.module || 'Employee Self Service',

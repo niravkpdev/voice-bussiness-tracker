@@ -79,7 +79,7 @@ export function useVoiceManager(props: UseVoiceManagerProps): UseVoiceManagerRes
           command: cleanTranscript,
           text: cleanTranscript,
           userId,
-          businessId: props.activeBusinessId || "default",
+          businessId: props.activeBusinessId,
           source: "voice-manager",
           timestamp: new Date().toISOString()
         };

@@ -504,7 +504,7 @@ export default function Phase3Ops({
       user: authUser?.email || authUser?.uid || 'Owner',
       actorUid: authUser?.uid || '',
       ownerUid: authUser?.uid || '',
-      businessId: 'default',
+      businessId: null,
       date: new Date().toLocaleString(),
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -663,7 +663,7 @@ export default function Phase3Ops({
       bank_details: sanitizeText(form.get('bank_details'), 300),
       notes: sanitizeText(form.get('notes'), 1200),
       description: sanitizeText(form.get('notes'), 1200),
-      businessId: current?.businessId || readScopedString('activeBusinessId') || 'default',
+      businessId: current?.businessId || readScopedString('activeBusinessId'),
       createdAt: current?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -739,8 +739,8 @@ export default function Phase3Ops({
       id: existing?.id || `att-${employee.id}-${date}`,
       employeeId: employee.id,
       employee_id: employeeIdentifier(employee),
-      businessId: existing?.businessId || 'default',
-      companyId: existing?.companyId || 'default',
+      businessId: existing?.businessId,
+      companyId: existing?.companyId,
       name: employeeDisplayName(employee),
       status,
       date,
@@ -788,8 +788,8 @@ export default function Phase3Ops({
       id: current?.id || `att-${employee.id}-${attendanceDate}`,
       employeeId: employee.id,
       employee_id: employeeIdentifier(employee),
-      businessId: current?.businessId || 'default',
-      companyId: current?.companyId || 'default',
+      businessId: current?.businessId,
+      companyId: current?.companyId,
       name: employeeDisplayName(employee),
       date: attendanceDate,
       attendanceDate,
@@ -839,7 +839,7 @@ export default function Phase3Ops({
       used_leaves: 0,
       remainingLeaves: allocation,
       remaining_leaves: allocation,
-      businessId: 'default',
+      businessId: null,
       companyId: 'default',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -889,7 +889,7 @@ export default function Phase3Ops({
       approved_at: '',
       rejectionReason: '',
       rejection_reason: '',
-      businessId: 'default',
+      businessId: null,
       companyId: 'default',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -959,7 +959,7 @@ export default function Phase3Ops({
       effectiveFrom: form.get('effectiveFrom') || today(),
       effective_from: form.get('effectiveFrom') || today(),
       status: form.get('status') || 'Active',
-      businessId: 'default',
+      businessId: null,
       companyId: 'default',
       createdAt: current?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -1053,8 +1053,8 @@ export default function Phase3Ops({
       holidayDate,
       holiday_date: holidayDate,
       description: sanitizeText(form.get('description'), 300),
-      businessId: current?.businessId || 'default',
-      companyId: current?.companyId || 'default',
+      businessId: current?.businessId,
+      companyId: current?.companyId,
       createdAt: current?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -1089,8 +1089,8 @@ export default function Phase3Ops({
       employeeId: selectedEmployee.id,
       employee_id: employeeIdentifier(selectedEmployee),
       employeeName: employeeDisplayName(selectedEmployee),
-      businessId: current?.businessId || 'default',
-      companyId: current?.companyId || 'default',
+      businessId: current?.businessId,
+      companyId: current?.companyId,
       effectiveFrom: form.get('effectiveFrom') || today(),
       effective_from: form.get('effectiveFrom') || today(),
       salaryAmount: normalizeAmount(form.get('salaryAmount')),
@@ -1139,7 +1139,7 @@ export default function Phase3Ops({
         }
         const upload = await onHrmsDocumentUpload?.({
           employeeId: selectedEmployee.id,
-          businessId: current?.businessId || 'default',
+          businessId: current?.businessId,
           category: 'Payslips',
           file,
         });
@@ -1160,8 +1160,8 @@ export default function Phase3Ops({
       employeeId: selectedEmployee.id,
       employee_id: employeeIdentifier(selectedEmployee),
       employeeName: employeeDisplayName(selectedEmployee),
-      businessId: current?.businessId || 'default',
-      companyId: current?.companyId || 'default',
+      businessId: current?.businessId,
+      companyId: current?.companyId,
       salaryMonth: form.get('salaryMonth') || monthKey(),
       salary_month: form.get('salaryMonth') || monthKey(),
       basicSalary,
@@ -1214,7 +1214,7 @@ export default function Phase3Ops({
         }
         const upload = await onHrmsDocumentUpload?.({
           employeeId: selectedEmployee.id,
-          businessId: current?.businessId || 'default',
+          businessId: current?.businessId,
           category: form.get('documentCategory') || 'Other Documents',
           file,
         });
@@ -1237,8 +1237,8 @@ export default function Phase3Ops({
       employeeId: selectedEmployee.id,
       employee_id: employeeIdentifier(selectedEmployee),
       employeeName: employeeDisplayName(selectedEmployee),
-      businessId: current?.businessId || 'default',
-      companyId: current?.companyId || 'default',
+      businessId: current?.businessId,
+      companyId: current?.companyId,
       documentCategory: category,
       document_category: category,
       documentName: sanitizeText(form.get('documentName'), 160) || fileName,
@@ -1384,8 +1384,8 @@ export default function Phase3Ops({
       requested_by: authUser.uid,
       changes,
       status: 'Pending',
-      business_id: selectedEmployee.businessId || 'default',
-      company_id: selectedEmployee.companyId || 'default',
+      business_id: selectedEmployee.businessId,
+      company_id: selectedEmployee.companyId,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -1465,8 +1465,8 @@ export default function Phase3Ops({
         type: 'payment',
         invoice_id: invoice.id,
         payment_method: 'UPI',
-        company_id: activeBusinessId || 'default',
-        business_id: activeBusinessId || 'default'
+        company_id: activeBusinessId,
+        business_id: activeBusinessId
       };
       
       const saved = await onCloudRecord?.('payments', payment.id, payment);
@@ -2223,7 +2223,8 @@ export default function Phase3Ops({
               <div className="summary-card"><span>Total Hours</span><strong>{filteredAttendance.reduce((sum, e) => sum + (Number(e.workingHours ?? e.working_hours) || 0), 0)}</strong></div>
             </div>
             <div className="hrms-table-container">
-              <table className="hrms-table">
+              <div className="table-responsive">
+<table className="hrms-table">
                 <thead>
                   <tr>
                     <th>Employee</th>
@@ -2247,6 +2248,7 @@ export default function Phase3Ops({
                   ))}
                 </tbody>
               </table>
+</div>
             </div>
           </section>
         )}
@@ -2676,7 +2678,7 @@ export default function Phase3Ops({
                         const { data, error } = await supabase.functions.invoke('create-employee-login', {
                           body: {
                             employee_id: selectedEmployee.id,
-                            business_id: profile?.businessId || 'default',
+                            business_id: profile?.businessId,
                             email: loginEmail,
                             password: loginPassword,
                             force_password_change: false
@@ -2789,7 +2791,7 @@ export default function Phase3Ops({
                     const { data, error } = await supabase.functions.invoke('create-employee-login', {
                       body: {
                         employee_id: loginManageModal.id,
-                        business_id: profile?.businessId || 'default',
+                        business_id: profile?.businessId,
                         email: loginEmail,
                         password: loginPassword,
                         force_password_change: false

@@ -172,7 +172,7 @@ export default function Phase2ERP({
   });
   const [editingInvoiceId, setEditingInvoiceId] = useState('');
   const [dateFilter, setDateFilter] = useState({ from: `${today().slice(0, 7)}-01`, to: today() });
-  const [activeBusinessId, setActiveBusinessId] = useState(() => readScopedString('activeBusinessId') || 'default');
+  const [activeBusinessId, setActiveBusinessId] = useState(() => readScopedString('activeBusinessId'));
 
   useEffect(() => writeArray(PRODUCT_KEY, products), [products]);
   useEffect(() => writeArray(STOCK_TXN_KEY, stockTxns), [stockTxns]);
@@ -236,20 +236,20 @@ export default function Phase2ERP({
   }, [products, stockTxns, invoices, customers, suppliers, businesses, notifications, cloudSettings]);
 
   const scopedProducts = useMemo(
-    () => products.filter((product) => (product.businessId || 'default') === activeBusinessId),
+    () => products.filter((product) => (product.businessId) === activeBusinessId),
     [activeBusinessId, products]
   );
   const scopedInvoices = useMemo(
-    () => invoices.filter((invoice) => (invoice.businessId || 'default') === activeBusinessId),
+    () => invoices.filter((invoice) => (invoice.businessId) === activeBusinessId),
     [activeBusinessId, invoices]
   );
   const scopedCustomers = useMemo(() => {
-    const activeScope = activeBusinessId || 'default';
+    const activeScope = activeBusinessId;
     const filtered = customers.filter((customer) => {
       const isOwner = customer.user_id === cloudUserId || customer.ownerUid === cloudUserId || customer.userId === cloudUserId;
       if (cloudUserId && !isOwner) return false;
 
-      const customerCompanyId = customer.company_id || customer.businessId || customer.business_id || 'default';
+      const customerCompanyId = customer.company_id || customer.businessId || customer.business_id;
       if (!customer.company_id && customerCompanyId === 'default') return true;
       return customerCompanyId === activeScope;
     });
@@ -263,11 +263,11 @@ export default function Phase2ERP({
   }, [activeBusinessId, customers, cloudUserId]);
 
   const scopedSuppliers = useMemo(() => {
-    const activeScope = activeBusinessId || 'default';
+    const activeScope = activeBusinessId;
     return suppliers.filter((supplier) => {
       const isOwner = supplier.user_id === cloudUserId || supplier.ownerUid === cloudUserId || supplier.userId === cloudUserId;
       if (cloudUserId && !isOwner) return false;
-      const supplierCompanyId = supplier.company_id || supplier.businessId || supplier.business_id || 'default';
+      const supplierCompanyId = supplier.company_id || supplier.businessId || supplier.business_id;
       if (!supplier.company_id && supplierCompanyId === 'default') return true;
       return supplierCompanyId === activeScope;
     });
@@ -631,8 +631,8 @@ export default function Phase2ERP({
       reason: sanitizeText(form.get('note'), 180) || type,
       supplier_id: '',
       date: today(),
-      company_id: activeBusinessId || 'default',
-      business_id: activeBusinessId || 'default'
+      company_id: activeBusinessId,
+      business_id: activeBusinessId
     };
     if (updatedProduct) {
       try {
@@ -699,8 +699,8 @@ export default function Phase2ERP({
     const person = {
       id,
       [isCustomer ? 'customerId' : 'supplierId']: id,
-      businessId: activeBusinessId || 'default',
-      business_id: activeBusinessId || 'default',
+      businessId: activeBusinessId,
+      business_id: activeBusinessId,
       company_id: activeBusinessId || null,
       ownerUid: cloudUserId || '',
       userId: cloudUserId || '',
@@ -1245,7 +1245,8 @@ export default function Phase2ERP({
 
             <section className="panel" style={{ padding: 0, overflow: 'hidden' }}>
               <div className="erp-table-wrap">
-                <table className="statement-table hrms-directory-table">
+                <div className="table-responsive">
+<table className="statement-table hrms-directory-table">
                   <thead>
                     <tr>
                       <th>Product Info</th>
@@ -1304,6 +1305,7 @@ export default function Phase2ERP({
                     )})}
                   </tbody>
                 </table>
+</div>
               </div>
             </section>
           </>
@@ -1551,7 +1553,8 @@ export default function Phase2ERP({
                 </div>
 
                 <div className="panel" style={{ padding: 0, overflow: 'hidden' }}>
-                  <table className="statement-table hrms-directory-table">
+                  <div className="table-responsive">
+<table className="statement-table hrms-directory-table">
                     <thead>
                       <tr>
                         <th>Product</th>
@@ -1582,6 +1585,7 @@ export default function Phase2ERP({
                       )}
                     </tbody>
                   </table>
+</div>
                 </div>
               </div>
             </div>
@@ -1648,7 +1652,8 @@ export default function Phase2ERP({
         <section className="panel">
           <h2>Invoice History</h2>
           <div className="erp-table-wrap">
-            <table className="statement-table">
+            <div className="table-responsive">
+<table className="statement-table">
               <thead><tr><th>No</th><th>Customer</th><th>Status</th><th>Total</th><th>Due</th><th>Actions</th></tr></thead>
               <tbody>
                 {scopedInvoices.map((invoice) => (
@@ -1671,6 +1676,7 @@ export default function Phase2ERP({
                 ))}
               </tbody>
             </table>
+</div>
           </div>
         </section>
       </section>
@@ -1836,7 +1842,8 @@ export default function Phase2ERP({
             </div>
 
             <div className="crm-table-wrapper fade-in">
-              <table className="crm-table">
+              <div className="table-responsive">
+<table className="crm-table">
                 <thead>
                   <tr>
                     <th>Profile</th>
@@ -1922,6 +1929,7 @@ export default function Phase2ERP({
                   )}
                 </tbody>
               </table>
+</div>
             </div>
           </>
         ) : (

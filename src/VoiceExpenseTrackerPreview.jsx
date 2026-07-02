@@ -998,7 +998,7 @@ export default function VoiceExpenseTrackerPreview() {
   const [voiceConfirmation, setVoiceConfirmation] = useState(null);
 
   const { state, waveRef, startListening, stopListening, error } = useVoiceManager({
-    activeBusinessId: authUser?.businessId || 'default',
+    activeBusinessId: authUser?.businessId,
     onCommandParsed: (parsed) => setVoiceConfirmation(parsed)
   });
 
@@ -1279,7 +1279,7 @@ export default function VoiceExpenseTrackerPreview() {
             role: 'Employee',
             employeeId: mapping.employeeId,
             employeeMappingId: mapping.id,
-            businessId: mapping.businessId || 'default',
+            businessId: mapping.businessId,
           };
           setStorageScope(scopedUser.uid);
           setAuthUser(scopedUser);
@@ -1768,7 +1768,7 @@ export default function VoiceExpenseTrackerPreview() {
     }
   };
 
-  const uploadAuthenticatedHrmsDocument = async ({ employeeId, businessId = 'default', category, file }) => {
+  const uploadAuthenticatedHrmsDocument = async ({ employeeId, businessId, category, file }) => {
     if (!supabaseEnabled || !authUser?.uid || !file) {
       throw new Error('Sign in with Supabase before uploading HRMS documents.');
     }
@@ -1966,7 +1966,7 @@ export default function VoiceExpenseTrackerPreview() {
         name,
         email,
         role: memberInvite.role,
-        businessId: 'default',
+        businessId: null,
       });
       if (member?.id) {
         setCompanyMembers((items) => [member, ...(items || []).filter((item) => item.id !== member.id)]);
@@ -2067,7 +2067,7 @@ export default function VoiceExpenseTrackerPreview() {
       const mapping = await linkEmployeeUserMapping(authUser.uid, {
         employeeId: employeeLinkForm.employeeId,
         email,
-        businessId: 'default',
+        businessId: null,
       });
       if (mapping?.id) {
         setEmployeeUserMappings((items) => [mapping, ...(items || []).filter((item) => item.id !== mapping.id)]);
@@ -2082,7 +2082,7 @@ export default function VoiceExpenseTrackerPreview() {
         module: 'Employee Self Service',
         employeeId: employeeLinkForm.employeeId,
         email,
-        businessId: 'default',
+        businessId: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }).catch(() => false);
@@ -2950,8 +2950,8 @@ export default function VoiceExpenseTrackerPreview() {
         display_debit_account: ledgers.find(l => l.id === debitLine.ledgerId)?.name || '',
         display_credit_account: ledgers.find(l => l.id === creditLine.ledgerId)?.name || '',
         narration: voucher.narration || '',
-        company_id: activeBusinessId || 'default',
-        business_id: activeBusinessId || 'default',
+        company_id: activeBusinessId,
+        business_id: activeBusinessId,
         created_at: voucher.date ? `${voucher.date}T12:00:00.000Z` : new Date().toISOString()
       };
       const supabasePath = `users/${authUser.uid}/transactions/${voucher.id}`;
@@ -3556,7 +3556,7 @@ export default function VoiceExpenseTrackerPreview() {
         group: newPartyType === 'supplier' ? 'Sundry Creditors' : 'Sundry Debtors',
         type: newPartyType,
         createdAt: new Date().toISOString(),
-        business_id: 'default',
+        business_id: null,
           balance: 0,
           opening_balance: 0
         };
@@ -4032,8 +4032,8 @@ export default function VoiceExpenseTrackerPreview() {
       total_days: totalDays,
       reason: sanitizeText(form.get('reason'), 400),
       status: 'Pending',
-      businessId: authUser.businessId || 'default',
-      companyId: authUser.businessId || 'default',
+      businessId: authUser.businessId,
+      companyId: authUser.businessId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -4052,7 +4052,7 @@ export default function VoiceExpenseTrackerPreview() {
       const url = await getAuthenticatedHrmsDocumentUrl(path);
       if (!url) throw new Error('Secure download URL was not generated.');
       logEmployeeSelfServiceEvent(authUser.uid, {
-        businessId: authUser.businessId || 'default',
+        businessId: authUser.businessId,
         employeeId: authUser.employeeId,
         action: record.type === 'payslip' ? 'employee payslip downloaded' : 'employee document downloaded',
         module: record.type === 'payslip' ? 'Payslips' : 'Employee Documents',
@@ -4821,6 +4821,21 @@ export default function VoiceExpenseTrackerPreview() {
         </header>
 
         <main className="page-shell">
+          {!activeBusinessId && !['profile-settings', 'company-setup'].includes(activeTab) ? (
+            <section className="panel fade-in" style={{ textAlign: 'center', padding: '64px 24px', gridColumn: '1 / -1', marginTop: '32px' }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏢</div>
+              <h2 style={{ marginBottom: '8px' }}>Welcome to Trinetr Business Suite</h2>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>Please set up or select a business profile to start managing your operations.</p>
+              <button 
+                type="button" 
+                className="primary-btn" 
+                onClick={() => { window.location.hash = 'profile-settings'; setActiveTab('profile-settings'); }}
+              >
+                Go to Profile Settings
+              </button>
+            </section>
+          ) : (
+            <>
           <section className="mobile-start-panel" aria-label="Mobile quick start">
             <div>
               <span className="eyebrow">{activeSidebarSection?.label || 'Overview'}</span>
@@ -7026,6 +7041,8 @@ export default function VoiceExpenseTrackerPreview() {
                 <a className="secondary-button compact-link" href="#profile-settings">Profile</a>
               </div>
             </section>
+          )}
+                </>
           )}
         </main>
       </div>

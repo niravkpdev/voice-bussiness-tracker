@@ -7226,3 +7226,40 @@ fieldset {
 .hrms-toolbar { display: flex; flex-wrap: wrap; gap: 12px; margin: 18px 0; }
 .hrms-toolbar > * { flex: 1 1 150px; }
 .hrms-record-grid { display: grid !important; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important; }
+
+/* Responsive Tables for Mobile */
+.table-responsive, .table-container, [style*="overflow-x: auto"] {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+table {
+  width: 100%;
+  min-width: 600px;
+  border-collapse: collapse;
+}
+@media (max-width: 768px) {
+  .erp-dashboard .content-grid, .tally-module-grid, .reports-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 12px;
+  }
+  .search-bar, .filter-bar {
+    width: 100%;
+    flex-direction: column;
+  }
+  .search-bar input, .filter-bar select {
+    width: 100%;
+  }
+}
+@media (max-width: 414px) {
+  table {
+    font-size: 13px;
+  }
+  .panel {
+    padding: 16px !important;
+  }
+}
