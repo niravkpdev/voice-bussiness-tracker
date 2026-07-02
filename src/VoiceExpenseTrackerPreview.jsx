@@ -959,11 +959,19 @@ export default function VoiceExpenseTrackerPreview() {
   const [manualAmount, setManualAmount] = useState('');
   const [manualText, setManualText] = useState('');
   const [profile, setProfile] = useState(DEFAULT_PROFILE);
-  const activeBusinessId =
-    (typeof authUser !== 'undefined' ? (authUser?.businessId || authUser?.active_business_id) : null) ||
-    (typeof profile !== 'undefined' ? profile?.active_business_id : null) ||
-    (typeof readScopedString === 'function' ? readScopedString('activeBusinessId') : null) ||
-    null;
+  const resolveActiveBusinessId = () => {
+    return (
+      (typeof selectedBusiness !== 'undefined' ? selectedBusiness?.id : null) ||
+      (typeof activeBusiness !== 'undefined' ? activeBusiness?.id : null) ||
+      (typeof userProfile !== 'undefined' ? userProfile?.active_business_id : null) ||
+      (typeof authUser !== 'undefined' ? (authUser?.businessId || authUser?.active_business_id) : null) ||
+      (typeof profile !== 'undefined' ? profile?.active_business_id : null) ||
+      (typeof cloudBusinesses !== 'undefined' && cloudBusinesses?.length > 0 ? cloudBusinesses[0]?.id : null) ||
+      (typeof readScopedString === 'function' ? readScopedString('activeBusinessId') : null) ||
+      'default'
+    );
+  };
+  const activeBusinessId = resolveActiveBusinessId();
 
   const [showTour, setShowTour] = useState(false);
   const [showPricing, setShowPricing] = useState(false);
@@ -4794,9 +4802,9 @@ export default function VoiceExpenseTrackerPreview() {
                 <div className="saas-dropdown-menu">
                   <button type="button" onClick={() => { setActiveTab('invoices'); setMobileNavOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><FileText size={16} /> New Invoice</button>
                   <button type="button" onClick={() => { setActiveTab('orders'); setMobileNavOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Package size={16} /> New Order</button>
-                  <button type="button" onClick={() => checkLimit('customers', cloudCustomers.length, () => { setActiveTab('customers'); trackEvent('Customer added'); setStatus('Add Customer drawer coming soon'); setMobileNavOpen(false); })} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Users size={16} /> New Customer</button>
-                  <button type="button" onClick={() => checkLimit('products', Object.keys(partySummary).length, () => { setActiveTab('inventory'); trackEvent('Product added'); setStatus('Navigate to Inventory to add Product'); setMobileNavOpen(false); })} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Package size={16} /> New Product</button>
-                  <button type="button" onClick={() => checkLimit('employees', 0, () => { setActiveTab('employees'); trackEvent('Employee added'); setStatus('Navigate to Employees to add Employee'); setMobileNavOpen(false); })} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><User size={16} /> New Employee</button>
+                  <button type="button" onClick={() => checkLimit('customers', cloudCustomers.length, () => { setActiveTab('crm'); window.location.hash = 'crm'; setMobileNavOpen(false); })} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Users size={16} /> New Customer</button>
+                  <button type="button" onClick={() => checkLimit('products', Object.keys(partySummary).length, () => { setActiveTab('inventory'); window.location.hash = 'inventory'; setMobileNavOpen(false); })} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Package size={16} /> New Product</button>
+                  <button type="button" onClick={() => checkLimit('employees', 0, () => { setActiveTab('employees'); window.location.hash = 'employees'; setMobileNavOpen(false); })} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><User size={16} /> New Employee</button>
                   <div className="saas-dropdown-divider"></div>
                   <button type="button" onClick={() => { setActiveTab('voucher-entry'); setMobileNavOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><DollarSign size={16} /> Record Expense</button>
                 </div>
@@ -4813,9 +4821,9 @@ export default function VoiceExpenseTrackerPreview() {
               </div>
               <div className="saas-dropdown-menu">
                 <button type="button" onClick={() => setStatus('Profile page coming soon')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><User size={16} /> My Profile</button>
-                <button type="button" onClick={() => setActiveTab('app-settings')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Settings size={16} /> Company Settings</button>
-                <button type="button" onClick={() => setActiveTab('billing')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><CreditCard size={16} /> Billing & Plans</button>
-                <button type="button" onClick={() => setActiveTab('analytics')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Activity size={16} /> Analytics</button>
+                <button type="button" onClick={() => { setActiveTab('app-settings'); window.location.hash = 'app-settings'; }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Settings size={16} /> Company Settings</button>
+                <button type="button" onClick={() => { setActiveTab('billing'); window.location.hash = 'billing'; }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><CreditCard size={16} /> Billing & Plans</button>
+                <button type="button" onClick={() => { setActiveTab('analytics'); window.location.hash = 'analytics'; }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Activity size={16} /> Analytics</button>
                 <button type="button" onClick={() => setStatus('Preferences coming soon')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><CheckSquare size={16} /> Preferences</button>
                 <button type="button" onClick={() => { setIsHelpCenterOpen(true); setIsProfileMenuOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><HelpCircle size={16} /> Help Center</button>
                 <div className="saas-dropdown-divider"></div>
@@ -4827,7 +4835,7 @@ export default function VoiceExpenseTrackerPreview() {
         </header>
 
         <main className="page-shell">
-          {!activeBusinessId && !['profile-settings', 'company-setup'].includes(activeTab) ? (
+          {cloudBusinesses.length === 0 && !['profile-settings', 'company-setup'].includes(activeTab) ? (
             <section className="panel fade-in" style={{ textAlign: 'center', padding: '64px 24px', gridColumn: '1 / -1', marginTop: '32px' }}>
               <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏢</div>
               <h2 style={{ marginBottom: '8px' }}>Welcome to Trinetr Business Suite</h2>
@@ -4835,7 +4843,7 @@ export default function VoiceExpenseTrackerPreview() {
               <button 
                 type="button" 
                 className="primary-btn" 
-                onClick={() => { window.location.hash = 'profile-settings'; setActiveTab('profile-settings'); }}
+                onClick={() => { window.location.hash = 'company-setup'; setActiveTab('company-setup'); }}
               >
                 Go to Profile Settings
               </button>
@@ -4996,7 +5004,7 @@ export default function VoiceExpenseTrackerPreview() {
                           { label: 'New Order', desc: 'Add order', icon: Package, path: 'orders', color: '#10b981', bg: '#ecfdf5' },
                           { label: 'Record Expense', desc: 'Add bill', icon: CreditCard, path: 'voucher-entry', color: '#ef4444', bg: '#fef2f2' },
                           { label: 'Receive Payment', desc: 'Cash in', icon: DollarSign, path: 'voucher-entry', color: '#10b981', bg: '#ecfdf5' },
-                          { label: 'New Customer', desc: 'Add client', icon: Users, path: 'customers', color: '#f59e0b', bg: '#fffbeb' },
+                          { label: 'New Customer', desc: 'Add client', icon: Users, path: 'crm', color: '#f59e0b', bg: '#fffbeb' },
                           { label: 'Payroll', desc: 'Pay staff', icon: Briefcase, path: 'employees', color: '#06b6d4', bg: '#ecfeff' }
                         ].map(action => (
                           <button key={action.label} onClick={() => { 
@@ -5431,7 +5439,7 @@ export default function VoiceExpenseTrackerPreview() {
                     ) : (
                       <>
                         <span className="text-secondary" style={{ color: 'var(--text-error)', marginRight: '8px' }}>No company selected</span>
-                        <button type="button" className="secondary-button compact-button" onClick={() => setActiveTab('company-setup')}>Go to Company Setup</button>
+                        <button type="button" className="secondary-button compact-button" onClick={() => { setActiveTab('company-setup'); window.location.hash = 'company-setup'; }}>Go to Company Setup</button>
                       </>
                     )}
                   </div>

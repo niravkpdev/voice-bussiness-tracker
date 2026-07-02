@@ -246,11 +246,19 @@ export default function Phase3Ops({
   const [isInvoking, setIsInvoking] = useState(false);
   const [employeeStatusFilter, setEmployeeStatusFilter] = useState('All');
   const [employeePage, setEmployeePage] = useState(1);
-  const activeBusinessId =
-    (typeof authUser !== 'undefined' ? (authUser?.businessId || authUser?.active_business_id) : null) ||
-    (typeof profile !== 'undefined' ? profile?.active_business_id : null) ||
-    (typeof readScopedString === 'function' ? readScopedString('activeBusinessId') : null) ||
-    null;
+  const resolveActiveBusinessId = () => {
+    return (
+      (typeof selectedBusiness !== 'undefined' ? selectedBusiness?.id : null) ||
+      (typeof activeBusiness !== 'undefined' ? activeBusiness?.id : null) ||
+      (typeof userProfile !== 'undefined' ? userProfile?.active_business_id : null) ||
+      (typeof authUser !== 'undefined' ? (authUser?.businessId || authUser?.active_business_id) : null) ||
+      (typeof profile !== 'undefined' ? profile?.active_business_id : null) ||
+      (typeof cloudBusinesses !== 'undefined' && cloudBusinesses?.length > 0 ? cloudBusinesses[0]?.id : null) ||
+      (typeof readScopedString === 'function' ? readScopedString('activeBusinessId') : null) ||
+      'default'
+    );
+  };
+  const activeBusinessId = resolveActiveBusinessId();
 
   const [attendanceEmployeeFilter, setAttendanceEmployeeFilter] = useState('All');
   const [attendanceMonthFilter, setAttendanceMonthFilter] = useState(monthKey());
