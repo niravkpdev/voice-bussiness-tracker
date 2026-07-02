@@ -959,6 +959,12 @@ export default function VoiceExpenseTrackerPreview() {
   const [manualAmount, setManualAmount] = useState('');
   const [manualText, setManualText] = useState('');
   const [profile, setProfile] = useState(DEFAULT_PROFILE);
+  const activeBusinessId =
+    (typeof authUser !== 'undefined' ? (authUser?.businessId || authUser?.active_business_id) : null) ||
+    (typeof profile !== 'undefined' ? profile?.active_business_id : null) ||
+    (typeof readScopedString === 'function' ? readScopedString('activeBusinessId') : null) ||
+    null;
+
   const [showTour, setShowTour] = useState(false);
   const [showPricing, setShowPricing] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);

@@ -246,6 +246,12 @@ export default function Phase3Ops({
   const [isInvoking, setIsInvoking] = useState(false);
   const [employeeStatusFilter, setEmployeeStatusFilter] = useState('All');
   const [employeePage, setEmployeePage] = useState(1);
+  const activeBusinessId =
+    (typeof authUser !== 'undefined' ? (authUser?.businessId || authUser?.active_business_id) : null) ||
+    (typeof profile !== 'undefined' ? profile?.active_business_id : null) ||
+    (typeof readScopedString === 'function' ? readScopedString('activeBusinessId') : null) ||
+    null;
+
   const [attendanceEmployeeFilter, setAttendanceEmployeeFilter] = useState('All');
   const [attendanceMonthFilter, setAttendanceMonthFilter] = useState(monthKey());
   const [editingAttendance, setEditingAttendance] = useState(null);
