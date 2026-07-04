@@ -4920,6 +4920,18 @@ export default function VoiceExpenseTrackerPreview() {
           {activeTab === 'dashboard' && (
             <section className="erp-dashboard fade-in" id="dashboard" style={{ padding: '24px 0', display: 'flex', flexDirection: 'column', gap: '32px' }}>
               
+              <VoiceCommandButton 
+                onCommandRecognized={(data) => {
+                  handleVoiceCommandRecognized(data);
+                  setActiveTab('voucher-entry');
+                  window.location.hash = 'voucher-entry';
+                }} 
+                existingParties={partyLedgers}
+                isIconOnly={true}
+                className="floating-mic-btn"
+                containerClassName="floating-mic-container"
+              />
+
               {/* Dashboard Header */}
               {/* Dashboard Setup Guide removed per request */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
@@ -4931,7 +4943,16 @@ export default function VoiceExpenseTrackerPreview() {
                     Welcome back, {profile.owner || 'Admin'}. Here is your executive summary.
                   </p>
                 </div>
-                <div style={{ display: 'flex', gap: '12px' }}>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <VoiceCommandButton 
+                    onCommandRecognized={(data) => {
+                      handleVoiceCommandRecognized(data);
+                      setActiveTab('voucher-entry');
+                      window.location.hash = 'voucher-entry';
+                    }} 
+                    existingParties={partyLedgers}
+                    containerClassName="desktop-mic-container"
+                  />
                   <button className="btn btn-secondary hover-scale" onClick={() => { window.location.hash = 'reports'; }}>
                     <FileText size={16} /> Reports
                   </button>

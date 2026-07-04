@@ -2,7 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Mic, MicOff, AlertCircle } from 'lucide-react';
 import { parseVoiceCommand } from './accounting.js';
 
-export default function VoiceCommandButton({ onCommandRecognized, existingParties = [] }) {
+export default function VoiceCommandButton({ 
+  onCommandRecognized, 
+  existingParties = [],
+  isIconOnly = false,
+  className = '',
+  containerClassName = ''
+}) {
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState('');
   const [supported, setSupported] = useState(true);
@@ -77,13 +83,13 @@ export default function VoiceCommandButton({ onCommandRecognized, existingPartie
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', margin: '8px 0 16px 0' }}>
+    <div className={containerClassName} style={containerClassName ? {} : { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', margin: '8px 0 16px 0' }}>
       {/* This is browser Web Speech API voice command, not AI. */}
       <button
         type="button"
         onClick={toggleListening}
-        className={isListening ? "danger-button" : "primary-button"}
-        style={{ 
+        className={`${isListening ? "danger-button" : "primary-button"} ${className}`}
+        style={className ? {} : { 
           width: 'auto', 
           minHeight: '40px', 
           padding: '8px 16px', 
@@ -95,10 +101,10 @@ export default function VoiceCommandButton({ onCommandRecognized, existingPartie
         }}
         title="Use Voice Command (Local Browser API)"
       >
-        {isListening ? <MicOff size={18} /> : <Mic size={18} />}
-        {isListening ? 'Listening...' : 'Use Voice Command'}
+        {isListening ? <MicOff size={isIconOnly ? 24 : 18} /> : <Mic size={isIconOnly ? 24 : 18} />}
+        {!isIconOnly && (isListening ? 'Listening...' : 'Use Voice Command')}
       </button>
-      {error && (
+      {error && !isIconOnly && (
         <span style={{ color: 'var(--danger)', fontSize: '12px', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
           <AlertCircle size={14} /> {error}
         </span>
