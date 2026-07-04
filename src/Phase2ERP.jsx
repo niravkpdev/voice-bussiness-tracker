@@ -2114,7 +2114,8 @@ export default function Phase2ERP({
               </button>
               <div className="crm-toolbar-actions">
                 <button className="secondary-button" onClick={() => editPerson(selectedCrmPerson, formKind)}><Edit3 size={16} /> Edit Profile</button>
-                {isCustomer && <button type="button" className="primary-button" onClick={() => { onStatus('Redirecting to New Invoice'); setActiveTab('invoices'); }}><Plus size={16} /> Create Invoice</button>}
+                <button className="secondary-button text-danger" onClick={() => setPartyToDelete({ item: selectedCrmPerson, formKind })}><X size={16} /> Delete</button>
+                {isCustomer && <button type="button" className="primary-button" onClick={() => { setActiveTab('invoices'); }}><Plus size={16} /> Create Invoice</button>}
               </div>
             </div>
             
@@ -2123,13 +2124,24 @@ export default function Phase2ERP({
               <div className="profile-sidebar">
                  <div className="profile-avatar-large">{(selectedCrmPerson?.name || 'U').charAt(0).toUpperCase()}</div>
                  <div style={{ textAlign: 'center' }}>
-                   <h2 style={{ fontSize: '20px', marginBottom: '4px' }}>{selectedCrmPerson?.name || 'Unknown'}</h2>
+                   <h2 style={{ fontSize: '20px', marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                     {selectedCrmPerson?.name || 'Unknown'}
+                     <button className="icon-button" style={{ color: 'var(--text-secondary)' }} onClick={() => onStatus('Favorite feature coming soon')} title="Coming soon">
+                       <Star size={16} />
+                     </button>
+                   </h2>
                    <p className="text-secondary" style={{ fontSize: '14px' }}>{isCustomer ? 'Customer' : 'Supplier'} Profile</p>
                  </div>
                  
                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                   <span className="crm-tag vip">VIP</span>
-                   <span className="crm-tag retail">Active</span>
+                   {(() => {
+                     const bal = isCustomer ? safeMoney(selectedCrmPerson?.outstandingAmount ?? selectedCrmPerson?.outstanding ?? 0) : safeMoney(selectedCrmPerson?.payableAmount || 0);
+                     const pTags = [];
+                     if (bal > 50000) pTags.push({ label: 'VIP', class: 'vip' });
+                     if (isCustomer && bal > 10000) pTags.push({ label: 'High Risk', class: 'high-risk' });
+                     if (pTags.length === 0) pTags.push({ label: 'Retail', class: 'retail' });
+                     return pTags.map((t, i) => <span key={i} className={`crm-tag ${t.class}`}>{t.label}</span>);
+                   })()}
                  </div>
                  
                  <hr style={{ border: 'none', borderTop: '1px solid var(--border-subtle)', margin: '8px 0' }} />
@@ -2167,8 +2179,15 @@ export default function Phase2ERP({
                  <hr style={{ border: 'none', borderTop: '1px solid var(--border-subtle)', margin: '8px 0' }} />
                  
                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                   <a className="secondary-button" style={{ width: '100%', justifyContent: 'center' }} href={`https://wa.me/${String(contactPhone(selectedCrmPerson)).replace(/\D/g, '')}`} target="_blank" rel="noreferrer"><MessageCircle size={16} /> Send WhatsApp</a>
-                   <a className="secondary-button" style={{ width: '100%', justifyContent: 'center' }} href={`mailto:${selectedCrmPerson.email}`}><Mail size={16} /> Send Email</a>
+                   <button className="secondary-button" style={{ width: '100%', justifyContent: 'center' }} onClick={() => {
+                     const p = String(contactPhone(selectedCrmPerson) || '').replace(/\D/g, '');
+                     if (p) window.open(`https://wa.me/${p}`, '_blank');
+                     else onStatus('Phone number not available');
+                   }}><MessageCircle size={16} /> Send WhatsApp</button>
+                   <button className="secondary-button" style={{ width: '100%', justifyContent: 'center' }} onClick={() => {
+                     if (selectedCrmPerson?.email) window.location.href = `mailto:${selectedCrmPerson.email}`;
+                     else onStatus('Email not available');
+                   }}><Mail size={16} /> Send Email</button>
                  </div>
               </div>
               
@@ -2220,33 +2239,7 @@ export default function Phase2ERP({
                       <Activity size={18} className="text-brand" /> CRM Activity
                     </h3>
                     <div className="timeline">
-                      <div className="timeline-item">
-                        <div className="timeline-icon" style={{ background: 'var(--brand-secondary)', color: 'var(--brand-primary)' }}>
-                          <Users size={14} />
-                        </div>
-                        <div className="timeline-content">
-                          <div className="timeline-title">Profile Created</div>
-                          <div className="timeline-time">In Supabase</div>
-                        </div>
-                      </div>
-                      <div className="timeline-item">
-                        <div className="timeline-icon" style={{ background: '#ecfdf5', color: '#10b981' }}>
-                          <Phone size={14} />
-                        </div>
-                        <div className="timeline-content">
-                          <div className="timeline-title">Sync Complete</div>
-                          <div className="timeline-time">Today • All ledgers updated.</div>
-                        </div>
-                      </div>
-                      <div className="timeline-item">
-                        <div className="timeline-icon" style={{ background: '#eff6ff', color: '#3b82f6' }}>
-                          <MessageCircle size={14} />
-                        </div>
-                        <div className="timeline-content">
-                          <div className="timeline-title">WhatsApp Message Sent</div>
-                          <div className="timeline-time">Automated • Payment Reminder</div>
-                        </div>
-                      </div>
+                      <p className="text-secondary" style={{ fontSize: '13px' }}>No activity yet</p>
                     </div>
                   </div>
                   
@@ -2258,7 +2251,7 @@ export default function Phase2ERP({
                         <h3 style={{ fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#b45309' }}>
                           <Star size={18} /> Pinned Note
                         </h3>
-                        <button type="button" className="icon-button" style={{ color: '#b45309' }} onClick={() => onStatus('Edit coming soon')}><Edit3 size={16}/></button>
+                        <button type="button" className="icon-button" style={{ color: '#b45309' }} onClick={() => editPerson(selectedCrmPerson, formKind)} title="Edit Note"><Edit3 size={16}/></button>
                       </div>
                       <p style={{ fontSize: '14px', color: '#92400e', lineHeight: '1.6' }}>
                         {selectedCrmPerson?.notes || 'No notes added for this profile yet. Click edit to add specific instructions or details.'}
@@ -2271,20 +2264,11 @@ export default function Phase2ERP({
                         <h3 style={{ fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <Paperclip size={18} className="text-secondary" /> Documents
                         </h3>
-                        <button type="button" className="secondary-button" style={{ padding: '4px 8px', fontSize: '12px' }} onClick={() => onStatus('Upload coming soon')}><Plus size={14}/> Upload</button>
+                        <button type="button" className="secondary-button" style={{ padding: '4px 8px', fontSize: '12px' }} onClick={() => onStatus('Coming soon')} title="Coming soon"><Plus size={14}/> Upload</button>
                       </div>
                       
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        <div className="doc-card">
-                          <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6' }}>
-                            <FileText size={18} />
-                          </div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: '13px', fontWeight: '500' }}>PAN_Card.pdf</div>
-                            <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Placeholder</div>
-                          </div>
-                          <Download size={16} className="text-secondary" />
-                        </div>
+                        <p className="text-secondary" style={{ fontSize: '13px' }}>No documents uploaded</p>
                       </div>
                     </div>
                   </div>
