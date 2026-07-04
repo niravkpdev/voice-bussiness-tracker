@@ -163,6 +163,7 @@ export default function Phase2ERP({
     readObject(CLOUD_BACKUP_KEY, { connected: false, email: '', autoBackup: false, lastBackup: '' })
   );
   const [invoiceLine, setInvoiceLine] = useState({ productId: '', qty: 1, gst: 18, discount: 0 });
+  const [analyticsPeriod, setAnalyticsPeriod] = useState('monthly');
   const [invoiceDraft, setInvoiceDraft] = useState({
     customerId: '',
     status: 'Unpaid',
@@ -368,29 +369,130 @@ export default function Phase2ERP({
     };
   }, [cashBalance, gstSummary.cgst, gstSummary.sgst, inventoryStats.lowStock, invoiceTotals.outstanding, netProfit, scopedInvoices, scopedProducts]);
 
-  const analytics = useMemo(() => {
-    const months = Array.from({ length: 6 }, (_, index) => {
-      const date = new Date();
-      date.setMonth(date.getMonth() - (5 - index));
-      const key = date.toISOString().slice(0, 7);
-      return { key, label: date.toLocaleString('en-IN', { month: 'short' }), revenue: 0, expense: 0, profit: 0 };
-    });
-    months.forEach((month) => {
-      month.revenue = scopedInvoices
-        .filter((invoice) => monthKey(invoice.date) === month.key)
-        .reduce((sum, invoice) => sum + invoice.total, 0);
-      month.expense = vouchers
-        .filter((voucher) => monthKey(voucher.date) === month.key && (voucher.type === 'Payment' || voucher.type === 'Purchase'))
-        .reduce((sum, voucher) => sum + voucher.amount, 0);
-      month.profit = month.revenue - month.expense;
-    });
-    return months;
-  }, [scopedInvoices, vouchers]);
+  const analyticsData = useMemo(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    
+    const getWeek = (d) => {
+      const date = new Date(d.getTime());
+      date.setHours(0, 0, 0, 0);
+      date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+      const week1 = new Date(date.getFullYear(), 0, 4);
+      return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+    };
 
-  const productPerformance = useMemo(() => erpAI.bestProducts.map((product) => ({
-    label: product.name,
-    value: product.soldQty * product.sellingPrice,
-  })), [erpAI.bestProducts]);
+    const currentWeek = getWeek(now);
+    const currentQuarter = Math.floor(currentMonth / 3);
+
+    let buckets = [];
+    let filterDate = () => true;
+
+    if (analyticsPeriod === 'daily') {
+      const todayStr = now.toISOString().slice(0, 10);
+      filterDate = (dStr) => dStr.startsWith(todayStr);
+      buckets = [{ key: todayStr, label: 'Today', revenue: 0, expense: 0, profit: 0 }];
+    } else if (analyticsPeriod === 'weekly') {
+      filterDate = (dStr) => {
+        const d = new Date(dStr);
+        return d.getFullYear() === currentYear && getWeek(d) === currentWeek;
+      };
+      const currentDay = now.getDay() || 7;
+      const mon = new Date(now);
+      mon.setDate(now.getDate() - (currentDay - 1));
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(mon);
+        d.setDate(mon.getDate() + i);
+        buckets.push({ key: d.toISOString().slice(0, 10), label: d.toLocaleString('en-IN', { weekday: 'short' }), revenue: 0, expense: 0, profit: 0 });
+      }
+    } else if (analyticsPeriod === 'monthly') {
+      filterDate = (dStr) => {
+        const d = new Date(dStr);
+        return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
+      };
+      buckets = [
+        { key: 'W1', label: 'Week 1', revenue: 0, expense: 0, profit: 0 },
+        { key: 'W2', label: 'Week 2', revenue: 0, expense: 0, profit: 0 },
+        { key: 'W3', label: 'Week 3', revenue: 0, expense: 0, profit: 0 },
+        { key: 'W4', label: 'Week 4+', revenue: 0, expense: 0, profit: 0 }
+      ];
+    } else if (analyticsPeriod === 'quarterly') {
+      filterDate = (dStr) => {
+        const d = new Date(dStr);
+        return d.getFullYear() === currentYear && Math.floor(d.getMonth() / 3) === currentQuarter;
+      };
+      const startMonth = currentQuarter * 3;
+      for (let i = 0; i < 3; i++) {
+        const d = new Date(currentYear, startMonth + i, 1);
+        buckets.push({ key: d.toISOString().slice(0, 7), label: d.toLocaleString('en-IN', { month: 'short' }), revenue: 0, expense: 0, profit: 0 });
+      }
+    } else if (analyticsPeriod === 'yearly') {
+      filterDate = (dStr) => {
+        const d = new Date(dStr);
+        return d.getFullYear() === currentYear;
+      };
+      for (let i = 0; i < 12; i++) {
+        const d = new Date(currentYear, i, 1);
+        buckets.push({ key: d.toISOString().slice(0, 7), label: d.toLocaleString('en-IN', { month: 'short' }), revenue: 0, expense: 0, profit: 0 });
+      }
+    }
+
+    const filteredInvoices = scopedInvoices.filter(i => filterDate(i.date || today()));
+    const filteredVouchers = vouchers.filter(v => (v.type === 'Payment' || v.type === 'Purchase') && filterDate(v.date || today()));
+
+    filteredInvoices.forEach(invoice => {
+      let bucketKey;
+      const d = new Date(invoice.date || today());
+      if (analyticsPeriod === 'daily') bucketKey = d.toISOString().slice(0, 10);
+      else if (analyticsPeriod === 'weekly') bucketKey = d.toISOString().slice(0, 10);
+      else if (analyticsPeriod === 'monthly') {
+        const wk = Math.min(Math.floor((d.getDate() - 1) / 7) + 1, 4);
+        bucketKey = `W${wk}`;
+      }
+      else if (analyticsPeriod === 'quarterly' || analyticsPeriod === 'yearly') bucketKey = d.toISOString().slice(0, 7);
+      
+      const bucket = buckets.find(b => b.key === bucketKey);
+      if (bucket) bucket.revenue += invoice.total;
+    });
+
+    filteredVouchers.forEach(voucher => {
+      let bucketKey;
+      const d = new Date(voucher.date || today());
+      if (analyticsPeriod === 'daily') bucketKey = d.toISOString().slice(0, 10);
+      else if (analyticsPeriod === 'weekly') bucketKey = d.toISOString().slice(0, 10);
+      else if (analyticsPeriod === 'monthly') {
+        const wk = Math.min(Math.floor((d.getDate() - 1) / 7) + 1, 4);
+        bucketKey = `W${wk}`;
+      }
+      else if (analyticsPeriod === 'quarterly' || analyticsPeriod === 'yearly') bucketKey = d.toISOString().slice(0, 7);
+      
+      const bucket = buckets.find(b => b.key === bucketKey);
+      if (bucket) bucket.expense += voucher.amount;
+    });
+
+    buckets.forEach(b => b.profit = b.revenue - b.expense);
+
+    const byProduct = {};
+    filteredInvoices.forEach((invoice) => {
+      (invoice.lines || []).forEach((line) => {
+        byProduct[line.productId] = (byProduct[line.productId] || 0) + Number(line.qty || 0);
+      });
+    });
+    
+    const productPerf = scopedProducts
+      .map((product) => ({
+        label: product.name,
+        value: (byProduct[product.id] || 0) * product.sellingPrice,
+      }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+
+    return { buckets, productPerf, hasData: filteredInvoices.length > 0 || filteredVouchers.length > 0 };
+  }, [analyticsPeriod, scopedInvoices, vouchers, scopedProducts]);
+
+  const analytics = analyticsData.buckets;
+  const productPerformance = analyticsData.productPerf;
+  const hasAnalyticsData = analyticsData.hasData;
 
   const [showImportModal, setShowImportModal] = useState(false);
   const [importErrors, setImportErrors] = useState([]);
@@ -2140,13 +2242,25 @@ export default function Phase2ERP({
     return (
       <section className="phase2-stack fade-in" id="analytics">
         <div className="erp-hero"><div><span className="eyebrow">Analytics Center</span><h2>Revenue, expense, profit, customer growth, and product performance</h2></div></div>
-        <div className="analytics-filter"><button type="button" onClick={() => onStatus('Timeframe filter coming soon')}>Daily</button><button type="button" onClick={() => onStatus('Timeframe filter coming soon')}>Weekly</button><button type="button" className="active" onClick={() => onStatus('Timeframe filter coming soon')}>Monthly</button><button type="button" onClick={() => onStatus('Timeframe filter coming soon')}>Quarterly</button><button type="button" onClick={() => onStatus('Timeframe filter coming soon')}>Yearly</button></div>
-        <section className="content-grid">
-          <article className="panel"><h2>Revenue Trend</h2><SmallBars data={analytics} valueKey="revenue" /></article>
-          <article className="panel"><h2>Expense Trend</h2><SmallBars data={analytics} valueKey="expense" colorClass="danger" /></article>
-          <article className="panel"><h2>Profit Trend</h2><SmallBars data={analytics} valueKey="profit" colorClass="success" /></article>
-          <article className="panel"><h2>Product Performance</h2><SmallBars data={productPerformance} valueKey="value" colorClass="warning" /></article>
-        </section>
+        <div className="analytics-filter" style={{ overflowX: 'auto', whiteSpace: 'nowrap', display: 'flex', gap: '8px' }}>
+          <button type="button" className={analyticsPeriod === 'daily' ? 'active' : ''} onClick={() => setAnalyticsPeriod('daily')}>Daily</button>
+          <button type="button" className={analyticsPeriod === 'weekly' ? 'active' : ''} onClick={() => setAnalyticsPeriod('weekly')}>Weekly</button>
+          <button type="button" className={analyticsPeriod === 'monthly' ? 'active' : ''} onClick={() => setAnalyticsPeriod('monthly')}>Monthly</button>
+          <button type="button" className={analyticsPeriod === 'quarterly' ? 'active' : ''} onClick={() => setAnalyticsPeriod('quarterly')}>Quarterly</button>
+          <button type="button" className={analyticsPeriod === 'yearly' ? 'active' : ''} onClick={() => setAnalyticsPeriod('yearly')}>Yearly</button>
+        </div>
+        {!hasAnalyticsData ? (
+          <div className="panel" style={{ textAlign: 'center', padding: '48px 24px' }}>
+            <p style={{ color: 'var(--text-secondary)' }}>No data available for this period</p>
+          </div>
+        ) : (
+          <section className="content-grid">
+            <article className="panel"><h2>Revenue Trend</h2><SmallBars data={analytics} valueKey="revenue" /></article>
+            <article className="panel"><h2>Expense Trend</h2><SmallBars data={analytics} valueKey="expense" colorClass="danger" /></article>
+            <article className="panel"><h2>Profit Trend</h2><SmallBars data={analytics} valueKey="profit" colorClass="success" /></article>
+            <article className="panel"><h2>Product Performance</h2><SmallBars data={productPerformance} valueKey="value" colorClass="warning" /></article>
+          </section>
+        )}
       </section>
     );
   }
