@@ -106,6 +106,7 @@ import {
   writeScopedString,
 } from './storageScope.js';
 import { mapVoiceTypeToAccounting, parseReliableVoiceCommand } from './voiceParser.js';
+import VoiceCommandButton from './VoiceCommandButton.jsx';
 
 const Phase2ERP = lazy(() => import('./Phase2ERP.jsx'));
 const Phase3Ops = lazy(() => import('./Phase3Ops.jsx'));
@@ -3104,6 +3105,36 @@ export default function VoiceExpenseTrackerPreview() {
     };
   };
 
+  const handleVoiceCommandRecognized = (data) => {
+    console.log("Voice command recognized", data);
+    if (data.type) {
+      setVoucherType(data.type);
+    }
+    if (data.amount > 0) {
+      setVoucherAmount(data.amount);
+    }
+    if (data.isBank !== undefined) {
+      const bankLedger = ledgers.find(l => l.group === 'Bank Accounts');
+      if (data.isBank && bankLedger) {
+        setVoucherCashId(bankLedger.id);
+      } else {
+        setVoucherCashId(CASH_LEDGER_ID);
+      }
+    }
+    if (data.originalText) {
+      setVoucherNarration(data.originalText);
+    }
+    
+    if (data.partyLedgerId && (data.type === 'Sales' || data.type === 'Purchase')) {
+      if (data.type === 'Sales') {
+        setUseSalesInsteadOfParty(false);
+      } else {
+        setUseExpenseInsteadOfSupplier(false);
+      }
+      setVoucherPartyId(data.partyLedgerId);
+    }
+  };
+
   const saveVoucherEntry = async (event) => {
     event.preventDefault();
     console.log("Voucher submit started", { voucherType, voucherAmount, voucherNarration });
@@ -5445,6 +5476,7 @@ export default function VoiceExpenseTrackerPreview() {
                 <p className="panel-hint">
                   Receipt / Payment = cash. Sales / Purchase = credit (party khata). Every voucher balances debit and credit.
                 </p>
+                <VoiceCommandButton onCommandRecognized={handleVoiceCommandRecognized} existingParties={partyLedgers} />
                 <form onSubmit={saveVoucherEntry}>
                   <div className="form-grid">
                     <div>
