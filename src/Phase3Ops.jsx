@@ -5,6 +5,7 @@ import autoTable from 'jspdf-autotable';
 import { normalizeAmount, sanitizeText, validateEmail, validatePhone } from './security.js';
 import { readScopedString, writeScopedString } from './storageScope.js';
 import { createEmployeeLogin, resetEmployeePassword, disableEmployeeLogin, getSupabaseClient } from './supabaseClient.js';
+import VoiceCommandButton from './VoiceCommandButton.jsx';
 
 const ORDER_KEY = 'phase3Orders';
 const EMPLOYEE_KEY = 'phase3Employees';
@@ -186,6 +187,8 @@ export default function Phase3Ops({
   products,
   vouchers,
   partySummary,
+  partyLedgers,
+  onVoiceCommandRecognized,
   authUser,
   supabaseEnabled,
   cloudOrders,
@@ -1749,10 +1752,23 @@ export default function Phase3Ops({
   if (activeTab === 'voice-bookkeeper') {
     return (
       <section className="phase3-stack fade-in" id="voice-bookkeeper">
-        <div className="phase3-hero"><div><span className="eyebrow">AI Voice Bookkeeper</span><h2>Advanced command center for invoices, insights, receivables, and business issues</h2></div></div>
+        <div className="phase3-hero">
+          <div>
+            <span className="eyebrow">Local Voice Bookkeeper</span>
+            <h2>Record vouchers using offline browser speech recognition</h2>
+            <VoiceCommandButton 
+              onCommandRecognized={onVoiceCommandRecognized} 
+              existingParties={partyLedgers} 
+            />
+          </div>
+        </div>
         <section className="panel">
           <div className="phase3-grid">
-            <article className="phase3-card"><strong>Create invoice command</strong><p>"Create invoice for Rahul worth 5000" opens invoice workflow and can add customer locally.</p><a href="#invoices">Open Invoices</a></article>
+            <article className="phase3-card">
+              <strong>Record Voucher Command</strong>
+              <p>"Add payment 500 cash for tea" instantly opens the Voucher Entry screen, fills it, and prepares it for your final save.</p>
+              <a href="#voucher-entry">Go to Voucher Entry</a>
+            </article>
             <article className="phase3-card"><strong>Profit question</strong><p>Monthly profit is calculated from local vouchers and invoices.</p><strong>{formatCurrency(vouchers.filter((v) => (v.date || '').slice(0, 7) === today().slice(0, 7)).reduce((sum, v) => sum + (v.type === 'Receipt' || v.type === 'Sales' ? v.amount : -v.amount), 0))}</strong></article>
             <article className="phase3-card"><strong>Pending collections</strong><p>{pendingCollections.length} customers need collection follow-up.</p><a href="#crm">Open CRM</a></article>
             <article className="phase3-card"><strong>Issues needing attention</strong>{businessIssues.length ? businessIssues.map((issue) => <p key={issue}>{issue}</p>) : <p>No urgent issues detected.</p>}</article>

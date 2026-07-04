@@ -5418,6 +5418,11 @@ export default function VoiceExpenseTrackerPreview() {
           ].includes(activeTab) && (
             <Suspense fallback={<div className="panel skeleton-panel">Loading operations module...</div>}>
               <Phase3Ops onLimitReached={setUpgradeModalFeature}
+                onVoiceCommandRecognized={(data) => {
+                  handleVoiceCommandRecognized(data);
+                  setActiveTab('voucher-entry');
+                  window.location.hash = 'voucher-entry';
+                }}
                 activeTab={activeTab}
                 profile={profile}
                 invoices={cloudInvoices}
@@ -5425,6 +5430,7 @@ export default function VoiceExpenseTrackerPreview() {
                 products={cloudInventory}
                 vouchers={vouchers}
                 partySummary={partySummary}
+                partyLedgers={partyLedgers}
                 authUser={authUser}
                 supabaseEnabled={supabaseEnabled}
                 cloudOrders={cloudOrders}
