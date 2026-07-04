@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import VoiceExpenseTrackerPreview from './VoiceExpenseTrackerPreview.jsx';
 import './styles.css';
 import './premium-overrides.css';
+import './mobile-fixes.css';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
