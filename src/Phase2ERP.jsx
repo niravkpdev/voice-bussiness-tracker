@@ -153,6 +153,8 @@ export default function Phase2ERP({
   const [editingPerson, setEditingPerson] = useState(null);
   const [selectedCrmPerson, setSelectedCrmPerson] = useState(null);
   const [showPersonDrawer, setShowPersonDrawer] = useState(false);
+  const [partyActionMenu, setPartyActionMenu] = useState(null);
+  const [partyToDelete, setPartyToDelete] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [productProfileTab, setProductProfileTab] = useState('Overview');
@@ -862,11 +864,8 @@ export default function Phase2ERP({
     setEditingPerson({ ...person, type: kind });
   };
 
-  const deletePerson = async (person, kind) => {
+  const executeDeletePerson = async (person, kind) => {
     const isCustomer = kind === 'customer';
-    if (!confirm(`Delete ${isCustomer ? 'customer' : 'supplier'} "${person.name}"?`)) {
-      return;
-    }
 
     const collectionName = isCustomer ? 'customers' : 'suppliers';
     const path = cloudUserId ? `users/${cloudUserId}/${collectionName}/${person.id}` : `${collectionName}/${person.id}`;
@@ -874,9 +873,9 @@ export default function Phase2ERP({
 
     try {
       const deleted = await onCloudDelete?.(collectionName, person.id);
-    if (!deleted) {
-      throw new Error(`Supabase delete failed for ${path}`);
-    }
+      if (!deleted) {
+        throw new Error(`Supabase delete failed for ${path}`);
+      }
       if (isCustomer) {
         setCustomers((items) => items.filter((item) => item.id !== person.id));
         debugDatabase('CUSTOMER_DELETE_SUCCESS', { path, customerId: person.id });
@@ -887,9 +886,20 @@ export default function Phase2ERP({
       if (editingPerson?.id === person.id) {
         setEditingPerson(null);
       }
-      onStatus(`${isCustomer ? 'Customer' : 'Supplier'} deleted`);
+      if (selectedCrmPerson?.id === person.id) {
+        setSelectedCrmPerson(null);
+      }
+      setPartyToDelete(null);
+      onStatus(`${isCustomer ? 'Customer' : 'Supplier'} deleted successfully`);
     } catch (error) {
-      onStatus(error.message || `${isCustomer ? 'Customer' : 'Supplier'} delete failed`);
+      const msg = error?.message?.toLowerCase() || '';
+      if (msg.includes('foreign key') || msg.includes('constraint') || msg.includes('reference')) {
+        onStatus(`Cannot delete ${person.name} because they have existing transactions or invoices.`);
+      } else {
+        onStatus(error.message || `${isCustomer ? 'Customer' : 'Supplier'} delete failed`);
+      }
+      console.error('Delete error:', error);
+      setPartyToDelete(null);
     }
   };
 
@@ -1832,6 +1842,54 @@ export default function Phase2ERP({
       <section className="phase2-stack fade-in crm-container" id={activeTab} style={{ background: 'transparent', border: 'none', boxShadow: 'none', padding: 0 }}>
         
         {/* RIGHT SIDE DRAWER FOR ADD/EDIT CUSTOMER */}
+        {partyActionMenu && typeof document !== 'undefined' && createPortal(
+          <div className="crm-drawer-overlay" onClick={() => setPartyActionMenu(null)} style={{ zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="panel fade-in" onClick={(e) => e.stopPropagation()} style={{ width: '90%', maxWidth: '320px', padding: '0', overflow: 'hidden' }}>
+              <div style={{ padding: '16px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)' }}>
+                <h3 style={{ margin: 0, fontSize: '16px' }}>{partyActionMenu.item.name}</h3>
+                <p className="text-secondary" style={{ margin: '4px 0 0 0', fontSize: '13px' }}>Actions</p>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <button 
+                  style={{ padding: '16px', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid var(--border-subtle)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}
+                  onClick={() => { setSelectedCrmPerson(partyActionMenu.item); setPartyActionMenu(null); }}
+                >
+                  <Search size={16} className="text-secondary" /> View Profile
+                </button>
+                <button 
+                  style={{ padding: '16px', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid var(--border-subtle)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}
+                  onClick={() => { editPerson(partyActionMenu.item, partyActionMenu.formKind); setPartyActionMenu(null); }}
+                >
+                  <Edit3 size={16} className="text-secondary" /> Edit
+                </button>
+                <button 
+                  style={{ padding: '16px', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--danger)' }}
+                  onClick={() => { setPartyToDelete(partyActionMenu); setPartyActionMenu(null); }}
+                >
+                  <X size={16} /> Delete
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+        {partyToDelete && typeof document !== 'undefined' && createPortal(
+          <div className="crm-drawer-overlay" onClick={() => setPartyToDelete(null)} style={{ zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="panel fade-in" onClick={(e) => e.stopPropagation()} style={{ width: '90%', maxWidth: '400px', padding: '24px' }}>
+              <h3 style={{ marginTop: 0 }}>Delete {partyToDelete.formKind === 'customer' ? 'Customer' : 'Supplier'}</h3>
+              <p style={{ margin: '16px 0', color: 'var(--text-secondary)' }}>
+                Are you sure you want to delete <strong>{partyToDelete.item.name}</strong>? This action cannot be undone.
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+                <button className="secondary-button" onClick={() => setPartyToDelete(null)}>Cancel</button>
+                <button className="primary-button" style={{ background: 'var(--danger)' }} onClick={() => executeDeletePerson(partyToDelete.item, partyToDelete.formKind)}>Delete</button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
         {(showPersonDrawer || currentEdit) && typeof document !== 'undefined' && createPortal(
           <div className="crm-drawer-overlay" onClick={() => { setShowPersonDrawer(false); setEditingPerson(null); }}>
             <div className="crm-drawer-content" onClick={(e) => e.stopPropagation()}>
@@ -2032,9 +2090,10 @@ export default function Phase2ERP({
                             </div>
                           </td>
                           <td style={{ textAlign: 'right' }}>
-                            <div className="voucher-actions" style={{ justifyContent: 'flex-end' }}>
-                              <button className="icon-button" onClick={(e) => { e.stopPropagation(); editPerson(item, formKind); }} title="Edit"><Edit3 size={16} /></button>
-                              <button className="icon-button" onClick={(e) => { e.stopPropagation(); deletePerson(item, formKind); }} title="Delete"><X size={16} className="text-danger" /></button>
+                            <div className="voucher-actions" style={{ justifyContent: 'flex-end', position: 'relative' }}>
+                              <button className="icon-button" onClick={(e) => { e.stopPropagation(); setPartyActionMenu({ item, formKind }); }} title="Actions">
+                                <MoreHorizontal size={16} />
+                              </button>
                             </div>
                           </td>
                         </tr>
