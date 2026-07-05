@@ -8,6 +8,7 @@ import {
   CalendarDays, Gift, Briefcase, MapPin, Star, Sparkles, TrendingDown, Sun, Cloud,
   Filter, Tag, Download, Phone, Mail, MessageCircle, MoreHorizontal, Paperclip, Edit3, ArrowLeft, Image as ImageIcon, X
 } from 'lucide-react';
+import { SafeHelpCenterModal } from './SafeHelpCenterModal';
 import {
   LEDGERS_KEY,
   VOUCHERS_KEY,
@@ -4851,14 +4852,14 @@ export default function VoiceExpenseTrackerPreview() {
                 {(profile.owner || authUser?.email || 'A')[0].toUpperCase()}
               </div>
               <div className="saas-dropdown-menu">
-                <button type="button" onClick={() => setStatus('Profile page coming soon')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><User size={16} /> My Profile</button>
-                <button type="button" onClick={() => { setActiveTab('app-settings'); window.location.hash = 'app-settings'; }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Settings size={16} /> Company Settings</button>
-                <button type="button" onClick={() => { setActiveTab('billing'); window.location.hash = 'billing'; }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><CreditCard size={16} /> Billing & Plans</button>
-                <button type="button" onClick={() => { setActiveTab('analytics'); window.location.hash = 'analytics'; }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Activity size={16} /> Analytics</button>
-                <button type="button" onClick={() => setStatus('Preferences coming soon')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><CheckSquare size={16} /> Preferences</button>
-                <button type="button" onClick={() => { setIsHelpCenterOpen(true); setIsProfileMenuOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><HelpCircle size={16} /> Help Center</button>
+                <button type="button" onClick={(e) => { e.currentTarget.blur(); document.activeElement?.blur(); setActiveTab('profile'); window.location.hash = 'profile'; }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><User size={16} /> My Profile</button>
+                <button type="button" onClick={(e) => { e.currentTarget.blur(); document.activeElement?.blur(); setActiveTab('app-settings'); window.location.hash = 'app-settings'; }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Settings size={16} /> Company Settings</button>
+                <button type="button" onClick={(e) => { e.currentTarget.blur(); document.activeElement?.blur(); setActiveTab('billing'); window.location.hash = 'billing'; }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><CreditCard size={16} /> Billing & Plans</button>
+                <button type="button" onClick={(e) => { e.currentTarget.blur(); document.activeElement?.blur(); setActiveTab('analytics'); window.location.hash = 'analytics'; }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Activity size={16} /> Analytics</button>
+                <button type="button" onClick={(e) => { e.currentTarget.blur(); document.activeElement?.blur(); console.log("[Profile Menu] Preferences clicked"); setStatus('Preferences coming soon'); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><CheckSquare size={16} /> Preferences</button>
+                <button type="button" onClick={(e) => { e.currentTarget.blur(); document.activeElement?.blur(); console.log("[Profile Menu] Help Center clicked"); setIsHelpCenterOpen(true); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><HelpCircle size={16} /> Help Center</button>
                 <div className="saas-dropdown-divider"></div>
-                <button type="button" onClick={logout} className="saas-dropdown-item danger" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><LogOut size={16} /> Logout</button>
+                <button type="button" onClick={(e) => { e.currentTarget.blur(); document.activeElement?.blur(); logout(); }} className="saas-dropdown-item danger" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><LogOut size={16} /> Logout</button>
               </div>
             </div>
 
@@ -7441,6 +7442,7 @@ export default function VoiceExpenseTrackerPreview() {
           <span>Page 1 of 1</span>
         </div>
       </div>
+      <SafeHelpCenterModal isOpen={isHelpCenterOpen} onClose={() => setIsHelpCenterOpen(false)} />
     </div>
   );
 }
