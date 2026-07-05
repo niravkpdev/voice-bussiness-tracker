@@ -827,6 +827,115 @@ const safeTrackEvent = (...args) => {
 };
 const trackEvent = safeTrackEvent;
 
+const searchRoutes = [
+  { id: 'dashboard', label: 'Dashboard', route: 'dashboard' },
+  { id: 'customers', label: 'Customers', route: 'crm' },
+  { id: 'suppliers', label: 'Suppliers', route: 'crm' },
+  { id: 'employees', label: 'Employees', route: 'employees' },
+  { id: 'party-management', label: 'Party Management', route: 'crm' },
+  { id: 'party-ledger', label: 'Party Ledger', route: 'party-ledger' },
+  { id: 'voucher-entry', label: 'Voucher Entry', route: 'voucher-entry' },
+  { id: 'day-book', label: 'Day Book', route: 'day-book' },
+  { id: 'inventory', label: 'Inventory', route: 'inventory' },
+  { id: 'orders', label: 'Orders & Invoices', route: 'orders' },
+  { id: 'reports', label: 'Reports', route: 'reports' },
+  { id: 'analytics', label: 'Analytics', route: 'analytics' },
+  { id: 'settings', label: 'Settings', route: 'app-settings' },
+  { id: 'company-setup', label: 'Company Setup', route: 'company-setup' },
+  { id: 'voice-bookkeeper', label: 'Voice Bookkeeper', route: 'voice-bookkeeper' },
+];
+
+function GlobalSearch({ onNavigate }) {
+  const [query, setQuery] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        inputRef.current?.focus();
+        setIsOpen(true);
+      }
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+        inputRef.current?.blur();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const results = searchRoutes.filter(r => 
+    r.label.toLowerCase().includes(query.toLowerCase()) || 
+    r.id.toLowerCase().includes(query.toLowerCase())
+  );
+
+  const handleSelect = (route) => {
+    setQuery('');
+    setIsOpen(false);
+    onNavigate(route);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && results.length > 0) {
+      handleSelect(results[0].route);
+    }
+  };
+
+  return (
+    <div className="search-wrapper" style={{ position: 'relative' }}>
+      <Search size={16} className="search-icon" style={{ pointerEvents: 'none' }} />
+      <input 
+        ref={inputRef}
+        type="text" 
+        placeholder="Search customers, invoices, inventory..." 
+        aria-label="Search business records"
+        value={query}
+        onChange={(e) => { setQuery(e.target.value); setIsOpen(true); }}
+        onFocus={() => setIsOpen(true)}
+        onKeyDown={handleKeyDown}
+        onBlur={() => setTimeout(() => setIsOpen(false), 150)}
+        style={{ paddingRight: query ? '32px' : '16px' }}
+      />
+      <div className="search-shortcut">Ctrl + K</div>
+      {query && (
+        <button 
+          type="button"
+          onClick={() => { setQuery(''); inputRef.current?.focus(); }}
+          style={{ position: 'absolute', right: '48px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#999', padding: '0 4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <X size={14} />
+        </button>
+      )}
+
+      {isOpen && query && (
+        <div style={{ position: 'absolute', top: 'calc(100% + 8px)', left: 0, right: 0, background: '#fff', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 9999, maxHeight: '300px', overflowY: 'auto', border: '1px solid #e2e8f0' }}>
+          {results.length > 0 ? (
+            <ul style={{ listStyle: 'none', padding: '8px 0', margin: 0 }}>
+              {results.map((r) => (
+                <li key={r.id}>
+                  <button 
+                    onMouseDown={(e) => { e.preventDefault(); handleSelect(r.route); }}
+                    style={{ width: '100%', padding: '12px 16px', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', color: '#334155', fontSize: '14px', transition: 'background 0.2s' }}
+                    className="saas-dropdown-item"
+                  >
+                    {r.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div style={{ padding: '16px', textAlign: 'center', color: '#64748b', fontSize: '14px' }}>
+              No matching page found
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function VoiceExpenseTrackerPreview() {
   // Auto-complete setup to prevent modals from showing
   if (typeof window !== 'undefined') {
@@ -4819,11 +4928,10 @@ export default function VoiceExpenseTrackerPreview() {
               <strong style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{activePageTitle}</strong>
             </div>
           </div>
-          <div className="search-wrapper">
-            <Search size={16} className="search-icon" />
-            <input type="search" placeholder="Search customers, invoices, inventory..." aria-label="Search business records" />
-            <div className="search-shortcut">Ctrl + K</div>
-          </div>
+          <GlobalSearch onNavigate={(route) => {
+            setActiveTab(route);
+            window.location.hash = route;
+          }} />
           <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             
             {/* Quick Add Dropdown */}
@@ -4868,17 +4976,9 @@ export default function VoiceExpenseTrackerPreview() {
 
         <main className="page-shell">
           {cloudBusinesses.length === 0 && !['profile-settings', 'company-setup'].includes(activeTab) && (
-              <section className="panel fade-in" style={{ textAlign: 'center', padding: '32px 24px', gridColumn: '1 / -1', marginBottom: '24px', border: '2px dashed var(--border-subtle)' }}>
-                <h2 style={{ marginBottom: '8px' }}>Welcome to Trinetr Business Suite</h2>
-                <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>Please set up or select a business profile to unlock all features.</p>
-                <button 
-                  type="button" 
-                  className="primary-btn" 
-                  onClick={() => { window.location.hash = 'company-setup'; setActiveTab('company-setup'); }}
-                >
-                  Go to Profile Settings
-                </button>
-              </section>
+              <div style={{ gridColumn: '1 / -1', marginBottom: '16px' }}>
+                <h2 style={{ fontSize: '18px', fontWeight: '600' }}>Welcome to Trinetr Business Suite</h2>
+              </div>
             )}
           <section className="mobile-start-panel" aria-label="Mobile quick start">
             <div>
