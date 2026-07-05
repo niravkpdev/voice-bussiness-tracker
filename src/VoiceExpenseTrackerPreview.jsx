@@ -285,6 +285,24 @@ const navigationConfig = [
       { id: 'database-test', path: '#database-test', tab: 'database-test', label: 'Database Test', icon: '◉', debugOnly: true },
     ],
   },
+  {
+    id: 'account',
+    label: 'Account',
+    icon: 'User',
+    children: [
+      { id: 'profile', path: '#profile', tab: 'profile', label: 'My Profile', hidden: true },
+      { id: 'billing', path: '#billing', tab: 'billing', label: 'Billing & Plans', hidden: true },
+      { id: 'preferences', path: '#preferences', tab: 'preferences', label: 'Preferences', hidden: true },
+    ]
+  },
+  {
+    id: 'support',
+    label: 'Support',
+    icon: 'HelpCircle',
+    children: [
+      { id: 'help', path: '#help', tab: 'help', label: 'Help Center', hidden: true },
+    ]
+  },
 ];
 const SIDEBAR_SECTIONS = navigationConfig;
 const EMPLOYEE_SELF_TABS = [
@@ -1186,6 +1204,10 @@ export default function VoiceExpenseTrackerPreview() {
     'reports-hub',
     'profile-settings',
     'app-settings',
+    'profile',
+    'billing',
+    'preferences',
+    'help',
     ...(canViewDatabaseDebug ? ['database-test'] : []),
     ...LEGAL_PAGE_IDS,
   ]);
@@ -4830,7 +4852,7 @@ export default function VoiceExpenseTrackerPreview() {
         <nav className="erp-nav-list" aria-label="ERP sections" style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
           {SIDEBAR_SECTIONS.map((section) => ({
             ...section,
-            children: section.children.filter((child) => !child.debugOnly || canViewDatabaseDebug),
+            children: section.children.filter((child) => (!child.debugOnly || canViewDatabaseDebug) && !child.hidden),
           })).filter((section) => section.children.length > 0).map((section) => {
             const isExpanded = openSidebarSections[section.id] ?? true;
             const hasActiveItem = section.children.some((child) => child.tab === activeTab);
@@ -4968,8 +4990,8 @@ export default function VoiceExpenseTrackerPreview() {
                 <button type="button" onClick={(e) => { e.currentTarget.blur(); document.activeElement?.blur(); setActiveTab('app-settings'); window.location.hash = 'app-settings'; }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Settings size={16} /> Company Settings</button>
                 <button type="button" onClick={(e) => { e.currentTarget.blur(); document.activeElement?.blur(); setActiveTab('billing'); window.location.hash = 'billing'; }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><CreditCard size={16} /> Billing & Plans</button>
                 <button type="button" onClick={(e) => { e.currentTarget.blur(); document.activeElement?.blur(); setActiveTab('analytics'); window.location.hash = 'analytics'; }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Activity size={16} /> Analytics</button>
-                <button type="button" onClick={(e) => { e.currentTarget.blur(); document.activeElement?.blur(); console.log("[Profile Menu] Preferences clicked"); setStatus('Preferences coming soon'); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><CheckSquare size={16} /> Preferences</button>
-                <button type="button" onClick={(e) => { e.currentTarget.blur(); document.activeElement?.blur(); console.log("[Profile Menu] Help Center clicked"); setIsHelpCenterOpen(true); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><HelpCircle size={16} /> Help Center</button>
+                <button type="button" onClick={(e) => { e.currentTarget.blur(); document.activeElement?.blur(); setActiveTab('preferences'); window.location.hash = 'preferences'; }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><CheckSquare size={16} /> Preferences</button>
+                <button type="button" onClick={(e) => { e.currentTarget.blur(); document.activeElement?.blur(); setActiveTab('help'); window.location.hash = 'help'; }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><HelpCircle size={16} /> Help Center</button>
                 <div className="saas-dropdown-divider"></div>
                 <button type="button" onClick={(e) => { e.currentTarget.blur(); document.activeElement?.blur(); logout(); }} className="saas-dropdown-item danger" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><LogOut size={16} /> Logout</button>
               </div>
@@ -7185,6 +7207,101 @@ export default function VoiceExpenseTrackerPreview() {
               >
                 Run Database Test
               </button>
+            </section>
+          )}
+
+          {activeTab === 'profile' && (
+            <section className="panel fade-in" id="profile">
+              <div className="section-header">
+                <div>
+                  <h2>My Profile</h2>
+                  <p className="panel-hint">Manage your personal account and identity.</p>
+                </div>
+              </div>
+              <div style={{ padding: '24px', background: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
+                  <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'var(--brand-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 'bold' }}>
+                    {(authUser?.email || profile.owner || 'A')[0].toUpperCase()}
+                  </div>
+                  <div>
+                    <h3 style={{ margin: '0 0 4px 0' }}>{profile.owner || 'Admin User'}</h3>
+                    <div style={{ color: 'var(--text-secondary)' }}>{authUser?.email || 'user@example.com'}</div>
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                  <div style={{ padding: '16px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '12px', textTransform: 'uppercase', marginBottom: '4px' }}>Business Connection</div>
+                    <div style={{ fontWeight: '500' }}>{profile.name || 'Not set'}</div>
+                  </div>
+                  <div style={{ padding: '16px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '12px', textTransform: 'uppercase', marginBottom: '4px' }}>Account Role</div>
+                    <div style={{ fontWeight: '500' }}>Owner / Administrator</div>
+                  </div>
+                </div>
+                <div style={{ marginTop: '24px' }}>
+                  <button type="button" className="secondary-button" onClick={() => setStatus('Edit Profile coming soon')}><Edit3 size={16}/> Edit Profile</button>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {activeTab === 'billing' && (
+            <section className="panel fade-in" id="billing">
+              <div className="section-header">
+                <div>
+                  <h2>Billing & Plans</h2>
+                  <p className="panel-hint">Manage your subscription, view invoices, and update payment methods.</p>
+                </div>
+              </div>
+              <div style={{ padding: '32px', textAlign: 'center', background: 'var(--bg-primary)', borderRadius: '8px', border: '1px dashed var(--border-subtle)' }}>
+                <CreditCard size={48} style={{ color: 'var(--text-muted)', marginBottom: '16px', marginLeft: 'auto', marginRight: 'auto', display: 'block' }} />
+                <h3 style={{ margin: '0 0 8px 0' }}>Billing & Plans coming soon</h3>
+                <p style={{ color: 'var(--text-secondary)', margin: '0 0 24px 0', maxWidth: '400px', marginLeft: 'auto', marginRight: 'auto' }}>
+                  You are currently on the free beta plan. Subscription and payment integration will be available in a future update.
+                </p>
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  <button type="button" className="secondary-button" onClick={() => { setActiveTab('app-settings'); window.location.hash = 'app-settings'; }}>Go to Settings</button>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {activeTab === 'preferences' && (
+            <section className="panel fade-in" id="preferences">
+              <div className="section-header">
+                <div>
+                  <h2>Preferences</h2>
+                  <p className="panel-hint">Customize your application experience.</p>
+                </div>
+              </div>
+              <div style={{ padding: '32px', textAlign: 'center', background: 'var(--bg-primary)', borderRadius: '8px', border: '1px dashed var(--border-subtle)' }}>
+                <Settings size={48} style={{ color: 'var(--text-muted)', marginBottom: '16px', marginLeft: 'auto', marginRight: 'auto', display: 'block' }} />
+                <h3 style={{ margin: '0 0 8px 0' }}>Preferences coming soon</h3>
+                <p style={{ color: 'var(--text-secondary)', margin: '0 0 24px 0' }}>
+                  Theme, layout, and notification preferences will be available soon.
+                </p>
+              </div>
+            </section>
+          )}
+
+          {activeTab === 'help' && (
+            <section className="panel fade-in" id="help">
+              <div className="section-header">
+                <div>
+                  <h2>Help Center</h2>
+                  <p className="panel-hint">Support and guides for Trinetr Business Suite.</p>
+                </div>
+              </div>
+              <div style={{ padding: '32px', textAlign: 'center', background: 'var(--bg-primary)', borderRadius: '8px', border: '1px dashed var(--border-subtle)' }}>
+                <HelpCircle size={48} style={{ color: 'var(--text-muted)', marginBottom: '16px', marginLeft: 'auto', marginRight: 'auto', display: 'block' }} />
+                <h3 style={{ margin: '0 0 8px 0' }}>Need Help?</h3>
+                <p style={{ color: 'var(--text-secondary)', margin: '0 0 24px 0' }}>
+                  You can access all support guides and contact information from the Help Center modal.
+                </p>
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  <button type="button" className="primary-button" onClick={() => setIsHelpCenterOpen(true)}>Open Help Center</button>
+                </div>
+              </div>
             </section>
           )}
 
