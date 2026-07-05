@@ -5963,7 +5963,24 @@ export default function VoiceExpenseTrackerPreview() {
                       <ArrowLeft size={16} /> Back to List
                     </button>
                     <div className="crm-toolbar-actions">
-                      <button type="button" className="secondary-button" onClick={() => setStatus('Edit Profile coming soon')}><Edit3 size={16} /> Edit Profile</button>
+                      <button type="button" className="secondary-button" onClick={() => { console.log("[REAL PARTY PROFILE] Edit clicked", selectedCrmCustomer); setStatus('Edit Profile coming soon'); }}><Edit3 size={16} /> Edit Profile</button>
+                      <button type="button" className="secondary-button text-danger" onClick={async () => {
+                        console.log("[REAL PARTY PROFILE] Delete clicked", selectedCrmCustomer);
+                        if (window.confirm(`Are you sure you want to delete ${selectedCrmCustomer.name}?`)) {
+                          try {
+                            const col = selectedCrmCustomer.group === 'Sundry Debtors' ? 'customers' : 'suppliers';
+                            const success = await deleteAuthenticatedCloudRecord(col, selectedCrmCustomer.id);
+                            if (success) {
+                              setSelectedCrmCustomer(null);
+                              setStatus('Party deleted successfully');
+                            } else {
+                              setStatus('Cannot delete party due to existing transactions.');
+                            }
+                          } catch (err) {
+                            setStatus('Cannot delete party due to existing transactions.');
+                          }
+                        }
+                      }}><X size={16} /> Delete Party</button>
                       <button type="button" className="primary-button" onClick={() => { setStatus('Redirecting to New Invoice'); setActiveTab('invoices'); }}><Plus size={16} /> Create Invoice</button>
                     </div>
                   </div>
@@ -5973,13 +5990,24 @@ export default function VoiceExpenseTrackerPreview() {
                     <div className="profile-sidebar">
                        <div className="profile-avatar-large">{selectedCrmCustomer.name.charAt(0).toUpperCase()}</div>
                        <div style={{ textAlign: 'center' }}>
-                         <h2 style={{ fontSize: '20px', marginBottom: '4px' }}>{selectedCrmCustomer.name}</h2>
-                         <p className="text-secondary" style={{ fontSize: '14px' }}>{selectedCrmCustomer.group === 'Sundry Debtors' ? 'Customer' : 'Supplier'}</p>
+                         <h2 style={{ fontSize: '20px', marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                           {selectedCrmCustomer.name}
+                           <button className="icon-button" style={{ color: 'var(--text-secondary)' }} onClick={() => { console.log("[REAL PARTY PROFILE] Star clicked"); setStatus('Favorite feature coming soon'); }} title="Coming soon">
+                             <Star size={16} />
+                           </button>
+                         </h2>
+                         <p className="text-secondary" style={{ fontSize: '14px' }}>{selectedCrmCustomer.group === 'Sundry Debtors' ? 'Customer' : 'Supplier'} Profile</p>
                        </div>
                        
                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                         <span className="crm-tag vip">VIP</span>
-                         <span className="crm-tag retail">Active</span>
+                         {(() => {
+                           const bal = safeMoney(selectedCrmCustomer.outstandingAmount || 0);
+                           const pTags = [];
+                           if (bal > 50000) pTags.push({ label: 'VIP', class: 'vip' });
+                           if (selectedCrmCustomer.group === 'Sundry Debtors' && bal > 10000) pTags.push({ label: 'High Risk', class: 'high-risk' });
+                           if (pTags.length === 0) pTags.push({ label: 'Retail', class: 'retail' });
+                           return pTags.map((t, i) => <span key={i} className={`crm-tag ${t.class}`}>{t.label}</span>);
+                         })()}
                        </div>
                        
                        <hr style={{ border: 'none', borderTop: '1px solid var(--border-subtle)', margin: '8px 0' }} />
@@ -5991,7 +6019,7 @@ export default function VoiceExpenseTrackerPreview() {
                            </div>
                            <div style={{ fontSize: '13px' }}>
                              <div className="text-secondary">Phone</div>
-                             <div style={{ fontWeight: '500' }}>+91 98765 43210</div>
+                             <div style={{ fontWeight: '500' }}>{selectedCrmCustomer.phone || selectedCrmCustomer.mobile || 'N/A'}</div>
                            </div>
                          </div>
                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -6000,7 +6028,7 @@ export default function VoiceExpenseTrackerPreview() {
                            </div>
                            <div style={{ fontSize: '13px' }}>
                              <div className="text-secondary">Email</div>
-                             <div style={{ fontWeight: '500' }}>contact@company.com</div>
+                             <div style={{ fontWeight: '500' }}>{selectedCrmCustomer.email || 'N/A'}</div>
                            </div>
                          </div>
                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -6009,7 +6037,7 @@ export default function VoiceExpenseTrackerPreview() {
                            </div>
                            <div style={{ fontSize: '13px' }}>
                              <div className="text-secondary">Location</div>
-                             <div style={{ fontWeight: '500' }}>Mumbai, Maharashtra</div>
+                             <div style={{ fontWeight: '500' }}>{selectedCrmCustomer.address || selectedCrmCustomer.city || 'N/A'}</div>
                            </div>
                          </div>
                        </div>
@@ -6017,8 +6045,18 @@ export default function VoiceExpenseTrackerPreview() {
                        <hr style={{ border: 'none', borderTop: '1px solid var(--border-subtle)', margin: '8px 0' }} />
                        
                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                         <button type="button" className="secondary-button" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setStatus('WhatsApp integration coming soon')}><MessageCircle size={16} /> Send WhatsApp</button>
-                         <button type="button" className="secondary-button" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setStatus('Email integration coming soon')}><Mail size={16} /> Send Email</button>
+                         <button type="button" className="secondary-button" style={{ width: '100%', justifyContent: 'center' }} onClick={() => {
+                           console.log("[REAL PARTY PROFILE] WhatsApp clicked", selectedCrmCustomer);
+                           const rawPhone = selectedCrmCustomer.phone || selectedCrmCustomer.mobile || '';
+                           const p = String(rawPhone).replace(/\D/g, '');
+                           if (p) window.open(`https://wa.me/${p}`, '_blank');
+                           else setStatus('Phone number not available');
+                         }}><MessageCircle size={16} /> Send WhatsApp</button>
+                         <button type="button" className="secondary-button" style={{ width: '100%', justifyContent: 'center' }} onClick={() => {
+                           console.log("[REAL PARTY PROFILE] Email clicked", selectedCrmCustomer);
+                           if (selectedCrmCustomer.email) window.location.href = `mailto:${selectedCrmCustomer.email}`;
+                           else setStatus('Email not available');
+                         }}><Mail size={16} /> Send Email</button>
                        </div>
                     </div>
                     
@@ -6070,42 +6108,7 @@ export default function VoiceExpenseTrackerPreview() {
                             <Activity size={18} className="text-brand" /> CRM Activity
                           </h3>
                           <div className="timeline">
-                            <div className="timeline-item">
-                              <div className="timeline-icon" style={{ background: 'var(--brand-secondary)', color: 'var(--brand-primary)' }}>
-                                <FileText size={14} />
-                              </div>
-                              <div className="timeline-content">
-                                <div className="timeline-title">Invoice #INV-2024-089 Generated</div>
-                                <div className="timeline-time">Today, 10:30 AM</div>
-                              </div>
-                            </div>
-                            <div className="timeline-item">
-                              <div className="timeline-icon" style={{ background: '#ecfdf5', color: '#10b981' }}>
-                                <Phone size={14} />
-                              </div>
-                              <div className="timeline-content">
-                                <div className="timeline-title">Follow-up Call</div>
-                                <div className="timeline-time">Yesterday, 4:15 PM • Notes: Asked for discount on next bulk order.</div>
-                              </div>
-                            </div>
-                            <div className="timeline-item">
-                              <div className="timeline-icon" style={{ background: '#eff6ff', color: '#3b82f6' }}>
-                                <MessageCircle size={14} />
-                              </div>
-                              <div className="timeline-content">
-                                <div className="timeline-title">WhatsApp Message Sent</div>
-                                <div className="timeline-time">Oct 24, 2024 • Payment Reminder</div>
-                              </div>
-                            </div>
-                            <div className="timeline-item">
-                              <div className="timeline-icon" style={{ background: '#fef2f2', color: '#ef4444' }}>
-                                <CreditCard size={14} />
-                              </div>
-                              <div className="timeline-content">
-                                <div className="timeline-title">Payment Received</div>
-                                <div className="timeline-time">Oct 20, 2024 • ₹15,000 via NEFT</div>
-                              </div>
-                            </div>
+                            <p className="text-secondary" style={{ fontSize: '13px' }}>No activity yet</p>
                           </div>
                         </div>
                         
@@ -6117,10 +6120,10 @@ export default function VoiceExpenseTrackerPreview() {
                               <h3 style={{ fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#b45309' }}>
                                 <Star size={18} /> Pinned Note
                               </h3>
-                              <button type="button" className="icon-button" style={{ color: '#b45309' }} onClick={() => setStatus('Edit coming soon')}><Edit3 size={16}/></button>
+                              <button type="button" className="icon-button" style={{ color: '#b45309' }} onClick={() => { console.log("[REAL PARTY PROFILE] Pinned note clicked"); setStatus('Edit coming soon'); }}><Edit3 size={16}/></button>
                             </div>
                             <p style={{ fontSize: '14px', color: '#92400e', lineHeight: '1.6' }}>
-                              Customer prefers deliveries on weekends. Ensure GST invoice is always emailed to their finance department (finance@company.com) immediately after dispatch.
+                              {selectedCrmCustomer.notes || 'No pinned note'}
                             </p>
                           </div>
                           
@@ -6130,30 +6133,11 @@ export default function VoiceExpenseTrackerPreview() {
                               <h3 style={{ fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <Paperclip size={18} className="text-secondary" /> Documents
                               </h3>
-                              <button type="button" className="secondary-button" style={{ padding: '4px 8px', fontSize: '12px' }} onClick={() => setStatus('Upload coming soon')}><Plus size={14}/> Upload</button>
+                              <button type="button" className="secondary-button" style={{ padding: '4px 8px', fontSize: '12px' }} onClick={() => { console.log("[REAL PARTY PROFILE] Upload clicked"); setStatus('Coming soon'); }}><Plus size={14}/> Upload</button>
                             </div>
                             
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                              <div className="doc-card">
-                                <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6' }}>
-                                  <FileText size={18} />
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                  <div style={{ fontSize: '13px', fontWeight: '500' }}>GST_Certificate.pdf</div>
-                                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Added Oct 10 • 245 KB</div>
-                                </div>
-                                <Download size={16} className="text-secondary" />
-                              </div>
-                              <div className="doc-card">
-                                <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#fdf2f8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#db2777' }}>
-                                  <ImageIcon size={18} />
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                  <div style={{ fontSize: '13px', fontWeight: '500' }}>Store_Front.jpg</div>
-                                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Added Oct 10 • 1.2 MB</div>
-                                </div>
-                                <Download size={16} className="text-secondary" />
-                              </div>
+                              <p className="text-secondary" style={{ fontSize: '13px' }}>No documents uploaded</p>
                             </div>
                           </div>
                         </div>
