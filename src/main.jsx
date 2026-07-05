@@ -1,6 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import VoiceExpenseTrackerPreview from './VoiceExpenseTrackerPreview.jsx';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import './styles.css';
 import './premium-overrides.css';
 import './mobile-fixes.css';
@@ -43,6 +44,7 @@ createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ErrorBoundary>
       <VoiceExpenseTrackerPreview />
+      <SpeedInsights />
     </ErrorBoundary>
   </React.StrictMode>
 );
