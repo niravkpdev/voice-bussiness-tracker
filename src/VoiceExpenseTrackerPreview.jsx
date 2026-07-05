@@ -6,7 +6,7 @@ import {
   Clock, Plus, ShoppingBag, Truck, Search, Settings, HelpCircle, 
   LogOut, User, ChevronDown, Calendar, Lightbulb, CheckCircle, AlertCircle,
   CalendarDays, Gift, Briefcase, MapPin, Star, Sparkles, TrendingDown, Sun, Cloud,
-  Filter, Tag, Download, Phone, Mail, MessageCircle, MoreHorizontal, Paperclip, Edit3, ArrowLeft, Image as ImageIcon
+  Filter, Tag, Download, Phone, Mail, MessageCircle, MoreHorizontal, Paperclip, Edit3, ArrowLeft, Image as ImageIcon, X
 } from 'lucide-react';
 import {
   LEDGERS_KEY,
@@ -6047,6 +6047,7 @@ export default function VoiceExpenseTrackerPreview() {
                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                          <button type="button" className="secondary-button" style={{ width: '100%', justifyContent: 'center' }} onClick={() => {
                            console.log("[REAL PARTY PROFILE] WhatsApp clicked", selectedCrmCustomer);
+                           alert("WhatsApp clicked");
                            const rawPhone = selectedCrmCustomer.phone || selectedCrmCustomer.mobile || '';
                            const p = String(rawPhone).replace(/\D/g, '');
                            if (p) window.open(`https://wa.me/${p}`, '_blank');
