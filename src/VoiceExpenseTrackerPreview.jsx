@@ -828,21 +828,22 @@ const safeTrackEvent = (...args) => {
 const trackEvent = safeTrackEvent;
 
 const searchRoutes = [
-  { id: 'dashboard', label: 'Dashboard', route: 'dashboard' },
-  { id: 'customers', label: 'Customers', route: 'crm' },
-  { id: 'suppliers', label: 'Suppliers', route: 'crm' },
-  { id: 'employees', label: 'Employees', route: 'employees' },
-  { id: 'party-management', label: 'Party Management', route: 'crm' },
-  { id: 'party-ledger', label: 'Party Ledger', route: 'party-ledger' },
-  { id: 'voucher-entry', label: 'Voucher Entry', route: 'voucher-entry' },
-  { id: 'day-book', label: 'Day Book', route: 'day-book' },
-  { id: 'inventory', label: 'Inventory', route: 'inventory' },
-  { id: 'orders', label: 'Orders & Invoices', route: 'orders' },
-  { id: 'reports', label: 'Reports', route: 'reports' },
-  { id: 'analytics', label: 'Analytics', route: 'analytics' },
-  { id: 'settings', label: 'Settings', route: 'app-settings' },
-  { id: 'company-setup', label: 'Company Setup', route: 'company-setup' },
-  { id: 'voice-bookkeeper', label: 'Voice Bookkeeper', route: 'voice-bookkeeper' },
+  { id: 'dashboard', label: 'Dashboard', route: 'dashboard', aliases: ['home'] },
+  { id: 'customers', label: 'Customers', route: 'crm', aliases: ['customer'] },
+  { id: 'suppliers', label: 'Suppliers', route: 'suppliers', aliases: ['supplier'] },
+  { id: 'employees', label: 'Employees', route: 'employees', aliases: ['staff', 'employee'] },
+  { id: 'party-management', label: 'Party Management', route: 'party-management', aliases: ['crm', 'party'] },
+  { id: 'party-ledger', label: 'Party Ledger', route: 'party-statement', aliases: ['ledger'] },
+  { id: 'voucher-entry', label: 'Voucher Entry', route: 'voucher-entry', aliases: ['voucher', 'receipt', 'payment'] },
+  { id: 'day-book', label: 'Day Book', route: 'day-book', aliases: ['transactions'] },
+  { id: 'inventory', label: 'Inventory', route: 'inventory', aliases: ['stock', 'product', 'products'] },
+  { id: 'orders', label: 'Orders', route: 'orders', aliases: ['order'] },
+  { id: 'invoices', label: 'Invoices', route: 'invoices', aliases: ['invoice', 'bill', 'billing'] },
+  { id: 'reports', label: 'Reports', route: 'reports', aliases: ['report'] },
+  { id: 'analytics', label: 'Analytics', route: 'analytics', aliases: [] },
+  { id: 'settings', label: 'Settings', route: 'app-settings', aliases: [] },
+  { id: 'company-setup', label: 'Company Setup', route: 'company-setup', aliases: ['company'] },
+  { id: 'voice-bookkeeper', label: 'Voice Bookkeeper', route: 'voice-bookkeeper', aliases: ['voice', 'mic'] },
 ];
 
 function GlobalSearch({ onNavigate }) {
@@ -868,10 +869,13 @@ function GlobalSearch({ onNavigate }) {
 
   const results = searchRoutes.filter(r => 
     r.label.toLowerCase().includes(query.toLowerCase()) || 
-    r.id.toLowerCase().includes(query.toLowerCase())
+    r.id.toLowerCase().includes(query.toLowerCase()) ||
+    (r.aliases && r.aliases.some(alias => alias.toLowerCase().includes(query.toLowerCase())))
   );
 
   const handleSelect = (route) => {
+    console.log("[GlobalSearch] result clicked", searchRoutes.find(r => r.route === route));
+    console.log("[GlobalSearch] navigating to", route);
     setQuery('');
     setIsOpen(false);
     onNavigate(route);
