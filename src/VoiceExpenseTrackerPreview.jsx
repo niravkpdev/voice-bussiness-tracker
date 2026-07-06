@@ -131,25 +131,25 @@ const DEFAULT_PROFILE = {
 };
 
 const DEFAULT_PREFERENCES = {
-  theme: 'system',
+  themeMode: "system",
   compactMode: false,
   largeText: false,
-  landingPage: 'dashboard',
+  defaultLandingPage: "dashboard",
   showWelcomeMessage: true,
   showWeatherCard: true,
   showAgendaCard: true,
-  paymentMode: 'cash',
-  voucherType: 'receipt',
-  voiceCommandShortcut: true,
-  confirmBeforeSaving: true,
-  currency: 'INR',
-  dateFormat: 'DD/MM/YYYY',
-  numberFormat: 'indian',
+  defaultPaymentMode: "cash",
+  defaultVoucherType: "receipt",
+  enableVoiceShortcut: true,
+  confirmBeforeSavingVoucher: true,
+  currency: "INR",
+  dateFormat: "DD/MM/YYYY",
+  numberFormat: "indian",
   paymentReminder: true,
   lowStockAlert: true,
   attendanceReminder: false,
   dailySummary: false,
-  autoLogout: 'never',
+  autoLogout: "never",
   hideFinancialValues: false,
   confirmBeforeDelete: true
 };
@@ -1164,7 +1164,7 @@ export default function VoiceExpenseTrackerPreview() {
   const [aiAnswer, setAiAnswer] = useState('Ask about profit, loss, cash balance, party balance, or type a calculation.');
   const [userPreferences, setUserPreferences] = useState(() => {
     try {
-      const saved = localStorage.getItem('trinetr_preferences');
+      const saved = localStorage.getItem('trinetr_user_preferences');
       return saved ? { ...DEFAULT_PREFERENCES, ...JSON.parse(saved) } : DEFAULT_PREFERENCES;
     } catch {
       return DEFAULT_PREFERENCES;
@@ -1174,15 +1174,15 @@ export default function VoiceExpenseTrackerPreview() {
   const [activeTab, setActiveTab] = useState(() => {
     let hash = window.location.hash.slice(1);
     if (hash === 'help') hash = 'help-center';
-    return APP_TABS.includes(hash) ? hash : (userPreferences.landingPage || 'dashboard');
+    return APP_TABS.includes(hash) ? hash : (userPreferences.defaultLandingPage || 'dashboard');
   });
 
   useEffect(() => {
     const root = document.documentElement;
-    if (userPreferences.theme === 'dark') {
+    if (userPreferences.themeMode === 'dark') {
       root.classList.add('theme-dark');
       root.classList.remove('theme-light');
-    } else if (userPreferences.theme === 'light') {
+    } else if (userPreferences.themeMode === 'light') {
       root.classList.add('theme-light');
       root.classList.remove('theme-dark');
     } else {
@@ -1192,9 +1192,9 @@ export default function VoiceExpenseTrackerPreview() {
     if (userPreferences.compactMode) root.classList.add('compact-mode');
     else root.classList.remove('compact-mode');
 
-    if (userPreferences.largeText) root.classList.add('large-text');
-    else root.classList.remove('large-text');
-  }, [userPreferences.theme, userPreferences.compactMode, userPreferences.largeText]);
+    if (userPreferences.largeText) root.classList.add('large-text-mode');
+    else root.classList.remove('large-text-mode');
+  }, [userPreferences.themeMode, userPreferences.compactMode, userPreferences.largeText]);
   const [voiceConfirmation, setVoiceConfirmation] = useState(null);
 
   const { state, waveRef, startListening, stopListening, error } = useVoiceManager({
@@ -5102,7 +5102,7 @@ export default function VoiceExpenseTrackerPreview() {
           {activeTab === 'dashboard' && (
             <section className="erp-dashboard fade-in" id="dashboard" style={{ padding: '24px 0', display: 'flex', flexDirection: 'column', gap: '32px' }}>
               
-              {userPreferences.voiceCommandShortcut && (
+              {userPreferences.enableVoiceShortcut && (
                 <VoiceCommandButton 
                   onCommandRecognized={(data) => {
                     handleVoiceCommandRecognized(data);
@@ -5128,7 +5128,7 @@ export default function VoiceExpenseTrackerPreview() {
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  {userPreferences.voiceCommandShortcut && (
+                  {userPreferences.enableVoiceShortcut && (
                     <VoiceCommandButton 
                       onCommandRecognized={(data) => {
                         handleVoiceCommandRecognized(data);
