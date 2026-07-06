@@ -1,4 +1,5 @@
 import { useVoiceManager } from './hooks/useVoiceManager';
+import PreferencesPanel from './PreferencesPanel.jsx';
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { 
   Activity, ArrowUpRight, ArrowDownRight, DollarSign, CreditCard, 
@@ -127,6 +128,30 @@ const DEFAULT_PROFILE = {
   phone: '+918488943771',
   address: '',
   gstin: '',
+};
+
+const DEFAULT_PREFERENCES = {
+  theme: 'system',
+  compactMode: false,
+  largeText: false,
+  landingPage: 'dashboard',
+  showWelcomeMessage: true,
+  showWeatherCard: true,
+  showAgendaCard: true,
+  paymentMode: 'cash',
+  voucherType: 'receipt',
+  voiceCommandShortcut: true,
+  confirmBeforeSaving: true,
+  currency: 'INR',
+  dateFormat: 'DD/MM/YYYY',
+  numberFormat: 'indian',
+  paymentReminder: true,
+  lowStockAlert: true,
+  attendanceReminder: false,
+  dailySummary: false,
+  autoLogout: 'never',
+  hideFinancialValues: false,
+  confirmBeforeDelete: true
 };
 const SUPPORT_EMAIL = 'trinetr1901@gmail.com';
 const SUPPORT_PHONE = '+918488943771';
@@ -1137,11 +1162,39 @@ export default function VoiceExpenseTrackerPreview() {
 
   const [activeActionMenuId, setActiveActionMenuId] = useState(null);
   const [aiAnswer, setAiAnswer] = useState('Ask about profit, loss, cash balance, party balance, or type a calculation.');
+  const [userPreferences, setUserPreferences] = useState(() => {
+    try {
+      const saved = localStorage.getItem('trinetr_preferences');
+      return saved ? { ...DEFAULT_PREFERENCES, ...JSON.parse(saved) } : DEFAULT_PREFERENCES;
+    } catch {
+      return DEFAULT_PREFERENCES;
+    }
+  });
+
   const [activeTab, setActiveTab] = useState(() => {
     let hash = window.location.hash.slice(1);
     if (hash === 'help') hash = 'help-center';
-    return APP_TABS.includes(hash) ? hash : 'dashboard';
+    return APP_TABS.includes(hash) ? hash : (userPreferences.landingPage || 'dashboard');
   });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (userPreferences.theme === 'dark') {
+      root.classList.add('theme-dark');
+      root.classList.remove('theme-light');
+    } else if (userPreferences.theme === 'light') {
+      root.classList.add('theme-light');
+      root.classList.remove('theme-dark');
+    } else {
+      root.classList.remove('theme-light', 'theme-dark');
+    }
+    
+    if (userPreferences.compactMode) root.classList.add('compact-mode');
+    else root.classList.remove('compact-mode');
+
+    if (userPreferences.largeText) root.classList.add('large-text');
+    else root.classList.remove('large-text');
+  }, [userPreferences.theme, userPreferences.compactMode, userPreferences.largeText]);
   const [voiceConfirmation, setVoiceConfirmation] = useState(null);
 
   const { state, waveRef, startListening, stopListening, error } = useVoiceManager({
@@ -5003,7 +5056,9 @@ export default function VoiceExpenseTrackerPreview() {
         <main className="page-shell">
           {cloudBusinesses.length === 0 && !['profile-settings', 'company-setup'].includes(activeTab) && (
               <div style={{ gridColumn: '1 / -1', marginBottom: '16px' }}>
+              {userPreferences.showWelcomeMessage && (
                 <h2 style={{ fontSize: '18px', fontWeight: '600' }}>Welcome to Trinetr Business Suite</h2>
+              )}
               </div>
             )}
           <section className="mobile-start-panel" aria-label="Mobile quick start">
@@ -5047,17 +5102,19 @@ export default function VoiceExpenseTrackerPreview() {
           {activeTab === 'dashboard' && (
             <section className="erp-dashboard fade-in" id="dashboard" style={{ padding: '24px 0', display: 'flex', flexDirection: 'column', gap: '32px' }}>
               
-              <VoiceCommandButton 
-                onCommandRecognized={(data) => {
-                  handleVoiceCommandRecognized(data);
-                  setActiveTab('voucher-entry');
-                  window.location.hash = 'voucher-entry';
-                }} 
-                existingParties={partyLedgers}
-                isIconOnly={true}
-                className="floating-mic-btn"
-                containerClassName="floating-mic-container"
-              />
+              {userPreferences.voiceCommandShortcut && (
+                <VoiceCommandButton 
+                  onCommandRecognized={(data) => {
+                    handleVoiceCommandRecognized(data);
+                    setActiveTab('voucher-entry');
+                    window.location.hash = 'voucher-entry';
+                  }} 
+                  existingParties={partyLedgers}
+                  isIconOnly={true}
+                  className="floating-mic-btn"
+                  containerClassName="floating-mic-container"
+                />
+              )}
 
               {/* Dashboard Header */}
               {/* Dashboard Setup Guide removed per request */}
@@ -5071,15 +5128,17 @@ export default function VoiceExpenseTrackerPreview() {
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  <VoiceCommandButton 
-                    onCommandRecognized={(data) => {
-                      handleVoiceCommandRecognized(data);
-                      setActiveTab('voucher-entry');
-                      window.location.hash = 'voucher-entry';
-                    }} 
-                    existingParties={partyLedgers}
-                    containerClassName="desktop-mic-container"
-                  />
+                  {userPreferences.voiceCommandShortcut && (
+                    <VoiceCommandButton 
+                      onCommandRecognized={(data) => {
+                        handleVoiceCommandRecognized(data);
+                        setActiveTab('voucher-entry');
+                        window.location.hash = 'voucher-entry';
+                      }} 
+                      existingParties={partyLedgers}
+                      containerClassName="desktop-mic-container"
+                    />
+                  )}
                   <button className="btn btn-secondary hover-scale" onClick={() => { window.location.hash = 'reports'; }}>
                     <FileText size={16} /> Reports
                   </button>
@@ -5322,47 +5381,51 @@ export default function VoiceExpenseTrackerPreview() {
                   <div className="dashboard-side-column">
                     
                     {/* SECTION 10: TODAY'S AGENDA / CALENDAR */}
-                    <div className="glass-panel" style={{ padding: '24px', margin: 0 }}>
-                      <div className="panel-header">
-                        <h2 className="panel-title"><Calendar size={18} color="var(--brand-primary)" /> Today's Agenda</h2>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', padding: '12px', background: 'var(--brand-secondary)', borderRadius: '8px' }}>
-                        <div style={{ textAlign: 'center', minWidth: '45px' }}>
-                          <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--brand-primary)', textTransform: 'uppercase' }}>{new Date().toLocaleString('default', { month: 'short' })}</div>
-                          <div style={{ fontSize: '24px', fontWeight: '800', color: 'var(--brand-primary)', lineHeight: '1' }}>{new Date().getDate()}</div>
+                    {userPreferences.showAgendaCard && (
+                      <article className="glass-card" style={{ padding: '24px', margin: 0 }}>
+                        <div className="panel-header">
+                          <h2 className="panel-title"><Calendar size={18} color="var(--brand-primary)" /> Today's Agenda</h2>
                         </div>
-                        <div style={{ height: '30px', width: '2px', background: 'rgba(59, 130, 246, 0.2)' }}></div>
-                        <div>
-                          <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>{new Date().toLocaleString('default', { weekday: 'long' })}</div>
-                          <div style={{ fontSize: '12px', color: 'var(--brand-primary)' }}>3 Events scheduled</div>
-                        </div>
-                      </div>
-                      <div className="timeline">
-                        {[
-                          { time: '09:00 AM', title: 'Team Standup', type: 'meeting' },
-                          { time: '11:30 AM', title: 'Client Call: Acme Corp', type: 'call' },
-                          { time: '03:00 PM', title: 'Tax Review', type: 'task' }
-                        ].map((evt, i) => (
-                          <div key={i} className="timeline-item" style={{ gap: '12px' }}>
-                            <div className="timeline-icon" style={{ left: '-20px', color: 'var(--text-muted)', padding: '2px' }}><CheckCircle size={12} /></div>
-                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', width: '55px', flexShrink: 0, marginTop: '2px' }}>{evt.time}</div>
-                            <div style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-primary)' }}>{evt.title}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', padding: '12px', background: 'var(--brand-secondary)', borderRadius: '8px' }}>
+                          <div style={{ textAlign: 'center', minWidth: '45px' }}>
+                            <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--brand-primary)', textTransform: 'uppercase' }}>{new Date().toLocaleString('default', { month: 'short' })}</div>
+                            <div style={{ fontSize: '24px', fontWeight: '800', color: 'var(--brand-primary)', lineHeight: '1' }}>{new Date().getDate()}</div>
                           </div>
-                        ))}
-                      </div>
-                    </div>
+                          <div style={{ height: '30px', width: '2px', background: 'rgba(59, 130, 246, 0.2)' }}></div>
+                          <div>
+                            <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>{new Date().toLocaleString('default', { weekday: 'long' })}</div>
+                            <div style={{ fontSize: '12px', color: 'var(--brand-primary)' }}>3 Events scheduled</div>
+                          </div>
+                        </div>
+                        <div className="timeline">
+                          {[
+                            { time: '09:00 AM', title: 'Team Standup', type: 'meeting' },
+                            { time: '11:30 AM', title: 'Client Call: Acme Corp', type: 'call' },
+                            { time: '03:00 PM', title: 'Tax Review', type: 'task' }
+                          ].map((evt, i) => (
+                            <div key={i} className="timeline-item" style={{ gap: '12px' }}>
+                              <div className="timeline-icon" style={{ left: '-20px', color: 'var(--text-muted)', padding: '2px' }}><CheckCircle size={12} /></div>
+                              <div style={{ fontSize: '11px', color: 'var(--text-muted)', width: '55px', flexShrink: 0, marginTop: '2px' }}>{evt.time}</div>
+                              <div style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-primary)' }}>{evt.title}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </article>
+                    )}
 
                     {/* SECTION 10: WEATHER & NOTES */}
-                    <div className="glass-panel" style={{ padding: '24px', margin: 0, background: 'linear-gradient(135deg, #38bdf8 0%, #0284c7 100%)', color: 'white', border: 'none' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <div style={{ fontSize: '13px', opacity: 0.9 }}>Mumbai, India</div>
-                          <div style={{ fontSize: '28px', fontWeight: '700' }}>32°C</div>
-                          <div style={{ fontSize: '13px', opacity: 0.9 }}>Partly Cloudy</div>
+                    {userPreferences.showWeatherCard && (
+                      <article className="glass-card" style={{ padding: '24px', margin: 0, background: 'linear-gradient(135deg, #38bdf8 0%, #0284c7 100%)', color: 'white', border: 'none' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <div style={{ fontSize: '13px', opacity: 0.9 }}>Mumbai, India</div>
+                            <div style={{ fontSize: '28px', fontWeight: '700' }}>32°C</div>
+                            <div style={{ fontSize: '13px', opacity: 0.9 }}>Partly Cloudy</div>
+                          </div>
+                          <Cloud size={48} opacity={0.9} />
                         </div>
-                        <Cloud size={48} opacity={0.9} />
-                      </div>
-                    </div>
+                      </article>
+                    )}
 
                     <div className="glass-panel" style={{ padding: '24px', margin: 0 }}>
                       <div className="panel-header">
@@ -7267,21 +7330,12 @@ export default function VoiceExpenseTrackerPreview() {
           )}
 
           {activeTab === 'preferences' && (
-            <section className="panel fade-in" id="preferences">
-              <div className="section-header">
-                <div>
-                  <h2>Preferences</h2>
-                  <p className="panel-hint">Customize your application experience.</p>
-                </div>
-              </div>
-              <div style={{ padding: '32px', textAlign: 'center', background: 'var(--bg-primary)', borderRadius: '8px', border: '1px dashed var(--border-subtle)' }}>
-                <Settings size={48} style={{ color: 'var(--text-muted)', marginBottom: '16px', marginLeft: 'auto', marginRight: 'auto', display: 'block' }} />
-                <h3 style={{ margin: '0 0 8px 0' }}>Preferences coming soon</h3>
-                <p style={{ color: 'var(--text-secondary)', margin: '0 0 24px 0' }}>
-                  Theme, layout, and notification preferences will be available soon.
-                </p>
-              </div>
-            </section>
+            <PreferencesPanel 
+              userPreferences={userPreferences} 
+              setUserPreferences={setUserPreferences} 
+              setStatus={setStatus} 
+              DEFAULT_PREFERENCES={DEFAULT_PREFERENCES} 
+            />
           )}
 
           {activeTab === 'help' && (
