@@ -2292,18 +2292,12 @@ export default function Phase2ERP({
           <button type="button" className={analyticsPeriod === 'quarterly' ? 'active' : ''} onClick={() => setAnalyticsPeriod('quarterly')}>Quarterly</button>
           <button type="button" className={analyticsPeriod === 'yearly' ? 'active' : ''} onClick={() => setAnalyticsPeriod('yearly')}>Yearly</button>
         </div>
-        {!hasAnalyticsData ? (
-          <div className="panel" style={{ textAlign: 'center', padding: '48px 24px' }}>
-            <p style={{ color: 'var(--text-secondary)' }}>No data available for this period</p>
-          </div>
-        ) : (
-          <section className="content-grid">
-            <article className="panel"><h2>Revenue Trend</h2><SmallBars data={analytics} valueKey="revenue" /></article>
-            <article className="panel"><h2>Expense Trend</h2><SmallBars data={analytics} valueKey="expense" colorClass="danger" /></article>
-            <article className="panel"><h2>Profit Trend</h2><SmallBars data={analytics} valueKey="profit" colorClass="success" /></article>
-            <article className="panel"><h2>Product Performance</h2><SmallBars data={productPerformance} valueKey="value" colorClass="warning" /></article>
-          </section>
-        )}
+        <section className="content-grid" style={{ marginTop: '16px' }}>
+          <article className="panel"><h2>Revenue Trend</h2><SmallBars data={analytics} valueKey="revenue" /></article>
+          <article className="panel"><h2>Expense Trend</h2><SmallBars data={analytics} valueKey="expense" colorClass="danger" /></article>
+          <article className="panel"><h2>Profit Trend</h2><SmallBars data={analytics} valueKey="profit" colorClass="success" /></article>
+          <article className="panel"><h2>Product Performance</h2><SmallBars data={productPerformance} valueKey="value" colorClass="warning" /></article>
+        </section>
       </section>
     );
   }

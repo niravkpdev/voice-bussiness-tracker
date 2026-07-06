@@ -5007,7 +5007,7 @@ export default function VoiceExpenseTrackerPreview() {
                 try {
                   await saveUserProfile(authUser.uid, {...profile, ...data});
                 } catch(e) {
-                  console.error('Failed to save setup to cloud:', e);
+                  setSecureError(e?.message || 'Failed to save setup to cloud');
                 }
               }
             }}
@@ -5157,17 +5157,15 @@ export default function VoiceExpenseTrackerPreview() {
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  {userPreferences.enableVoiceShortcut && (
-                    <VoiceCommandButton 
-                      onCommandRecognized={(data) => {
-                        handleVoiceCommandRecognized(data);
-                        setActiveTab('voucher-entry');
-                        window.location.hash = 'voucher-entry';
-                      }} 
-                      existingParties={partyLedgers}
-                      containerClassName="desktop-mic-container"
-                    />
-                  )}
+                  <VoiceCommandButton 
+                    onCommandRecognized={(data) => {
+                      handleVoiceCommandRecognized(data);
+                      setActiveTab('voucher-entry');
+                      window.location.hash = 'voucher-entry';
+                    }} 
+                    existingParties={partyLedgers}
+                    containerClassName="desktop-mic-container"
+                  />
                   <button className="btn btn-secondary hover-scale" onClick={() => { window.location.hash = 'reports'; }}>
                     <FileText size={16} /> Reports
                   </button>
@@ -6158,11 +6156,27 @@ export default function VoiceExpenseTrackerPreview() {
                                     {activeActionMenuId === party.id && (
                                       <div className="dropdown-menu fade-in" style={{ position: 'absolute', right: 0, top: '100%', zIndex: 100, background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', padding: '4px', minWidth: '160px', textAlign: 'left' }}>
                                         <button type="button" className="saas-dropdown-item" onClick={(e) => { e.stopPropagation(); setSelectedCrmCustomer(party); setActiveActionMenuId(null); }} style={{ width: '100%', padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', color: 'var(--text-primary)' }}>View Profile</button>
-                                        <button type="button" className="saas-dropdown-item" onClick={(e) => { e.stopPropagation(); setStatus('Coming soon'); setActiveActionMenuId(null); }} style={{ width: '100%', padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', color: 'var(--text-primary)' }}>Edit Profile</button>
-                                        <button type="button" className="saas-dropdown-item" onClick={(e) => { e.stopPropagation(); setStatus('Coming soon'); setActiveActionMenuId(null); }} style={{ width: '100%', padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', color: 'var(--text-primary)' }}>Create Invoice</button>
+                                        <button type="button" className="saas-dropdown-item" onClick={(e) => { e.stopPropagation(); setStatus('Edit Profile coming soon'); setActiveActionMenuId(null); }} style={{ width: '100%', padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', color: 'var(--text-primary)' }}>Edit Profile</button>
+                                        <button type="button" className="saas-dropdown-item" onClick={(e) => { e.stopPropagation(); setActiveTab('invoices'); setStatus('Redirecting to Invoices'); setActiveActionMenuId(null); }} style={{ width: '100%', padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', color: 'var(--text-primary)' }}>Create Invoice</button>
                                         <button type="button" className="saas-dropdown-item" onClick={(e) => { e.stopPropagation(); setActiveTab('vouchers'); setVoucherPartyId(party.id); setActiveActionMenuId(null); }} style={{ width: '100%', padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', color: 'var(--text-primary)' }}>Add Voucher</button>
-                                        <button type="button" className="saas-dropdown-item" onClick={(e) => { e.stopPropagation(); setStatus('Coming soon'); setActiveActionMenuId(null); }} style={{ width: '100%', padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', color: 'var(--text-primary)' }}>View Ledger</button>
-                                        <button type="button" className="saas-dropdown-item" onClick={(e) => { e.stopPropagation(); setStatus('Coming soon'); setActiveActionMenuId(null); }} style={{ width: '100%', padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', color: 'var(--danger)' }}>Delete Party</button>
+                                        <button type="button" className="saas-dropdown-item" onClick={(e) => { e.stopPropagation(); setActiveTab('reports'); setStatus('Redirecting to Reports'); setActiveActionMenuId(null); }} style={{ width: '100%', padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', color: 'var(--text-primary)' }}>View Ledger</button>
+                                        <button type="button" className="saas-dropdown-item" onClick={async (e) => { 
+                                          e.stopPropagation(); 
+                                          setActiveActionMenuId(null); 
+                                          if (window.confirm(`Are you sure you want to delete ${party.name}?`)) {
+                                            try {
+                                              const col = party.group === 'Sundry Debtors' ? 'customers' : 'suppliers';
+                                              const success = await deleteAuthenticatedCloudRecord(col, party.id);
+                                              if (success) {
+                                                setStatus('Party deleted successfully');
+                                              } else {
+                                                setStatus('Cannot delete party due to existing transactions.');
+                                              }
+                                            } catch (err) {
+                                              setStatus('Cannot delete party due to existing transactions.');
+                                            }
+                                          }
+                                        }} style={{ width: '100%', padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', color: 'var(--danger)' }}>Delete Party</button>
                                       </div>
                                     )}
                                   </div>

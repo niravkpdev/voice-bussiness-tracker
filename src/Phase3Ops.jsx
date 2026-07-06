@@ -617,7 +617,7 @@ export default function Phase3Ops({
       await persistRecord('orders', updatedOrder, 'Failed to update order status');
       if (onStatus) onStatus(`Order converted to Invoice ${invoiceNo}`);
     } catch (error) {
-      console.error(error);
+      if (onStatus) onStatus(error?.message || 'Failed to convert order to invoice');
     }
   };
 

@@ -32,8 +32,8 @@ export function SetupWizard({ onComplete, profile, updateProfile }) {
       if (addDemoData) {
         try {
           window.demoData = generateSampleData();
-        } catch (demoErr) {
-          console.error('Failed to generate sample data', demoErr);
+        } catch(demoErr) {
+          setToast(demoErr?.message || 'Failed to generate sample data');
           sampleDataSuccess = false;
         }
       }
@@ -48,7 +48,7 @@ export function SetupWizard({ onComplete, profile, updateProfile }) {
           setupCompleted: true,
         });
       } catch (profileErr) {
-        console.error('Failed to update profile', profileErr);
+        setToast(profileErr?.message || 'Failed to update profile');
         // We continue even if saving to cloud failed, because the wrapper will have saved to localStorage
       }
       
