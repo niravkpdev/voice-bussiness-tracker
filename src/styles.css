@@ -46,6 +46,29 @@
   --transition-smooth: 400ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.theme-dark {
+  /* Colors */
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-tertiary: #334155;
+  
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  
+  --border-subtle: #334155;
+  --border-strong: #475569;
+  
+  --brand-primary: #ffffff;
+  --brand-primary-hover: #e2e8f0;
+  --brand-secondary: #334155;
+  --brand-secondary-hover: #475569;
+  
+  --success-bg: rgba(16, 185, 129, 0.2);
+  --danger-bg: rgba(239, 68, 68, 0.2);
+  --warning-bg: rgba(245, 158, 11, 0.2);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -7262,4 +7285,89 @@ table {
   .panel {
     padding: 16px !important;
   }
+}
+/* --- GLOBAL THEME OVERRIDES --- */
+body, .app-shell, .authenticated-layout {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.theme-dark {
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+.theme-dark body,
+.theme-dark .app-shell,
+.theme-dark .authenticated-layout {
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+.theme-dark .card,
+.theme-dark .glass-card,
+.theme-dark .panel,
+.theme-dark .page-card,
+.theme-dark .sidebar,
+.theme-dark .topbar,
+.theme-dark .modal,
+.theme-dark .dropdown,
+.theme-dark .glass-panel,
+.theme-dark .dashboard-glass-panel,
+.theme-dark .stat-card-modern,
+.theme-dark .sidebar-section,
+.theme-dark .sidebar-section.expanded,
+.theme-dark .sidebar-section.has-active,
+.theme-dark .dashboard-welcome-card {
+  background: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-subtle) !important;
+}
+
+.theme-dark input,
+.theme-dark select,
+.theme-dark textarea,
+.theme-dark .form-control {
+  background: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-subtle) !important;
+}
+
+.theme-dark h1,
+.theme-dark h2,
+.theme-dark h3,
+.theme-dark h4,
+.theme-dark h5,
+.theme-dark h6,
+.theme-dark p,
+.theme-dark span:not(.badge),
+.theme-dark label,
+.theme-dark strong {
+  color: inherit;
+}
+
+.theme-dark .text-secondary,
+.theme-dark .panel-hint,
+.theme-dark .sidebar-support span {
+  color: var(--text-secondary) !important;
+}
+
+.theme-dark .text-muted {
+  color: var(--text-muted) !important;
+}
+
+/* Compact Mode */
+.compact-mode .glass-card,
+.compact-mode .panel,
+.compact-mode .dashboard-glass-panel {
+  padding: 16px !important;
+  gap: 12px !important;
+}
+.compact-mode .form-group {
+  margin-bottom: 12px !important;
+}
+
+/* Large Text Mode */
+.large-text-mode {
+  font-size: 105% !important;
 }

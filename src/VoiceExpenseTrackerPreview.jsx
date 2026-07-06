@@ -1179,14 +1179,19 @@ export default function VoiceExpenseTrackerPreview() {
 
   useEffect(() => {
     const root = document.documentElement;
-    if (userPreferences.themeMode === 'dark') {
+    
+    // Determine actual theme mode
+    let actualTheme = userPreferences.themeMode;
+    if (actualTheme === 'system') {
+      actualTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+
+    if (actualTheme === 'dark') {
       root.classList.add('theme-dark');
       root.classList.remove('theme-light');
-    } else if (userPreferences.themeMode === 'light') {
+    } else {
       root.classList.add('theme-light');
       root.classList.remove('theme-dark');
-    } else {
-      root.classList.remove('theme-light', 'theme-dark');
     }
     
     if (userPreferences.compactMode) root.classList.add('compact-mode');
@@ -1195,6 +1200,30 @@ export default function VoiceExpenseTrackerPreview() {
     if (userPreferences.largeText) root.classList.add('large-text-mode');
     else root.classList.remove('large-text-mode');
   }, [userPreferences.themeMode, userPreferences.compactMode, userPreferences.largeText]);
+
+  // Listen for preference updates from other components
+  useEffect(() => {
+    const handlePreferencesUpdate = (e) => {
+      if (e.detail) {
+        setUserPreferences(prev => ({ ...prev, ...e.detail }));
+      }
+    };
+    window.addEventListener('trinetr-preferences-updated', handlePreferencesUpdate);
+    
+    // Also listen for system theme changes if set to system
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemThemeChange = () => {
+      if (userPreferences.themeMode === 'system') {
+        setUserPreferences(prev => ({ ...prev })); // trigger re-render
+      }
+    };
+    mediaQuery.addEventListener('change', handleSystemThemeChange);
+
+    return () => {
+      window.removeEventListener('trinetr-preferences-updated', handlePreferencesUpdate);
+      mediaQuery.removeEventListener('change', handleSystemThemeChange);
+    };
+  }, [userPreferences.themeMode]);
   const [voiceConfirmation, setVoiceConfirmation] = useState(null);
 
   const { state, waveRef, startListening, stopListening, error } = useVoiceManager({
