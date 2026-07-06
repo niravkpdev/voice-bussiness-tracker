@@ -3698,7 +3698,7 @@ body {
   }
 
   .topbar-actions .topbar-link,
-  .topbar-actions button,
+  .topbar-actions > button,
   .manual-button,
   .secondary-button,
   .danger-button,
@@ -3800,7 +3800,7 @@ body {
   }
 
   .topbar-link,
-  .topbar-actions button {
+  .topbar-actions > button {
     width: 100%;
     min-height: 44px;
     margin: 0;
@@ -4260,7 +4260,7 @@ body.dark .topbar {
 }
 
 .topbar-link,
-.topbar-actions button,
+.topbar-actions > button,
 .icon-command-button,
 .profile-avatar {
   min-height: 40px;
@@ -4541,7 +4541,7 @@ body.dark .quick-action-console {
 }
 
 .topbar-link,
-.topbar-actions button {
+.topbar-actions > button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -4622,7 +4622,7 @@ body.dark .quick-action-console {
 
   .topbar-date,
   .topbar-link,
-  .topbar-actions button {
+  .topbar-actions > button {
     width: 100%;
     min-height: 44px;
     padding: 9px 10px;
@@ -4931,7 +4931,7 @@ body.dark .topbar {
 .topbar-search,
 .topbar-date,
 .topbar-link,
-.topbar-actions button {
+.topbar-actions > button {
   border: 1px solid var(--erp-border);
   border-radius: 12px;
   background: rgba(15, 27, 45, 0.74);
@@ -5627,7 +5627,7 @@ body.dark .topbar {
 .dashboard-search,
 .topbar-date,
 .topbar-link,
-.topbar-actions button,
+.topbar-actions > button,
 .icon-command-button,
 .profile-avatar {
   background: #ffffff !important;
@@ -6013,7 +6013,7 @@ fieldset {
 .secondary-button:hover,
 .saas-google-button:hover,
 .topbar-link:hover,
-.topbar-actions button:hover,
+.topbar-actions > button:hover,
 .password-toggle-button:hover {
   background: #f8fafc !important;
   color: #111827 !important;
@@ -6094,7 +6094,7 @@ fieldset {
 
   .topbar-date,
   .topbar-link,
-  .topbar-actions button {
+  .topbar-actions > button {
     flex: 0 0 auto !important;
     min-height: 44px !important;
     white-space: nowrap !important;
@@ -7262,22 +7262,6 @@ table {
   min-width: 600px;
   border-collapse: collapse;
 }
-@media (max-width: 768px) {
-  .erp-dashboard .content-grid, .tally-module-grid, .reports-grid {
-    grid-template-columns: 1fr !important;
-  }
-  .section-header {
-    flex-direction: column;
-    align-items: flex-start !important;
-    gap: 12px;
-  }
-  .search-bar, .filter-bar {
-    width: 100%;
-    flex-direction: column;
-  }
-  .search-bar input, .filter-bar select {
-    width: 100%;
-  }
 .hrms-record-grid { display: grid !important; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important; }
 
 /* Responsive Tables for Mobile */
@@ -7285,11 +7269,6 @@ table {
   width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
-}
-table {
-  width: 100%;
-  min-width: 600px;
-  border-collapse: collapse;
 }
 @media (max-width: 768px) {
   .erp-dashboard .content-grid, .tally-module-grid, .reports-grid {
