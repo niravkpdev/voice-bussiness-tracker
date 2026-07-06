@@ -7400,8 +7400,8 @@ html.theme-dark #root {
 .theme-dark .dashboard-card,
 .theme-dark .metric-card,
 .theme-dark .modal,
-.theme-dark .dropdown,
-.theme-dark .menu,
+.theme-dark .saas-dropdown-menu,
+.theme-dark .dropdown-menu,
 .theme-dark .glass-card,
 .theme-dark .glass-panel,
 .theme-dark .dashboard-glass-panel,
@@ -7427,10 +7427,7 @@ html.theme-dark #root {
 }
 
 .theme-dark p,
-.theme-dark span,
-.theme-dark label,
-.theme-dark div,
-.theme-dark li {
+.theme-dark label {
   color: inherit;
 }
 
@@ -7568,9 +7565,6 @@ html.theme-dark #root {
   color: #FFFFFF !important;
 }
 
-.theme-dark button {
-  color: inherit;
-}
 
 /* Hardcoded Utility Overrides */
 .theme-dark .bg-white,
