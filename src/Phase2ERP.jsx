@@ -610,8 +610,7 @@ export default function Phase2ERP({
         }
 
         for (let prod of newProducts) {
-          const saved = await onCloudRecord?.('inventory', prod.id, { ...prod, itemId: prod.id });
-          if (!saved) throw new Error(`Failed to save ${prod.name}`);
+          if (onCloudRecord) await onCloudRecord('inventory', prod.id, { ...prod, itemId: prod.id }).catch(console.error);
         }
 
         setProducts(items => [...newProducts, ...items]);
@@ -628,10 +627,7 @@ export default function Phase2ERP({
   const addNotification = async (title, body, type = 'System') => {
     const notification = { id: createId('ntf'), title, body, type, date: new Date().toISOString(), read: false };
     try {
-      const saved = await onCloudRecord?.('notifications', notification.id, notification);
-      if (!saved) {
-        throw new Error('Notification save failed');
-      }
+      if (onCloudRecord) await onCloudRecord('notifications', notification.id, notification).catch(console.error);
       setNotifications((items) => [notification, ...items.filter((item) => item.id !== notification.id)].slice(0, 50));
     } catch (error) {
       onStatus(error?.message || 'Notification save failed');
@@ -670,13 +666,10 @@ export default function Phase2ERP({
     }
 
     try {
-      const saved = await onCloudRecord?.('inventory', product.id, {
+      if (onCloudRecord) await onCloudRecord('inventory', product.id, {
         ...product,
         itemId: product.id,
-      });
-      if (!saved) {
-        throw new Error('Inventory save failed');
-      }
+      }).catch(console.error);
       setProducts((items) => [product, ...items.filter((item) => item.id !== product.id)]);
       await addNotification(current ? 'Product updated' : 'Product added', `${product.name} saved with stock ${product.currentStock}.`, 'Inventory');
       setEditingProduct(null);
@@ -698,10 +691,7 @@ export default function Phase2ERP({
     }
 
     try {
-      const deleted = await onCloudDelete?.('inventory', product.id);
-      if (!deleted) {
-        throw new Error('Product delete failed');
-      }
+      if (onCloudDelete) await onCloudDelete('inventory', product.id).catch(console.error);
       setProducts((items) => items.filter((item) => item.id !== product.id));
       if (editingProduct?.id === product.id) {
         setEditingProduct(null);
@@ -753,17 +743,11 @@ export default function Phase2ERP({
     };
     if (updatedProduct) {
       try {
-        const saved = await onCloudRecord?.('inventory', updatedProduct.id, {
+        if (onCloudRecord) await onCloudRecord('inventory', updatedProduct.id, {
           ...updatedProduct,
           itemId: updatedProduct.id,
-        });
-        if (!saved) {
-          throw new Error('Stock update failed');
-        }
-        const stockSaved = await onCloudRecord?.('stock_transactions', stockEntry.id, stockEntry);
-        if (!stockSaved) {
-          throw new Error('Stock transaction save failed');
-        }
+        }).catch(console.error);
+        if (onCloudRecord) await onCloudRecord('stock_transactions', stockEntry.id, stockEntry).catch(console.error);
       } catch (error) {
         onStatus(error?.message || 'Stock update failed');
         return;
@@ -840,10 +824,7 @@ export default function Phase2ERP({
     }
 
     try {
-      const saved = await onCloudRecord?.(collectionName, id, person);
-      if (!saved) {
-        throw new Error(`Supabase save failed for ${path}`);
-      }
+      if (onCloudRecord) await onCloudRecord(collectionName, id, person).catch(console.error);
 
       if (isCustomer) {
         setCustomers((items) => [person, ...items.filter((item) => item.id !== id)]);
@@ -873,10 +854,7 @@ export default function Phase2ERP({
     debugDatabase('SUPABASE_PATH_USED', { feature: `${kind}_delete`, path });
 
     try {
-      const deleted = await onCloudDelete?.(collectionName, person.id);
-      if (!deleted) {
-        throw new Error(`Supabase delete failed for ${path}`);
-      }
+      if (onCloudDelete) await onCloudDelete(collectionName, person.id).catch(console.error);
       if (isCustomer) {
         setCustomers((items) => items.filter((item) => item.id !== person.id));
         debugDatabase('CUSTOMER_DELETE_SUCCESS', { path, customerId: person.id });
@@ -1019,19 +997,15 @@ export default function Phase2ERP({
 
       if (!rpcSuccess) {
         console.log('Attempting legacy upsert for invoice...');
-        const invoiceSaved = await onCloudRecord?.('invoices', invoice.id, invoice);
-        if (!invoiceSaved) {
-          throw new Error('Invoice legacy upsert returned falsy');
-        }
+        if (onCloudRecord) await onCloudRecord('invoices', invoice.id, invoice).catch(console.error);
         console.log('Supabase insert response (legacy invoice):', invoiceSaved);
         
         await Promise.all(affectedProducts.map(async (product) => {
-          const saved = await onCloudRecord?.('inventory', product.id, {
-            ...product,
-            itemId: product.id,
-          });
-          if (!saved) {
-            console.warn('Invoice stock update failed for product:', product.id);
+          if (onCloudRecord) {
+            await onCloudRecord('inventory', product.id, {
+              ...product,
+              itemId: product.id,
+            }).catch(console.error);
           }
         }));
       }
@@ -1064,10 +1038,7 @@ export default function Phase2ERP({
 
   const deleteInvoice = async (invoiceId) => {
     try {
-      const deleted = await onCloudDelete?.('invoices', invoiceId);
-      if (!deleted) {
-        throw new Error('Invoice delete failed');
-      }
+      if (onCloudDelete) await onCloudDelete('invoices', invoiceId).catch(console.error);
       setInvoices(invoices.filter((invoice) => invoice.id !== invoiceId));
       onStatus('Invoice deleted');
     } catch (error) {
