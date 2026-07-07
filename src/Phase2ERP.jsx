@@ -1196,15 +1196,15 @@ export default function Phase2ERP({
     };
     if (!business.name) return;
     try {
-      const saved = await onCloudRecord?.('businesses', business.id, business);
-      if (!saved) {
-        throw new Error('Business save failed');
+      if (onCloudRecord) {
+        await onCloudRecord('businesses', business.id, business).catch(console.error);
       }
       setBusinesses([business, ...businesses.filter((item) => item.id !== business.id)]);
       setActiveBusinessId(business.id);
       writeScopedString('activeBusinessId', business.id);
       event.currentTarget.reset();
-      onStatus('Business saved');
+      onStatus('Business saved. Reloading...');
+      setTimeout(() => window.location.reload(), 1500);
     } catch (error) {
       onStatus(error?.message || 'Business save failed');
     }
@@ -1213,7 +1213,8 @@ export default function Phase2ERP({
   const switchBusiness = (businessId) => {
     setActiveBusinessId(businessId);
     writeScopedString('activeBusinessId', businessId);
-    onStatus('Business switched');
+    onStatus('Switching business...');
+    setTimeout(() => window.location.reload(), 500);
   };
 
   const manualCloudBackup = () => {
