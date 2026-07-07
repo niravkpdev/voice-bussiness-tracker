@@ -585,6 +585,37 @@ export default function Phase3Ops({
     if (targetForm) targetForm.reset(); else if (event && event.target && event.target.reset) event.target.reset();;
   };
 
+  const deleteOrder = async (order) => {
+    if (!window.confirm(`Delete order ${order.orderNo}?`)) return;
+    try {
+      if (onCloudDelete) {
+        await onCloudDelete('orders', order.id).catch(console.error);
+      }
+      setOrders((items) => items.filter((item) => item.id !== order.id));
+      if (editingOrder?.id === order.id) setEditingOrder(null);
+      if (typeof onStatus === 'function') onStatus(`Deleted order ${order.orderNo}`);
+      await logAudit(`order deleted: ${order.orderNo}`, 'Orders');
+    } catch (error) {
+      if (typeof onStatus === 'function') onStatus(error?.message || 'Failed to delete order');
+    }
+  };
+
+  const deleteRecord = async (tableName, recordId, recordName, setStateFn, cleanupCallback) => {
+    if (!window.confirm(`Delete ${recordName}?`)) return false;
+    try {
+      if (onCloudDelete) {
+        await onCloudDelete(tableName, recordId).catch(console.error);
+      }
+      setStateFn((items) => items.filter((item) => item.id !== recordId));
+      if (cleanupCallback) await cleanupCallback();
+      if (typeof onStatus === 'function') onStatus(`Deleted ${recordName}`);
+      return true;
+    } catch (error) {
+      if (typeof onStatus === 'function') onStatus(error?.message || `Failed to delete ${recordName}`);
+      return false;
+    }
+  };
+
   const convertOrderToInvoice = async (order) => {
     try {
       const invoiceNo = `INV-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(4, '0')}`;
