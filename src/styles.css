@@ -5445,10 +5445,9 @@ body.dark .topbar {
 html,
 body,
 #root {
-  background: #ffffff !important;
-  color: #111827 !important;
-  color-scheme: light !important;
-}
+  background: var(--app-surface) !important;
+  color: var(--app-text) !important;
+  }
 
 body,
 body.dark {
@@ -5463,7 +5462,7 @@ body.dark {
   --text-muted: #4b5563 !important;
   --text-faint: #6b7280 !important;
   --border-main: #d1d5db !important;
-  --border-color: #d1d5db !important;
+  --border-color: var(--app-border) !important;
   --erp-bg: #ffffff !important;
   --erp-bg-soft: #f9fafb !important;
   --erp-sidebar: #ffffff !important;
@@ -5472,8 +5471,8 @@ body.dark {
   --erp-border: #d1d5db !important;
   --erp-text: #111827 !important;
   --erp-muted: #4b5563 !important;
-  background: #ffffff !important;
-  color: #111827 !important;
+  background: var(--app-surface) !important;
+  color: var(--app-text) !important;
 }
 
 .app-frame,
@@ -5482,14 +5481,14 @@ body.dark .workspace,
 .page-shell,
 .saas-public-shell,
 .auth-page {
-  background: #ffffff !important;
-  color: #111827 !important;
+  background: var(--app-surface) !important;
+  color: var(--app-text) !important;
 }
 
 .sidebar {
-  background: #ffffff !important;
-  color: #111827 !important;
-  border-right: 1px solid #d1d5db !important;
+  background: var(--app-surface) !important;
+  color: var(--app-text) !important;
+  border-right: 1px solid var(--app-border) !important;
   box-shadow: 8px 0 28px rgba(15, 23, 42, 0.08) !important;
 }
 
@@ -5518,9 +5517,9 @@ body.dark .workspace,
 .compact-item,
 .summary-card,
 .storage-box {
-  background: #ffffff !important;
-  color: #111827 !important;
-  border-color: #d1d5db !important;
+  background: var(--app-surface) !important;
+  color: var(--app-text) !important;
+  border-color: var(--app-border) !important;
   box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08) !important;
 }
 
@@ -5560,7 +5559,7 @@ label,
 .statement-table,
 .statement-table td,
 .statement-table th {
-  color: #111827 !important;
+  color: var(--app-text) !important;
 }
 
 p,
@@ -5578,7 +5577,7 @@ dt,
 .panel-hint,
 .field-help,
 .legal-updated {
-  color: #4b5563 !important;
+  color: var(--app-muted) !important;
 }
 
 .erp-nav-trigger:hover,
@@ -5588,7 +5587,7 @@ dt,
 .quick-action-tile:hover,
 .quick-action-tile:focus-visible {
   background: #eef2ff !important;
-  color: #111827 !important;
+  color: var(--app-text) !important;
 }
 
 .erp-nav-link.is-active,
@@ -5617,9 +5616,9 @@ dt,
 
 .topbar,
 body.dark .topbar {
-  background: #ffffff !important;
-  color: #111827 !important;
-  border-bottom: 1px solid #d1d5db !important;
+  background: var(--app-surface) !important;
+  color: var(--app-text) !important;
+  border-bottom: 1px solid var(--app-border) !important;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06) !important;
 }
 
@@ -5630,9 +5629,9 @@ body.dark .topbar {
 .topbar-actions > button,
 .icon-command-button,
 .profile-avatar {
-  background: #ffffff !important;
-  color: #111827 !important;
-  border: 1px solid #d1d5db !important;
+  background: var(--app-surface) !important;
+  color: var(--app-text) !important;
+  border: 1px solid var(--app-border) !important;
 }
 
 input,
@@ -5640,8 +5639,7 @@ select,
 textarea,
 button,
 .restore-label {
-  color-scheme: light !important;
-}
+  }
 
 input,
 select,
@@ -5651,10 +5649,10 @@ textarea,
 body.dark input,
 body.dark select,
 body.dark textarea {
-  background: #ffffff !important;
-  color: #111827 !important;
-  border: 1px solid #d1d5db !important;
-  caret-color: #111827 !important;
+  background: var(--app-surface) !important;
+  color: var(--app-text) !important;
+  border: 1px solid var(--app-border) !important;
+  caret-color: var(--app-text) !important;
   box-shadow: none !important;
 }
 
@@ -5662,22 +5660,22 @@ input::placeholder,
 textarea::placeholder,
 .topbar-search input::placeholder,
 .dashboard-search input::placeholder {
-  color: #6b7280 !important;
+  color: var(--app-muted) !important;
   opacity: 1 !important;
 }
 
 select option {
-  background: #ffffff !important;
-  color: #111827 !important;
+  background: var(--app-surface) !important;
+  color: var(--app-text) !important;
 }
 
 table,
 .statement-table,
 .data-table,
 .erp-table-wrap table {
-  background: #ffffff !important;
-  color: #111827 !important;
-  border-color: #d1d5db !important;
+  background: var(--app-surface) !important;
+  color: var(--app-text) !important;
+  border-color: var(--app-border) !important;
 }
 
 th,
@@ -5687,9 +5685,9 @@ td,
 body.dark .statement-table th,
 body.dark .statement-table td,
 body.dark .statement-table tr {
-  background: #ffffff !important;
-  color: #111827 !important;
-  border-color: #e5e7eb !important;
+  background: var(--app-surface) !important;
+  color: var(--app-text) !important;
+  border-color: var(--app-border) !important;
 }
 
 thead th,
@@ -5731,9 +5729,9 @@ thead th,
 .secondary-button,
 .topbar-link.dark-mode-toggle-btn,
 .password-toggle-button {
-  background: #ffffff !important;
-  color: #111827 !important;
-  border: 1px solid #d1d5db !important;
+  background: var(--app-surface) !important;
+  color: var(--app-text) !important;
+  border: 1px solid var(--app-border) !important;
 }
 
 .danger-button,
@@ -5744,8 +5742,8 @@ thead th,
 }
 
 .mobile-bottom-nav {
-  background: #ffffff !important;
-  border-top: 1px solid #d1d5db !important;
+  background: var(--app-surface) !important;
+  border-top: 1px solid var(--app-border) !important;
 }
 
 .mobile-bottom-nav a {
@@ -5766,10 +5764,9 @@ body,
 #root,
 body.dark,
 body[data-theme='dark'] {
-  background-color: #ffffff !important;
-  color: #111827 !important;
-  color-scheme: light !important;
-}
+  background: var(--app-surface) !important;
+  color: var(--app-text) !important;
+  }
 
 * {
   scrollbar-color: #cbd5e1 #ffffff;
@@ -5798,8 +5795,8 @@ body[data-theme='dark'] {
 .settings-card,
 .profile-card,
 .table-card {
-  background-color: #ffffff !important;
-  color: #111827 !important;
+  background: var(--app-surface) !important;
+  color: var(--app-text) !important;
 }
 
 .mobile-drawer-overlay,
@@ -5813,10 +5810,10 @@ select,
 textarea,
 [contenteditable='true'] {
   appearance: auto;
-  background-color: #ffffff !important;
-  color: #111827 !important;
-  border-color: #d1d5db !important;
-  -webkit-text-fill-color: #111827 !important;
+  background: var(--app-surface) !important;
+  color: var(--app-text) !important;
+  border-color: var(--app-border) !important;
+  -webkit-text-fill-color: var(--app-text) !important;
 }
 
 input:-webkit-autofill,
@@ -5825,19 +5822,19 @@ input:-webkit-autofill:focus,
 textarea:-webkit-autofill,
 select:-webkit-autofill {
   box-shadow: 0 0 0 1000px #ffffff inset !important;
-  -webkit-text-fill-color: #111827 !important;
-  caret-color: #111827 !important;
+  -webkit-text-fill-color: var(--app-text) !important;
+  caret-color: var(--app-text) !important;
 }
 
 button:disabled,
 input:disabled,
 select:disabled,
 textarea:disabled {
-  background-color: #f3f4f6 !important;
-  color: #6b7280 !important;
-  border-color: #d1d5db !important;
+  background-color: var(--app-card-bg) !important;
+  color: var(--app-muted) !important;
+  border-color: var(--app-border) !important;
   opacity: 1 !important;
-  -webkit-text-fill-color: #6b7280 !important;
+  -webkit-text-fill-color: var(--app-muted) !important;
 }
 
 a:not(.erp-nav-link):not(.mobile-bottom-nav a):not(.side-nav a) {
@@ -5846,27 +5843,26 @@ a:not(.erp-nav-link):not(.mobile-bottom-nav a):not(.side-nav a) {
 
 hr,
 fieldset {
-  border-color: #e5e7eb !important;
+  border-color: var(--app-border) !important;
 }
 
 @media (prefers-color-scheme: dark) {
   html,
   body,
   #root {
-    background-color: #ffffff !important;
-    color: #111827 !important;
-    color-scheme: light !important;
-  }
+    background: var(--app-surface) !important;
+    color: var(--app-text) !important;
+    }
 
   input,
   select,
   textarea,
   option,
   optgroup {
-    background-color: #ffffff !important;
-    color: #111827 !important;
-    border-color: #d1d5db !important;
-    -webkit-text-fill-color: #111827 !important;
+    background: var(--app-surface) !important;
+    color: var(--app-text) !important;
+    border-color: var(--app-border) !important;
+    -webkit-text-fill-color: var(--app-text) !important;
   }
 }
 
@@ -5898,7 +5894,7 @@ fieldset {
 }
 
 .section-header > span {
-  background: #111827 !important;
+  background: var(--app-card-bg) !important;
   border: 1px solid #374151 !important;
 }
 
@@ -5947,9 +5943,9 @@ fieldset {
 .preview-chart,
 .preview-list,
 .preview-list li {
-  background: #ffffff !important;
-  color: #111827 !important;
-  border-color: #d1d5db !important;
+  background: var(--app-surface) !important;
+  color: var(--app-text) !important;
+  border-color: var(--app-border) !important;
 }
 
 /* Usability polish: consistent light-mode controls, badges, loaders, and mobile header. */
@@ -6015,17 +6011,17 @@ fieldset {
 .topbar-link:hover,
 .topbar-actions > button:hover,
 .password-toggle-button:hover {
-  background: #f8fafc !important;
-  color: #111827 !important;
+  background: var(--app-bg) !important;
+  color: var(--app-text) !important;
   border-color: #c7d2fe !important;
 }
 
 .skeleton-grid,
 .skeleton-panel {
-  background: #ffffff !important;
-  border: 1px solid #e5e7eb !important;
+  background: var(--app-surface) !important;
+  border: 1px solid var(--app-border) !important;
   border-radius: 18px !important;
-  color: #4b5563 !important;
+  color: var(--app-muted) !important;
 }
 
 .skeleton-grid span {
@@ -6035,7 +6031,7 @@ fieldset {
 .empty-state,
 .empty-state-panel {
   border: 1px dashed #cbd5e1 !important;
-  background: #f8fafc !important;
+  background: var(--app-bg) !important;
   color: #374151 !important;
 }
 
@@ -6150,7 +6146,7 @@ fieldset {
     display: block !important;
     min-height: 100dvh !important;
     padding: 0 !important;
-    background: #ffffff !important;
+    background: var(--app-surface) !important;
   }
 
   .workspace,
@@ -6160,7 +6156,7 @@ fieldset {
     min-height: 100dvh !important;
     width: 100% !important;
     padding: 0 0 calc(118px + env(safe-area-inset-bottom)) !important;
-    background: #ffffff !important;
+    background: var(--app-surface) !important;
   }
 
   .topbar {
@@ -6172,7 +6168,7 @@ fieldset {
     margin: 0 !important;
     border-radius: 0 !important;
     padding: 8px 12px !important;
-    background: #ffffff !important;
+    background: var(--app-surface) !important;
     box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06) !important;
   }
 
@@ -6190,7 +6186,7 @@ fieldset {
     min-height: auto !important;
     margin: 0 !important;
     padding: 8px 12px calc(132px + env(safe-area-inset-bottom)) !important;
-    background: #ffffff !important;
+    background: var(--app-surface) !important;
   }
 
   .topbar-search,
@@ -6210,7 +6206,7 @@ fieldset {
   .topbar-title strong {
     display: block !important;
     overflow: hidden !important;
-    color: #111827 !important;
+    color: var(--app-text) !important;
     font-size: 1rem !important;
     line-height: 1.15 !important;
     text-overflow: ellipsis !important;
@@ -6238,16 +6234,16 @@ fieldset {
     display: grid !important;
     gap: 10px !important;
     margin: 0 0 12px !important;
-    border: 1px solid #e5e7eb !important;
+    border: 1px solid var(--app-border) !important;
     border-radius: 18px !important;
     padding: 14px !important;
-    background: #ffffff !important;
+    background: var(--app-surface) !important;
     box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08) !important;
   }
 
   .mobile-start-panel h2 {
     margin: 6px 0 0 !important;
-    color: #111827 !important;
+    color: var(--app-text) !important;
     font-size: 1.35rem !important;
     line-height: 1.15 !important;
   }
@@ -6263,11 +6259,11 @@ fieldset {
     align-items: center !important;
     justify-content: center !important;
     min-height: 42px !important;
-    border: 1px solid #d1d5db !important;
+    border: 1px solid var(--app-border) !important;
     border-radius: 12px !important;
     padding: 8px 8px !important;
-    background: #f8fafc !important;
-    color: #111827 !important;
+    background: var(--app-bg) !important;
+    color: var(--app-text) !important;
     font-size: 0.82rem !important;
     font-weight: 900 !important;
     text-align: center !important;
@@ -6308,7 +6304,7 @@ fieldset {
     margin: 0 !important;
     overflow-x: hidden !important;
     overflow-y: auto !important;
-    background: #ffffff !important;
+    background: var(--app-surface) !important;
   }
 
   .app-frame {
@@ -6323,7 +6319,7 @@ fieldset {
     margin: 0 !important;
     padding: 0 !important;
     overflow-x: hidden !important;
-    background: #ffffff !important;
+    background: var(--app-surface) !important;
   }
 
   .workspace,
@@ -6340,7 +6336,7 @@ fieldset {
     margin: 0 !important;
     padding: 0 0 calc(104px + env(safe-area-inset-bottom)) !important;
     overflow-x: hidden !important;
-    background: #ffffff !important;
+    background: var(--app-surface) !important;
   }
 
   .topbar {
@@ -6368,7 +6364,7 @@ fieldset {
     padding: 8px 12px calc(120px + env(safe-area-inset-bottom)) !important;
     overflow: visible !important;
     transform: none !important;
-    background: #ffffff !important;
+    background: var(--app-surface) !important;
   }
 
   .page-shell::before,
@@ -6723,8 +6719,8 @@ fieldset {
 .hrms-master-panel,
 .hrms-directory-panel,
 .hrms-profile-panel {
-  background: #ffffff !important;
-  color: #111827 !important;
+  background: var(--app-surface) !important;
+  color: var(--app-text) !important;
   max-width: 100%;
   overflow-x: hidden;
 }
@@ -6751,8 +6747,8 @@ fieldset {
   width: 100%;
   border: 1px solid #cbd5e1;
   border-radius: 14px;
-  background: #ffffff !important;
-  color: #111827 !important;
+  background: var(--app-surface) !important;
+  color: var(--app-text) !important;
 }
 
 .hrms-form-grid textarea {
@@ -6967,8 +6963,8 @@ fieldset {
 }
 
 .hrms-phaseb-panel {
-  background: #ffffff !important;
-  color: #111827 !important;
+  background: var(--app-surface) !important;
+  color: var(--app-text) !important;
 }
 
 .hrms-inline-form {
@@ -6986,8 +6982,8 @@ fieldset {
   border: 1px solid #cbd5e1;
   border-radius: 14px;
   padding: 10px 12px;
-  background: #ffffff !important;
-  color: #111827 !important;
+  background: var(--app-surface) !important;
+  color: var(--app-text) !important;
 }
 
 .hrms-inline-form .manual-button,
@@ -7489,7 +7485,7 @@ html.theme-dark #root {
 .theme-dark textarea,
 .theme-dark .search-input,
 .theme-dark .form-control {
-  background: #111827 !important;
+  background: var(--app-card-bg) !important;
   color: #F8FAFC !important;
   border-color: #334155 !important;
 }
