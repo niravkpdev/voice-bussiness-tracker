@@ -550,6 +550,7 @@ export default function Phase3Ops({
   };
 
   const saveOrder = async (event) => {
+    const targetForm = event.currentTarget;
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const current = editingOrder;
@@ -581,7 +582,7 @@ export default function Phase3Ops({
     await queueOfflineAction(current ? 'order-updated' : 'order-created', order);
     await logAudit(`${current ? 'Updated' : 'Created'} ${order.orderNo}`, 'Orders');
     setEditingOrder(null);
-    event.currentTarget.reset();
+    if (targetForm) targetForm.reset(); else if (event && event.target && event.target.reset) event.target.reset();;
   };
 
   const convertOrderToInvoice = async (order) => {
@@ -641,6 +642,7 @@ export default function Phase3Ops({
   };
 
   const saveEmployee = async (event) => {
+    const targetForm = event.currentTarget;
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const current = editingEmployee;
@@ -726,7 +728,7 @@ export default function Phase3Ops({
       await logAudit(`employee status changed: ${employee.fullName} ${current.status || 'Unknown'} to ${employee.status}`, 'Employees');
     }
     setEditingEmployee(null);
-    event.currentTarget.reset();
+    if (targetForm) targetForm.reset(); else if (event && event.target && event.target.reset) event.target.reset();;
   };
 
   const deleteEmployee = async (employee) => {
@@ -786,6 +788,7 @@ export default function Phase3Ops({
   };
 
   const saveAttendanceEntry = async (event) => {
+    const targetForm = event.currentTarget;
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const employeeId = form.get('employeeId');
@@ -833,7 +836,7 @@ export default function Phase3Ops({
     setAttendance((items) => [attendanceEntry, ...items.filter((entry) => entry.id !== attendanceEntry.id)]);
     await logAudit(`${current ? 'attendance edited' : 'attendance created'}: ${employeeDisplayName(employee)} ${attendanceDate}`, 'Attendance');
     setEditingAttendance(null);
-    event.currentTarget.reset();
+    if (targetForm) targetForm.reset(); else if (event && event.target && event.target.reset) event.target.reset();;
   };
 
   const ensureLeaveBalance = async (employee, leaveType) => {
@@ -867,6 +870,7 @@ export default function Phase3Ops({
   };
 
   const saveLeaveRequest = async (event) => {
+    const targetForm = event.currentTarget;
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const employeeId = form.get('employeeId');
@@ -919,7 +923,7 @@ export default function Phase3Ops({
     }
     setLeaveRequests((items) => [request, ...items]);
     await logAudit(`leave applied: ${request.employeeName} ${leaveType} ${startDate} to ${endDate}`, 'Leave');
-    event.currentTarget.reset();
+    if (targetForm) targetForm.reset(); else if (event && event.target && event.target.reset) event.target.reset();;
   };
   const exportAttendanceReport = async () => {
     const csvContent = [
@@ -946,6 +950,7 @@ export default function Phase3Ops({
   };
 
   const saveLeavePolicy = async (event) => {
+    const targetForm = event.currentTarget;
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const current = editingLeavePolicy;
@@ -1053,6 +1058,7 @@ export default function Phase3Ops({
   };
 
   const saveHoliday = async (event) => {
+    const targetForm = event.currentTarget;
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const current = editingHoliday;
@@ -1084,7 +1090,7 @@ export default function Phase3Ops({
     setHolidays((items) => [holiday, ...items.filter((item) => item.id !== holiday.id)]);
     await logAudit(`holiday ${current ? 'updated' : 'created'}: ${holiday.holidayName}`, 'Holidays');
     setEditingHoliday(null);
-    event.currentTarget.reset();
+    if (targetForm) targetForm.reset(); else if (event && event.target && event.target.reset) event.target.reset();;
   };
 
   const deleteHoliday = async (holiday) => {
@@ -1095,6 +1101,7 @@ export default function Phase3Ops({
   };
 
   const saveSalaryRecord = async (event) => {
+    const targetForm = event.currentTarget;
     event.preventDefault();
     if (!selectedEmployee) return;
     const form = new FormData(event.currentTarget);
@@ -1138,10 +1145,11 @@ export default function Phase3Ops({
     setSalaryHistory((items) => [salaryRecord, ...items.filter((item) => item.id !== salaryRecord.id)]);
     await logAudit(`salary record ${current ? 'updated' : 'created'}: ${employeeDisplayName(selectedEmployee)}`, 'Salary');
     setEditingSalaryRecord(null);
-    event.currentTarget.reset();
+    if (targetForm) targetForm.reset(); else if (event && event.target && event.target.reset) event.target.reset();;
   };
 
   const savePayslip = async (event) => {
+    const targetForm = event.currentTarget;
     event.preventDefault();
     if (!selectedEmployee) return;
     const form = new FormData(event.currentTarget);
@@ -1212,10 +1220,11 @@ export default function Phase3Ops({
     setPayslips((items) => [payslip, ...items.filter((item) => item.id !== payslip.id)]);
     await logAudit(`payslip ${current ? (file?.size ? 'replaced' : 'updated') : 'generated'}: ${employeeDisplayName(selectedEmployee)} ${payslip.salaryMonth}`, 'Payslips');
     setEditingPayslip(null);
-    event.currentTarget.reset();
+    if (targetForm) targetForm.reset(); else if (event && event.target && event.target.reset) event.target.reset();;
   };
 
   const saveEmployeeDocument = async (event) => {
+    const targetForm = event.currentTarget;
     event.preventDefault();
     if (!selectedEmployee) return;
     const form = new FormData(event.currentTarget);
@@ -1283,7 +1292,7 @@ export default function Phase3Ops({
     setEmployeeDocuments((items) => [documentRecord, ...items.filter((item) => item.id !== documentRecord.id)]);
     await logAudit(`employee document ${current ? 'replaced' : 'uploaded'}: ${employeeDisplayName(selectedEmployee)} ${documentRecord.documentName}`, 'Documents');
     setEditingEmployeeDocument(null);
-    event.currentTarget.reset();
+    if (targetForm) targetForm.reset(); else if (event && event.target && event.target.reset) event.target.reset();;
   };
 
   const downloadHrmsFile = async (path) => {
@@ -1385,6 +1394,7 @@ export default function Phase3Ops({
   };
 
   const submitProfileRequest = async (event) => {
+    const targetForm = event.currentTarget;
     event.preventDefault();
     if (!authUser?.uid) return;
     const form = new FormData(event.currentTarget);
@@ -1498,6 +1508,7 @@ export default function Phase3Ops({
   };
 
   const savePaymentEdit = async (event) => {
+    const targetForm = event.currentTarget;
     event.preventDefault();
     if (!editingPayment) return;
     const form = new FormData(event.currentTarget);

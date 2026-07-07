@@ -2173,6 +2173,7 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const handleInviteMember = async (event) => {
+    const targetForm = event.currentTarget;
     event.preventDefault();
     if (!requireSensitiveAccess('member invites')) return;
     if (!isCompanyOwner) {
@@ -2277,6 +2278,7 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const handleLinkEmployeeUser = async (event) => {
+    const targetForm = event.currentTarget;
     event.preventDefault();
     if (!requireSensitiveAccess('employee login mapping')) return;
     if (!isCompanyOwner) {
@@ -2339,6 +2341,7 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const completeAuth = async (event) => {
+    const targetForm = event.currentTarget;
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const email = sanitizeEmail(form.get('email')).toLowerCase().trim();
@@ -2498,6 +2501,7 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const resetPassword = async (event) => {
+    const targetForm = event.currentTarget;
     event.preventDefault();
 
     if (passwordResetInFlightRef.current) {
@@ -2566,6 +2570,7 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const completePasswordRecovery = async (event) => {
+    const targetForm = event.currentTarget;
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const newPassword = String(form.get('newPassword') || '');
@@ -3354,6 +3359,7 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const saveVoucherEntry = async (event) => {
+    const targetForm = event.currentTarget;
     event.preventDefault();
     console.log("Voucher submit started", { voucherType, voucherAmount, voucherNarration });
 
@@ -3725,6 +3731,7 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const saveManualEntry = async (event) => {
+    const targetForm = event.currentTarget;
     event.preventDefault();
 
     if (!requireSensitiveAccess('manual entry')) {
@@ -3792,6 +3799,7 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const addParty = async (event) => {
+    const targetForm = event.currentTarget;
     event.preventDefault();
     console.log("Party submit started", { newPartyName, newPartyType });
 
@@ -3870,6 +3878,7 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const saveBusinessProfile = async (event) => {
+    const targetForm = event.currentTarget;
     event.preventDefault();
     if (!requireSensitiveAccess('profile changes')) {
       return;
@@ -3943,6 +3952,7 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const restoreFullBackup = async (event) => {
+    const targetForm = event.currentTarget;
     const file = event.target.files?.[0];
     if (!file) {
       return;
@@ -4265,6 +4275,7 @@ export default function VoiceExpenseTrackerPreview() {
     .slice(0, 5);
 
   const applyEmployeeSelfLeave = async (event) => {
+    const targetForm = event.currentTarget;
     event.preventDefault();
     if (!isEmployeeSelfService || !selfEmployee) return;
     const form = new FormData(event.currentTarget);
@@ -4304,7 +4315,7 @@ export default function VoiceExpenseTrackerPreview() {
       await saveEmployeeSelfServiceRecord(authUser.uid, 'leave_requests', request.id, request);
       setCloudLeaveRequests((items) => [request, ...items.filter((item) => item.id !== request.id)]);
       setStatus('Leave request submitted');
-      event.currentTarget.reset();
+      if (targetForm) targetForm.reset(); else if (event && event.target && event.target.reset) event.target.reset();;
     } catch (error) {
       setStatus(publicSafeError(error, 'Could not submit leave request.'));
     }

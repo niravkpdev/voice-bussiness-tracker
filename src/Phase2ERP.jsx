@@ -635,6 +635,7 @@ export default function Phase2ERP({
   };
 
   const saveProduct = async (event) => {
+    const targetForm = event.currentTarget;
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const image = form.get('image');
@@ -673,7 +674,7 @@ export default function Phase2ERP({
       setProducts((items) => [product, ...items.filter((item) => item.id !== product.id)]);
       await addNotification(current ? 'Product updated' : 'Product added', `${product.name} saved with stock ${product.currentStock}.`, 'Inventory');
       setEditingProduct(null);
-      event.currentTarget.reset();
+      if (targetForm) targetForm.reset(); else if (event && event.target && event.target.reset) event.target.reset();;
       onStatus(current ? 'Product updated' : 'Product saved');
     } catch (error) {
       onStatus(error?.message || 'Inventory save failed');
@@ -703,6 +704,7 @@ export default function Phase2ERP({
   };
 
   const stockTransaction = async (event) => {
+    const targetForm = event.currentTarget;
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const productId = form.get('productId');
@@ -755,7 +757,7 @@ export default function Phase2ERP({
     }
     setProducts(updatedProducts);
     setStockTxns([stockEntry, ...stockTxns]);
-    event.currentTarget.reset();
+    if (targetForm) targetForm.reset(); else if (event && event.target && event.target.reset) event.target.reset();;
     onStatus('Stock updated');
   };
 
@@ -834,7 +836,7 @@ export default function Phase2ERP({
         debugDatabase(current ? 'SUPPLIER_UPDATE_SUCCESS' : 'SUPPLIER_SAVE_SUCCESS', { path, supplierId: id });
       }
       setEditingPerson(null);
-      event.currentTarget.reset();
+      if (targetForm) targetForm.reset(); else if (event && event.target && event.target.reset) event.target.reset();;
       onStatus(`${isCustomer ? 'Customer' : 'Supplier'} ${current ? 'updated' : 'saved'}`);
     } catch (error) {
       onStatus(error.message || `${isCustomer ? 'Customer' : 'Supplier'} save failed`);
@@ -917,6 +919,7 @@ export default function Phase2ERP({
   };
 
   const saveInvoice = async (event) => {
+    const targetForm = event.currentTarget;
     event.preventDefault();
     if (!invoiceDraft.customerId || invoiceDraft.lines.length === 0) {
       onStatus('Select customer and add products');
@@ -1158,6 +1161,7 @@ export default function Phase2ERP({
   };
 
   const addBusiness = async (event) => {
+    const targetForm = event.currentTarget;
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const business = {
@@ -1182,7 +1186,7 @@ export default function Phase2ERP({
         setEditingBusiness(null);
         onStatus('Business updated');
       }
-      event.currentTarget.reset();
+      if (targetForm) targetForm.reset(); else if (event && event.target && event.target.reset) event.target.reset();;
     } catch (error) {
       onStatus(error?.message || 'Business save failed');
     }
