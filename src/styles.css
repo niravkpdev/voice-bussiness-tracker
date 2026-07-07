@@ -114,7 +114,7 @@ textarea {
 
 .page-shell {
   width: min(100%, 1280px);
-  min-height: 100vh;
+  min-height: 100dvh;
   margin: 0 auto;
   padding: 32px 24px;
 }
@@ -1220,14 +1220,14 @@ body {
 .app-frame {
   display: grid;
   grid-template-columns: 282px minmax(0, 1fr);
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .sidebar {
   position: fixed;
   top: 0;
   left: 0;
-  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -2573,8 +2573,8 @@ body.dark .badge-purchase { background: #2a1900; color: #fcd34d; }
 .sidebar {
   position: sticky;
   top: 0;
-  height: 100vh;
-  max-height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
   overflow-y: auto;
   overscroll-behavior: contain;
   scroll-behavior: smooth;
@@ -2804,7 +2804,7 @@ body {
 }
 
 .saas-public-shell {
-  min-height: 100vh;
+  min-height: 100dvh;
   background:
     radial-gradient(circle at 16% 8%, rgba(79, 70, 229, 0.14), transparent 28%),
     radial-gradient(circle at 80% 4%, rgba(59, 130, 246, 0.12), transparent 26%),
@@ -3086,7 +3086,7 @@ body {
 }
 
 .auth-page {
-  min-height: calc(100vh - 78px);
+  min-height: calc(100dvh - 78px);
   min-height: calc(100dvh - 78px);
   display: grid;
   place-items: center;
@@ -3202,7 +3202,7 @@ body {
 }
 
 .legal-page {
-  min-height: calc(100vh - 78px);
+  min-height: calc(100dvh - 78px);
   padding: clamp(24px, 5vw, 64px);
 }
 
@@ -3841,7 +3841,7 @@ body {
   }
 
   .auth-page {
-    min-height: 100vh;
+    min-height: 100dvh;
     padding: 14px;
     align-items: stretch;
   }
@@ -4678,7 +4678,7 @@ body.dark {
 
 .app-frame {
   grid-template-columns: 260px minmax(0, 1fr);
-  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--erp-bg);
 }
 
@@ -4686,8 +4686,8 @@ body.dark {
   position: sticky;
   top: 0;
   width: 260px;
-  height: 100vh;
-  max-height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
   gap: 14px;
   border-right: 1px solid var(--erp-border);
   padding: 18px 16px;
