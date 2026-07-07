@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Trinetr Business Suite</string>
+    <string name="title_activity_main">Trinetr Business Suite</string>
+    <string name="package_name">com.trinetr.business</string>
+    <string name="custom_url_scheme">com.trinetr.business</string>
+</resources>

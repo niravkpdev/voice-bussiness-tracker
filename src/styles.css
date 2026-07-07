@@ -7594,3 +7594,30 @@ html.theme-dark #root {
 .large-text-mode {
   font-size: 105% !important;
 }
+
+/* --- NATIVE MOBILE UX OVERRIDES --- */
+html, body, #root {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Re-enable text selection only for input fields */
+input, textarea, [contenteditable="true"] {
+  user-select: auto;
+  -webkit-user-select: auto;
+}
+
+/* Handle safe-area insets for notches */
+.topbar {
+  padding-top: max(8px, env(safe-area-inset-top)) !important;
+}
+
+.mobile-bottom-nav {
+  padding-bottom: max(10px, env(safe-area-inset-bottom)) !important;
+}
+
+.sidebar {
+  padding-top: env(safe-area-inset-top) !important;
+  padding-bottom: env(safe-area-inset-bottom) !important;
+}

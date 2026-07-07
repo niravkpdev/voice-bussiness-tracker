@@ -1,14 +1,18 @@
 {
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "vite build",
+    "build": "vite build && node -e \"require('fs').copyFileSync('dist/react.html', 'dist/index.html')\"",
     "test": "vitest run",
     "preview": "vite preview --host 127.0.0.1",
     "smoke": "npm run build",
     "security:audit": "npm audit --audit-level=moderate",
-    "production:check": "npm run smoke && npm run security:audit"
+    "production:check": "npm run smoke && npm run security:audit",
+    "cap:sync": "npx cap sync"
   },
   "dependencies": {
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/cli": "^8.4.1",
+    "@capacitor/core": "^8.4.1",
     "@supabase/supabase-js": "2.86.0",
     "@vercel/speed-insights": "^2.0.0",
     "@vitejs/plugin-react": "6.0.2",
