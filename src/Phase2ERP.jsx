@@ -1189,7 +1189,6 @@ export default function Phase2ERP({
   };
 
   const deleteBusiness = async (businessId) => {
-    if (!window.confirm('Delete this business?')) return;
     try {
       if (onCloudDelete) {
         await onCloudDelete('businesses', businessId).catch(console.error);
@@ -2371,8 +2370,7 @@ export default function Phase2ERP({
                   <article className="compact-item" key={business.id}>
                     <div><strong>{business.name}</strong><p>{business.type}</p></div>
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      <button className="icon-button small" type="button" onClick={() => setEditingBusiness(business)} title="Edit">✎</button>
-                      <button className="icon-button small danger" type="button" onClick={() => deleteBusiness(business.id)} title="Delete">🗑</button>
+                      <button className="share-entry-button" type="button" onClick={() => setEditingBusiness(business)} style={{ background: 'transparent', color: 'var(--erp-primary)', border: '1px solid var(--erp-primary)' }}>Edit</button>
                       <button className="share-entry-button" type="button" onClick={() => switchBusiness(business.id)}>Switch</button>
                     </div>
                   </article>
@@ -2382,12 +2380,17 @@ export default function Phase2ERP({
             <article className="panel">
               <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h2>{editingBusiness ? 'Edit Business' : 'Add Business'}</h2>
-                {editingBusiness && <button className="icon-button small" onClick={() => setEditingBusiness(null)}>Cancel</button>}
+                {editingBusiness && <button className="share-entry-button" style={{ background: 'transparent', color: '#666', border: '1px solid #ccc' }} onClick={() => setEditingBusiness(null)}>Cancel</button>}
               </div>
               <form onSubmit={addBusiness} key={editingBusiness ? editingBusiness.id : 'new'}>
                 <input id="business-name" name="name" autoComplete="organization" placeholder="Resin Art Studio / Trading Business" defaultValue={editingBusiness?.name || ''} />
                 <input id="business-type" name="type" autoComplete="off" placeholder="Business type" defaultValue={editingBusiness?.type || ''} />
-                <button className="manual-button" type="submit">{editingBusiness ? 'Update Business' : 'Add Business'}</button>
+                <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
+                  <button className="manual-button" type="submit" style={{ flex: 1 }}>{editingBusiness ? 'Update Business' : 'Add Business'}</button>
+                  {editingBusiness && (
+                    <button className="manual-button" type="button" onClick={() => deleteBusiness(editingBusiness.id)} style={{ flex: '0 0 auto', background: '#fef2f2', color: '#dc2626', borderColor: '#fecaca' }}>Delete</button>
+                  )}
+                </div>
               </form>
             </article>
           </section>
