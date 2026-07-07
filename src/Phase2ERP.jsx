@@ -147,6 +147,7 @@ export default function Phase2ERP({
   const [customers, setCustomers] = useState(() => readArray(CUSTOMER_KEY));
   const [suppliers, setSuppliers] = useState(() => readArray(SUPPLIER_KEY));
   const [businesses, setBusinesses] = useState(() => readArray(BUSINESS_KEY));
+  const [editingBusiness, setEditingBusiness] = useState(null);
   const [notifications, setNotifications] = useState(() => readArray(NOTIFICATION_KEY));
   const [peopleTab, setPeopleTab] = useState(activeTab === 'suppliers' ? 'suppliers' : 'customers');
   const [peopleSearch, setPeopleSearch] = useState('');
@@ -1189,10 +1190,10 @@ export default function Phase2ERP({
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const business = {
-      id: createId('biz'),
+      id: editingBusiness ? editingBusiness.id : createId('biz'),
       name: sanitizeText(form.get('name'), 140),
       type: sanitizeText(form.get('type'), 80) || 'Business',
-      createdAt: new Date().toISOString(),
+      createdAt: editingBusiness ? editingBusiness.createdAt : new Date().toISOString(),
     };
     if (!business.name) return;
     try {
@@ -1200,13 +1201,42 @@ export default function Phase2ERP({
         await onCloudRecord('businesses', business.id, business).catch(console.error);
       }
       setBusinesses([business, ...businesses.filter((item) => item.id !== business.id)]);
-      setActiveBusinessId(business.id);
-      writeScopedString('activeBusinessId', business.id);
+      
+      if (!editingBusiness) {
+        setActiveBusinessId(business.id);
+        writeScopedString('activeBusinessId', business.id);
+        onStatus('Business saved. Reloading...');
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        setEditingBusiness(null);
+        onStatus('Business updated');
+      }
       event.currentTarget.reset();
-      onStatus('Business saved. Reloading...');
-      setTimeout(() => window.location.reload(), 1500);
     } catch (error) {
       onStatus(error?.message || 'Business save failed');
+    }
+  };
+
+  const deleteBusiness = async (businessId) => {
+    if (!window.confirm('Delete this business?')) return;
+    try {
+      if (onCloudDelete) {
+        await onCloudDelete('businesses', businessId).catch(console.error);
+      }
+      setBusinesses((items) => items.filter((item) => item.id !== businessId));
+      if (editingBusiness?.id === businessId) {
+        setEditingBusiness(null);
+      }
+      if (activeBusinessId === businessId) {
+        setActiveBusinessId('default');
+        writeScopedString('activeBusinessId', 'default');
+        onStatus('Active business deleted. Reloading...');
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        onStatus('Business deleted');
+      }
+    } catch (error) {
+      onStatus(error?.message || 'Delete failed');
     }
   };
 
@@ -2366,15 +2396,27 @@ export default function Phase2ERP({
               <h2>Business Switcher</h2>
               <div className="compact-list">
                 <article className="compact-item"><strong>Default Business</strong><button className="share-entry-button" type="button" onClick={() => switchBusiness('default')}>Switch</button></article>
-                {businesses.map((business) => <article className="compact-item" key={business.id}><div><strong>{business.name}</strong><p>{business.type}</p></div><button className="share-entry-button" type="button" onClick={() => switchBusiness(business.id)}>Switch</button></article>)}
+                {businesses.map((business) => (
+                  <article className="compact-item" key={business.id}>
+                    <div><strong>{business.name}</strong><p>{business.type}</p></div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button className="icon-button small" type="button" onClick={() => setEditingBusiness(business)} title="Edit">✎</button>
+                      <button className="icon-button small danger" type="button" onClick={() => deleteBusiness(business.id)} title="Delete">🗑</button>
+                      <button className="share-entry-button" type="button" onClick={() => switchBusiness(business.id)}>Switch</button>
+                    </div>
+                  </article>
+                ))}
               </div>
             </article>
             <article className="panel">
-              <h2>Add Business</h2>
-              <form onSubmit={addBusiness}>
-                <input name="name" placeholder="Resin Art Studio / Trading Business" />
-                <input name="type" placeholder="Business type" />
-                <button className="manual-button" type="submit">Add Business</button>
+              <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h2>{editingBusiness ? 'Edit Business' : 'Add Business'}</h2>
+                {editingBusiness && <button className="icon-button small" onClick={() => setEditingBusiness(null)}>Cancel</button>}
+              </div>
+              <form onSubmit={addBusiness} key={editingBusiness ? editingBusiness.id : 'new'}>
+                <input name="name" placeholder="Resin Art Studio / Trading Business" defaultValue={editingBusiness?.name || ''} />
+                <input name="type" placeholder="Business type" defaultValue={editingBusiness?.type || ''} />
+                <button className="manual-button" type="submit">{editingBusiness ? 'Update Business' : 'Add Business'}</button>
               </form>
             </article>
           </section>
