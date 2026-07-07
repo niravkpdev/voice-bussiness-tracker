@@ -2385,8 +2385,8 @@ export default function Phase2ERP({
                 {editingBusiness && <button className="icon-button small" onClick={() => setEditingBusiness(null)}>Cancel</button>}
               </div>
               <form onSubmit={addBusiness} key={editingBusiness ? editingBusiness.id : 'new'}>
-                <input name="name" placeholder="Resin Art Studio / Trading Business" defaultValue={editingBusiness?.name || ''} />
-                <input name="type" placeholder="Business type" defaultValue={editingBusiness?.type || ''} />
+                <input id="business-name" name="name" autoComplete="organization" placeholder="Resin Art Studio / Trading Business" defaultValue={editingBusiness?.name || ''} />
+                <input id="business-type" name="type" autoComplete="off" placeholder="Business type" defaultValue={editingBusiness?.type || ''} />
                 <button className="manual-button" type="submit">{editingBusiness ? 'Update Business' : 'Add Business'}</button>
               </form>
             </article>
@@ -2396,7 +2396,7 @@ export default function Phase2ERP({
             <article className="panel">
               <h2>Google Login</h2>
               <form onSubmit={connectGoogle}>
-                <input name="email" type="email" defaultValue={cloudSettings.email} placeholder="Google email" />
+                <input id="google-email" name="email" type="email" autoComplete="email" defaultValue={cloudSettings.email} placeholder="Google email" />
                 <button className="manual-button" type="submit">{cloudSettings.connected ? 'Update Google Account' : 'Connect Google Backup'}</button>
               </form>
               <p className="panel-hint">Production OAuth can be connected later with Google Cloud credentials.</p>
