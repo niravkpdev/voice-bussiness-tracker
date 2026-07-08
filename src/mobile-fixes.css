@@ -213,7 +213,4 @@ table, .statement-table, .crm-table {
     color: var(--text-secondary) !important;
     font-weight: 500 !important;
   }
-  .theme-dark .mobile-bottom-nav a {
-    color: var(--text-muted) !important;
-  }
 }

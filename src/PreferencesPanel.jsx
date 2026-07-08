@@ -76,11 +76,9 @@ export default function PreferencesPanel({ userPreferences, setUserPreferences, 
           <PrefRow 
             title="Theme Mode" 
             control={
-              <select className="form-control" name="themeMode" value={localPrefs.themeMode} onChange={handleChange} style={{ width: '150px' }}>
-                <option value="system">System Default</option>
-                <option value="light">Light Mode</option>
-                <option value="dark">Dark Mode</option>
-              </select>
+              <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>
+                Theme customization removed (Light only)
+              </span>
             } 
           />
           <PrefRow 

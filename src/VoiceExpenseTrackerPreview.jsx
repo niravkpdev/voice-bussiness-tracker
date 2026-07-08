@@ -131,7 +131,7 @@ const DEFAULT_PROFILE = {
 };
 
 const DEFAULT_PREFERENCES = {
-  themeMode: "system",
+  themeMode: "light",
   compactMode: false,
   largeText: false,
   defaultLandingPage: "dashboard",
@@ -1165,7 +1165,12 @@ export default function VoiceExpenseTrackerPreview() {
   const [userPreferences, setUserPreferences] = useState(() => {
     try {
       const saved = localStorage.getItem('trinetr_user_preferences');
-      return saved ? { ...DEFAULT_PREFERENCES, ...JSON.parse(saved) } : DEFAULT_PREFERENCES;
+      let prefs = saved ? { ...DEFAULT_PREFERENCES, ...JSON.parse(saved) } : DEFAULT_PREFERENCES;
+      if (prefs.themeMode !== 'light') {
+        prefs.themeMode = 'light';
+        localStorage.setItem('trinetr_user_preferences', JSON.stringify(prefs));
+      }
+      return prefs;
     } catch {
       return DEFAULT_PREFERENCES;
     }
@@ -1180,21 +1185,10 @@ export default function VoiceExpenseTrackerPreview() {
   useEffect(() => {
     const root = document.documentElement;
     
-    // Determine actual theme mode
-    let actualTheme = userPreferences.themeMode;
-    if (actualTheme === 'system') {
-      actualTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    }
-
-    if (actualTheme === 'dark') {
-      root.classList.add('theme-dark');
-      root.classList.remove('theme-light');
-      document.body.classList.add('dark');
-    } else {
-      root.classList.add('theme-light');
-      root.classList.remove('theme-dark');
-      document.body.classList.remove('dark');
-    }
+    // Force light theme permanently
+    root.classList.add('theme-light');
+    root.classList.remove('theme-dark');
+    document.body.classList.remove('dark');
     
     if (userPreferences.compactMode) root.classList.add('compact-mode');
     else root.classList.remove('compact-mode');
