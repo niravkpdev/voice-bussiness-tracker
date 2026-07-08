@@ -1,5 +1,60 @@
 /* --- MOBILE RESPONSIVENESS FIXES --- */
 
+/* --- UTILITY CLASSES --- */
+.hide-on-desktop {
+  display: none !important;
+}
+
+@media (max-width: 640px) {
+  .hide-on-mobile {
+    display: none !important;
+  }
+  .hide-on-desktop {
+    display: flex !important;
+  }
+  
+  /* Restructure Global Topbar */
+  .topbar {
+    flex-wrap: wrap !important;
+    padding: 12px 16px !important;
+    gap: 12px !important;
+  }
+  .topbar > div:first-child {
+    flex: 0 0 auto !important;
+    margin-right: auto !important;
+  }
+  .search-wrapper {
+    flex: 1 1 100% !important;
+    order: 3 !important;
+    margin-top: 4px !important;
+  }
+  .search-wrapper input {
+    width: 100% !important;
+  }
+  .topbar-actions {
+    flex: 0 0 auto !important;
+  }
+  
+  /* Compact dashboard actions row */
+  .mobile-dashboard-actions {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 12px !important;
+    width: 100% !important;
+    margin-top: 16px !important;
+  }
+  .mobile-dashboard-actions button {
+    flex: 1 !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 12px !important;
+  }
+}
+
+
 /* 1. Fix global horizontal overflow and Viewport Heights */
 html, body, #root {
   width: 100% !important;

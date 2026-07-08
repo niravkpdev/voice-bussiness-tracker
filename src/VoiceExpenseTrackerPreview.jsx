@@ -936,7 +936,7 @@ function GlobalSearch({ onNavigate }) {
       <input 
         ref={inputRef}
         type="text" 
-        placeholder="Search customers, invoices, inventory..." 
+        placeholder="Search..." 
         aria-label="Search business records"
         value={query}
         onChange={(e) => { setQuery(e.target.value); setIsOpen(true); }}
@@ -945,7 +945,7 @@ function GlobalSearch({ onNavigate }) {
         onBlur={() => setTimeout(() => setIsOpen(false), 150)}
         style={{ paddingRight: query ? '32px' : '16px' }}
       />
-      <div className="search-shortcut">Ctrl + K</div>
+      <div className="search-shortcut hide-on-mobile">Ctrl + K</div>
       {query && (
         <button 
           type="button"
@@ -5037,7 +5037,7 @@ export default function VoiceExpenseTrackerPreview() {
             >
               ☰
             </button>
-            <div className="topbar-breadcrumbs" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '500' }}>
+            <div className="topbar-breadcrumbs hide-on-mobile" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '500' }}>
               <span style={{ color: 'var(--text-muted)' }}>{activeSidebarSection?.label || 'Overview'}</span>
               <span style={{ color: 'var(--text-muted)' }}>/</span>
               <strong style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{activePageTitle}</strong>
@@ -5173,13 +5173,23 @@ export default function VoiceExpenseTrackerPreview() {
                     existingParties={partyLedgers}
                     containerClassName="desktop-mic-container"
                   />
-                  <button className="btn btn-secondary hover-scale" onClick={() => { window.location.hash = 'reports'; }}>
+                  <button className="btn btn-secondary hover-scale hide-on-mobile" onClick={() => { window.location.hash = 'reports'; }}>
                     <FileText size={16} /> Reports
                   </button>
-                  <button className="btn btn-primary hover-scale" onClick={() => { window.location.hash = 'voucher-entry'; }}>
+                  <button className="btn btn-primary hover-scale hide-on-mobile" onClick={() => { window.location.hash = 'voucher-entry'; }}>
                     <Plus size={16} /> New Entry
                   </button>
                 </div>
+              </div>
+
+              {/* Mobile Only Action Row */}
+              <div className="mobile-dashboard-actions hide-on-desktop">
+                <button type="button" className="btn btn-secondary" aria-label="Reports" title="Reports" onClick={() => { window.location.hash = 'reports'; }}>
+                  <FileText size={20} />
+                </button>
+                <button type="button" className="btn btn-primary" aria-label="New Entry" title="New Entry" onClick={() => { window.location.hash = 'voucher-entry'; }}>
+                  <Plus size={20} />
+                </button>
               </div>
 
               {!browserSupported && (
