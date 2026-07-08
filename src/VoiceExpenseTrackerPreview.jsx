@@ -1189,9 +1189,11 @@ export default function VoiceExpenseTrackerPreview() {
     if (actualTheme === 'dark') {
       root.classList.add('theme-dark');
       root.classList.remove('theme-light');
+      document.body.classList.add('dark');
     } else {
       root.classList.add('theme-light');
       root.classList.remove('theme-dark');
+      document.body.classList.remove('dark');
     }
     
     if (userPreferences.compactMode) root.classList.add('compact-mode');

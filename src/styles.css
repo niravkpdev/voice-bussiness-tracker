@@ -5846,26 +5846,6 @@ fieldset {
   border-color: var(--app-border) !important;
 }
 
-@media (prefers-color-scheme: dark) {
-  html,
-  body,
-  #root {
-    background: var(--app-surface) !important;
-    color: var(--app-text) !important;
-    }
-
-  input,
-  select,
-  textarea,
-  option,
-  optgroup {
-    background: var(--app-surface) !important;
-    color: var(--app-text) !important;
-    border-color: var(--app-border) !important;
-    -webkit-text-fill-color: var(--app-text) !important;
-  }
-}
-
 /* Button/badge contrast guard: keep text readable on colored action surfaces. */
 .section-header > span,
 .topbar-link.primary,
@@ -6219,7 +6199,9 @@ fieldset {
   }
 
   .mobile-bottom-nav {
-    display: grid !important;
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-around !important;
     bottom: calc(10px + env(safe-area-inset-bottom)) !important;
     z-index: 80 !important;
   }

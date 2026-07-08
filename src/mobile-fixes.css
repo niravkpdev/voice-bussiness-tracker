@@ -181,3 +181,39 @@ table, .statement-table, .crm-table {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
   }
 }
+
+
+/* Dashboard Responsive Fixes */
+@media (max-width: 820px) {
+  .erp-dashboard {
+    gap: 16px !important;
+    padding-top: 16px !important;
+  }
+  
+  /* Hide duplicated title in dashboard on mobile, keep actions */
+  .erp-dashboard > div:first-child > div:first-child {
+    display: none !important;
+  }
+  
+  /* Make dashboard actions stack properly */
+  .erp-dashboard > div:first-child {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 16px !important;
+  }
+
+  .dashboard-grid-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+  }
+  
+  /* Improve bottom nav inactive text contrast */
+  .mobile-bottom-nav a {
+    color: var(--text-secondary) !important;
+    font-weight: 500 !important;
+  }
+  .theme-dark .mobile-bottom-nav a {
+    color: var(--text-muted) !important;
+  }
+}
