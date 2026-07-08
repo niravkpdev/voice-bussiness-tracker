@@ -47,7 +47,7 @@ input, textarea, p, span, h1, h2, h3, h4, h5, h6, strong, div, table {
 @media (max-width: 820px) {
   /* Add bottom padding to allow scrolling past fixed bottom nav */
   .page-shell, .app-content, body {
-    padding-bottom: calc(120px + env(safe-area-inset-bottom)) !important;
+    padding-bottom: calc(110px + env(safe-area-inset-bottom)) !important;
   }
   
   /* Bottom Navigation Styles */
@@ -58,6 +58,7 @@ input, textarea, p, span, h1, h2, h3, h4, h5, h6, strong, div, table {
     right: 12px !important;
     width: auto !important;
     max-width: calc(100vw - 24px) !important;
+    height: 64px !important;
     z-index: 9999 !important;
     box-sizing: border-box !important;
     user-select: none;
@@ -190,8 +191,8 @@ table, .statement-table, .crm-table {
     padding-top: 16px !important;
   }
   
-  /* Hide duplicated title in dashboard on mobile, keep actions */
-  .erp-dashboard > div:first-child > div:first-child {
+  /* Hide the duplicate overview quick box */
+  .mobile-start-panel {
     display: none !important;
   }
   
@@ -202,10 +203,42 @@ table, .statement-table, .crm-table {
     gap: 16px !important;
   }
 
+  /* Single column layout for dashboard */
   .dashboard-grid-layout {
     display: flex !important;
     flex-direction: column !important;
-    gap: 16px !important;
+    gap: 14px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+  
+  /* Prevent right-side overlap */
+  .dashboard-main-column, .dashboard-side-column {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* Reduce metric card size */
+  .metric-card, .dashboard-card, .stat-card-modern {
+    padding: 16px !important;
+    min-height: 120px !important;
+    margin-bottom: 14px !important;
+  }
+  .metric-card .metric-label, .dashboard-card .metric-label, .stat-card-modern .metric-label, .stat-card-modern span {
+    font-size: 16px !important;
+  }
+  .metric-card .metric-value, .dashboard-card .metric-value, .stat-card-modern strong {
+    font-size: 32px !important;
+  }
+  .metric-card .trend-positive, .metric-card .trend-negative, .trend-up, .trend-down {
+    font-size: 14px !important;
+  }
+  .stat-card-modern i {
+    height: 40% !important;
   }
   
   /* Improve bottom nav inactive text contrast */
