@@ -5781,18 +5781,18 @@ export default function VoiceExpenseTrackerPreview() {
               
               <h3 style={{ marginTop: '16px', marginBottom: '8px' }}>Recent Transactions</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {transactions.slice(0, 5).map(txn => (
+                {vouchers.slice(0, 5).map(txn => (
                   <div key={txn.id} className="stat-card-modern" style={{ padding: '12px', background: 'var(--bg-primary)', display: 'flex', justifyContent: 'space-between', minHeight: 'auto' }}>
                     <div>
-                      <div style={{ fontWeight: '600' }}>{txn.party_name}</div>
-                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{txn.particulars || txn.type}</div>
+                      <div style={{ fontWeight: '600' }}>{counterLabel(txn) || txn.type}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{txn.narration || txn.type}</div>
                     </div>
-                    <div style={{ fontWeight: '700', color: txn.type === 'Income' ? 'var(--success)' : 'var(--danger)' }}>
-                      {txn.type === 'Income' ? '+' : '-'}{safeMoney(txn.amount)}
+                    <div style={{ fontWeight: '700', color: ['RECEIPT', 'SALES', 'INCOME'].includes((txn.type || '').toUpperCase()) ? 'var(--success)' : 'var(--danger)' }}>
+                      {['RECEIPT', 'SALES', 'INCOME'].includes((txn.type || '').toUpperCase()) ? '+' : '-'}{formatCurrency(safeMoney(txn.amount))}
                     </div>
                   </div>
                 ))}
-                {transactions.length === 0 && <div style={{ color: 'var(--text-muted)' }}>No recent transactions</div>}
+                {vouchers.length === 0 && <div style={{ color: 'var(--text-muted)' }}>No recent transactions</div>}
               </div>
             </section>
           )}
@@ -5825,11 +5825,11 @@ export default function VoiceExpenseTrackerPreview() {
             <section className="mobile-stock-view fade-in" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <h1 style={{ fontSize: '24px', fontWeight: '700', margin: 0 }}>Live Inventory</h1>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {inventory.map(item => (
+                {cloudInventory.map(item => (
                   <div key={item.id} className="stat-card-modern" style={{ padding: '16px', background: 'var(--bg-primary)', minHeight: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <strong style={{ fontSize: '16px' }}>{item.name}</strong>
-                      <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Stock: <span style={{ color: item.current_stock < (item.min_stock || 5) ? 'var(--danger)' : 'var(--text-main)', fontWeight: 'bold' }}>{item.current_stock}</span> {item.unit}</div>
+                      <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Stock: <span style={{ color: item.currentStock < (item.minStock || 5) ? 'var(--danger)' : 'var(--text-main)', fontWeight: 'bold' }}>{item.currentStock}</span> {item.unit}</div>
                     </div>
                     <button className="btn btn-secondary" onClick={() => window.location.hash = 'inventory'} style={{ minHeight: '36px' }}>Manage</button>
                   </div>
