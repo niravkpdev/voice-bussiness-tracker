@@ -5155,20 +5155,20 @@ export default function VoiceExpenseTrackerPreview() {
               
               <div className="dashboard-summary-grid">
                 <div className="stat-card-modern" style={{ background: 'var(--bg-primary)' }}>
-                  <span className="metric-label">Today's Sales</span>
-                  <strong className="metric-value">{safeMoney(summaryData.todayIncome)}</strong>
+                  <span className="metric-label">Monthly Revenue</span>
+                  <strong className="metric-value">{formatCurrency(stats?.monthlySales || 0)}</strong>
                 </div>
                 <div className="stat-card-modern" style={{ background: 'var(--bg-primary)' }}>
-                  <span className="metric-label">Today's Expense</span>
-                  <strong className="metric-value">{safeMoney(summaryData.todayExpense)}</strong>
+                  <span className="metric-label">Total Expenses</span>
+                  <strong className="metric-value">{formatCurrency(stats?.monthlyExpenses || 0)}</strong>
                 </div>
                 <div className="stat-card-modern" style={{ background: 'var(--bg-primary)' }}>
                   <span className="metric-label">Net Profit</span>
-                  <strong className="metric-value">{safeMoney(summaryData.totalIncome - summaryData.totalExpense)}</strong>
+                  <strong className="metric-value">{formatCurrency(monthlyNetProfit || 0)}</strong>
                 </div>
                 <div className="stat-card-modern" style={{ background: 'var(--bg-primary)' }}>
                   <span className="metric-label">Pending Payments</span>
-                  <strong className="metric-value">{safeMoney(summaryData.pendingCollections || 0)}</strong>
+                  <strong className="metric-value">{formatCurrency(receivableTotal || 0)}</strong>
                 </div>
               </div>
 
