@@ -303,3 +303,98 @@ table, .statement-table, .crm-table {
   min-width: 100%;
   max-width: none !important;
 }
+
+/* 6. Right-Side Overflow Fixes (Employees / Inventory) */
+@media (max-width: 640px) {
+  html,
+  body,
+  #root {
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  * {
+    box-sizing: border-box !important;
+  }
+
+  .page-container,
+  .main-content,
+  .mobile-page,
+  .content-wrapper,
+  .app-shell,
+  .phase3-stack,
+  .panel {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: hidden !important;
+    /* Prevent side padding from pushing width > 100% */
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+  
+  /* Fix header containers */
+  .phase3-hero,
+  .section-header,
+  .module-header,
+  .page-hero,
+  .erp-hero {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* Header action buttons wrapping */
+  .page-header-actions,
+  .header-actions,
+  .phase3-hero,
+  .erp-hero {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+  
+  .phase3-hero button,
+  .section-header button,
+  .page-header-actions button,
+  .erp-hero button {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    white-space: normal !important;
+    text-align: center !important;
+    padding: 10px !important;
+    height: auto !important;
+  }
+
+  /* Fix grid overflow */
+  .summary-grid,
+  .report-summary,
+  .dashboard-summary-grid,
+  .phase3-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    gap: 8px !important;
+  }
+
+  /* For cards that shouldn't be fixed width */
+  .summary-card,
+  .metric-card,
+  .phase3-card,
+  .stat-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .mobile-bottom-nav {
+    left: 8px !important;
+    right: 8px !important;
+    width: auto !important;
+    max-width: calc(100vw - 16px) !important;
+  }
+}
+
