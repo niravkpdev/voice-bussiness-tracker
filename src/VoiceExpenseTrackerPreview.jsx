@@ -1,4 +1,5 @@
 import { useVoiceManager } from './hooks/useVoiceManager';
+import { useIsMobile } from './hooks/useIsMobile';
 import PreferencesPanel from './PreferencesPanel.jsx';
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { 
@@ -984,6 +985,7 @@ function GlobalSearch({ onNavigate }) {
 }
 
 export default function VoiceExpenseTrackerPreview() {
+  const isMobile = useIsMobile();
   // Auto-complete setup to prevent modals from showing
   if (typeof window !== 'undefined') {
     if (!localStorage.getItem('workspaceSetupCompleted')) {
