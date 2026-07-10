@@ -228,6 +228,10 @@ const APP_TABS = [
   'app-settings',
   'database-test',
   'support',
+  'entries',
+  'parties',
+  'stock',
+  'more',
   ...LEGAL_PAGE_IDS,
 ];
 const navigationConfig = [
@@ -4908,7 +4912,6 @@ export default function VoiceExpenseTrackerPreview() {
 
   return (
     <div className={`app-frame ${mobileNavOpen ? 'nav-open' : ''}`}>
-      {!isMobile && (
         <button
           className="mobile-menu-button"
           type="button"
@@ -4920,16 +4923,12 @@ export default function VoiceExpenseTrackerPreview() {
           <span />
           <span />
         </button>
-      )}
-      {!isMobile && (
         <button
           className="mobile-drawer-overlay"
           type="button"
           aria-label="Close navigation"
           onClick={() => setMobileNavOpen(false)}
         />
-      )}
-      {!isMobile && (
         <aside className="sidebar" aria-label="Main menu" style={{ borderRight: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column' }}>
         <div className="sidebar-brand" style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px solid var(--border-subtle)' }}>
           {profile.logo ? <img src={profile.logo} alt="" style={{ width: '28px', height: '28px', borderRadius: '6px', objectFit: 'cover' }} /> : <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'var(--brand-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700' }}>T</div>}
@@ -4996,7 +4995,6 @@ export default function VoiceExpenseTrackerPreview() {
           })}
         </nav>
       </aside>
-      )}
 
       <div className="workspace">
         {false && (
