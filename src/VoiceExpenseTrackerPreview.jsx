@@ -5764,79 +5764,6 @@ export default function VoiceExpenseTrackerPreview() {
             </Suspense>
           )}
 
-          {activeTab === 'entries' && isMobile && (
-            <section className="mobile-entries-view fade-in" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <h1 style={{ fontSize: '24px', fontWeight: '700', margin: 0 }}>Entries & Transactions</h1>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
-                <button className="btn btn-primary" onClick={() => window.location.hash = 'voucher-entry'} style={{ minHeight: '56px', fontSize: '16px' }}>
-                  <Plus size={20} style={{ marginRight: '8px' }} /> Add Income
-                </button>
-                <button className="btn btn-danger" onClick={() => window.location.hash = 'voucher-entry'} style={{ minHeight: '56px', fontSize: '16px', background: 'var(--danger)', color: '#fff', border: 'none' }}>
-                  <Minus size={20} style={{ marginRight: '8px' }} /> Add Expense
-                </button>
-                <button className="btn btn-secondary" onClick={() => window.location.hash = 'day-book'} style={{ minHeight: '56px', fontSize: '16px' }}>
-                  <FileText size={20} style={{ marginRight: '8px' }} /> Full Day Book
-                </button>
-              </div>
-              
-              <h3 style={{ marginTop: '16px', marginBottom: '8px' }}>Recent Transactions</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {vouchers.slice(0, 5).map(txn => (
-                  <div key={txn.id} className="stat-card-modern" style={{ padding: '12px', background: 'var(--bg-primary)', display: 'flex', justifyContent: 'space-between', minHeight: 'auto' }}>
-                    <div>
-                      <div style={{ fontWeight: '600' }}>{counterLabel(txn) || txn.type}</div>
-                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{txn.narration || txn.type}</div>
-                    </div>
-                    <div style={{ fontWeight: '700', color: ['RECEIPT', 'SALES', 'INCOME'].includes((txn.type || '').toUpperCase()) ? 'var(--success)' : 'var(--danger)' }}>
-                      {['RECEIPT', 'SALES', 'INCOME'].includes((txn.type || '').toUpperCase()) ? '+' : '-'}{formatCurrency(safeMoney(txn.amount))}
-                    </div>
-                  </div>
-                ))}
-                {vouchers.length === 0 && <div style={{ color: 'var(--text-muted)' }}>No recent transactions</div>}
-              </div>
-            </section>
-          )}
-
-          {activeTab === 'parties' && isMobile && (
-            <section className="mobile-parties-view fade-in" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h1 style={{ fontSize: '24px', fontWeight: '700', margin: 0 }}>Directory</h1>
-                <button className="btn btn-primary" onClick={() => window.location.hash = 'party-management'} style={{ padding: '8px 12px' }}>New Party</button>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {partyLedgers.map(party => (
-                  <div key={party.id} className="stat-card-modern" style={{ padding: '16px', background: 'var(--bg-primary)', minHeight: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <strong style={{ fontSize: '16px' }}>{party.name}</strong>
-                      <span className={`badge ${party.group === 'Sundry Debtors' ? 'badge-success' : 'badge-warning'}`}>{party.group === 'Sundry Debtors' ? 'Customer' : 'Supplier'}</span>
-                    </div>
-                    <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Balance: <strong style={{ color: party.closing_balance > 0 ? 'var(--danger)' : 'var(--success)' }}>{safeMoney(party.closing_balance)}</strong></div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                       {party.phone && <a href={`tel:${party.phone}`} className="btn btn-secondary" style={{ flex: 1, textAlign: 'center', minHeight: '36px' }}>Call</a>}
-                       {party.phone && <a href={`https://wa.me/${party.phone.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ flex: 1, textAlign: 'center', minHeight: '36px', color: '#25D366' }}>WhatsApp</a>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {activeTab === 'stock' && isMobile && (
-            <section className="mobile-stock-view fade-in" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <h1 style={{ fontSize: '24px', fontWeight: '700', margin: 0 }}>Live Inventory</h1>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {cloudInventory.map(item => (
-                  <div key={item.id} className="stat-card-modern" style={{ padding: '16px', background: 'var(--bg-primary)', minHeight: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <strong style={{ fontSize: '16px' }}>{item.name}</strong>
-                      <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Stock: <span style={{ color: item.currentStock < (item.minStock || 5) ? 'var(--danger)' : 'var(--text-main)', fontWeight: 'bold' }}>{item.currentStock}</span> {item.unit}</div>
-                    </div>
-                    <button className="btn btn-secondary" onClick={() => window.location.hash = 'inventory'} style={{ minHeight: '36px' }}>Manage</button>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
 
           {activeTab === 'more' && isMobile && (
             <section className="mobile-more-view fade-in" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -7581,9 +7508,9 @@ export default function VoiceExpenseTrackerPreview() {
 
       <nav className="mobile-bottom-nav" aria-label="Mobile navigation">
         <a className={activeTab === 'dashboard' ? 'active' : ''} href="#dashboard">Home</a>
-        <a className={['entries', 'voucher-entry', 'day-book'].includes(activeTab) ? 'active' : ''} href="#entries">Entries</a>
-        <a className={['parties', 'crm', 'suppliers'].includes(activeTab) ? 'active' : ''} href="#parties">Parties</a>
-        <a className={['stock', 'inventory'].includes(activeTab) ? 'active' : ''} href="#stock">Stock</a>
+        <a className={['entries', 'voucher-entry', 'day-book'].includes(activeTab) ? 'active' : ''} href="#day-book">Entries</a>
+        <a className={['parties', 'crm', 'party-management', 'suppliers'].includes(activeTab) ? 'active' : ''} href="#party-management">Parties</a>
+        <a className={['stock', 'inventory'].includes(activeTab) ? 'active' : ''} href="#inventory">Stock</a>
         <a className={activeTab === 'more' ? 'active' : ''} href="#more">More</a>
       </nav>
 
