@@ -5,7 +5,7 @@ import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { 
   Activity, ArrowUpRight, ArrowDownRight, DollarSign, CreditCard, 
   TrendingUp, Users, Package, FileText, Bell, CheckSquare, 
-  Clock, Plus, ShoppingBag, Truck, Search, Settings, HelpCircle, 
+  Clock, Plus, Minus, ShoppingBag, Truck, Search, Settings, HelpCircle, 
   LogOut, User, ChevronDown, Calendar, Lightbulb, CheckCircle, AlertCircle,
   CalendarDays, Gift, Briefcase, MapPin, Star, Sparkles, TrendingDown, Sun, Cloud,
   Filter, Tag, Download, Phone, Mail, MessageCircle, MoreHorizontal, Paperclip, Edit3, ArrowLeft, Image as ImageIcon, X
@@ -5858,7 +5858,7 @@ export default function VoiceExpenseTrackerPreview() {
                 </div>
               </div>
 
-              <button className="btn btn-danger" onClick={handleLogout} style={{ minHeight: '48px' }}>Sign Out</button>
+              <button className="btn btn-danger" onClick={logout} style={{ minHeight: '48px' }}>Sign Out</button>
             </section>
           )}
 
