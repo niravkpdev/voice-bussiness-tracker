@@ -11,6 +11,7 @@ import {
   Filter, Tag, Download, Phone, Mail, MessageCircle, MoreHorizontal, Paperclip, Edit3, ArrowLeft, Image as ImageIcon, X
 } from 'lucide-react';
 import { SafeHelpCenterModal } from './SafeHelpCenterModal';
+import StorefrontHome from './storefront/StorefrontHome.jsx';
 import {
   LEDGERS_KEY,
   VOUCHERS_KEY,
@@ -193,6 +194,11 @@ const SALES_LEDGER_ID = 'ledger-sales';
 const MATERIAL_LEDGER_ID = 'ledger-material';
 const DEFAULT_EXPENSE_LEDGER_ID = 'ledger-misc-expense';
 const APP_TABS = [
+  'store',
+  'shop',
+  'product-menu',
+  'categories',
+  'store-contact',
   'dashboard',
   'company-setup',
   'masters',
@@ -4349,6 +4355,19 @@ export default function VoiceExpenseTrackerPreview() {
     }
   };
 
+  const STOREFRONT_TABS = ['store', 'shop', 'product-menu', 'categories', 'store-contact'];
+  if (STOREFRONT_TABS.includes(activeTab)) {
+    return (
+      <StorefrontHome
+        initialTab={activeTab === 'store-contact' ? 'contact' : activeTab}
+        onSwitchToErp={() => {
+          setActiveTab('dashboard');
+          window.location.hash = 'dashboard';
+        }}
+      />
+    );
+  }
+
   if (authView !== 'app') {
     return (
       <main className="saas-public-shell">
@@ -4358,6 +4377,13 @@ export default function VoiceExpenseTrackerPreview() {
             <span>Trinetr Business Suite</span>
           </a>
           <nav>
+            <a 
+              href="#store" 
+              onClick={() => { setActiveTab('store'); window.location.hash = 'store'; }} 
+              style={{ color: '#d97706', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+            >
+              🛍️ Online Store
+            </a>
             <a href="#features" onClick={() => { if(authView !== 'landing') setAuthView('landing'); }}>Features</a>
             <button type="button" onClick={() => { trackPageView('pricing-modal'); setShowPricing(true); }}>Pricing</button>
             <button type="button" onClick={() => setAuthView('about-app')}>About</button>
@@ -5058,6 +5084,17 @@ export default function VoiceExpenseTrackerPreview() {
             window.location.hash = route;
           }} />
           <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {/* Online Storefront Switcher */}
+            <button
+              type="button"
+              className="btn btn-secondary hover-scale"
+              onClick={() => { setActiveTab('store'); window.location.hash = 'store'; }}
+              title="View Customer Online Storefront (Bhole G Namkeen)"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', background: '#fef3c7', color: '#92400e', borderColor: '#fde68a', fontWeight: '700' }}
+            >
+              <ShoppingBag size={15} />
+              <span className="hide-on-mobile">Online Storefront</span>
+            </button>
             
             {/* Quick Add Dropdown */}
             <div className="saas-dropdown-container">
