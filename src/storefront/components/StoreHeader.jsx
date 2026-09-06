@@ -4,7 +4,7 @@ import { useStoreCart } from '../context/StoreCartContext';
 import { CATEGORIES } from '../data/namkeenData';
 
 export function StoreHeader({ currentTab, onNavigate, onSwitchToErp }) {
-  const { storeInfo, cartTotalCount, cartSubtotal, setCartDrawerOpen, wishlist, searchQuery, setSearchQuery, setActiveCategory } = useStoreCart();
+  const { storeInfo, cartTotalCount, cartSubtotal, setCartDrawerOpen, wishlist, searchQuery, setSearchQuery, setActiveCategory, dietaryFilter, setDietaryFilter } = useStoreCart();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [deptDropdownOpen, setDeptDropdownOpen] = useState(false);
 
@@ -81,6 +81,11 @@ export function StoreHeader({ currentTab, onNavigate, onSwitchToErp }) {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    onNavigate('shop');
+                  }
+                }}
                 placeholder="Search fresh gathiya, wafers, chana, fafda..."
                 aria-label="Search products"
               />
@@ -100,11 +105,14 @@ export function StoreHeader({ currentTab, onNavigate, onSwitchToErp }) {
             <button 
               type="button" 
               className="bhole-icon-action"
-              onClick={() => onNavigate('shop')}
-              title="View Wishlist"
+              onClick={() => {
+                setDietaryFilter(dietaryFilter === 'wishlist' ? 'all' : 'wishlist');
+                onNavigate('shop');
+              }}
+              title={dietaryFilter === 'wishlist' ? 'View All Products' : 'View Wishlist Items'}
             >
               <div className="bhole-badge-wrapper">
-                <Heart size={22} />
+                <Heart size={22} fill={dietaryFilter === 'wishlist' ? '#e11d48' : 'none'} color={dietaryFilter === 'wishlist' ? '#e11d48' : 'currentColor'} />
                 {wishlist.length > 0 && <span className="bhole-badge">{wishlist.length}</span>}
               </div>
               <span className="bhole-action-text hide-on-mobile">Wishlist</span>

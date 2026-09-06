@@ -49,8 +49,101 @@ function resolveStoreInfo(customProfile) {
   };
 }
 
-export function StoreCartProvider({ children, storeProfile }) {
+function resolveInventoryItems(customInventoryProp) {
+  let customItems = [];
+  if (Array.isArray(customInventoryProp) && customInventoryProp.length > 0) {
+    customItems = customInventoryProp;
+  } else {
+    try {
+      const fromErp = localStorage.getItem('erpProducts');
+      if (fromErp) {
+        const parsed = JSON.parse(fromErp);
+        if (Array.isArray(parsed) && parsed.length > 0) customItems = parsed;
+      }
+    } catch {}
+    if (customItems.length === 0) {
+      try {
+        const fromBusiness = localStorage.getItem('businessInventory');
+        if (fromBusiness) {
+          const parsed = JSON.parse(fromBusiness);
+          if (Array.isArray(parsed) && parsed.length > 0) customItems = parsed;
+        }
+      } catch {}
+    }
+    if (customItems.length === 0) {
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && (k.endsWith(':erpProducts') || k.endsWith(':businessInventory'))) {
+            const parsed = JSON.parse(localStorage.getItem(k) || '[]');
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              customItems = parsed;
+              break;
+            }
+          }
+        }
+      } catch {}
+    }
+  }
+
+  if (!customItems || customItems.length === 0) {
+    return PRODUCTS;
+  }
+
+  // Map ERP items into Storefront Product schema
+  const mappedCustom = customItems.map(item => {
+    const stock = Number(item.currentStock ?? 10);
+    const isOutOfStock = stock <= 0;
+    const price = Number(item.sellingPrice) || Number(item.purchasePrice) || 100;
+    const weight = item.unit || '1 Pack';
+    return {
+      id: item.id || `erp-${(item.name || 'item').toLowerCase().replace(/\s+/g, '-')}`,
+      name: item.name || 'Special Item',
+      category: (item.category || 'mix-namkeen').toLowerCase().replace(/\s+/g, '-'),
+      categoryLabel: item.category || 'General',
+      description: item.details || item.description || `Fresh & authentic ${item.name || 'product'}. Made with pure ingredients and hygienic packaging.`,
+      image: item.image || 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=500&auto=format&fit=crop&q=80',
+      isTopSeller: Boolean(item.isTopSeller),
+      isNotForJain: Boolean(item.isNotForJain),
+      isOutOfStock,
+      rating: 4.9,
+      reviewsCount: 32,
+      variants: [
+        { weight, price, inStock: !isOutOfStock }
+      ]
+    };
+  });
+
+  const customNames = new Set(mappedCustom.map(c => c.name.toLowerCase().trim()));
+  const customIds = new Set(mappedCustom.map(c => c.id));
+  const remainingStatic = PRODUCTS.filter(p => !customIds.has(p.id) && !customNames.has(p.name.toLowerCase().trim()));
+
+  return [...mappedCustom, ...remainingStatic];
+}
+
+export function StoreCartProvider({ children, storeProfile, customInventory }) {
   const storeInfo = useMemo(() => resolveStoreInfo(storeProfile), [storeProfile]);
+  
+  // Catalog products state (merged ERP inventory + Storefront catalog)
+  const [products, setProducts] = useState(() => resolveInventoryItems(customInventory));
+
+  // Sync inventory if customInventory prop updates or window emits inventory event
+  useEffect(() => {
+    setProducts(resolveInventoryItems(customInventory));
+  }, [customInventory]);
+
+  useEffect(() => {
+    const handleInventoryChange = () => {
+      setProducts(resolveInventoryItems(customInventory));
+    };
+    window.addEventListener('trinetr-inventory-updated', handleInventoryChange);
+    window.addEventListener('storage', handleInventoryChange);
+    return () => {
+      window.removeEventListener('trinetr-inventory-updated', handleInventoryChange);
+      window.removeEventListener('storage', handleInventoryChange);
+    };
+  }, [customInventory]);
+
   // Cart state
   const [cart, setCart] = useState(() => {
     try {
@@ -242,7 +335,7 @@ export function StoreCartProvider({ children, storeProfile }) {
     dietaryFilter,
     setDietaryFilter,
     generateWhatsAppOrderUrl,
-    products: PRODUCTS
+    products
   };
 
   return (

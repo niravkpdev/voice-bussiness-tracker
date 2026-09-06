@@ -46,18 +46,76 @@ export function CartDrawer() {
     const orderId = 'BG-' + Math.floor(100000 + Math.random() * 900000);
     setOrderConfirmedId(orderId);
 
-    // Also persist order to local storage for history
+    const now = new Date();
+    const orderData = {
+      id: 'ord-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
+      orderNo: orderId,
+      customer: customer.name.trim(),
+      mobile: customer.phone.trim(),
+      amount: Number(cartGrandTotal.toFixed(2)),
+      deliveryDate: new Date(Date.now() + 86400000 * 2).toISOString().slice(0, 10),
+      details: `${cart.map(i => `${i.name} (${i.variantWeight} x${i.quantity})`).join(', ')} | Address: ${customer.address}, ${customer.city} | Payment: ${customer.paymentMethod.toUpperCase()}`,
+      status: 'New Order',
+      source: 'Online Storefront / WhatsApp',
+      customerDetails: { ...customer },
+      items: cart.map(item => ({
+        productId: item.productId || item.cartItemId,
+        name: item.name,
+        variant: item.variantWeight,
+        quantity: item.quantity,
+        price: item.price,
+        total: item.price * item.quantity
+      })),
+      timeline: [
+        {
+          status: 'New Order',
+          date: now.toLocaleString(),
+          note: `Storefront order placed by ${customer.name} via ${customer.paymentMethod === 'cod' ? 'Cash on Delivery' : 'UPI / Online'}`
+        }
+      ],
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString()
+    };
+
+    // 1. Save to guest orders for storefront history
     try {
       const orders = JSON.parse(localStorage.getItem('bhole_g_guest_orders') || '[]');
-      orders.unshift({
-        orderId,
-        date: new Date().toISOString(),
-        customer,
-        items: cart,
-        total: cartGrandTotal,
-        status: 'Confirmed'
-      });
+      orders.unshift(orderData);
       localStorage.setItem('bhole_g_guest_orders', JSON.stringify(orders));
+    } catch (err) {
+      console.error(err);
+    }
+
+    // 2. Unify with ERP Order pipeline (phase3Orders & businessOrders)
+    try {
+      const p3Orders = JSON.parse(localStorage.getItem('phase3Orders') || '[]');
+      p3Orders.unshift(orderData);
+      localStorage.setItem('phase3Orders', JSON.stringify(p3Orders));
+
+      const bOrders = JSON.parse(localStorage.getItem('businessOrders') || '[]');
+      bOrders.unshift(orderData);
+      localStorage.setItem('businessOrders', JSON.stringify(bOrders));
+
+      // Also persist into scoped keys so scoped accounts see it immediately
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.endsWith(':phase3Orders') || key.endsWith(':businessOrders'))) {
+          try {
+            const scopedArr = JSON.parse(localStorage.getItem(key) || '[]');
+            if (Array.isArray(scopedArr)) {
+              scopedArr.unshift(orderData);
+              localStorage.setItem(key, JSON.stringify(scopedArr));
+            }
+          } catch {}
+        }
+      }
+    } catch (err) {
+      console.error('Failed to sync order to ERP', err);
+    }
+
+    // 3. Dispatch global in-session event so open ERP tabs update in real time
+    try {
+      window.dispatchEvent(new CustomEvent('trinetr-new-order', { detail: orderData }));
     } catch (err) {
       console.error(err);
     }

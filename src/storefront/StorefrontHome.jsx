@@ -16,8 +16,9 @@ import './storefront.css';
 
 function StorefrontContent({ initialTab = 'store', onSwitchToErp }) {
   const [currentTab, setCurrentTab] = useState(initialTab);
-  const { setActiveCategory, setDietaryFilter, storeInfo } = useStoreCart();
+  const { setActiveCategory, setDietaryFilter, storeInfo, products } = useStoreCart();
   const activeStore = storeInfo || STORE_INFO;
+  const catalog = products && products.length > 0 ? products : PRODUCTS;
 
   useEffect(() => {
     if (initialTab) {
@@ -32,19 +33,21 @@ function StorefrontContent({ initialTab = 'store', onSwitchToErp }) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Best Sellers (marked as isTopSeller)
-  const bestSellers = PRODUCTS.filter(p => p.isTopSeller);
+  // Best Sellers (marked as isTopSeller or first items)
+  const bestSellers = catalog.filter(p => p.isTopSeller);
 
   // "NJ" Not For Jain items (garlic, onion, potato)
-  const notForJainProducts = PRODUCTS.filter(p => p.isNotForJain);
+  const notForJainProducts = catalog.filter(p => p.isNotForJain);
 
-  // New Arrivals
-  const newArrivals = PRODUCTS.filter(p => 
+  // New Arrivals (includes new custom ERP items)
+  const newArrivals = catalog.filter(p => 
     p.id === 'prod-gotado-mix' || 
     p.id === 'prod-kumbhaniya-gathiya' || 
     p.id === 'prod-patra-gathiya' || 
     p.id === 'prod-cheese-ball' || 
-    p.id === 'prod-vatka'
+    p.id === 'prod-vatka' ||
+    String(p.id).startsWith('erp-') ||
+    String(p.id).startsWith('prd-')
   );
 
   return (
@@ -345,7 +348,7 @@ function StorefrontContent({ initialTab = 'store', onSwitchToErp }) {
 
 export default function StorefrontHome(props) {
   return (
-    <StoreCartProvider storeProfile={props.profile}>
+    <StoreCartProvider storeProfile={props.profile} customInventory={props.customInventory}>
       <StorefrontContent {...props} />
     </StoreCartProvider>
   );

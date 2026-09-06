@@ -5,7 +5,7 @@ import { CATEGORIES } from '../data/namkeenData';
 import { ProductCard } from './ProductCard';
 
 export function ShopGrid() {
-  const { products, activeCategory, setActiveCategory, searchQuery, setSearchQuery, dietaryFilter, setDietaryFilter } = useStoreCart();
+  const { products, activeCategory, setActiveCategory, searchQuery, setSearchQuery, dietaryFilter, setDietaryFilter, wishlist } = useStoreCart();
 
   // Layout state
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
@@ -19,6 +19,10 @@ export function ShopGrid() {
   // Filtered & Sorted products
   const filteredProducts = useMemo(() => {
     let result = products.filter(item => {
+      // Wishlist filter
+      if (dietaryFilter === 'wishlist' && !wishlist.includes(item.id)) {
+        return false;
+      }
       // Category filter
       if (activeCategory !== 'all' && item.category !== activeCategory) {
         return false;
@@ -62,7 +66,7 @@ export function ShopGrid() {
     }
 
     return result;
-  }, [products, activeCategory, searchQuery, inStockOnly, dietaryFilter, maxPrice, sortBy]);
+  }, [products, activeCategory, searchQuery, inStockOnly, dietaryFilter, maxPrice, sortBy, wishlist]);
 
   return (
     <div className="bhole-shop-page-wrapper">
@@ -268,7 +272,7 @@ export function ShopGrid() {
                   className="bhole-active-filter-chip"
                   onClick={() => setDietaryFilter('all')}
                 >
-                  <span>{dietaryFilter === 'nj' ? 'Not For Jain (NJ)' : 'Jain Friendly'}</span>
+                  <span>{dietaryFilter === 'wishlist' ? '❤️ Wishlist Only' : dietaryFilter === 'nj' ? 'Not For Jain (NJ)' : 'Jain Friendly'}</span>
                   <X size={12} />
                 </button>
               )}
@@ -288,8 +292,8 @@ export function ShopGrid() {
           {/* Products Grid / List */}
           {filteredProducts.length === 0 ? (
             <div className="bhole-no-results-box">
-              <h3>No products found</h3>
-              <p>Try resetting the price filter or selecting another category.</p>
+              <h3>{dietaryFilter === 'wishlist' ? 'Your Wishlist is Empty' : 'No products found'}</h3>
+              <p>{dietaryFilter === 'wishlist' ? 'Explore our fresh snacks and click the heart icon on any product to save it here.' : 'Try resetting the price filter or selecting another category.'}</p>
               <button
                 type="button"
                 className="btn-primary"

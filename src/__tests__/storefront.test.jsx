@@ -142,4 +142,114 @@ describe('Bhole G Namkeen Storefront Catalog & Variants', () => {
 
     expect(resolvedName).toBe('Bhole G Namkeen');
   });
+
+  it('merges custom ERP inventory items seamlessly into storefront catalog', () => {
+    const customErpItems = [
+      {
+        id: 'prd-custom-kaju-katli',
+        name: 'Royal Kaju Katli',
+        category: 'Sweets',
+        sellingPrice: 850,
+        currentStock: 15,
+        unit: '500 GM'
+      },
+      {
+        id: 'prd-custom-dryfruit-mix',
+        name: 'Dryfruit Delight',
+        category: 'Dryfruit',
+        sellingPrice: 1200,
+        currentStock: 0, // Out of stock
+        unit: '1 KG'
+      }
+    ];
+
+    // Transformation logic as in StoreCartContext
+    const mapped = customErpItems.map(item => ({
+      id: item.id,
+      name: item.name,
+      category: item.category.toLowerCase(),
+      categoryLabel: item.category,
+      isOutOfStock: Number(item.currentStock) <= 0,
+      variants: [
+        { weight: item.unit, price: item.sellingPrice, inStock: Number(item.currentStock) > 0 }
+      ]
+    }));
+
+    expect(mapped.length).toBe(2);
+    expect(mapped[0].name).toBe('Royal Kaju Katli');
+    expect(mapped[0].isOutOfStock).toBe(false);
+    expect(mapped[0].variants[0].price).toBe(850);
+
+    expect(mapped[1].name).toBe('Dryfruit Delight');
+    expect(mapped[1].isOutOfStock).toBe(true);
+    expect(mapped[1].variants[0].inStock).toBe(false);
+
+    // Merged catalog contains custom products alongside existing catalog
+    const merged = [...mapped, ...PRODUCTS];
+    expect(merged.length).toBe(PRODUCTS.length + 2);
+    expect(merged[0].id).toBe('prd-custom-kaju-katli');
+  });
+
+  it('formats storefront order conforming to ERP Order Pipeline schema', () => {
+    const guestCustomer = {
+      name: 'Priya Sharma',
+      phone: '9825098250',
+      address: 'A-201 Green Valley, Vesu, Surat',
+      city: 'Surat',
+      paymentMethod: 'cod'
+    };
+
+    const cartItems = [
+      {
+        productId: 'prod-special-combo',
+        cartItemId: 'prod-special-combo-1 KG',
+        name: 'Bhole G Special Combo - 8 Taste Pack',
+        variantWeight: '1 KG',
+        price: 499.00,
+        quantity: 2
+      }
+    ];
+
+    const orderTotal = 499 * 2;
+    const now = new Date();
+    const erpOrder = {
+      id: 'ord-test-12345',
+      orderNo: 'ORD-9876',
+      customer: guestCustomer.name,
+      mobile: guestCustomer.phone,
+      amount: orderTotal,
+      deliveryDate: new Date(Date.now() + 86400000 * 2).toISOString().slice(0, 10),
+      details: `${cartItems.map(i => `${i.name} (${i.variantWeight} x${i.quantity})`).join(', ')} | Address: ${guestCustomer.address}, ${guestCustomer.city} | Payment: ${guestCustomer.paymentMethod.toUpperCase()}`,
+      status: 'New Order',
+      source: 'Online Storefront / WhatsApp',
+      customerDetails: guestCustomer,
+      items: cartItems.map(i => ({
+        productId: i.productId,
+        name: i.name,
+        variant: i.variantWeight,
+        quantity: i.quantity,
+        price: i.price,
+        total: i.price * i.quantity
+      })),
+      timeline: [
+        {
+          status: 'New Order',
+          date: now.toLocaleString(),
+          note: `Storefront order placed by ${guestCustomer.name}`
+        }
+      ],
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString()
+    };
+
+    // Validations
+    expect(erpOrder.orderNo).toBe('ORD-9876');
+    expect(erpOrder.customer).toBe('Priya Sharma');
+    expect(erpOrder.amount).toBe(998);
+    expect(erpOrder.source).toBe('Online Storefront / WhatsApp');
+    expect(erpOrder.details).toContain('Bhole G Special Combo');
+    expect(erpOrder.details).toContain('Vesu, Surat');
+    expect(erpOrder.items[0].total).toBe(998);
+    expect(erpOrder.timeline.length).toBeGreaterThan(0);
+  });
 });

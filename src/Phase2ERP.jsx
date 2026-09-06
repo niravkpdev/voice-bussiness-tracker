@@ -672,6 +672,9 @@ export default function Phase2ERP({
         itemId: product.id,
       }).catch(console.error);
       setProducts((items) => [product, ...items.filter((item) => item.id !== product.id)]);
+      try {
+        window.dispatchEvent(new CustomEvent('trinetr-inventory-updated', { detail: product }));
+      } catch (e) {}
       await addNotification(current ? 'Product updated' : 'Product added', `${product.name} saved with stock ${product.currentStock}.`, 'Inventory');
       setEditingProduct(null);
       if (targetForm) targetForm.reset(); else if (event && event.target && event.target.reset) event.target.reset();;
@@ -694,6 +697,9 @@ export default function Phase2ERP({
     try {
       if (onCloudDelete) await onCloudDelete('inventory', product.id).catch(console.error);
       setProducts((items) => items.filter((item) => item.id !== product.id));
+      try {
+        window.dispatchEvent(new CustomEvent('trinetr-inventory-updated'));
+      } catch (e) {}
       if (editingProduct?.id === product.id) {
         setEditingProduct(null);
       }
@@ -756,6 +762,9 @@ export default function Phase2ERP({
       }
     }
     setProducts(updatedProducts);
+    try {
+      window.dispatchEvent(new CustomEvent('trinetr-inventory-updated'));
+    } catch (e) {}
     setStockTxns([stockEntry, ...stockTxns]);
     if (targetForm) targetForm.reset(); else if (event && event.target && event.target.reset) event.target.reset();;
     onStatus('Stock updated');
@@ -1832,7 +1841,7 @@ export default function Phase2ERP({
     );
   }
 
-  if (activeTab === 'crm' || activeTab === 'suppliers') {
+  if (activeTab === 'crm' || activeTab === 'suppliers' || activeTab === 'party-management' || activeTab === 'parties') {
     const isCustomer = peopleTab === 'customers';
     const list = (isCustomer ? scopedCustomers : scopedSuppliers)?.filter(personMatchesSearch) || [];
     const formKind = isCustomer ? 'customer' : 'supplier';
@@ -1842,6 +1851,46 @@ export default function Phase2ERP({
     const totalOutstanding = isCustomer 
       ? list.reduce((sum, item) => sum + (Number(item?.outstandingAmount ?? item?.outstanding) || 0), 0) 
       : list.reduce((sum, item) => sum + (Number(item?.payableAmount) || 0), 0);
+    
+    const exportPartiesCsv = () => {
+      if (!list || list.length === 0) {
+        onStatus('No parties to export');
+        return;
+      }
+      const headers = ['Name', 'Phone', 'Email', 'GSTIN', 'City/Address', 'Outstanding/Payable'];
+      const rows = list.map(p => [
+        `"${(p.name || '').replace(/"/g, '""')}"`,
+        `"${(contactPhone(p) || '').replace(/"/g, '""')}"`,
+        `"${(p.email || '').replace(/"/g, '""')}"`,
+        `"${(p.gst || p.gstin || '').replace(/"/g, '""')}"`,
+        `"${(p.address || p.city || '').replace(/"/g, '""')}"`,
+        isCustomer ? safeMoney(p.outstandingAmount ?? p.outstanding ?? 0) : safeMoney(p.payableAmount ?? 0)
+      ]);
+      const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `${isCustomer ? 'customers' : 'suppliers'}_${today()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      onStatus(`Exported ${list.length} ${isCustomer ? 'customers' : 'suppliers'} to CSV`);
+    };
+
+    const toggleFavoritePerson = (person) => {
+      if (!person) return;
+      const isFav = !person.isFavorite;
+      const updated = { ...person, isFavorite: isFav };
+      setSelectedCrmPerson(updated);
+      if (isCustomer) {
+        setCustomers(prev => prev.map(c => c.id === person.id ? updated : c));
+        if (onCloudRecord) onCloudRecord('customers', person.id, updated).catch(console.error);
+      } else {
+        setSuppliers(prev => prev.map(s => s.id === person.id ? updated : s));
+        if (onCloudRecord) onCloudRecord('suppliers', person.id, updated).catch(console.error);
+      }
+      onStatus(isFav ? `Marked ${person.name} as Favorite` : `Unmarked ${person.name}`);
+    };
     
     return (
       <section className="phase2-stack fade-in crm-container" id={activeTab} style={{ background: 'transparent', border: 'none', boxShadow: 'none', padding: 0 }}>
@@ -2014,7 +2063,7 @@ export default function Phase2ERP({
               <div className="crm-toolbar-actions">
                 <button type="button" className="secondary-button" onClick={() => onStatus('Filters coming soon')}><Filter size={16}/> Filters</button>
                 <button type="button" className="secondary-button" onClick={() => onStatus('Tags coming soon')}><Tag size={16}/> Tags</button>
-                <button type="button" className="secondary-button" onClick={() => onStatus('Export coming soon')}><Download size={16}/> Export</button>
+                <button type="button" className="secondary-button" onClick={exportPartiesCsv}><Download size={16}/> Export CSV</button>
               </div>
             </div>
 
@@ -2131,8 +2180,8 @@ export default function Phase2ERP({
                  <div style={{ textAlign: 'center' }}>
                    <h2 style={{ fontSize: '20px', marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                      {selectedCrmPerson?.name || 'Unknown'}
-                     <button className="icon-button" style={{ color: 'var(--text-secondary)' }} onClick={() => onStatus('Favorite feature coming soon')} title="Coming soon">
-                       <Star size={16} />
+                     <button className="icon-button" style={{ color: selectedCrmPerson?.isFavorite ? '#eab308' : 'var(--text-secondary)' }} onClick={() => toggleFavoritePerson(selectedCrmPerson)} title={selectedCrmPerson?.isFavorite ? 'Starred Favorite' : 'Mark as Favorite'}>
+                       <Star size={16} fill={selectedCrmPerson?.isFavorite ? '#eab308' : 'none'} />
                      </button>
                    </h2>
                    <p className="text-secondary" style={{ fontSize: '14px' }}>{isCustomer ? 'Customer' : 'Supplier'} Profile</p>

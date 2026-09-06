@@ -245,6 +245,12 @@ const APP_TABS = [
   'parties',
   'stock',
   'more',
+  'storefront',
+  'profile',
+  'billing',
+  'preferences',
+  'help',
+  'help-center',
   ...LEGAL_PAGE_IDS,
 ];
 const navigationConfig = [
@@ -299,7 +305,7 @@ const navigationConfig = [
       { id: 'customers', path: '#crm', tab: 'crm', label: 'Customers', icon: '☉' },
       { id: 'suppliers', path: '#suppliers', tab: 'suppliers', label: 'Suppliers', icon: '◎' },
       { id: 'employees', path: '#employees', tab: 'employees', label: 'Employees', icon: '♙' },
-      { id: 'party-management', path: '#party-management', tab: 'party-management', label: 'Party Management', icon: '▣' },
+      { id: 'party-management', path: '#crm', tab: 'crm', label: 'Party Management', icon: '▣' },
       { id: 'ledger', path: '#party-statement', tab: 'party-statement', label: 'Party Ledger', icon: '▤' },
     ],
   },
@@ -1111,7 +1117,26 @@ export default function VoiceExpenseTrackerPreview() {
   const [cloudInventory, setCloudInventory] = useState([]);
   const [cloudStockTransactions, setCloudStockTransactions] = useState([]);
   const [cloudInvoices, setCloudInvoices] = useState([]);
-  const [cloudOrders, setCloudOrders] = useState([]);
+  const [cloudOrders, setCloudOrders] = useState(() => {
+    const local = readSavedArray(ORDERS_KEY);
+    if (local && local.length > 0) return local;
+    const p3 = readSavedArray('phase3Orders');
+    return Array.isArray(p3) ? p3 : [];
+  });
+
+  useEffect(() => {
+    const handleNewStoreOrder = (event) => {
+      const newOrder = event?.detail;
+      if (!newOrder) return;
+      setCloudOrders((prev) => [newOrder, ...(Array.isArray(prev) ? prev.filter(o => o.id !== newOrder.id) : [])]);
+      setStatus(`New Online Store Order: ${newOrder.orderNo} from ${newOrder.customer} (₹${newOrder.amount})`);
+      if (supabaseEnabled && saveAuthenticatedCloudRecord) {
+        saveAuthenticatedCloudRecord('orders', newOrder.id, newOrder).catch(console.error);
+      }
+    };
+    window.addEventListener('trinetr-new-order', handleNewStoreOrder);
+    return () => window.removeEventListener('trinetr-new-order', handleNewStoreOrder);
+  }, [supabaseEnabled]);
   const [cloudEmployees, setCloudEmployees] = useState([]);
   const [cloudAttendance, setCloudAttendance] = useState([]);
   const [cloudLeaveBalances, setCloudLeaveBalances] = useState([]);
@@ -1207,9 +1232,28 @@ export default function VoiceExpenseTrackerPreview() {
 
   const [activeTab, setActiveTab] = useState(() => {
     let hash = window.location.hash.slice(1);
-    if (hash === 'help') hash = 'help-center';
+    if (hash === 'storefront') hash = 'store';
+    if (hash === 'help-center') hash = 'help';
     return APP_TABS.includes(hash) ? hash : (userPreferences.defaultLandingPage || 'dashboard');
   });
+
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [showShareStoreModal, setShowShareStoreModal] = useState(false);
+  const [storeLinkCopied, setStoreLinkCopied] = useState(false);
+
+  const navigateToTab = (tab) => {
+    let target = tab;
+    if (target === 'storefront') target = 'store';
+    if (target === 'help-center') target = 'help';
+    if (target === 'party-management' || target === 'parties') target = 'crm';
+    setActiveTab(target);
+    window.location.hash = target;
+    setQuickAddOpen(false);
+    setProfileDropdownOpen(false);
+    setMobileNavOpen(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   useEffect(() => {
     const root = document.documentElement;
@@ -1393,7 +1437,9 @@ export default function VoiceExpenseTrackerPreview() {
   useEffect(() => {
     const handleHashChange = () => {
       let hash = window.location.hash.slice(1);
-      if (hash === 'help') hash = 'help-center';
+      if (hash === 'storefront') hash = 'store';
+      if (hash === 'help-center') hash = 'help';
+      if (hash === 'party-management' || hash === 'parties') hash = 'crm';
       if (hash && APP_TABS.includes(hash)) {
         setActiveTab(hash);
         const section = SIDEBAR_SECTIONS.find((group) => group.children.some((child) => child.tab === hash));
@@ -4386,12 +4432,13 @@ export default function VoiceExpenseTrackerPreview() {
     }
   };
 
-  const STOREFRONT_TABS = ['store', 'shop', 'product-menu', 'categories', 'store-contact'];
+  const STOREFRONT_TABS = ['store', 'storefront', 'shop', 'product-menu', 'categories', 'store-contact'];
   if (STOREFRONT_TABS.includes(activeTab)) {
     return (
       <StorefrontHome
         profile={profile}
-        initialTab={activeTab === 'store-contact' ? 'contact' : activeTab}
+        customInventory={cloudInventory}
+        initialTab={activeTab === 'store-contact' ? 'contact' : activeTab === 'storefront' ? 'store' : activeTab}
         onSwitchToErp={() => {
           setActiveTab('dashboard');
           window.location.hash = 'dashboard';
@@ -5130,38 +5177,54 @@ export default function VoiceExpenseTrackerPreview() {
             
             {/* Quick Add Dropdown */}
             <div className="saas-dropdown-container">
-              <button type="button" className="btn btn-primary" style={{ padding: '8px 14px', borderRadius: '8px', fontSize: '13px' }} onClick={() => setStatus('Quick Add menu ready')}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                style={{ padding: '8px 14px', borderRadius: '8px', fontSize: '13px' }}
+                onClick={() => {
+                  setQuickAddOpen(!quickAddOpen);
+                  setProfileDropdownOpen(false);
+                }}
+              >
                 <Plus size={16} /> Quick Add <ChevronDown size={14} style={{ opacity: 0.7 }} />
               </button>
-                <div className="saas-dropdown-menu">
-                  <button type="button" onClick={() => { setActiveTab('invoices'); window.location.hash = 'invoices'; setMobileNavOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><FileText size={16} /> New Invoice</button>
-                  <button type="button" onClick={() => { setActiveTab('orders'); window.location.hash = 'orders'; setMobileNavOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Package size={16} /> New Order</button>
-                  <button type="button" onClick={() => checkLimit('customers', cloudCustomers.length, () => { setActiveTab('crm'); window.location.hash = 'crm'; setMobileNavOpen(false); })} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Users size={16} /> New Customer</button>
-                  <button type="button" onClick={() => checkLimit('products', Object.keys(partySummary).length, () => { setActiveTab('inventory'); window.location.hash = 'inventory'; setMobileNavOpen(false); })} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Package size={16} /> New Product</button>
-                  <button type="button" onClick={() => checkLimit('employees', 0, () => { setActiveTab('employees'); window.location.hash = 'employees'; setMobileNavOpen(false); })} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><User size={16} /> New Employee</button>
-                  <div className="saas-dropdown-divider"></div>
-                  <button type="button" onClick={() => { setActiveTab('voucher-entry'); window.location.hash = 'voucher-entry'; setMobileNavOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><DollarSign size={16} /> Record Expense</button>
-                </div>
+              <div className={`saas-dropdown-menu ${quickAddOpen ? 'dropdown-active' : ''}`} style={quickAddOpen ? { opacity: 1, visibility: 'visible', transform: 'translateY(0)' } : undefined}>
+                <button type="button" onClick={() => navigateToTab('invoices')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><FileText size={16} /> New Invoice</button>
+                <button type="button" onClick={() => navigateToTab('orders')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Package size={16} /> New Order</button>
+                <button type="button" onClick={() => navigateToTab('crm')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Users size={16} /> New Customer</button>
+                <button type="button" onClick={() => navigateToTab('inventory')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Package size={16} /> New Product</button>
+                <button type="button" onClick={() => navigateToTab('employees')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><User size={16} /> New Employee</button>
+                <div className="saas-dropdown-divider"></div>
+                <button type="button" onClick={() => navigateToTab('voucher-entry')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><DollarSign size={16} /> Record Expense</button>
+              </div>
             </div>
 
-            <a href="#notifications" className="hover-scale" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: '50%', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', textDecoration: 'none', background: 'var(--bg-secondary)' }}>
+            <a href="#notifications" onClick={() => navigateToTab('notifications')} className="hover-scale" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: '50%', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', textDecoration: 'none', background: 'var(--bg-secondary)' }}>
               <Bell size={18} />
             </a>
 
             {/* Profile Dropdown */}
             <div className="saas-dropdown-container">
-              <div className="hover-scale" style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--brand-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '600', fontSize: '14px', cursor: 'pointer', border: '2px solid transparent', outline: 'none' }} tabIndex="0">
+              <div
+                className="hover-scale"
+                style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--brand-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '600', fontSize: '14px', cursor: 'pointer', border: '2px solid transparent', outline: 'none' }}
+                tabIndex="0"
+                onClick={() => {
+                  setProfileDropdownOpen(!profileDropdownOpen);
+                  setQuickAddOpen(false);
+                }}
+              >
                 {(profile.owner || authUser?.email || 'A')[0].toUpperCase()}
               </div>
-              <div className="saas-dropdown-menu">
-                <button type="button" onClick={(e) => { e.currentTarget.blur(); document.activeElement?.blur(); setActiveTab('profile'); window.location.hash = 'profile'; }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><User size={16} /> My Profile</button>
-                <button type="button" onClick={(e) => { e.currentTarget.blur(); document.activeElement?.blur(); setActiveTab('app-settings'); window.location.hash = 'app-settings'; }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Settings size={16} /> Company Settings</button>
-                <button type="button" onClick={(e) => { e.currentTarget.blur(); document.activeElement?.blur(); setActiveTab('billing'); window.location.hash = 'billing'; }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><CreditCard size={16} /> Billing & Plans</button>
-                <button type="button" onClick={(e) => { e.currentTarget.blur(); document.activeElement?.blur(); setActiveTab('analytics'); window.location.hash = 'analytics'; }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Activity size={16} /> Analytics</button>
-                <button type="button" onClick={(e) => { e.currentTarget.blur(); document.activeElement?.blur(); setActiveTab('preferences'); window.location.hash = 'preferences'; }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><CheckSquare size={16} /> Preferences</button>
-                <button type="button" onClick={(e) => { e.currentTarget.blur(); document.activeElement?.blur(); setActiveTab('help'); window.location.hash = 'help'; }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><HelpCircle size={16} /> Help Center</button>
+              <div className={`saas-dropdown-menu ${profileDropdownOpen ? 'dropdown-active' : ''}`} style={profileDropdownOpen ? { opacity: 1, visibility: 'visible', transform: 'translateY(0)' } : undefined}>
+                <button type="button" onClick={() => navigateToTab('profile')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><User size={16} /> My Profile</button>
+                <button type="button" onClick={() => navigateToTab('app-settings')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Settings size={16} /> Company Settings</button>
+                <button type="button" onClick={() => navigateToTab('billing')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><CreditCard size={16} /> Billing & Plans</button>
+                <button type="button" onClick={() => navigateToTab('analytics')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Activity size={16} /> Analytics</button>
+                <button type="button" onClick={() => navigateToTab('preferences')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><CheckSquare size={16} /> Preferences</button>
+                <button type="button" onClick={() => navigateToTab('help')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><HelpCircle size={16} /> Help Center</button>
                 <div className="saas-dropdown-divider"></div>
-                <button type="button" onClick={(e) => { e.currentTarget.blur(); document.activeElement?.blur(); logout(); }} className="saas-dropdown-item danger" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><LogOut size={16} /> Logout</button>
+                <button type="button" onClick={() => { setProfileDropdownOpen(false); logout(); }} className="saas-dropdown-item danger" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><LogOut size={16} /> Logout</button>
               </div>
             </div>
 
@@ -5240,10 +5303,10 @@ export default function VoiceExpenseTrackerPreview() {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '8px' }}>
-                <button className="btn btn-primary" onClick={() => window.location.hash = 'voucher-entry'} style={{ minHeight: '48px' }}>
+                <button className="btn btn-primary" onClick={() => navigateToTab('voucher-entry')} style={{ minHeight: '48px' }}>
                   <Plus size={16} /> Add Income
                 </button>
-                <button className="btn btn-danger" onClick={() => window.location.hash = 'voucher-entry'} style={{ minHeight: '48px', background: 'var(--danger)', color: '#fff', border: 'none' }}>
+                <button className="btn btn-danger" onClick={() => navigateToTab('voucher-entry')} style={{ minHeight: '48px', background: 'var(--danger)', color: '#fff', border: 'none' }}>
                   <Minus size={16} /> Add Expense
                 </button>
               </div>
@@ -5257,8 +5320,7 @@ export default function VoiceExpenseTrackerPreview() {
                 <VoiceCommandButton 
                   onCommandRecognized={(data) => {
                     handleVoiceCommandRecognized(data);
-                    setActiveTab('voucher-entry');
-                    window.location.hash = 'voucher-entry';
+                    navigateToTab('voucher-entry');
                   }} 
                   existingParties={partyLedgers}
                   isIconOnly={true}
@@ -5268,7 +5330,6 @@ export default function VoiceExpenseTrackerPreview() {
               )}
 
               {/* Dashboard Header */}
-              {/* Dashboard Setup Guide removed per request */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
                 <div>
                   <h1 style={{ fontSize: '28px', fontWeight: '700', letterSpacing: '-0.02em', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -5282,16 +5343,15 @@ export default function VoiceExpenseTrackerPreview() {
                   <VoiceCommandButton 
                     onCommandRecognized={(data) => {
                       handleVoiceCommandRecognized(data);
-                      setActiveTab('voucher-entry');
-                      window.location.hash = 'voucher-entry';
+                      navigateToTab('voucher-entry');
                     }} 
                     existingParties={partyLedgers}
                     containerClassName="desktop-mic-container"
                   />
-                  <button className="btn btn-secondary hover-scale hide-on-mobile" onClick={() => { window.location.hash = 'reports'; }}>
+                  <button className="btn btn-secondary hover-scale hide-on-mobile" onClick={() => navigateToTab('reports')}>
                     <FileText size={16} /> Reports
                   </button>
-                  <button className="btn btn-primary hover-scale hide-on-mobile" onClick={() => { window.location.hash = 'voucher-entry'; }}>
+                  <button className="btn btn-primary hover-scale hide-on-mobile" onClick={() => navigateToTab('voucher-entry')}>
                     <Plus size={16} /> New Entry
                   </button>
                 </div>
@@ -5299,12 +5359,71 @@ export default function VoiceExpenseTrackerPreview() {
 
               {/* Mobile Only Action Row */}
               <div className="mobile-dashboard-actions hide-on-desktop">
-                <button type="button" className="btn btn-secondary" aria-label="Reports" title="Reports" onClick={() => { window.location.hash = 'reports'; }}>
+                <button type="button" className="btn btn-secondary" aria-label="Reports" title="Reports" onClick={() => navigateToTab('reports')}>
                   <FileText size={20} />
                 </button>
-                <button type="button" className="btn btn-primary" aria-label="New Entry" title="New Entry" onClick={() => { window.location.hash = 'voucher-entry'; }}>
+                <button type="button" className="btn btn-primary" aria-label="New Entry" title="New Entry" onClick={() => navigateToTab('voucher-entry')}>
                   <Plus size={20} />
                 </button>
+              </div>
+
+              {/* Online Storefront Sharing & WhatsApp Orders Hub */}
+              <div className="glass-panel" style={{ padding: '20px 24px', background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)', border: '1px solid #fde68a', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#d97706', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>
+                    🛍️
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '700', color: '#78350f' }}>
+                        Customer Online Storefront & WhatsApp Orders
+                      </h3>
+                      <span className="badge badge-success" style={{ background: '#25d366', color: '#fff', fontSize: '11px', fontWeight: '700' }}>Live & Active</span>
+                    </div>
+                    <p style={{ margin: '4px 0 0 0', color: '#92400e', fontSize: '13px' }}>
+                      Share this store link with your customers to take orders directly via WhatsApp!
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="btn hover-scale"
+                    onClick={() => {
+                      const url = `${window.location.origin}/#store`;
+                      navigator.clipboard.writeText(url);
+                      setStoreLinkCopied(true);
+                      setTimeout(() => setStoreLinkCopied(false), 2500);
+                    }}
+                    style={{ background: '#fff', border: '1px solid #fde68a', color: '#78350f', fontWeight: '600', padding: '8px 14px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}
+                  >
+                    {storeLinkCopied ? '✓ Link Copied!' : '📋 Copy Store Link'}
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn hover-scale"
+                    onClick={() => {
+                      const url = `${window.location.origin}/#store`;
+                      const storeTitle = profile.storeName || profile.name || 'Our Online Store';
+                      const msg = `Hello! Check out ${storeTitle} online: ${url}\nOrder fresh namkeens & snacks directly with 1-click home delivery!`;
+                      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+                    }}
+                    style={{ background: '#25d366', border: 'none', color: '#fff', fontWeight: '700', padding: '8px 14px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}
+                  >
+                    <MessageCircle size={16} /> Share on WhatsApp
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn hover-scale"
+                    onClick={() => navigateToTab('store')}
+                    style={{ background: '#881337', border: 'none', color: '#fff', fontWeight: '700', padding: '8px 14px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}
+                  >
+                    Preview Store ↗
+                  </button>
+                </div>
               </div>
 
               {!browserSupported && (
@@ -5403,10 +5522,7 @@ export default function VoiceExpenseTrackerPreview() {
                           { label: 'Payroll', desc: 'Pay staff', icon: Briefcase, path: 'employees', color: '#06b6d4', bg: '#ecfeff' }
                         ].map(action => (
                           <button key={action.label} onClick={() => { 
-                            setActiveTab(action.path);
-                            if (action.path === 'customers') setStatus('Add Customer drawer coming soon');
-                            if (action.path === 'inventory') setStatus('Navigate to Inventory to add Product');
-                            if (action.path === 'employees') setStatus('Navigate to Employees for Payroll');
+                            navigateToTab(action.path);
                           }} className="hover-scale" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '16px', gap: '8px', border: '1px solid var(--border-subtle)', borderRadius: '12px', background: 'var(--bg-secondary)', cursor: 'pointer', textAlign: 'left' }}>
                             <div style={{ padding: '8px', background: action.bg, color: action.color, borderRadius: '8px' }}>
                               <action.icon size={20} />
@@ -5500,7 +5616,7 @@ export default function VoiceExpenseTrackerPreview() {
                                 <div style={{ fontWeight: '600', fontSize: '13px', color: 'var(--text-primary)' }}>{item.item}</div>
                                 <div style={{ fontSize: '11px', color: 'var(--danger)' }}>{item.stock} left (Min: {item.alert})</div>
                               </div>
-                              <button type="button" className="btn btn-secondary hover-scale" style={{ padding: '4px 10px', fontSize: '11px' }} onClick={() => setStatus('Restock workflow coming soon')}>Restock</button>
+                              <button type="button" className="btn btn-secondary hover-scale" style={{ padding: '4px 10px', fontSize: '11px' }} onClick={() => navigateToTab('inventory')}>Restock</button>
                             </div>
                           ))}
                         </div>
@@ -5742,6 +5858,8 @@ export default function VoiceExpenseTrackerPreview() {
             'invoices',
             'gst',
             'crm',
+            'party-management',
+            'parties',
             'suppliers',
             'businesses',
             'cloud-backup',
@@ -7611,7 +7729,7 @@ export default function VoiceExpenseTrackerPreview() {
                   </div>
                 </div>
                 <div style={{ marginTop: '24px' }}>
-                  <button type="button" className="secondary-button" onClick={() => setStatus('Edit Profile coming soon')}><Edit3 size={16}/> Edit Profile</button>
+                  <button type="button" className="secondary-button" onClick={() => navigateToTab('app-settings')}><Edit3 size={16}/> Edit Company Profile</button>
                 </div>
               </div>
             </section>
@@ -7689,7 +7807,7 @@ export default function VoiceExpenseTrackerPreview() {
       <nav className="mobile-bottom-nav" aria-label="Mobile navigation">
         <a className={activeTab === 'dashboard' ? 'active' : ''} href="#dashboard">Home</a>
         <a className={['entries', 'voucher-entry', 'day-book'].includes(activeTab) ? 'active' : ''} href="#day-book">Entries</a>
-        <a className={['parties', 'crm', 'party-management', 'suppliers'].includes(activeTab) ? 'active' : ''} href="#party-management">Parties</a>
+        <a className={['parties', 'crm', 'party-management', 'suppliers'].includes(activeTab) ? 'active' : ''} href="#crm">Parties</a>
         <a className={['stock', 'inventory'].includes(activeTab) ? 'active' : ''} href="#inventory">Stock</a>
         <a className={activeTab === 'more' ? 'active' : ''} href="#more">More</a>
       </nav>

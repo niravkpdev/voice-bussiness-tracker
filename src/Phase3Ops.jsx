@@ -321,6 +321,16 @@ export default function Phase3Ops({
     if (Array.isArray(cloudOrders)) setOrders(cloudOrders);
   }, [cloudOrders]);
   useEffect(() => {
+    const handleStorefrontOrder = (e) => {
+      const ord = e?.detail;
+      if (ord) {
+        setOrders((prev) => [ord, ...(prev.filter((o) => o.id !== ord.id))]);
+      }
+    };
+    window.addEventListener('trinetr-new-order', handleStorefrontOrder);
+    return () => window.removeEventListener('trinetr-new-order', handleStorefrontOrder);
+  }, []);
+  useEffect(() => {
     if (Array.isArray(cloudEmployees)) setEmployees(cloudEmployees);
   }, [cloudEmployees]);
   useEffect(() => {
@@ -1775,7 +1785,19 @@ export default function Phase3Ops({
           <div className="compact-list">
             {orders.map((order) => (
               <article className="compact-item" key={order.id}>
-                <div><strong>{order.orderNo} · {order.customer}</strong><p>{order.status} · Delivery {order.deliveryDate} · {formatCurrency(order.amount)}</p><p>{order.timeline[0]?.date}: {order.timeline[0]?.note}</p></div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <strong>{order.orderNo} · {order.customer}</strong>
+                    {order.source && (
+                      <span style={{ fontSize: '11px', background: '#e0e7ff', color: '#3730a3', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
+                        🛒 {order.source}
+                      </span>
+                    )}
+                  </div>
+                  <p>{order.status} · Delivery {order.deliveryDate} · {formatCurrency(order.amount)}</p>
+                  {order.details && <p style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>{order.details}</p>}
+                  <p>{order.timeline?.[0]?.date}: {order.timeline?.[0]?.note}</p>
+                </div>
                 <div className="voucher-actions">
                   <button className="share-entry-button" type="button" onClick={() => advanceOrder(order)}>Next Stage</button>
                   <button className="share-entry-button" type="button" onClick={() => convertOrderToInvoice(order)}>Convert to Invoice</button>
