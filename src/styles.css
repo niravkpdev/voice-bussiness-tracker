@@ -6893,14 +6893,23 @@ fieldset {
 }
 table {
   width: 100%;
-  min-width: 600px;
   border-collapse: collapse;
+}
+.table-responsive table,
+.table-container table,
+.table-wrapper table,
+.statement-table-wrap table,
+.crm-table-wrapper table,
+.party-table-wrap table,
+[style*="overflow-x: auto"] table {
+  min-width: 520px;
 }
 .hrms-record-grid { display: grid !important; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important; }
 
 /* Responsive Tables for Mobile */
-.table-responsive, .table-container, [style*="overflow-x: auto"] {
+.table-responsive, .table-container, .table-wrapper, [style*="overflow-x: auto"] {
   width: 100%;
+  max-width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }

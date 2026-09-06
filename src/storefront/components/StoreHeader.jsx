@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Search, ShoppingBag, Heart, Phone, Menu, X, ChevronDown, Sparkles, SlidersHorizontal, ArrowRight } from 'lucide-react';
 import { useStoreCart } from '../context/StoreCartContext';
-import { CATEGORIES, STORE_INFO } from '../data/namkeenData';
+import { CATEGORIES } from '../data/namkeenData';
 
 export function StoreHeader({ currentTab, onNavigate, onSwitchToErp }) {
-  const { cartTotalCount, cartSubtotal, setCartDrawerOpen, wishlist, searchQuery, setSearchQuery, setActiveCategory } = useStoreCart();
+  const { storeInfo, cartTotalCount, cartSubtotal, setCartDrawerOpen, wishlist, searchQuery, setSearchQuery, setActiveCategory } = useStoreCart();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [deptDropdownOpen, setDeptDropdownOpen] = useState(false);
 
@@ -38,9 +38,9 @@ export function StoreHeader({ currentTab, onNavigate, onSwitchToErp }) {
               </button>
             )}
             <span className="bhole-top-divider">|</span>
-            <a href={`tel:${STORE_INFO.phone}`} className="bhole-top-link">
+            <a href={`tel:${storeInfo?.phone || ''}`} className="bhole-top-link">
               <Phone size={12} />
-              <span>{STORE_INFO.phone}</span>
+              <span>{storeInfo?.phone || ''}</span>
             </a>
           </div>
         </div>
@@ -61,12 +61,16 @@ export function StoreHeader({ currentTab, onNavigate, onSwitchToErp }) {
 
           {/* Brand Logo */}
           <div className="bhole-logo-wrapper" onClick={() => onNavigate('store')}>
-            <div className="bhole-logo-emblem">
-              <span className="bhole-logo-accent">bhole-G</span>
-            </div>
+            {storeInfo?.logo ? (
+              <img src={storeInfo.logo} alt={storeInfo.name} style={{ width: 44, height: 44, borderRadius: 10, objectFit: 'cover' }} />
+            ) : (
+              <div className="bhole-logo-emblem">
+                <span className="bhole-logo-accent">{(storeInfo?.name || 'B')[0].toUpperCase()}</span>
+              </div>
+            )}
             <div className="bhole-logo-text">
-              <span className="bhole-brand-title">BHOLE G</span>
-              <span className="bhole-brand-sub">NAMKEEN & WAFERS</span>
+              <span className="bhole-brand-title">{storeInfo?.name?.toUpperCase()}</span>
+              <span className="bhole-brand-sub">{storeInfo?.tagline?.toUpperCase() || 'NAMKEEN & WAFERS'}</span>
             </div>
           </div>
 
@@ -201,8 +205,8 @@ export function StoreHeader({ currentTab, onNavigate, onSwitchToErp }) {
           {/* Hotline */}
           <div className="bhole-hotline hide-on-tablet">
             <span className="bhole-hotline-label">Hotline:</span>
-            <a href={`tel:${STORE_INFO.phone}`} className="bhole-hotline-number">
-              {STORE_INFO.phone}
+            <a href={`tel:${storeInfo.phone}`} className="bhole-hotline-number">
+              {storeInfo.phone}
             </a>
           </div>
         </div>

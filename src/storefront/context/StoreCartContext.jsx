@@ -6,7 +6,51 @@ const StoreCartContext = createContext(null);
 const CART_STORAGE_KEY = 'bhole_g_store_cart_v1';
 const WISHLIST_STORAGE_KEY = 'bhole_g_store_wishlist_v1';
 
-export function StoreCartProvider({ children }) {
+function resolveStoreInfo(customProfile) {
+  let profileData = customProfile;
+  if (!profileData || !profileData.name || profileData.name === 'Trinetr Business Suite') {
+    try {
+      const saved = localStorage.getItem('businessProfile');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && (parsed.name || parsed.phone || parsed.address)) {
+          profileData = parsed;
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const name = profileData?.storeName || profileData?.name || STORE_INFO.name;
+  const tagline = profileData?.storeTagline || profileData?.tagline || STORE_INFO.tagline;
+  const phone = profileData?.phone || STORE_INFO.phone;
+  const whatsapp = profileData?.whatsapp || profileData?.phone || STORE_INFO.whatsapp;
+  const email = profileData?.email || STORE_INFO.email;
+  const address = profileData?.address || STORE_INFO.address;
+  const fssaiNumber = profileData?.fssaiNumber || profileData?.fssai || STORE_INFO.fssaiNumber;
+  const hours = profileData?.hours || STORE_INFO.hours;
+  const bannerOffer = profileData?.bannerOffer || 'FLAT 20% OFF';
+  const bannerRegion = profileData?.bannerRegion || "For All Gujarat and Mumbai City's Customers";
+
+  return {
+    ...STORE_INFO,
+    name: name === 'Trinetr Business Suite' ? STORE_INFO.name : name,
+    tagline,
+    phone,
+    whatsapp,
+    email,
+    address,
+    fssaiNumber,
+    hours,
+    bannerOffer,
+    bannerRegion,
+    logo: profileData?.logo || null
+  };
+}
+
+export function StoreCartProvider({ children, storeProfile }) {
+  const storeInfo = useMemo(() => resolveStoreInfo(storeProfile), [storeProfile]);
   // Cart state
   const [cart, setCart] = useState(() => {
     try {
@@ -143,7 +187,7 @@ export function StoreCartProvider({ children }) {
   const generateWhatsAppOrderUrl = (customerDetails = {}) => {
     if (cart.length === 0) return '';
 
-    let text = `🛍️ *NEW ORDER - ${STORE_INFO.name.toUpperCase()}*\n`;
+    let text = `🛍️ *NEW ORDER - ${storeInfo.name.toUpperCase()}*\n`;
     text += `────────────────────\n`;
     if (customerDetails.name) {
       text += `👤 *Customer:* ${customerDetails.name}\n`;
@@ -172,11 +216,12 @@ export function StoreCartProvider({ children }) {
     text += `────────────────────\n`;
     text += `Please confirm my order and share estimated dispatch time. Thank you!`;
 
-    const cleanPhone = STORE_INFO.whatsapp.replace(/[^0-9]/g, '');
+    const cleanPhone = String(storeInfo.whatsapp || '').replace(/[^0-9]/g, '');
     return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
   };
 
   const value = {
+    storeInfo,
     cart,
     cartTotalCount,
     cartSubtotal,

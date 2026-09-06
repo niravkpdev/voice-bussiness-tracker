@@ -4,13 +4,16 @@ import { STORE_INFO } from '../data/namkeenData';
 import { useStoreCart } from '../context/StoreCartContext';
 
 export function StoreFooter({ onNavigate }) {
-  const { generateWhatsAppOrderUrl } = useStoreCart();
+  const { generateWhatsAppOrderUrl, storeInfo } = useStoreCart();
+  const activeStore = storeInfo || STORE_INFO;
 
   const handleFloatingWhatsApp = () => {
-    const cleanPhone = STORE_INFO.whatsapp.replace(/[^0-9]/g, '');
-    const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent("Hello Bhole G Namkeen! I would like to inquire about your fresh farsan and snacks.")}`;
+    const cleanPhone = String(activeStore.whatsapp || '').replace(/[^0-9]/g, '');
+    const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Hello ${activeStore.name}! I would like to inquire about your products and fresh snacks.`)}`;
     window.open(url, '_blank');
   };
+
+  const mapQuery = encodeURIComponent(`${activeStore.name} ${activeStore.address}`);
 
   return (
     <footer className="bhole-store-footer">
@@ -37,7 +40,7 @@ export function StoreFooter({ onNavigate }) {
             <div className="trust-text">
               <h4>We Are FSSAI Certified</h4>
               <p>Adhering to the highest standards of food safety, hygiene, and authentic taste.</p>
-              <span className="fssai-license">Lic No: {STORE_INFO.fssaiNumber}</span>
+              <span className="fssai-license">Lic No: {activeStore.fssaiNumber || '10722026001234'}</span>
             </div>
           </div>
 
@@ -48,9 +51,9 @@ export function StoreFooter({ onNavigate }) {
             </div>
             <div className="trust-text">
               <h4>Google 5-Star Rated Store</h4>
-              <p>Loved by 50,000+ farsan and namkeen lovers across Gujarat and India.</p>
+              <p>Loved by thousands of snack and food lovers across the region.</p>
               <a 
-                href="https://maps.google.com/?q=Bhole+G+Namkeen+Surat" 
+                href={`https://maps.google.com/?q=${mapQuery}`} 
                 target="_blank" 
                 rel="noreferrer" 
                 className="google-review-link"
@@ -66,8 +69,8 @@ export function StoreFooter({ onNavigate }) {
       <div className="bhole-map-section">
         <div className="bhole-map-wrapper">
           <iframe
-            title="Bhole G Namkeen Surat Location"
-            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3719.8249826391494!2d72.8315486!3d21.1991054!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3be04e5f0d7e4cf7%3A0x861ec6e0339ad61b!2sMahidharpura%2C%20Haripura%2C%20Surat%2C%20Gujarat!5e0!3m2!1sen!2sin!4v1699999999999!5m2!1sen!2sin"
+            title={`${activeStore.name} Location`}
+            src={`https://maps.google.com/maps?q=${mapQuery}&t=&z=14&ie=UTF8&iwloc=&output=embed`}
             width="100%"
             height="260"
             style={{ border: 0 }}
@@ -84,16 +87,16 @@ export function StoreFooter({ onNavigate }) {
           {/* Brand Info */}
           <div className="bhole-footer-col brand-col">
             <div className="bhole-footer-logo">
-              <span className="logo-text">{STORE_INFO.name}</span>
-              <span className="tagline">{STORE_INFO.tagline}</span>
+              <span className="logo-text">{activeStore.name}</span>
+              <span className="tagline">{activeStore.tagline}</span>
             </div>
             <p className="brand-description">
-              Handcrafted with pure groundnut oil and authentic Gujarati recipes since {STORE_INFO.establishedYear}. 
-              Offering {STORE_INFO.varietiesCount} varieties of fresh gathiya, wafers, chana, and snacks.
+              Handcrafted with pure quality and authentic recipes. 
+              Offering {activeStore.varietiesCount || '100+'} varieties of fresh delicacies, snacks, and foods.
             </p>
             <div className="bhole-social-links">
-              <span className="social-pill">{STORE_INFO.facebook}</span>
-              <span className="social-pill">{STORE_INFO.instagram}</span>
+              <span className="social-pill">{activeStore.facebook || 'Facebook'}</span>
+              <span className="social-pill">{activeStore.instagram || 'Instagram'}</span>
             </div>
           </div>
 
@@ -113,10 +116,10 @@ export function StoreFooter({ onNavigate }) {
           <div className="bhole-footer-col">
             <h4 className="footer-col-title">Customer Care</h4>
             <ul className="footer-links-list">
-              <li><span>Shipping: All India Delivery</span></li>
-              <li><span>Surat City: Cash on Delivery</span></li>
-              <li><span>Timings: {STORE_INFO.hours}</span></li>
-              <li><span>Support: 12 Hours / 6 Days</span></li>
+              <li><span>Shipping: Express Delivery</span></li>
+              <li><span>Orders: 1-Click WhatsApp Checkout</span></li>
+              <li><span>Timings: {activeStore.hours || '9:00 AM - 10:00 PM'}</span></li>
+              <li><span>Support: Fast Order Assistance</span></li>
             </ul>
           </div>
 
@@ -126,15 +129,15 @@ export function StoreFooter({ onNavigate }) {
             <div className="footer-contact-info">
               <div className="contact-item">
                 <Phone size={16} />
-                <a href={`tel:${STORE_INFO.phone}`}>{STORE_INFO.phone}</a>
+                <a href={`tel:${activeStore.phone}`}>{activeStore.phone}</a>
               </div>
               <div className="contact-item">
                 <Mail size={16} />
-                <a href={`mailto:${STORE_INFO.email}`}>{STORE_INFO.email}</a>
+                <a href={`mailto:${activeStore.email}`}>{activeStore.email}</a>
               </div>
               <div className="contact-item">
                 <MapPin size={16} />
-                <span>{STORE_INFO.address}</span>
+                <span>{activeStore.address}</span>
               </div>
             </div>
           </div>
@@ -144,8 +147,8 @@ export function StoreFooter({ onNavigate }) {
       {/* Copyright Bar */}
       <div className="bhole-footer-bottom">
         <div className="bhole-footer-bottom-inner">
-          <p>© {new Date().getFullYear()} {STORE_INFO.name}. All Rights Reserved.</p>
-          <p className="developed-by">Designed with authentic Indian Snack Storefront Architecture.</p>
+          <p>© {new Date().getFullYear()} {activeStore.name}. All Rights Reserved.</p>
+          <p className="developed-by">Online E-Commerce Storefront Architecture.</p>
         </div>
       </div>
 
@@ -154,8 +157,8 @@ export function StoreFooter({ onNavigate }) {
         type="button"
         className="bhole-floating-whatsapp-btn"
         onClick={handleFloatingWhatsApp}
-        title="Chat with Store on WhatsApp"
-        aria-label="Chat with Store on WhatsApp"
+        title={`Chat with ${activeStore.name} on WhatsApp`}
+        aria-label={`Chat with ${activeStore.name} on WhatsApp`}
       >
         <MessageCircle size={28} />
       </button>

@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { Phone, Mail, MapPin, Clock, Send, CheckCircle } from 'lucide-react';
 import { STORE_INFO } from '../data/namkeenData';
+import { useStoreCart } from '../context/StoreCartContext';
 
 export function ContactView() {
+  const { storeInfo } = useStoreCart();
+  const activeStore = storeInfo || STORE_INFO;
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -35,7 +38,7 @@ export function ContactView() {
             <div className="contact-submitted-box">
               <CheckCircle size={44} className="text-emerald" />
               <h4>Message Sent Successfully!</h4>
-              <p>Thank you for reaching out, {form.name}. Our Surat store team will get back to you shortly.</p>
+              <p>Thank you for reaching out, {form.name}. Our {activeStore.name} team will get back to you shortly.</p>
               <button 
                 type="button" 
                 className="btn-primary" 
@@ -102,7 +105,7 @@ export function ContactView() {
         <div className="bhole-contact-info-card">
           <h3 className="info-card-title">Our Shop Location</h3>
           <p className="info-card-desc">
-            Visit our flagship shop in the heart of Surat's historic diamond & trade market for freshly prepared hot farsan!
+            Visit our physical location or order directly via WhatsApp for freshly prepared orders delivered to your doorstep!
           </p>
 
           <div className="info-list">
@@ -110,7 +113,7 @@ export function ContactView() {
               <MapPin size={20} className="icon" />
               <div>
                 <h5>Physical Store</h5>
-                <p>{STORE_INFO.address}</p>
+                <p>{activeStore.address}</p>
               </div>
             </div>
 
@@ -118,7 +121,7 @@ export function ContactView() {
               <Clock size={20} className="icon" />
               <div>
                 <h5>Store Timings</h5>
-                <p>{STORE_INFO.hours}</p>
+                <p>{activeStore.hours}</p>
               </div>
             </div>
 
@@ -126,7 +129,7 @@ export function ContactView() {
               <Phone size={20} className="icon" />
               <div>
                 <h5>Direct Call & WhatsApp</h5>
-                <p>{STORE_INFO.phone}</p>
+                <p>{activeStore.phone}</p>
               </div>
             </div>
 
@@ -134,7 +137,7 @@ export function ContactView() {
               <Mail size={20} className="icon" />
               <div>
                 <h5>Email Inquiries</h5>
-                <p>{STORE_INFO.email}</p>
+                <p>{activeStore.email}</p>
               </div>
             </div>
           </div>

@@ -2777,4 +2777,144 @@
   .bhole-footer-container {
     grid-template-columns: 1fr;
   }
+
+  .bhole-products-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .bhole-product-card {
+    padding: 10px;
+    border-radius: 12px;
+  }
+
+  .bhole-card-img-wrapper {
+    height: 140px;
+  }
+
+  .bhole-card-title {
+    font-size: 13px;
+    line-height: 1.3;
+    min-height: 34px;
+  }
+
+  .bhole-weight-chip {
+    font-size: 10px;
+    padding: 3px 6px;
+    border-radius: 4px;
+  }
+
+  .bhole-price-final {
+    font-size: 15px;
+  }
+
+  .bhole-add-cart-btn {
+    padding: 6px 10px;
+    font-size: 11px;
+    border-radius: 8px;
+  }
+
+  .bhole-hero-promo-card {
+    padding: 24px 16px;
+    border-radius: 16px;
+  }
+
+  .bhole-promo-heading {
+    font-size: 26px;
+    line-height: 1.15;
+  }
+
+  .bhole-promo-subheading {
+    font-size: 15px;
+  }
+
+  .bhole-promo-detail {
+    font-size: 13px;
+  }
+
+  .bhole-cart-drawer {
+    width: 100vw;
+    max-width: 100vw;
+  }
+
+  .bhole-floating-whatsapp-btn {
+    bottom: 20px;
+    right: 16px;
+    width: 50px;
+    height: 50px;
+  }
+}
+
+@media (max-width: 480px) {
+  .bhole-top-bar {
+    font-size: 11px;
+    padding: 4px 10px;
+  }
+
+  .bhole-brand-title {
+    font-size: 15px;
+  }
+
+  .bhole-brand-sub {
+    font-size: 9px;
+  }
+
+  .bhole-products-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .bhole-product-card {
+    padding: 8px;
+  }
+
+  .bhole-card-img-wrapper {
+    height: 120px;
+  }
+
+  .bhole-card-title {
+    font-size: 12px;
+    min-height: 30px;
+  }
+
+  .bhole-variants-selector {
+    gap: 3px;
+  }
+
+  .bhole-weight-chip {
+    font-size: 9px;
+    padding: 2px 5px;
+  }
+
+  .bhole-card-action-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .bhole-card-action-row .bhole-card-price-block {
+    text-align: left;
+  }
+
+  .bhole-add-cart-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .bhole-category-carousel-wrapper {
+    padding: 12px 8px;
+  }
+
+  .bhole-cat-circle-card {
+    width: 72px;
+  }
+
+  .bhole-cat-circle-img {
+    width: 60px;
+    height: 60px;
+  }
+
+  .bhole-cat-circle-name {
+    font-size: 11px;
+  }
 }

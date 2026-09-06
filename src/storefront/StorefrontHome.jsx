@@ -16,7 +16,8 @@ import './storefront.css';
 
 function StorefrontContent({ initialTab = 'store', onSwitchToErp }) {
   const [currentTab, setCurrentTab] = useState(initialTab);
-  const { setActiveCategory, setDietaryFilter } = useStoreCart();
+  const { setActiveCategory, setDietaryFilter, storeInfo } = useStoreCart();
+  const activeStore = storeInfo || STORE_INFO;
 
   useEffect(() => {
     if (initialTab) {
@@ -85,16 +86,16 @@ function StorefrontContent({ initialTab = 'store', onSwitchToErp }) {
           <section className="bhole-hero-promo-banner">
             <div className="bhole-hero-promo-card">
               <div className="bhole-promo-accent-stamp">
-                <span>AUTHENTIC SURAT FARSAN</span>
+                <span>{activeStore.tagline?.toUpperCase() || 'AUTHENTIC FRESH FOODS & SNACKS'}</span>
               </div>
               <h1 className="bhole-promo-heading">
-                FLAT <span className="highlight-percent">20%</span> OFF
+                {activeStore.bannerOffer || 'FLAT 20% OFF'}
               </h1>
               <h3 className="bhole-promo-subheading">
-                For All Gujarat and Mumbai City's Customers
+                {activeStore.bannerRegion || "For All Gujarat and Mumbai City's Customers"}
               </h3>
               <p className="bhole-promo-detail">
-                Freshly fried daily in pure groundnut oil. Free home delivery across Surat!
+                Freshly prepared with pure ingredients and hygienic packaging. Quick delivery to your home!
               </p>
               <button 
                 type="button" 
@@ -298,7 +299,7 @@ function StorefrontContent({ initialTab = 'store', onSwitchToErp }) {
                 <div className="collage-col">
                   <img src="https://images.unsplash.com/photo-1601050690597-df0568f70950?w=400&auto=format&fit=crop&q=80" alt="Fresh Gathiya" className="collage-img" />
                   <div className="story-stat-card">
-                    <span className="stat-num">{STORE_INFO.varietiesCount}</span>
+                    <span className="stat-num">{activeStore.varietiesCount || '100+'}</span>
                     <span className="stat-lbl">Plus Varieties</span>
                   </div>
                 </div>
@@ -306,15 +307,14 @@ function StorefrontContent({ initialTab = 'store', onSwitchToErp }) {
 
               <div className="bhole-story-text-content">
                 <span className="story-badge">Our Heritage</span>
-                <h3 className="story-title">"Foodies Welcome Here" — Explore Your Hunger with {STORE_INFO.name}</h3>
+                <h3 className="story-title">"Foodies Welcome Here" — Explore Your Hunger with {activeStore.name}</h3>
                 <p className="story-body">
-                  Established in {STORE_INFO.establishedYear}, {STORE_INFO.name} has become one of Surat’s most loved destinations
-                  for authentic snacks and innovation. From crisp namkeen and crunchy wafers to specialty items like
-                  bhakarwadi, dry kachori, and methi puri, we craft every product with premium ingredients, pure groundnut oil, and consistent taste.
+                  Established in {activeStore.establishedYear || '1992'}, {activeStore.name} has become a trusted destination
+                  for authentic snacks, quality foods, and regional delicacies. We craft every product with premium ingredients and consistent taste.
                 </p>
                 <p className="story-body">
-                  What started as a small local shop in Surat has now grown into a trusted brand serving thousands of families
-                  across Gujarat and India.
+                  What started as a dedicated local store has now grown into a loved brand serving thousands of happy families
+                  with fresh orders delivered directly.
                 </p>
 
                 <div className="story-checklist">
@@ -345,7 +345,7 @@ function StorefrontContent({ initialTab = 'store', onSwitchToErp }) {
 
 export default function StorefrontHome(props) {
   return (
-    <StoreCartProvider>
+    <StoreCartProvider storeProfile={props.profile}>
       <StorefrontContent {...props} />
     </StoreCartProvider>
   );

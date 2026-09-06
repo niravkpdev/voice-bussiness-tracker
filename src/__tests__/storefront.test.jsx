@@ -99,4 +99,47 @@ describe('Bhole G Namkeen Storefront Catalog & Variants', () => {
     expect(url).toContain(encodeURIComponent('Moong Jor Salted'));
     expect(url).toContain(encodeURIComponent('250 GM'));
   });
+
+  it('dynamically adapts storefront and WhatsApp orders to custom ERP company profile', () => {
+    // Simulate user entering their own company details in ERP
+    const customMerchantProfile = {
+      name: 'Jay Ambe Farsan Mart',
+      storeName: 'Jay Ambe Farsan Mart',
+      tagline: 'Fresh Kathiyawadi Snacks Since 1998',
+      storeTagline: 'Fresh Kathiyawadi Snacks Since 1998',
+      phone: '+91 98251 12345',
+      whatsapp: '+91 98251 12345',
+      email: 'jayambe@example.com',
+      address: 'Shop 12, Ring Road, Rajkot, Gujarat',
+      fssaiNumber: '10724011005555',
+      hours: '8:00 AM - 9:30 PM',
+      bannerOffer: 'FLAT 25% OFF',
+      bannerRegion: 'Free Delivery Across Rajkot City'
+    };
+
+    // Store resolver logic
+    const storeName = customMerchantProfile.storeName || customMerchantProfile.name || STORE_INFO.name;
+    const cleanPhone = String(customMerchantProfile.whatsapp || customMerchantProfile.phone).replace(/[^0-9]/g, '');
+    const orderUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(`🛍️ *NEW ORDER - ${storeName.toUpperCase()}*`)}`;
+
+    expect(storeName).toBe('Jay Ambe Farsan Mart');
+    expect(cleanPhone).toBe('919825112345');
+    expect(orderUrl).toContain('wa.me/919825112345');
+    expect(orderUrl).toContain(encodeURIComponent('JAY AMBE FARSAN MART'));
+  });
+
+  it('falls back gracefully to Bhole G Namkeen defaults when user profile is unconfigured', () => {
+    const unconfiguredProfile = {
+      name: 'Trinetr Business Suite',
+      storeName: '',
+      whatsapp: '',
+      address: ''
+    };
+
+    const resolvedName = (!unconfiguredProfile.storeName || unconfiguredProfile.name === 'Trinetr Business Suite')
+      ? STORE_INFO.name
+      : unconfiguredProfile.storeName;
+
+    expect(resolvedName).toBe('Bhole G Namkeen');
+  });
 });

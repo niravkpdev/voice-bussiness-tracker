@@ -275,14 +275,45 @@ input, textarea, p, span, h1, h2, h3, h4, h5, h6, strong, div, table {
     box-sizing: border-box !important;
   }
 
-  button, .btn, .delete-entry-button, .manual-button, .primary-button {
+  .form-actions > button,
+  .inline-actions > button,
+  .auth-card button.saas-primary-button,
+  .auth-card button.saas-google-button,
+  .auth-card button.saas-outline-button,
+  .btn-block-mobile,
+  .delete-entry-button {
     width: 100% !important;
     max-width: 100% !important;
     margin-top: 8px !important;
     box-sizing: border-box !important;
     white-space: normal !important;
-    height: auto !important;
     min-height: 44px !important;
+  }
+
+  /* Protect inline controls, storefront chips/buttons and icon controls from being stretched */
+  button.topbar-menu-button,
+  button.bhole-mobile-toggle,
+  button.bhole-weight-chip,
+  button.bhole-qty-btn,
+  button.bhole-cat-pill,
+  button.bhole-reel-audio-btn,
+  button.bhole-nav-link,
+  button.bhole-icon-btn,
+  button.bhole-floating-whatsapp-btn,
+  button.bhole-cart-toggle,
+  button.bhole-drawer-close,
+  button.bhole-quick-qty-btn,
+  button.bhole-add-direct-btn,
+  button.tab-btn,
+  button.icon-btn,
+  .bhole-storefront-root button:not(.bhole-promo-order-btn):not(.bhole-checkout-submit-btn),
+  .pagination-btn,
+  .btn-icon {
+    width: auto !important;
+    max-width: none !important;
+    margin-top: 0 !important;
+    min-height: unset !important;
+    height: auto !important;
   }
   
   .field-label {

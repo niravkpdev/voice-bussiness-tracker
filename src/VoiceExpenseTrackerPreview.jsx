@@ -130,6 +130,13 @@ const DEFAULT_PROFILE = {
   phone: '+918488943771',
   address: '',
   gstin: '',
+  storeName: '',
+  storeTagline: 'Fresh & Authentic Homemade Snacks & Delicacies',
+  whatsapp: '+918488943771',
+  fssaiNumber: '10722026001234',
+  hours: 'Mon - Sun: 9:00 AM - 10:00 PM',
+  bannerOffer: 'FLAT 20% OFF',
+  bannerRegion: "For All Gujarat and Mumbai City's Customers",
 };
 
 const DEFAULT_PREFERENCES = {
@@ -280,6 +287,7 @@ const navigationConfig = [
     children: [
       { id: 'inventory', path: '#inventory', tab: 'inventory', label: 'Inventory', icon: '⬢' },
       { id: 'orders', path: '#orders', tab: 'orders', label: 'Orders', icon: '▤' },
+      { id: 'storefront', path: '#store', tab: 'store', label: 'Online Storefront 🛒', icon: '🛍️' },
       { id: 'gst', path: '#gst', tab: 'gst', label: 'GST Center', icon: '◇' },
     ],
   },
@@ -361,7 +369,16 @@ function readSavedLogs() {
 
 function readProfile() {
   try {
-    return { ...DEFAULT_PROFILE, ...JSON.parse(readScopedString(PROFILE_KEY) || '{}') };
+    let scoped = {};
+    try {
+      scoped = JSON.parse(readScopedString(PROFILE_KEY) || '{}');
+    } catch {}
+    let localSaved = {};
+    try {
+      const raw = localStorage.getItem('businessProfile');
+      if (raw) localSaved = JSON.parse(raw);
+    } catch {}
+    return { ...DEFAULT_PROFILE, ...localSaved, ...scoped };
   } catch {
     return DEFAULT_PROFILE;
   }
@@ -3904,6 +3921,14 @@ export default function VoiceExpenseTrackerPreview() {
       email: sanitizeEmail(formData.get('profileEmail')) || DEFAULT_PROFILE.email,
       phone: sanitizeText(formData.get('profilePhone'), 24) || DEFAULT_PROFILE.phone,
       address: sanitizeText(formData.get('profileAddress'), 240),
+      gstin: sanitizeText(formData.get('profileGstin'), 30) || profile.gstin || '',
+      storeName: sanitizeText(formData.get('profileStoreName'), 140) || sanitizeText(formData.get('profileName'), 140) || DEFAULT_PROFILE.name,
+      storeTagline: sanitizeText(formData.get('profileStoreTagline'), 160) || sanitizeText(formData.get('profileTagline'), 160) || DEFAULT_PROFILE.storeTagline,
+      whatsapp: sanitizeText(formData.get('profileWhatsapp'), 24) || sanitizeText(formData.get('profilePhone'), 24) || DEFAULT_PROFILE.whatsapp,
+      fssaiNumber: sanitizeText(formData.get('profileFssai'), 40) || DEFAULT_PROFILE.fssaiNumber,
+      hours: sanitizeText(formData.get('profileHours'), 100) || DEFAULT_PROFILE.hours,
+      bannerOffer: sanitizeText(formData.get('profileBannerOffer'), 80) || DEFAULT_PROFILE.bannerOffer,
+      bannerRegion: sanitizeText(formData.get('profileBannerRegion'), 120) || DEFAULT_PROFILE.bannerRegion,
     };
 
     if (!validateEmail(nextProfile.email)) {
@@ -3942,9 +3967,12 @@ export default function VoiceExpenseTrackerPreview() {
       if (import.meta.env.DEV) {
         writeScopedString(PROFILE_KEY, JSON.stringify(nextProfile));
       }
+      try {
+        localStorage.setItem('businessProfile', JSON.stringify(nextProfile));
+      } catch {}
       setProfile(nextProfile);
       setSecureError('');
-      setStatus('Business profile saved');
+      setStatus('Business and Online Storefront profile saved');
     } catch (error) {
       setSecureError(publicSafeError(error, 'Profile cloud sync failed. Please try again.'));
       setStatus('Profile save failed');
@@ -3953,6 +3981,9 @@ export default function VoiceExpenseTrackerPreview() {
 
   const resetBusinessProfile = () => {
     removeScopedValue(PROFILE_KEY);
+    try {
+      localStorage.removeItem('businessProfile');
+    } catch {}
     setProfile(DEFAULT_PROFILE);
     setStatus('Business profile reset');
   };
@@ -4359,6 +4390,7 @@ export default function VoiceExpenseTrackerPreview() {
   if (STOREFRONT_TABS.includes(activeTab)) {
     return (
       <StorefrontHome
+        profile={profile}
         initialTab={activeTab === 'store-contact' ? 'contact' : activeTab}
         onSwitchToErp={() => {
           setActiveTab('dashboard');
@@ -5089,7 +5121,7 @@ export default function VoiceExpenseTrackerPreview() {
               type="button"
               className="btn btn-secondary hover-scale"
               onClick={() => { setActiveTab('store'); window.location.hash = 'store'; }}
-              title="View Customer Online Storefront (Bhole G Namkeen)"
+              title={`View Customer Online Storefront (${profile.storeName || profile.name || 'Store'})`}
               style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', background: '#fef3c7', color: '#92400e', borderColor: '#fde68a', fontWeight: '700' }}
             >
               <ShoppingBag size={15} />
@@ -7047,6 +7079,117 @@ export default function VoiceExpenseTrackerPreview() {
                         Business Address
                       </label>
                       <textarea id="profile-address" name="profileAddress" defaultValue={profile.address} placeholder="Street, City, State, ZIP" />
+                    </div>
+
+                    <div className="wide-field" style={{ marginTop: '24px', borderTop: '2px dashed var(--border, #e2e8f0)', paddingTop: '20px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+                        <div>
+                          <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '700', color: 'var(--text-primary)' }}>
+                            🛍️ Customer Online Storefront & WhatsApp E-Commerce
+                          </h3>
+                          <p className="panel-hint" style={{ margin: '4px 0 0 0' }}>
+                            Customize how your public online store looks to customers. Changes reflect immediately on your live storefront.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          className="secondary-button compact-button"
+                          onClick={() => {
+                            setActiveTab('store');
+                            window.location.hash = 'store';
+                          }}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                        >
+                          <span>Preview Live Store ↗</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="field-label" htmlFor="profile-store-name">
+                        Online Storefront Name
+                      </label>
+                      <input
+                        id="profile-store-name"
+                        name="profileStoreName"
+                        defaultValue={profile.storeName || profile.name}
+                        placeholder="e.g. Bhole G Namkeen or My Brand"
+                      />
+                      <span className="field-help" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Displays in storefront header, logo badge, and order confirmations.</span>
+                    </div>
+
+                    <div>
+                      <label className="field-label" htmlFor="profile-whatsapp">
+                        WhatsApp Orders Mobile Number *
+                      </label>
+                      <input
+                        id="profile-whatsapp"
+                        name="profileWhatsapp"
+                        defaultValue={profile.whatsapp || profile.phone}
+                        placeholder="+91 9979668339"
+                        required
+                      />
+                      <span className="field-help" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Customers send 1-click cart orders directly to this WhatsApp number.</span>
+                    </div>
+
+                    <div className="wide-field">
+                      <label className="field-label" htmlFor="profile-store-tagline">
+                        Store Tagline / Subtitle
+                      </label>
+                      <input
+                        id="profile-store-tagline"
+                        name="profileStoreTagline"
+                        defaultValue={profile.storeTagline || profile.tagline}
+                        placeholder="e.g. Authentic Surat Farsan & Fresh Snacks"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="field-label" htmlFor="profile-fssai">
+                        FSSAI Food License Number
+                      </label>
+                      <input
+                        id="profile-fssai"
+                        name="profileFssai"
+                        defaultValue={profile.fssaiNumber || ''}
+                        placeholder="e.g. 10722026001234"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="field-label" htmlFor="profile-hours">
+                        Store Timings / Working Hours
+                      </label>
+                      <input
+                        id="profile-hours"
+                        name="profileHours"
+                        defaultValue={profile.hours || 'Mon - Sun: 9:00 AM - 10:00 PM'}
+                        placeholder="e.g. Mon - Sun: 9:00 AM - 10:00 PM"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="field-label" htmlFor="profile-banner-offer">
+                        Hero Banner Headline / Offer
+                      </label>
+                      <input
+                        id="profile-banner-offer"
+                        name="profileBannerOffer"
+                        defaultValue={profile.bannerOffer || 'FLAT 20% OFF'}
+                        placeholder="e.g. FLAT 20% OFF or FESTIVE SPECIAL"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="field-label" htmlFor="profile-banner-region">
+                        Banner Subtitle / Delivery Area
+                      </label>
+                      <input
+                        id="profile-banner-region"
+                        name="profileBannerRegion"
+                        defaultValue={profile.bannerRegion || "For All Gujarat and Mumbai City's Customers"}
+                        placeholder="e.g. Free Delivery Across Surat on Orders Above ₹500"
+                      />
                     </div>
                   </div>
                 </div>
