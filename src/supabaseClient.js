@@ -516,6 +516,9 @@ function pathFor(uid, tableName, id = '') {
 function mapAuthError(error) {
   const code = String(error?.code || error?.name || '').toLowerCase();
   const message = String(error?.message || '').toLowerCase();
+  if (message.includes('failed to fetch') || code === 'typeerror' || message.includes('network') || message.includes('load failed')) {
+    return 'auth/network-request-failed';
+  }
   if (message.includes('invalid login credentials')) return 'auth/invalid-credential';
   if (message.includes('email not confirmed')) return 'auth/email-not-verified';
   if (message.includes('already registered') || message.includes('already exists')) return 'auth/email-already-in-use';
@@ -539,7 +542,7 @@ export function getSupabaseAuthErrorMessage(error, fallback = 'Authentication fa
     'auth/email-already-in-use': 'This email is already registered. Please login instead.',
     'auth/weak-password': 'Password is too weak. Use at least 8 characters.',
     'auth/too-many-requests': 'Supabase is temporarily limiting reset emails for safety. Please wait 60 seconds, then request one new link.',
-    'auth/network-request-failed': 'Network error. Check your internet.',
+    'auth/network-request-failed': 'Cannot reach Supabase database (Failed to fetch). Please check if your Supabase project is PAUSED in your Supabase dashboard, or verify your internet connection.',
     'auth/popup-closed-by-user': 'Google login was closed before completion.',
     'auth/requires-recent-login': 'Please login again before doing this action.',
     'auth/email-not-verified': 'Please verify your email before logging in.',
