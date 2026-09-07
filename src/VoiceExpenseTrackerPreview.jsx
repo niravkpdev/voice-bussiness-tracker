@@ -114,6 +114,8 @@ import VoiceCommandButton from './VoiceCommandButton.jsx';
 
 const Phase2ERP = lazy(() => import('./Phase2ERP.jsx'));
 const Phase3Ops = lazy(() => import('./Phase3Ops.jsx'));
+const ProfitNxSalesEntry = lazy(() => import('./ProfitNxSalesEntry.jsx'));
+const ProfitNxProduction = lazy(() => import('./ProfitNxProduction.jsx'));
 
 const STORAGE_KEY = 'businessLogs';
 const PROFILE_KEY = 'businessProfile';
@@ -122,15 +124,16 @@ const INVENTORY_KEY = 'businessInventory';
 const ORDERS_KEY = 'businessOrders';
 const VOICE_ALERTS_KEY = 'voiceLowStockAlertsEnabled';
 const DEFAULT_PROFILE = {
-  name: 'Trinetr Business Suite',
-  tagline: 'Cash book and party khata for small business',
+  name: 'Jay Ambe Namkeen',
+  tagline: 'Authentic Namkeen & Farsan Manufacturer & Wholesaler',
   logo: '/assets/trinetr-logo.jpg',
-  owner: 'Business Owner',
+  owner: 'Jay Ambe Namkeen',
   email: 'trinetr1901@gmail.com',
   phone: '+918488943771',
-  address: '',
-  gstin: '',
-  storeName: '',
+  address: 'Plot No. 12, GIDC Industrial Estate, Gujarat, India',
+  gstin: '24CPVPC7753J1Z8',
+  financialYear: '2026-2027',
+  storeName: 'Jay Ambe Namkeen Store',
   storeTagline: 'Fresh & Authentic Homemade Snacks & Delicacies',
   whatsapp: '+918488943771',
   fssaiNumber: '10722026001234',
@@ -201,6 +204,8 @@ const SALES_LEDGER_ID = 'ledger-sales';
 const MATERIAL_LEDGER_ID = 'ledger-material';
 const DEFAULT_EXPENSE_LEDGER_ID = 'ledger-misc-expense';
 const APP_TABS = [
+  'sales-entry',
+  'production',
   'store',
   'shop',
   'product-menu',
@@ -277,13 +282,22 @@ const navigationConfig = [
   },
   {
     id: 'daily-work',
-    label: 'Daily Work',
+    label: '1. Transaction',
     icon: '▦',
     children: [
+      { id: 'sales-entry', path: '#sales-entry', tab: 'sales-entry', label: 'Sales Entry (F2)', icon: '⚡' },
       { id: 'voucher-entry', path: '#voucher-entry', tab: 'voucher-entry', label: 'Voucher Entry', icon: '▣' },
       { id: 'invoices', path: '#invoices', tab: 'invoices', label: 'Invoices', icon: '▧' },
       { id: 'payments', path: '#upi-payments', tab: 'upi-payments', label: 'Payments / UPI', icon: '▥' },
       { id: 'day-book', path: '#day-book', tab: 'day-book', label: 'Day Book', icon: '☷' },
+    ],
+  },
+  {
+    id: 'production-work',
+    label: '5. Production',
+    icon: '⚙',
+    children: [
+      { id: 'production', path: '#production', tab: 'production', label: 'Recipe BOM & Batches', icon: '⚙' },
     ],
   },
   {
@@ -1311,6 +1325,7 @@ export default function VoiceExpenseTrackerPreview() {
     'automation-admin': true,
   });
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [openNxMenu, setOpenNxMenu] = useState(null);
   const sidebarSectionRefs = useRef({});
   const recoverySessionPreparedRef = useRef(false);
   const passwordResetInFlightRef = useRef(false);
@@ -1322,6 +1337,8 @@ export default function VoiceExpenseTrackerPreview() {
   const activeSidebarItem = activeSidebarSection?.children.find((child) => child.tab === activeTab);
   const activePageTitle = activeSidebarItem?.label || 'Dashboard';
   const renderedTabs = new Set([
+    'sales-entry',
+    'production',
     'dashboard',
     'entries',
     'parties',
@@ -5136,6 +5153,403 @@ export default function VoiceExpenseTrackerPreview() {
           />
         )}
         {showTour && <GuidedTour onFinish={() => setShowTour(false)} />}
+        
+        {/* PROFIT NX ERP TOP TITLE BAR & NUMBERED MENUBAR (Matching FR.mp4) */}
+        <div className="profitnx-erp-top-wrapper" style={{ position: 'relative', zIndex: 110 }}>
+          {/* Top title banner */}
+          <div className="profitnx-top-titlebar" style={{
+            background: 'linear-gradient(90deg, #1e3a8a 0%, #1e293b 100%)',
+            color: '#ffffff',
+            padding: '6px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: '1px solid #0f172a',
+            fontSize: '12px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <span style={{ background: '#f59e0b', color: '#000000', fontWeight: 800, padding: '2px 6px', borderRadius: '3px', fontSize: '11px', letterSpacing: '0.05em' }}>PROFIT NX</span>
+              <span style={{ fontWeight: 800, fontSize: '13px', letterSpacing: '0.03em' }}>{profile.name || 'JAY AMBE NAMKEEN'}</span>
+              <span style={{ opacity: 0.85, fontSize: '11px' }}>[2026 - 2027]</span>
+              <span style={{ opacity: 0.5 }}>|</span>
+              <span style={{ fontSize: '11px' }}>GSTIN: <strong style={{ color: '#fde047', fontFamily: 'monospace' }}>{profile.gstin || '24CPVPC7753J1Z8'}</strong></span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '11px' }}>
+              <button
+                type="button"
+                onClick={() => { setActiveTab('sales-entry'); window.location.hash = 'sales-entry'; }}
+                style={{
+                  background: activeTab === 'sales-entry' ? '#ffffff' : 'rgba(255,255,255,0.15)',
+                  color: activeTab === 'sales-entry' ? '#1e3a8a' : '#ffffff',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  borderRadius: '4px',
+                  padding: '3px 10px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                ⚡ 1. Sales Register (F2)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setActiveTab('production'); window.location.hash = 'production'; }}
+                style={{
+                  background: activeTab === 'production' ? '#ffffff' : 'rgba(255,255,255,0.15)',
+                  color: activeTab === 'production' ? '#059669' : '#ffffff',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  borderRadius: '4px',
+                  padding: '3px 10px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                ⚙ 5. Production
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setActiveTab('store'); window.location.hash = 'store'; }}
+                style={{
+                  background: '#fef3c7',
+                  color: '#92400e',
+                  border: '1px solid #fde68a',
+                  borderRadius: '4px',
+                  padding: '3px 10px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                🛍️ Storefront
+              </button>
+            </div>
+          </div>
+
+          {/* Profit Nx Numbered Menu Bar */}
+          <nav className="profitnx-menubar hide-on-mobile" style={{
+            background: '#0f172a',
+            color: '#e2e8f0',
+            padding: '0 8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '2px',
+            borderBottom: '2px solid #2563eb',
+            fontSize: '12px',
+            position: 'relative'
+          }}>
+            {/* 1. Transaction */}
+            <div className="profitnx-menu-item" style={{ position: 'relative' }}>
+              <button
+                type="button"
+                onClick={() => setOpenNxMenu(openNxMenu === 'trans' ? null : 'trans')}
+                style={{
+                  background: openNxMenu === 'trans' ? '#1e293b' : 'transparent',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '8px 12px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                1. Transaction ▾
+              </button>
+              {openNxMenu === 'trans' && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  background: '#ffffff',
+                  color: '#0f172a',
+                  boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+                  borderRadius: '4px',
+                  border: '1px solid #cbd5e1',
+                  minWidth: '210px',
+                  zIndex: 200,
+                  padding: '4px 0'
+                }}>
+                  <button type="button" onClick={() => { navigateToTab('sales-entry'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 700, color: '#1e3a8a' }}>
+                    ⚡ Sales Entry (F2)
+                  </button>
+                  <button type="button" onClick={() => { navigateToTab('voucher-entry'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    ▣ Cash / Bank Voucher
+                  </button>
+                  <button type="button" onClick={() => { navigateToTab('inventory'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    ⬢ Purchase Entry / Inward
+                  </button>
+                  <button type="button" onClick={() => { navigateToTab('orders'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    🛒 Storefront Customer Orders
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* 2. Reports */}
+            <div className="profitnx-menu-item" style={{ position: 'relative' }}>
+              <button
+                type="button"
+                onClick={() => setOpenNxMenu(openNxMenu === 'reports' ? null : 'reports')}
+                style={{
+                  background: openNxMenu === 'reports' ? '#1e293b' : 'transparent',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '8px 12px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                2. Reports ▾
+              </button>
+              {openNxMenu === 'reports' && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  background: '#ffffff',
+                  color: '#0f172a',
+                  boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+                  borderRadius: '4px',
+                  border: '1px solid #cbd5e1',
+                  minWidth: '210px',
+                  zIndex: 200,
+                  padding: '4px 0'
+                }}>
+                  <button type="button" onClick={() => { navigateToTab('sales-entry'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: '#1e3a8a' }}>
+                    Sales Register / GST
+                  </button>
+                  <button type="button" onClick={() => { navigateToTab('day-book'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    Day Book (Daily Log)
+                  </button>
+                  <button type="button" onClick={() => { navigateToTab('party-statement'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    Party Statement / Ledger
+                  </button>
+                  <button type="button" onClick={() => { navigateToTab('gst'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    GST Returns (GSTR-1 / 3B)
+                  </button>
+                  <button type="button" onClick={() => { navigateToTab('reports'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    All Business Reports
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* 3. Analytics */}
+            <div className="profitnx-menu-item">
+              <button
+                type="button"
+                onClick={() => { navigateToTab('analytics'); setOpenNxMenu(null); }}
+                style={{
+                  background: 'transparent',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '8px 12px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                3. Analytics
+              </button>
+            </div>
+
+            {/* 4. Process */}
+            <div className="profitnx-menu-item" style={{ position: 'relative' }}>
+              <button
+                type="button"
+                onClick={() => setOpenNxMenu(openNxMenu === 'process' ? null : 'process')}
+                style={{
+                  background: openNxMenu === 'process' ? '#1e293b' : 'transparent',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '8px 12px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                4. Process ▾
+              </button>
+              {openNxMenu === 'process' && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  background: '#ffffff',
+                  color: '#0f172a',
+                  boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+                  borderRadius: '4px',
+                  border: '1px solid #cbd5e1',
+                  minWidth: '200px',
+                  zIndex: 200,
+                  padding: '4px 0'
+                }}>
+                  <button type="button" onClick={() => { navigateToTab('masters'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    Master Management
+                  </button>
+                  <button type="button" onClick={() => { navigateToTab('company-setup'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    Year-End &amp; Setup
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* 5. Production */}
+            <div className="profitnx-menu-item" style={{ position: 'relative' }}>
+              <button
+                type="button"
+                onClick={() => setOpenNxMenu(openNxMenu === 'production' ? null : 'production')}
+                style={{
+                  background: openNxMenu === 'production' ? '#1e293b' : 'transparent',
+                  color: '#4ade80',
+                  border: 'none',
+                  padding: '8px 12px',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                5. Production ▾
+              </button>
+              {openNxMenu === 'production' && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  background: '#ffffff',
+                  color: '#0f172a',
+                  boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+                  borderRadius: '4px',
+                  border: '1px solid #cbd5e1',
+                  minWidth: '210px',
+                  zIndex: 200,
+                  padding: '4px 0'
+                }}>
+                  <button type="button" onClick={() => { navigateToTab('production'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: '#059669' }}>
+                    ⚙ Batch Production Run
+                  </button>
+                  <button type="button" onClick={() => { navigateToTab('production'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    📋 Recipe / BOM Master
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* 6. Payroll */}
+            <div className="profitnx-menu-item">
+              <button
+                type="button"
+                onClick={() => { navigateToTab('employees'); setOpenNxMenu(null); }}
+                style={{
+                  background: 'transparent',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '8px 12px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                6. Payroll
+              </button>
+            </div>
+
+            {/* 7. Master */}
+            <div className="profitnx-menu-item" style={{ position: 'relative' }}>
+              <button
+                type="button"
+                onClick={() => setOpenNxMenu(openNxMenu === 'master' ? null : 'master')}
+                style={{
+                  background: openNxMenu === 'master' ? '#1e293b' : 'transparent',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '8px 12px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                7. Master ▾
+              </button>
+              {openNxMenu === 'master' && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  background: '#ffffff',
+                  color: '#0f172a',
+                  boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+                  borderRadius: '4px',
+                  border: '1px solid #cbd5e1',
+                  minWidth: '200px',
+                  zIndex: 200,
+                  padding: '4px 0'
+                }}>
+                  <button type="button" onClick={() => { navigateToTab('crm'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    Party / Customer Master
+                  </button>
+                  <button type="button" onClick={() => { navigateToTab('suppliers'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    Supplier Master
+                  </button>
+                  <button type="button" onClick={() => { navigateToTab('inventory'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    Item / Product Master
+                  </button>
+                  <button type="button" onClick={() => { navigateToTab('app-settings'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    Company Profile &amp; Settings
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Nx Dashboard */}
+            <div className="profitnx-menu-item">
+              <button
+                type="button"
+                onClick={() => { navigateToTab('dashboard'); setOpenNxMenu(null); }}
+                style={{
+                  background: 'transparent',
+                  color: '#93c5fd',
+                  border: 'none',
+                  padding: '8px 12px',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                Nx Dashboard
+              </button>
+            </div>
+
+            {/* Online Store */}
+            <div className="profitnx-menu-item" style={{ marginLeft: 'auto' }}>
+              <button
+                type="button"
+                onClick={() => { navigateToTab('store'); setOpenNxMenu(null); }}
+                style={{
+                  background: '#d97706',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  margin: '4px',
+                  padding: '4px 10px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                🛍️ Online Store
+              </button>
+            </div>
+          </nav>
+        </div>
+
         <header className="topbar" style={{ padding: '12px 24px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px' }}>
           {authUser?.mode === 'demo' && (
             <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', background: 'var(--brand-primary)', color: 'white', padding: '4px 16px', fontSize: '12px', fontWeight: 600, borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px', zIndex: 100 }}>
@@ -5189,6 +5603,8 @@ export default function VoiceExpenseTrackerPreview() {
                 <Plus size={16} /> Quick Add <ChevronDown size={14} style={{ opacity: 0.7 }} />
               </button>
               <div className={`saas-dropdown-menu ${quickAddOpen ? 'dropdown-active' : ''}`} style={quickAddOpen ? { opacity: 1, visibility: 'visible', transform: 'translateY(0)' } : undefined}>
+                <button type="button" onClick={() => navigateToTab('sales-entry')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', fontWeight: 600, color: '#1e3a8a' }}><FileText size={16} /> ⚡ Sales Entry (F2)</button>
+                <button type="button" onClick={() => navigateToTab('production')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', fontWeight: 600, color: '#059669' }}><Package size={16} /> ⚙ Production Batch</button>
                 <button type="button" onClick={() => navigateToTab('invoices')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><FileText size={16} /> New Invoice</button>
                 <button type="button" onClick={() => navigateToTab('orders')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Package size={16} /> New Order</button>
                 <button type="button" onClick={() => navigateToTab('crm')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Users size={16} /> New Customer</button>
@@ -5951,6 +6367,61 @@ export default function VoiceExpenseTrackerPreview() {
             </Suspense>
           )}
 
+          {activeTab === 'sales-entry' && (
+            <Suspense fallback={<div className="panel skeleton-panel">Loading Profit Nx Sales Register...</div>}>
+              <ProfitNxSalesEntry
+                invoices={cloudInvoices}
+                orders={cloudOrders}
+                inventory={cloudInventory}
+                customers={cloudCustomers}
+                profile={profile}
+                onSaveInvoice={async (newInv) => {
+                  setCloudInvoices((prev) => [newInv, ...(Array.isArray(prev) ? prev.filter(i => i.id !== newInv.id) : [])]);
+                  if (supabaseEnabled && saveAuthenticatedCloudRecord) {
+                    try {
+                      await saveAuthenticatedCloudRecord('invoices', newInv.id, newInv);
+                    } catch (e) {
+                      console.warn('Could not sync invoice to cloud:', e);
+                    }
+                  }
+                  setStatus(`Sales invoice ${newInv.invoiceNo || 'Sale'} saved successfully.`);
+                }}
+                onDeleteInvoice={async (invId) => {
+                  setCloudInvoices((prev) => (Array.isArray(prev) ? prev.filter(i => i.id !== invId) : []));
+                  if (supabaseEnabled && deleteAuthenticatedCloudRecord) {
+                    try {
+                      await deleteAuthenticatedCloudRecord('invoices', invId);
+                    } catch (e) {
+                      console.warn('Could not delete invoice from cloud:', e);
+                    }
+                  }
+                  setStatus('Sales invoice deleted.');
+                }}
+                onNavigate={(tab) => {
+                  setActiveTab(tab);
+                  window.location.hash = tab;
+                }}
+                onStatus={setStatus}
+              />
+            </Suspense>
+          )}
+
+          {activeTab === 'production' && (
+            <Suspense fallback={<div className="panel skeleton-panel">Loading Profit Nx Production...</div>}>
+              <ProfitNxProduction
+                inventory={cloudInventory}
+                profile={profile}
+                onSaveProductionBatch={(batch) => {
+                  setStatus(`Production batch ${batch.batchNo} recorded.`);
+                }}
+                onNavigate={(tab) => {
+                  setActiveTab(tab);
+                  window.location.hash = tab;
+                }}
+                onStatus={setStatus}
+              />
+            </Suspense>
+          )}
 
           {activeTab === 'more' && isMobile && (
             <section className="mobile-more-view fade-in" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
