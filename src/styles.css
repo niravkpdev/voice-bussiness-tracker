@@ -7054,3 +7054,69 @@ input, textarea, [contenteditable="true"] {
   }
 }
 
+/* Full-width layout & desktop sidebar removal (Matching FR.mp4 Desktop ERP Layout) */
+.app-frame {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  min-height: 100vh !important;
+  background: var(--erp-bg, #f8fafc) !important;
+  grid-template-columns: 1fr !important;
+}
+
+.workspace {
+  width: 100% !important;
+  max-width: 100% !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+}
+
+/* Hide permanent desktop sidebar so entire screen is used for Profit Nx ERP */
+@media (min-width: 1025px) {
+  .sidebar:not(.mobile-drawer-force) {
+    display: none !important;
+  }
+  .mobile-menu-button {
+    display: none !important;
+  }
+  .mobile-drawer-overlay {
+    display: none !important;
+  }
+}
+
+/* Mobile drawer behavior on small screens */
+@media (max-width: 1024px) {
+  .sidebar.mobile-drawer {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    width: 290px !important;
+    max-width: 85vw !important;
+    height: 100dvh !important;
+    z-index: 2000 !important;
+    background: #ffffff !important;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25) !important;
+    transform: translateX(-100%) !important;
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  .app-frame.nav-open .sidebar.mobile-drawer {
+    transform: translateX(0) !important;
+  }
+  .mobile-drawer-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.6);
+    z-index: 1999;
+    backdrop-filter: blur(2px);
+  }
+  .app-frame.nav-open .mobile-drawer-overlay {
+    display: block !important;
+  }
+}
+
+

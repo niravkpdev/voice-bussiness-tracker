@@ -260,93 +260,104 @@ const APP_TABS = [
 ];
 const navigationConfig = [
   {
-    id: 'overview',
-    label: 'Overview',
-    icon: '⌂',
-    children: [
-      { id: 'dashboard', path: '#dashboard', tab: 'dashboard', label: 'Dashboard', icon: '⌂' },
-      { id: 'ai-insights', path: '#ai-assistant', tab: 'ai-assistant', label: 'AI Assistant', icon: '✣' },
-      { id: 'analytics', path: '#analytics', tab: 'analytics', label: 'Analytics', icon: '⌁' },
-      { id: 'notifications', path: '#notifications', tab: 'notifications', label: 'Notifications', icon: '◌' },
-    ],
-  },
-  {
-    id: 'setup',
-    label: 'Setup',
-    icon: '◇',
-    children: [
-      { id: 'company-setup', path: '#company-setup', tab: 'company-setup', label: 'Company Setup', icon: '▦' },
-      { id: 'businesses', path: '#businesses', tab: 'businesses', label: 'Businesses / Branches', icon: '⌖' },
-      { id: 'masters', path: '#masters', tab: 'masters', label: 'Masters', icon: '◈' },
-    ],
-  },
-  {
-    id: 'daily-work',
+    id: 'transaction',
     label: '1. Transaction',
-    icon: '▦',
+    icon: '⚡',
     children: [
       { id: 'sales-entry', path: '#sales-entry', tab: 'sales-entry', label: 'Sales Entry (F2)', icon: '⚡' },
-      { id: 'voucher-entry', path: '#voucher-entry', tab: 'voucher-entry', label: 'Voucher Entry', icon: '▣' },
-      { id: 'invoices', path: '#invoices', tab: 'invoices', label: 'Invoices', icon: '▧' },
-      { id: 'payments', path: '#upi-payments', tab: 'upi-payments', label: 'Payments / UPI', icon: '▥' },
-      { id: 'day-book', path: '#day-book', tab: 'day-book', label: 'Day Book', icon: '☷' },
+      { id: 'voucher-entry', path: '#voucher-entry', tab: 'voucher-entry', label: 'Cash / Bank Voucher', icon: '▣' },
+      { id: 'invoices', path: '#invoices', tab: 'invoices', label: 'Tax Invoices Register', icon: '▧' },
+      { id: 'payments', path: '#upi-payments', tab: 'upi-payments', label: 'Payments & UPI', icon: '▥' },
+      { id: 'day-book', path: '#day-book', tab: 'day-book', label: 'Day Book (Daily Log)', icon: '☷' },
+      { id: 'inventory-inward', path: '#inventory', tab: 'inventory', label: 'Purchase Entry & Stock', icon: '⬢' },
+      { id: 'orders', path: '#orders', tab: 'orders', label: 'Storefront Orders', icon: '🛒' },
     ],
   },
   {
-    id: 'production-work',
+    id: 'reports-menu',
+    label: '2. Reports',
+    icon: '▱',
+    children: [
+      { id: 'sales-reg', path: '#sales-entry', tab: 'sales-entry', label: 'Sales Register & GST', icon: '⚡' },
+      { id: 'day-book-rep', path: '#day-book', tab: 'day-book', label: 'Day Book', icon: '☷' },
+      { id: 'party-statement', path: '#party-statement', tab: 'party-statement', label: 'Party Statement / Ledger', icon: '▤' },
+      { id: 'gst', path: '#gst', tab: 'gst', label: 'GST Center & Returns', icon: '◇' },
+      { id: 'reports', path: '#reports', tab: 'reports', label: 'Business Reports Summary', icon: '▱' },
+      { id: 'reports-hub', path: '#reports-hub', tab: 'reports-hub', label: 'Advanced Reports Hub', icon: '⌁' },
+      { id: 'accounting-ledgers', path: '#accounting-ledgers', tab: 'accounting-ledgers', label: 'Accounting Ledgers', icon: '▦' },
+      { id: 'vouchers-hub', path: '#vouchers-hub', tab: 'vouchers-hub', label: 'Voucher Types Register', icon: '▣' },
+    ],
+  },
+  {
+    id: 'analytics-menu',
+    label: '3. Analytics',
+    icon: '⌁',
+    children: [
+      { id: 'analytics', path: '#analytics', tab: 'analytics', label: 'Business Analytics & Insights', icon: '⌁' },
+      { id: 'ai-insights', path: '#ai-assistant', tab: 'ai-assistant', label: 'AI Business Assistant', icon: '✣' },
+      { id: 'voice-bookkeeper', path: '#voice-bookkeeper', tab: 'voice-bookkeeper', label: 'Voice Bookkeeper', icon: '🎙️' },
+    ],
+  },
+  {
+    id: 'process-menu',
+    label: '4. Process',
+    icon: '◈',
+    children: [
+      { id: 'masters', path: '#masters', tab: 'masters', label: 'Masters Management', icon: '◈' },
+      { id: 'company-setup', path: '#company-setup', tab: 'company-setup', label: 'Company Setup & FY', icon: '▦' },
+      { id: 'businesses', path: '#businesses', tab: 'businesses', label: 'Multi-Business / Branches', icon: '⌖' },
+      { id: 'cloud-backup', path: '#cloud-backup', tab: 'cloud-backup', label: 'Cloud Backup & Restore', icon: '⎇' },
+      { id: 'security-center', path: '#security-center', tab: 'security-center', label: 'Security & Audit Center', icon: '◇' },
+      { id: 'user-management', path: '#user-management', tab: 'user-management', label: 'Users & Permissions', icon: '♙' },
+      { id: 'accountant-portal', path: '#accountant-portal', tab: 'accountant-portal', label: 'Accountant Portal', icon: '☷' },
+    ],
+  },
+  {
+    id: 'production-menu',
     label: '5. Production',
     icon: '⚙',
     children: [
-      { id: 'production', path: '#production', tab: 'production', label: 'Recipe BOM & Batches', icon: '⚙' },
+      { id: 'production', path: '#production', tab: 'production', label: 'Batch Production Run', icon: '⚙' },
+      { id: 'production-recipes', path: '#production', tab: 'production', label: 'Recipe / BOM Master', icon: '📋' },
+      { id: 'production-stock', path: '#inventory', tab: 'inventory', label: 'Raw Materials & Finished Stock', icon: '⬢' },
     ],
   },
   {
-    id: 'inventory-work',
-    label: 'Inventory & Orders',
-    icon: '⬢',
+    id: 'payroll-menu',
+    label: '6. Payroll',
+    icon: '👥',
     children: [
-      { id: 'inventory', path: '#inventory', tab: 'inventory', label: 'Inventory', icon: '⬢' },
-      { id: 'orders', path: '#orders', tab: 'orders', label: 'Orders', icon: '▤' },
-      { id: 'storefront', path: '#store', tab: 'store', label: 'Online Storefront 🛒', icon: '🛍️' },
-      { id: 'gst', path: '#gst', tab: 'gst', label: 'GST Center', icon: '◇' },
+      { id: 'employees', path: '#employees', tab: 'employees', label: 'Employee Master & HRMS', icon: '👥' },
     ],
   },
   {
-    id: 'people-ledger',
-    label: 'People & Ledger',
-    icon: '◉',
+    id: 'master-menu',
+    label: '7. Master',
+    icon: '☉',
     children: [
-      { id: 'customers', path: '#crm', tab: 'crm', label: 'Customers', icon: '☉' },
-      { id: 'suppliers', path: '#suppliers', tab: 'suppliers', label: 'Suppliers', icon: '◎' },
-      { id: 'employees', path: '#employees', tab: 'employees', label: 'Employees', icon: '♙' },
-      { id: 'party-management', path: '#crm', tab: 'crm', label: 'Party Management', icon: '▣' },
-      { id: 'ledger', path: '#party-statement', tab: 'party-statement', label: 'Party Ledger', icon: '▤' },
-    ],
-  },
-  {
-    id: 'reports-accounting',
-    label: 'Reports & Accounting',
-    icon: '▱',
-    children: [
-      { id: 'reports', path: '#reports', tab: 'reports', label: 'Reports', icon: '▱' },
-      { id: 'reports-hub', path: '#reports-hub', tab: 'reports-hub', label: 'Advanced Reports', icon: '⌁' },
-      { id: 'accounting', path: '#accounting-ledgers', tab: 'accounting-ledgers', label: 'Accounting Ledgers', icon: '▤' },
-      { id: 'vouchers-hub', path: '#vouchers-hub', tab: 'vouchers-hub', label: 'Voucher Types', icon: '▦' },
-    ],
-  },
-  {
-    id: 'automation-admin',
-    label: 'Automation & Admin',
-    icon: '⚡',
-    children: [
-      { id: 'voice-bookkeeper', path: '#voice-bookkeeper', tab: 'voice-bookkeeper', label: 'Voice Bookkeeper', icon: '✣' },
+      { id: 'customers', path: '#crm', tab: 'crm', label: 'Customer Master', icon: '☉' },
+      { id: 'suppliers', path: '#suppliers', tab: 'suppliers', label: 'Supplier Master', icon: '◎' },
+      { id: 'inventory', path: '#inventory', tab: 'inventory', label: 'Product & Stock Master', icon: '⬢' },
       { id: 'whatsapp-automation', path: '#whatsapp-automation', tab: 'whatsapp-automation', label: 'WhatsApp Automation', icon: '⚡' },
-      { id: 'cloud-backup', path: '#cloud-backup', tab: 'cloud-backup', label: 'Cloud Backup', icon: '⎇' },
-      { id: 'security-center', path: '#security-center', tab: 'security-center', label: 'Security Center', icon: '◇' },
-      { id: 'user-management', path: '#user-management', tab: 'user-management', label: 'Users & Roles', icon: '♙' },
-      { id: 'profile-settings', path: '#profile-settings', tab: 'profile-settings', label: 'Profile', icon: '☉' },
-      { id: 'system-settings', path: '#app-settings', tab: 'app-settings', label: 'Settings', icon: '⚙' },
-      { id: 'database-test', path: '#database-test', tab: 'database-test', label: 'Database Test', icon: '◉', debugOnly: true },
+      { id: 'system-settings', path: '#app-settings', tab: 'app-settings', label: 'Company Profile & Settings', icon: '⚙' },
+      { id: 'database-test', path: '#database-test', tab: 'database-test', label: 'Database Diagnostics', icon: '◉', debugOnly: true },
+    ],
+  },
+  {
+    id: 'overview-menu',
+    label: 'Nx Dashboard',
+    icon: '⌂',
+    children: [
+      { id: 'dashboard', path: '#dashboard', tab: 'dashboard', label: 'Dashboard Overview', icon: '⌂' },
+      { id: 'notifications', path: '#notifications', tab: 'notifications', label: 'Notifications Center', icon: '◌' },
+    ],
+  },
+  {
+    id: 'storefront-menu',
+    label: '🛍️ Online Store',
+    icon: '🛍️',
+    children: [
+      { id: 'storefront', path: '#store', tab: 'store', label: 'Customer Storefront (Live)', icon: '🛍️' },
     ],
   },
   {
@@ -357,13 +368,6 @@ const navigationConfig = [
       { id: 'profile', path: '#profile', tab: 'profile', label: 'My Profile', hidden: true },
       { id: 'billing', path: '#billing', tab: 'billing', label: 'Billing & Plans', hidden: true },
       { id: 'preferences', path: '#preferences', tab: 'preferences', label: 'Preferences', hidden: true },
-    ]
-  },
-  {
-    id: 'support',
-    label: 'Support',
-    icon: 'HelpCircle',
-    children: [
       { id: 'help', path: '#help', tab: 'help', label: 'Help Center', hidden: true },
     ]
   },
@@ -5051,14 +5055,14 @@ export default function VoiceExpenseTrackerPreview() {
           aria-label="Close navigation"
           onClick={() => setMobileNavOpen(false)}
         />
-        <aside className="sidebar" aria-label="Main menu" style={{ borderRight: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column' }}>
-        <div className="sidebar-brand" style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px solid var(--border-subtle)' }}>
-          {profile.logo ? <img src={profile.logo} alt="" style={{ width: '28px', height: '28px', borderRadius: '6px', objectFit: 'cover' }} /> : <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'var(--brand-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700' }}>T</div>}
+        <aside className={`sidebar mobile-drawer ${mobileNavOpen ? 'drawer-open' : ''}`} aria-label="Mobile Navigation Menu" style={{ borderRight: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column' }}>
+        <div className="sidebar-brand" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px solid var(--border-subtle)' }}>
+          {profile.logo ? <img src={profile.logo} alt="" style={{ width: '28px', height: '28px', borderRadius: '6px', objectFit: 'cover' }} /> : <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: '#1e3a8a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '13px' }}>NX</div>}
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <strong style={{ fontSize: '14px', fontWeight: '600', lineHeight: '1.2' }}>Trinetr</strong>
-            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Business Suite</span>
+            <strong style={{ fontSize: '13px', fontWeight: '700', lineHeight: '1.2' }}>{profile.name || 'JAY AMBE NAMKEEN'}</strong>
+            <span style={{ fontSize: '10px', color: '#d97706', fontWeight: 700, letterSpacing: '0.05em' }}>PROFIT NX [2026-2027]</span>
           </div>
-          <button className="drawer-close-button" type="button" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', fontSize: '20px', cursor: 'pointer' }}>
+          <button className="drawer-close-button" type="button" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--text-secondary)' }}>
             ×
           </button>
         </div>
@@ -5268,21 +5272,30 @@ export default function VoiceExpenseTrackerPreview() {
                   left: 0,
                   background: '#ffffff',
                   color: '#0f172a',
-                  boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
-                  borderRadius: '4px',
+                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)',
+                  borderRadius: '6px',
                   border: '1px solid #cbd5e1',
-                  minWidth: '210px',
+                  minWidth: '220px',
                   zIndex: 200,
-                  padding: '4px 0'
+                  padding: '6px 0'
                 }}>
                   <button type="button" onClick={() => { navigateToTab('sales-entry'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 700, color: '#1e3a8a' }}>
                     ⚡ Sales Entry (F2)
                   </button>
                   <button type="button" onClick={() => { navigateToTab('voucher-entry'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    ▣ Cash / Bank Voucher
+                    ▣ Cash / Bank Voucher Entry
+                  </button>
+                  <button type="button" onClick={() => { navigateToTab('invoices'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    ▧ Invoices Register
+                  </button>
+                  <button type="button" onClick={() => { navigateToTab('upi-payments'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    ▥ Payments &amp; UPI
+                  </button>
+                  <button type="button" onClick={() => { navigateToTab('day-book'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    ☷ Day Book (Daily Log)
                   </button>
                   <button type="button" onClick={() => { navigateToTab('inventory'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    ⬢ Purchase Entry / Inward
+                    ⬢ Purchase Entry / Inward Stock
                   </button>
                   <button type="button" onClick={() => { navigateToTab('orders'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
                     🛒 Storefront Customer Orders
@@ -5315,39 +5328,48 @@ export default function VoiceExpenseTrackerPreview() {
                   left: 0,
                   background: '#ffffff',
                   color: '#0f172a',
-                  boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
-                  borderRadius: '4px',
+                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)',
+                  borderRadius: '6px',
                   border: '1px solid #cbd5e1',
-                  minWidth: '210px',
+                  minWidth: '220px',
                   zIndex: 200,
-                  padding: '4px 0'
+                  padding: '6px 0'
                 }}>
                   <button type="button" onClick={() => { navigateToTab('sales-entry'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: '#1e3a8a' }}>
-                    Sales Register / GST
+                    ⚡ Sales Register &amp; GST
                   </button>
                   <button type="button" onClick={() => { navigateToTab('day-book'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    Day Book (Daily Log)
+                    ☷ Day Book Register
                   </button>
                   <button type="button" onClick={() => { navigateToTab('party-statement'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    Party Statement / Ledger
+                    ▤ Party Statement / Khata
                   </button>
                   <button type="button" onClick={() => { navigateToTab('gst'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    GST Returns (GSTR-1 / 3B)
+                    ◇ GST Returns (GSTR-1 / 3B)
+                  </button>
+                  <button type="button" onClick={() => { navigateToTab('accounting-ledgers'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    ▦ Accounting Ledgers
+                  </button>
+                  <button type="button" onClick={() => { navigateToTab('vouchers-hub'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    ▣ Voucher Types Register
                   </button>
                   <button type="button" onClick={() => { navigateToTab('reports'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    All Business Reports
+                    ▱ Business Reports Summary
+                  </button>
+                  <button type="button" onClick={() => { navigateToTab('reports-hub'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    ⌁ Advanced Analytics Reports Hub
                   </button>
                 </div>
               )}
             </div>
 
             {/* 3. Analytics */}
-            <div className="profitnx-menu-item">
+            <div className="profitnx-menu-item" style={{ position: 'relative' }}>
               <button
                 type="button"
-                onClick={() => { navigateToTab('analytics'); setOpenNxMenu(null); }}
+                onClick={() => setOpenNxMenu(openNxMenu === 'analytics' ? null : 'analytics')}
                 style={{
-                  background: 'transparent',
+                  background: openNxMenu === 'analytics' ? '#1e293b' : 'transparent',
                   color: '#ffffff',
                   border: 'none',
                   padding: '8px 12px',
@@ -5356,8 +5378,33 @@ export default function VoiceExpenseTrackerPreview() {
                   cursor: 'pointer'
                 }}
               >
-                3. Analytics
+                3. Analytics ▾
               </button>
+              {openNxMenu === 'analytics' && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  background: '#ffffff',
+                  color: '#0f172a',
+                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  minWidth: '220px',
+                  zIndex: 200,
+                  padding: '6px 0'
+                }}>
+                  <button type="button" onClick={() => { navigateToTab('analytics'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}>
+                    ⌁ Business Analytics &amp; Insights
+                  </button>
+                  <button type="button" onClick={() => { navigateToTab('ai-assistant'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    ✣ AI Business Assistant
+                  </button>
+                  <button type="button" onClick={() => { navigateToTab('voice-bookkeeper'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    🎙️ Voice Bookkeeper
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* 4. Process */}
@@ -5384,18 +5431,33 @@ export default function VoiceExpenseTrackerPreview() {
                   left: 0,
                   background: '#ffffff',
                   color: '#0f172a',
-                  boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
-                  borderRadius: '4px',
+                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)',
+                  borderRadius: '6px',
                   border: '1px solid #cbd5e1',
-                  minWidth: '200px',
+                  minWidth: '220px',
                   zIndex: 200,
-                  padding: '4px 0'
+                  padding: '6px 0'
                 }}>
                   <button type="button" onClick={() => { navigateToTab('masters'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    Master Management
+                    ◈ Masters Management
                   </button>
                   <button type="button" onClick={() => { navigateToTab('company-setup'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    Year-End &amp; Setup
+                    ▦ Company Setup &amp; FY
+                  </button>
+                  <button type="button" onClick={() => { navigateToTab('businesses'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    ⌖ Multi-Business / Branches
+                  </button>
+                  <button type="button" onClick={() => { navigateToTab('cloud-backup'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    ⎇ Cloud Backup &amp; Restore
+                  </button>
+                  <button type="button" onClick={() => { navigateToTab('security-center'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    ◇ Security Center
+                  </button>
+                  <button type="button" onClick={() => { navigateToTab('user-management'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    ♙ Users &amp; Permissions
+                  </button>
+                  <button type="button" onClick={() => { navigateToTab('accountant-portal'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    ☷ Accountant Portal
                   </button>
                 </div>
               )}
@@ -5425,12 +5487,12 @@ export default function VoiceExpenseTrackerPreview() {
                   left: 0,
                   background: '#ffffff',
                   color: '#0f172a',
-                  boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
-                  borderRadius: '4px',
+                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)',
+                  borderRadius: '6px',
                   border: '1px solid #cbd5e1',
-                  minWidth: '210px',
+                  minWidth: '220px',
                   zIndex: 200,
-                  padding: '4px 0'
+                  padding: '6px 0'
                 }}>
                   <button type="button" onClick={() => { navigateToTab('production'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: '#059669' }}>
                     ⚙ Batch Production Run
@@ -5438,17 +5500,20 @@ export default function VoiceExpenseTrackerPreview() {
                   <button type="button" onClick={() => { navigateToTab('production'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
                     📋 Recipe / BOM Master
                   </button>
+                  <button type="button" onClick={() => { navigateToTab('inventory'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    ⬢ Raw &amp; Finished Stock
+                  </button>
                 </div>
               )}
             </div>
 
             {/* 6. Payroll */}
-            <div className="profitnx-menu-item">
+            <div className="profitnx-menu-item" style={{ position: 'relative' }}>
               <button
                 type="button"
-                onClick={() => { navigateToTab('employees'); setOpenNxMenu(null); }}
+                onClick={() => setOpenNxMenu(openNxMenu === 'payroll' ? null : 'payroll')}
                 style={{
-                  background: 'transparent',
+                  background: openNxMenu === 'payroll' ? '#1e293b' : 'transparent',
                   color: '#ffffff',
                   border: 'none',
                   padding: '8px 12px',
@@ -5457,8 +5522,33 @@ export default function VoiceExpenseTrackerPreview() {
                   cursor: 'pointer'
                 }}
               >
-                6. Payroll
+                6. Payroll ▾
               </button>
+              {openNxMenu === 'payroll' && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  background: '#ffffff',
+                  color: '#0f172a',
+                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  minWidth: '220px',
+                  zIndex: 200,
+                  padding: '6px 0'
+                }}>
+                  <button type="button" onClick={() => { navigateToTab('employees'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    👥 Employee Directory &amp; HRMS
+                  </button>
+                  <button type="button" onClick={() => { navigateToTab('employees'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    📅 Attendance &amp; Shifts
+                  </button>
+                  <button type="button" onClick={() => { navigateToTab('employees'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    💵 Salary &amp; Payslips
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* 7. Master */}
@@ -5485,24 +5575,30 @@ export default function VoiceExpenseTrackerPreview() {
                   left: 0,
                   background: '#ffffff',
                   color: '#0f172a',
-                  boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
-                  borderRadius: '4px',
+                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)',
+                  borderRadius: '6px',
                   border: '1px solid #cbd5e1',
-                  minWidth: '200px',
+                  minWidth: '220px',
                   zIndex: 200,
-                  padding: '4px 0'
+                  padding: '6px 0'
                 }}>
                   <button type="button" onClick={() => { navigateToTab('crm'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    Party / Customer Master
+                    ☉ Party / Customer Master
                   </button>
                   <button type="button" onClick={() => { navigateToTab('suppliers'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    Supplier Master
+                    ◎ Supplier Master
                   </button>
                   <button type="button" onClick={() => { navigateToTab('inventory'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    Item / Product Master
+                    ⬢ Item / Product Master
+                  </button>
+                  <button type="button" onClick={() => { navigateToTab('whatsapp-automation'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    ⚡ WhatsApp Automation
                   </button>
                   <button type="button" onClick={() => { navigateToTab('app-settings'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    Company Profile &amp; Settings
+                    ⚙ Company Profile &amp; Settings
+                  </button>
+                  <button type="button" onClick={() => { navigateToTab('billing'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                    💳 Subscription &amp; Billing
                   </button>
                 </div>
               )}
