@@ -2647,6 +2647,33 @@ export default function VoiceExpenseTrackerPreview() {
         mode: 'demo',
       };
       await applyAuthenticatedUser(nextUser, { restoreCloud: false });
+      const sampleInvoices = [
+        {
+          id: 'inv-demo-001',
+          invoiceNo: 'INV-2026-001',
+          date: new Date().toISOString().slice(0, 10),
+          customer: 'Radhe Shyam Traders',
+          phone: '9876543210',
+          total: 12500,
+          balance: 12500,
+          paidAmount: 0,
+          status: 'Unpaid',
+          items: [{ name: 'Nylon Sev 500g', qty: 50, rate: 250 }]
+        },
+        {
+          id: 'inv-demo-002',
+          invoiceNo: 'INV-2026-002',
+          date: new Date().toISOString().slice(0, 10),
+          customer: 'Krishna Provision Store',
+          phone: '9876501234',
+          total: 8400,
+          balance: 8400,
+          paidAmount: 0,
+          status: 'Unpaid',
+          items: [{ name: 'Ratlami Sev 1kg', qty: 28, rate: 300 }]
+        }
+      ];
+      setCloudInvoices(sampleInvoices);
       setSecureError('Running in demo mode. Any changes will not affect production.');
       setStatus('Demo mode active.');
     } catch (error) {
@@ -6542,6 +6569,24 @@ export default function VoiceExpenseTrackerPreview() {
                 onAtomicPaymentWithLedger={postAtomicPaymentWithLedger}
                 onAtomicPaymentEdit={editAtomicPaymentWithLedgerReversal}
                 onAtomicPaymentDelete={deleteAtomicPaymentWithLedgerReversal}
+                onUpdateInvoice={async (updatedInv) => {
+                  setCloudInvoices((prev) => [updatedInv, ...(Array.isArray(prev) ? prev.filter((i) => i.id !== updatedInv.id) : [])]);
+                  if (supabaseEnabled && saveAuthenticatedCloudRecord) {
+                    try {
+                      await saveAuthenticatedCloudRecord('invoices', updatedInv.id, updatedInv);
+                    } catch (e) {
+                      console.warn('Could not sync updated invoice to cloud:', e);
+                    }
+                  }
+                }}
+                onAddVoucher={async (newVch) => {
+                  try {
+                    await persistVoucher(newVch);
+                  } catch (e) {
+                    saveVoucher(newVch);
+                    refreshVouchers();
+                  }
+                }}
               />
             </Suspense>
           )}

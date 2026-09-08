@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import QRCode from 'qrcode';
 import { normalizeAmount, sanitizeText, validateEmail, validatePhone } from './security.js';
 import { readScopedString, writeScopedString } from './storageScope.js';
 import { createEmployeeLogin, resetEmployeePassword, disableEmployeeLogin, getSupabaseClient } from './supabaseClient.js';
 import VoiceCommandButton from './VoiceCommandButton.jsx';
+import UpiPaymentModal, { encodeUpiUri } from './UpiPaymentModal.jsx';
 
 const ORDER_KEY = 'phase3Orders';
 const EMPLOYEE_KEY = 'phase3Employees';
@@ -174,6 +176,36 @@ function QrGrid({ value }) {
   );
 }
 
+function RealQrThumbnail({ uri, size = 64 }) {
+  const [src, setSrc] = useState('');
+  useEffect(() => {
+    if (!uri) return;
+    let active = true;
+    QRCode.toDataURL(uri, { width: size * 2, margin: 1, color: { dark: '#0f172a', light: '#ffffff' } })
+      .then((url) => {
+        if (active) setSrc(url);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [uri, size]);
+
+  if (!src) {
+    return (
+      <div style={{ width: size, height: size, background: '#f8fafc', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#94a3b8', border: '1px solid #e2e8f0' }}>
+        QR
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt="UPI QR"
+      style={{ width: size, height: size, borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff', objectFit: 'contain', padding: 2 }}
+    />
+  );
+}
+
 function whatsappUrl(phone, message) {
   const cleanPhone = String(phone || '').replace(/\D/g, '');
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
@@ -219,6 +251,8 @@ export default function Phase3Ops({
   onAtomicPaymentWithLedger,
   onAtomicPaymentEdit,
   onAtomicPaymentDelete,
+  onUpdateInvoice,
+  onAddVoucher,
 }) {
   const [orders, setOrders] = useState(() => readArray(ORDER_KEY));
   const [employees, setEmployees] = useState(() => readArray(EMPLOYEE_KEY));
@@ -278,6 +312,12 @@ export default function Phase3Ops({
   const [editingEmployeeDocument, setEditingEmployeeDocument] = useState(null);
   const [documentCategoryFilter, setDocumentCategoryFilter] = useState('All');
   const [editingPayment, setEditingPayment] = useState(null);
+  const [payingInvoice, setPayingInvoice] = useState(null);
+  const [standeeModalOpen, setStandeeModalOpen] = useState(false);
+  const [receiptPayment, setReceiptPayment] = useState(null);
+  const [paymentFilter, setPaymentFilter] = useState('All');
+  const [paymentSearch, setPaymentSearch] = useState('');
+  const [localInvoiceOverrides, setLocalInvoiceOverrides] = useState({});
   const [subscription, setSubscription] = useState(() =>
     readObject(SUBSCRIPTION_KEY, { plan: 'Free', invoicesLimit: 25, usersLimit: 1, aiEnabled: true })
   );
@@ -392,7 +432,86 @@ export default function Phase3Ops({
     }
   }, [employees, selectedEmployee?.id]);
 
-  const unpaidInvoices = useMemo(() => invoices.filter((invoice) => invoice.status !== 'Paid'), [invoices]);
+  const effectiveInvoices = useMemo(() => {
+    return (invoices || []).map((inv) => (localInvoiceOverrides[inv.id] ? { ...inv, ...localInvoiceOverrides[inv.id] } : inv));
+  }, [invoices, localInvoiceOverrides]);
+
+  const unpaidInvoices = useMemo(() => {
+    return effectiveInvoices.filter((invoice) => {
+      const isPaid = invoice.status === 'Paid';
+      const balance = Number(invoice.balance !== undefined ? invoice.balance : invoice.total);
+      return !isPaid && balance > 0;
+    });
+  }, [effectiveInvoices]);
+
+  const paymentStats = useMemo(() => {
+    const totalPending = unpaidInvoices.reduce((sum, inv) => sum + (Number(inv.balance !== undefined ? inv.balance : inv.total) || 0), 0);
+    const totalCollected = (payments || []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    const todayStr = today();
+    const todayPayments = (payments || []).filter((p) => p.date === todayStr);
+    const todayCollected = todayPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    return {
+      totalPending,
+      totalCollected,
+      todayCollected,
+      todayCount: todayPayments.length,
+    };
+  }, [unpaidInvoices, payments]);
+
+  const filteredPayments = useMemo(() => {
+    const query = paymentSearch.trim().toLowerCase();
+    return (payments || []).filter((payment) => {
+      const matchesFilter =
+        paymentFilter === 'All' ||
+        (payment.mode || 'UPI').toUpperCase() === paymentFilter.toUpperCase() ||
+        (payment.payment_method || '').toUpperCase() === paymentFilter.toUpperCase();
+
+      if (!matchesFilter) return false;
+      if (!query) return true;
+
+      const text = [
+        payment.invoiceNo,
+        payment.customer,
+        payment.reference,
+        payment.mode,
+        payment.status,
+        payment.notes,
+        String(payment.amount),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return text.includes(query);
+    });
+  }, [payments, paymentFilter, paymentSearch]);
+
+  const exportPaymentsCsv = () => {
+    if (!payments || !payments.length) {
+      if (typeof onStatus === 'function') onStatus('No payments available to export.');
+      return;
+    }
+    const headers = ['Date', 'Invoice No', 'Customer', 'Amount', 'Payment Mode', 'Reference No', 'Status', 'Notes'];
+    const rows = payments.map((p) => [
+      p.date || '',
+      `"${(p.invoiceNo || p.id || '').replace(/"/g, '""')}"`,
+      `"${(p.customer || '').replace(/"/g, '""')}"`,
+      p.amount || 0,
+      p.mode || 'UPI',
+      `"${(p.reference || '').replace(/"/g, '""')}"`,
+      p.status || 'Marked Paid',
+      `"${(p.notes || '').replace(/"/g, '""')}"`,
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `trinetr_payments_${today()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    if (typeof onStatus === 'function') onStatus('Payments exported to CSV');
+  };
   const payrollTotal = useMemo(() => employees.reduce((sum, employee) => sum + (Number(employee.salary) || 0), 0), [employees]);
   const validEmployeeIds = useMemo(() => new Set(employees.map((employee) => employee.id)), [employees]);
   const employeeDepartments = useMemo(() => {
@@ -1517,34 +1636,111 @@ export default function Phase3Ops({
     }
   };
 
-  const recordPayment = async (invoice) => {
+  const recordPayment = async (invoiceOrData) => {
+    const isModalData = invoiceOrData && invoiceOrData.invoice;
+    const invoice = isModalData ? invoiceOrData.invoice : invoiceOrData;
+    const amount = isModalData ? Number(invoiceOrData.amount) : Number(invoice.balance !== undefined ? invoice.balance : invoice.total || 0);
+    const mode = isModalData ? (invoiceOrData.mode || 'UPI') : 'UPI';
+    const payDate = isModalData ? (invoiceOrData.date || today()) : today();
+    const refNo = isModalData ? invoiceOrData.refNo : `TXN-${Date.now().toString(36).toUpperCase()}`;
+    const notes = isModalData ? invoiceOrData.notes : `Payment for ${invoice.invoiceNo}`;
+
     try {
       const payment = {
         id: createId('pay'),
         businessId: activeBusinessId,
         invoiceId: invoice.id,
         invoiceNo: invoice.invoiceNo,
-        amount: invoice.balance || invoice.total,
-        mode: 'UPI',
-        date: today(),
+        customer: invoice.customer || invoice.partyName || 'Customer',
+        amount,
+        mode,
+        date: payDate,
+        reference: refNo,
         status: 'Marked Paid',
-
-        // Standardized schema fields requested by user
+        notes,
         type: 'payment',
         invoice_id: invoice.id,
-        payment_method: 'UPI',
+        payment_method: mode,
         company_id: activeBusinessId,
-        business_id: activeBusinessId
+        business_id: activeBusinessId,
+        created_at: new Date().toISOString()
       };
-      
-      const saved = await onCloudRecord?.('payments', payment.id, payment);
-      if (!saved) throw new Error('Payment save failed');
-      
+
+      // 1. Calculate new invoice balance & status
+      const currentBalance = Number(invoice.balance !== undefined ? invoice.balance : invoice.total) || 0;
+      const newBalance = Math.max(0, currentBalance - amount);
+      const updatedInvoice = {
+        ...invoice,
+        balance: newBalance,
+        paidAmount: (Number(invoice.paidAmount || 0) + amount),
+        status: newBalance <= 0 ? 'Paid' : 'Partial',
+        updatedAt: new Date().toISOString()
+      };
+
+      // Immediate local state update for instant UI responsiveness
+      setLocalInvoiceOverrides((prev) => ({ ...prev, [invoice.id]: updatedInvoice }));
+
+      // 2. Try Atomic Payment RPC if available
+      let atomicSucceeded = false;
+      if (typeof onAtomicPaymentWithLedger === 'function') {
+        try {
+          const atomicResult = await onAtomicPaymentWithLedger(payment, {
+            mode,
+            amount,
+            reference: refNo,
+            date: payDate
+          });
+          if (atomicResult) atomicSucceeded = true;
+        } catch (atomicErr) {
+          console.warn('Atomic payment RPC failed, using cloud record fallback:', atomicErr);
+        }
+      }
+
+      if (!atomicSucceeded) {
+        // Fallback: Save payment record to cloud
+        await onCloudRecord?.('payments', payment.id, payment);
+        // Save updated invoice to cloud
+        await onCloudRecord?.('invoices', updatedInvoice.id, updatedInvoice);
+      }
+
+      // 3. Notify parent of invoice update
+      onUpdateInvoice?.(updatedInvoice);
+
+      // 4. Post double-entry Receipt voucher to accounting
+      const customerLedger = partyLedgers?.find((l) =>
+        (l.name && invoice.customer && l.name.trim().toLowerCase() === invoice.customer.trim().toLowerCase()) ||
+        l.id === invoice.customerLedgerId
+      );
+      const cashOrBankLedger = mode === 'Cash'
+        ? (partyLedgers?.find((l) => l.group === 'Cash-in-Hand') || { id: 'ledger-cash' })
+        : (partyLedgers?.find((l) => l.group === 'Bank Accounts') || { id: 'ledger-bank' });
+
+      const receiptVoucher = {
+        id: createId('vch'),
+        type: 'Receipt',
+        date: payDate,
+        amount,
+        narration: notes || `Payment received for ${invoice.invoiceNo} via ${mode} (Ref: ${refNo})`,
+        lines: [
+          { ledgerId: cashOrBankLedger.id, debit: amount, credit: 0 },
+          { ledgerId: customerLedger?.id || 'ledger-sales', debit: 0, credit: amount }
+        ],
+        source: 'payment-reconciliation',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      onAddVoucher?.(receiptVoucher);
+
+      // 5. Update local state
       setPayments((items) => [payment, ...items]);
-      onStatus(`Payment recorded for ${invoice.invoiceNo}`);
-      await logAudit(`Payment recorded for ${invoice.invoiceNo}`, 'Payments');
+      if (typeof onStatus === 'function') onStatus(`Payment of ${formatCurrency(amount)} recorded for ${invoice.invoiceNo}`);
+      await logAudit(`Payment recorded for ${invoice.invoiceNo} (${formatCurrency(amount)} via ${mode})`, 'Payments');
+      setPayingInvoice(null);
+      return true;
     } catch (err) {
-      onStatus(err.message || 'Action failed');
+      console.error('Payment record error:', err);
+      if (typeof onStatus === 'function') onStatus(err.message || 'Payment recording failed');
+      throw err;
     }
   };
 
@@ -1710,47 +1906,504 @@ export default function Phase3Ops({
   if (activeTab === 'upi-payments') {
     return (
       <section className="phase3-stack fade-in" id="upi-payments">
-        <div className="phase3-hero"><div><span className="eyebrow">UPI Payment System</span><h2>Dynamic UPI QR, Pay Now links, tracking, and reconciliation workspace</h2></div></div>
-        <section className="content-grid">
-          {unpaidInvoices.slice(0, 6).map((invoice) => {
-            const uri = encodeUpi({ pa: profile.upiId || 'business@upi', pn: profile.name, am: invoice.balance || invoice.total, tn: invoice.invoiceNo });
-            return (
-          <article className="panel payment-card" key={invoice.id}>
-                <div className="section-header"><div><h2>{invoice.invoiceNo}</h2><p className="panel-hint">{formatCurrency(invoice.balance || invoice.total)} pending</p></div><QrGrid value={uri} /></div>
-                <div className="inline-actions">
-                  <a className="manual-button restore-label" href={uri}>Pay Now</a>
-                  <button className="secondary-button" type="button" onClick={() => recordPayment(invoice)}>Mark Paid</button>
-                </div>
-              </article>
-            );
-          })}
-        </section>
+        <div className="phase3-hero" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+          <div>
+            <span className="eyebrow">UPI Payment & Collection System</span>
+            <h2>Dynamic UPI QR, Instant Checkout & Automated Reconciliation</h2>
+            <p className="panel-hint" style={{ marginTop: '4px', maxWidth: '640px' }}>
+              Scan to pay via GPay, PhonePe, Paytm, or BHIM. Payments automatically update invoice balances and reconcile party ledgers.
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => setStandeeModalOpen(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}
+            >
+              🖨️ Counter QR Standee
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={exportPaymentsCsv}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}
+            >
+              📥 Export CSV
+            </button>
+          </div>
+        </div>
+
+        {/* KPI Summary Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+          <div className="panel" style={{ padding: '16px 20px', borderLeft: '4px solid #ef4444' }}>
+            <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#64748b', fontWeight: 700 }}>Pending Receivables</span>
+            <div style={{ fontSize: '24px', fontWeight: 800, color: '#b91c1c', marginTop: '4px' }}>
+              {formatCurrency(paymentStats.totalPending)}
+            </div>
+            <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#64748b' }}>
+              {unpaidInvoices.length} {unpaidInvoices.length === 1 ? 'invoice' : 'invoices'} awaiting collection
+            </p>
+          </div>
+
+          <div className="panel" style={{ padding: '16px 20px', borderLeft: '4px solid #10b981' }}>
+            <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#64748b', fontWeight: 700 }}>Total Collected</span>
+            <div style={{ fontSize: '24px', fontWeight: 800, color: '#047857', marginTop: '4px' }}>
+              {formatCurrency(paymentStats.totalCollected)}
+            </div>
+            <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#64748b' }}>
+              {(payments || []).length} lifetime payments logged
+            </p>
+          </div>
+
+          <div className="panel" style={{ padding: '16px 20px', borderLeft: '4px solid #3b82f6' }}>
+            <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#64748b', fontWeight: 700 }}>Today's Collection</span>
+            <div style={{ fontSize: '24px', fontWeight: 800, color: '#1d4ed8', marginTop: '4px' }}>
+              {formatCurrency(paymentStats.todayCollected)}
+            </div>
+            <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#64748b' }}>
+              {paymentStats.todayCount} collected today
+            </p>
+          </div>
+        </div>
+
+        {/* Pending Invoices for Instant Payment Collection */}
         <section className="panel">
-          <h2>{editingPayment ? 'Edit Payment' : 'Payment History'}</h2>
+          <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>
+                Pending Invoices for Payment ({unpaidInvoices.length})
+              </h2>
+              <p className="panel-hint" style={{ margin: '2px 0 0' }}>
+                Click &quot;Pay Now / QR&quot; to display the scannable NPCI dynamic QR code or share via WhatsApp
+              </p>
+            </div>
+          </div>
+
+          {unpaidInvoices.length > 0 ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
+              {unpaidInvoices.map((invoice) => {
+                const pendingAmt = Number(invoice.balance !== undefined ? invoice.balance : invoice.total) || 0;
+                const uri = encodeUpiUri({
+                  pa: profile.upiId || 'trinetr.namkeen@icici',
+                  pn: profile.name || 'TRINETR',
+                  am: pendingAmt,
+                  tn: invoice.invoiceNo || invoice.id,
+                });
+
+                return (
+                  <article
+                    className="panel payment-card"
+                    key={invoice.id}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      padding: '16px',
+                      background: '#ffffff',
+                      borderRadius: '12px',
+                      border: '1px solid #e2e8f0',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.04)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 800, fontSize: '15px', color: '#0f172a' }}>
+                            {invoice.invoiceNo || invoice.id}
+                          </span>
+                          <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: '#fee2e2', color: '#991b1b', fontWeight: 700 }}>
+                            {invoice.status || 'Unpaid'}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#334155', marginTop: '4px' }}>
+                          {invoice.customer || invoice.partyName || 'Cash Customer'}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+                          Date: {invoice.date || today()}
+                        </div>
+                        <div style={{ fontSize: '18px', fontWeight: 900, color: '#dc2626', marginTop: '8px' }}>
+                          {formatCurrency(pendingAmt)} <span style={{ fontSize: '11px', fontWeight: 500, color: '#64748b' }}>due</span>
+                        </div>
+                      </div>
+
+                      {/* Real scannable QR code thumbnail */}
+                      <div
+                        onClick={() => setPayingInvoice(invoice)}
+                        style={{ cursor: 'pointer', textAlign: 'center' }}
+                        title="Click to expand scannable QR Code"
+                      >
+                        <RealQrThumbnail uri={uri} size={72} />
+                        <span style={{ fontSize: '9px', color: '#3b82f6', fontWeight: 700, display: 'block', marginTop: '2px' }}>
+                          Zoom QR 🔍
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="inline-actions" style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
+                      <button
+                        type="button"
+                        className="manual-button"
+                        style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px 12px' }}
+                        onClick={() => setPayingInvoice(invoice)}
+                      >
+                        💳 Pay Now / QR
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        style={{ flex: 1, padding: '8px 12px' }}
+                        onClick={() => recordPayment(invoice)}
+                      >
+                        ✓ Mark Paid
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '40px 20px', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
+              <div style={{ fontSize: '36px', marginBottom: '8px' }}>🎉</div>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#0f172a' }}>All Invoices Are Cleared!</h3>
+              <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748b' }}>
+                There are currently no outstanding receivables. All customer invoices have been fully paid.
+              </p>
+            </div>
+          )}
+        </section>
+
+        {/* Payment History & Settlement Workspace */}
+        <section className="panel">
+          <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>
+                {editingPayment ? 'Edit Payment' : 'Payment History & Receipts'}
+              </h2>
+              <p className="panel-hint" style={{ margin: '2px 0 0' }}>
+                Track recorded collections, generate payment receipts, and reconcile with accounting
+              </p>
+            </div>
+            
+            {/* Search & Mode Filter Tabs */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <input
+                type="search"
+                placeholder="Search payments..."
+                value={paymentSearch}
+                onChange={(e) => setPaymentSearch(e.target.value)}
+                style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', width: '180px' }}
+              />
+              <div style={{ display: 'flex', gap: '4px', background: '#f1f5f9', padding: '3px', borderRadius: '8px' }}>
+                {['All', 'UPI', 'Cash', 'Bank', 'Cheque'].map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setPaymentFilter(mode)}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      background: paymentFilter === mode ? '#0f172a' : 'transparent',
+                      color: paymentFilter === mode ? '#ffffff' : '#475569',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {mode}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
           {editingPayment && (
-            <form onSubmit={savePaymentEdit} className="form-grid" key={editingPayment.id}>
-              <input name="amount" type="number" defaultValue={editingPayment.amount || ''} placeholder="Amount" />
-              <input name="date" type="date" defaultValue={editingPayment.date || today()} />
-              <input name="mode" defaultValue={editingPayment.mode || 'UPI'} placeholder="Mode" />
+            <form onSubmit={savePaymentEdit} className="form-grid" key={editingPayment.id} style={{ marginBottom: '20px', padding: '16px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <input name="amount" type="number" step="0.01" defaultValue={editingPayment.amount || ''} placeholder="Amount" required />
+              <input name="date" type="date" defaultValue={editingPayment.date || today()} required />
+              <select name="mode" defaultValue={editingPayment.mode || 'UPI'}>
+                <option value="UPI">UPI</option>
+                <option value="Cash">Cash</option>
+                <option value="Bank">Bank Transfer (NEFT/RTGS)</option>
+                <option value="Cheque">Cheque</option>
+              </select>
               <input name="status" defaultValue={editingPayment.status || 'Marked Paid'} placeholder="Status" />
-              <div className="inline-actions wide-field">
+              <div className="inline-actions wide-field" style={{ display: 'flex', gap: '8px' }}>
                 <button className="manual-button" type="submit">Update Payment</button>
                 <button className="secondary-button compact-button" type="button" onClick={() => setEditingPayment(null)}>Cancel</button>
               </div>
             </form>
           )}
+
           <div className="compact-list">
-            {payments.length ? payments.map((payment) => (
-              <article className="compact-item" key={payment.id}>
-                <div><strong>{payment.invoiceNo || payment.id}</strong><p>{formatCurrency(payment.amount)} · {payment.mode} · {payment.date} · {payment.status}</p></div>
-                <div className="voucher-actions">
-                  <button className="share-entry-button" type="button" onClick={() => setEditingPayment(payment)}>Edit</button>
-                  <button className="delete-entry-button" type="button" onClick={() => deletePayment(payment)}>Delete</button>
-                </div>
-              </article>
-            )) : <div className="empty-state">No payments recorded yet.</div>}
+            {filteredPayments.length ? (
+              filteredPayments.map((payment) => (
+                <article
+                  className="compact-item"
+                  key={payment.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '12px 16px',
+                    borderBottom: '1px solid #f1f5f9',
+                    gap: '12px',
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <strong style={{ fontSize: '14px', color: '#0f172a' }}>
+                        {payment.invoiceNo || payment.id}
+                      </strong>
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          padding: '2px 8px',
+                          borderRadius: '12px',
+                          fontWeight: 700,
+                          background:
+                            payment.mode === 'Cash' ? '#fef3c7' :
+                            payment.mode === 'Bank' ? '#e0e7ff' : '#dcfce7',
+                          color:
+                            payment.mode === 'Cash' ? '#92400e' :
+                            payment.mode === 'Bank' ? '#3730a3' : '#166534',
+                        }}
+                      >
+                        {payment.mode || 'UPI'}
+                      </span>
+                      <span style={{ fontSize: '11px', color: '#64748b' }}>
+                        {payment.date || today()}
+                      </span>
+                    </div>
+                    <p style={{ margin: '3px 0 0', fontSize: '13px', color: '#475569' }}>
+                      <strong style={{ color: '#047857', fontWeight: 800 }}>{formatCurrency(payment.amount)}</strong>
+                      {payment.customer ? ` · ${payment.customer}` : ''}
+                      {payment.reference ? ` · Ref: ${payment.reference}` : ''}
+                      {payment.notes ? ` · "${payment.notes}"` : ''}
+                    </p>
+                  </div>
+
+                  <div className="voucher-actions" style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <button
+                      className="secondary-button compact-button"
+                      type="button"
+                      onClick={() => setReceiptPayment(payment)}
+                      title="View & Print Receipt"
+                      style={{ fontSize: '12px', padding: '4px 8px' }}
+                    >
+                      🧾 Receipt
+                    </button>
+                    <button
+                      className="share-entry-button"
+                      type="button"
+                      onClick={() => setEditingPayment(payment)}
+                      style={{ fontSize: '12px', padding: '4px 8px' }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="delete-entry-button"
+                      type="button"
+                      onClick={() => deletePayment(payment)}
+                      style={{ fontSize: '12px', padding: '4px 8px' }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <div className="empty-state" style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>
+                {paymentSearch || paymentFilter !== 'All' ? 'No payments matching filters.' : 'No payments recorded yet.'}
+              </div>
+            )}
           </div>
         </section>
+
+        {/* Modal for UPI Payment & Recording */}
+        {payingInvoice && (
+          <UpiPaymentModal
+            isOpen={Boolean(payingInvoice)}
+            invoice={payingInvoice}
+            profile={profile}
+            onClose={() => setPayingInvoice(null)}
+            onConfirmPayment={recordPayment}
+          />
+        )}
+
+        {/* Modal for Counter QR Standee */}
+        {standeeModalOpen && (
+          <UpiPaymentModal
+            isOpen={standeeModalOpen}
+            invoice={{
+              id: 'counter-standee',
+              invoiceNo: 'STORE-COUNTER',
+              total: 0,
+              balance: 0,
+              customer: 'In-Store Shopper',
+            }}
+            profile={profile}
+            onClose={() => setStandeeModalOpen(false)}
+            onConfirmPayment={recordPayment}
+          />
+        )}
+
+        {/* Modal for View / Print Payment Receipt */}
+        {receiptPayment && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 9999,
+              background: 'rgba(15, 23, 42, 0.75)',
+              backdropFilter: 'blur(4px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px',
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setReceiptPayment(null);
+            }}
+          >
+            <div
+              style={{
+                background: '#ffffff',
+                borderRadius: '16px',
+                width: '100%',
+                maxWidth: '480px',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                overflow: 'hidden',
+                border: '1px solid #e2e8f0',
+              }}
+            >
+              <div
+                style={{
+                  padding: '16px 20px',
+                  background: 'linear-gradient(135deg, #1e293b, #0f172a)',
+                  color: '#ffffff',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <div>
+                  <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: '#38bdf8', fontWeight: 700 }}>
+                    Official Acknowledgment
+                  </span>
+                  <h3 style={{ margin: '2px 0 0', fontSize: '18px', fontWeight: 800 }}>Payment Receipt</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setReceiptPayment(null)}
+                  style={{
+                    background: 'rgba(255,255,255,0.1)',
+                    border: 'none',
+                    color: '#ffffff',
+                    borderRadius: '50%',
+                    width: '32px',
+                    height: '32px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div style={{ padding: '24px' }} id="printable-payment-receipt">
+                <div style={{ textAlign: 'center', borderBottom: '2px dashed #cbd5e1', paddingBottom: '16px', marginBottom: '16px' }}>
+                  <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: '#0f172a' }}>
+                    {profile.name || 'TRINETR ENTERPRISE'}
+                  </h2>
+                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#64748b' }}>
+                    {profile.address || 'GST Registered Enterprise'}
+                  </p>
+                  {profile.gstin && (
+                    <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#475569', fontWeight: 600 }}>
+                      GSTIN: {profile.gstin}
+                    </p>
+                  )}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '12px', marginBottom: '16px' }}>
+                  <div>
+                    <span style={{ color: '#64748b' }}>Receipt ID:</span>
+                    <div style={{ fontWeight: 700, color: '#0f172a' }}>{receiptPayment.id}</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ color: '#64748b' }}>Date:</span>
+                    <div style={{ fontWeight: 700, color: '#0f172a' }}>{receiptPayment.date || today()}</div>
+                  </div>
+                  <div>
+                    <span style={{ color: '#64748b' }}>Invoice No:</span>
+                    <div style={{ fontWeight: 700, color: '#1d4ed8' }}>{receiptPayment.invoiceNo || 'Direct Payment'}</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ color: '#64748b' }}>Payment Mode:</span>
+                    <div style={{ fontWeight: 700, color: '#059669' }}>{receiptPayment.mode || 'UPI'}</div>
+                  </div>
+                  {receiptPayment.reference && (
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <span style={{ color: '#64748b' }}>UTR / Reference No:</span>
+                      <div style={{ fontFamily: 'monospace', fontWeight: 600, color: '#334155' }}>{receiptPayment.reference}</div>
+                    </div>
+                  )}
+                  {receiptPayment.customer && (
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <span style={{ color: '#64748b' }}>Received From:</span>
+                      <div style={{ fontWeight: 700, color: '#0f172a' }}>{receiptPayment.customer}</div>
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px', textAlign: 'center', marginBottom: '16px' }}>
+                  <span style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Amount Received
+                  </span>
+                  <div style={{ fontSize: '28px', fontWeight: 900, color: '#166534', marginTop: '4px' }}>
+                    {formatCurrency(receiptPayment.amount)}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#15803d', fontWeight: 600, marginTop: '2px' }}>
+                    ✓ Payment Verified & Reconciled
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: '16px', borderTop: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '10px', color: '#94a3b8', maxWidth: '200px' }}>
+                    Computer-generated receipt acknowledgment.
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#0f172a' }}>Authorized Signatory</div>
+                    <div style={{ fontSize: '10px', color: '#64748b' }}>{profile.name || 'TRINETR'}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ padding: '16px 20px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => setReceiptPayment(null)}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  className="manual-button"
+                  onClick={() => window.print()}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  🖨️ Print Receipt
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
     );
   }

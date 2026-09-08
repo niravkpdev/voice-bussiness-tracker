@@ -2,8 +2,9 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   FileText, Plus, Edit2, Trash2, Download, Printer, MessageSquare,
   Search, Filter, RefreshCw, X, Check, AlertCircle, ShoppingBag,
-  ArrowUpDown, ExternalLink, Calendar, DollarSign, Layers
+  ArrowUpDown, ExternalLink, Calendar, DollarSign, Layers, CreditCard
 } from 'lucide-react';
+import UpiPaymentModal from './UpiPaymentModal.jsx';
 
 export default function ProfitNxSalesEntry({
   invoices = [],
@@ -29,9 +30,31 @@ export default function ProfitNxSalesEntry({
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState(null);
   const [printTargetInvoice, setPrintTargetInvoice] = useState(null);
+  const [payingInvoice, setPayingInvoice] = useState(null);
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState(null); // { x, y, invoice }
+
+  const handleCollectPayment = async (paymentData) => {
+    if (!payingInvoice) return;
+    const inv = payingInvoice.raw || payingInvoice;
+    const currentBal = Number(inv.balance !== undefined ? inv.balance : (inv.netTotal || inv.total || 0));
+    const newBal = Math.max(0, currentBal - paymentData.amount);
+    const updatedInvoice = {
+      ...inv,
+      balance: newBal,
+      status: newBal <= 0 ? 'Paid' : 'Partial',
+      paidAmount: (Number(inv.paidAmount || 0) + paymentData.amount),
+      updatedAt: new Date().toISOString(),
+    };
+    if (onSaveInvoice) {
+      await onSaveInvoice(updatedInvoice);
+    }
+    if (onStatus) {
+      onStatus(`Payment of ₹${paymentData.amount} collected for ${payingInvoice.invoiceNo || payingInvoice.billNo || 'bill'}`);
+    }
+    setPayingInvoice(null);
+  };
 
   // Unified list of sales transactions (combines manual invoices and online store orders)
   const unifiedSalesList = useMemo(() => {
@@ -647,6 +670,16 @@ export default function ProfitNxSalesEntry({
                       </td>
                       <td style={{ padding: '7px 10px', textAlign: 'center' }}>
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          {item.status !== 'Paid' && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setPayingInvoice(item); }}
+                              title="Collect UPI Payment"
+                              style={{ background: 'none', border: 'none', color: '#16a34a', cursor: 'pointer', padding: '2px' }}
+                            >
+                              <CreditCard size={13} />
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={(e) => { e.stopPropagation(); handleModify(item); }}
@@ -734,6 +767,15 @@ export default function ProfitNxSalesEntry({
           >
             <Edit2 size={13} /> Modify (F3)
           </button>
+          {contextMenu.item.status !== 'Paid' && (
+            <button
+              type="button"
+              onClick={() => { setPayingInvoice(contextMenu.item); setContextMenu(null); }}
+              style={{ width: '100%', textAlign: 'left', padding: '6px 12px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: '#16a34a' }}
+            >
+              <CreditCard size={13} /> Collect / UPI
+            </button>
+          )}
           <button
             type="button"
             onClick={() => { handlePrint(contextMenu.item); setContextMenu(null); }}
@@ -783,6 +825,23 @@ export default function ProfitNxSalesEntry({
           invoice={printTargetInvoice}
           profile={profile}
           onClose={() => setShowPrintModal(false)}
+        />
+      )}
+
+      {/* 9. Instant UPI Payment Modal */}
+      {payingInvoice && (
+        <UpiPaymentModal
+          isOpen={Boolean(payingInvoice)}
+          invoice={{
+            ...payingInvoice,
+            invoiceNo: payingInvoice.billNo || payingInvoice.invoiceNo || payingInvoice.id,
+            total: payingInvoice.netTotal || payingInvoice.total,
+            balance: payingInvoice.balance !== undefined ? payingInvoice.balance : (payingInvoice.netTotal || payingInvoice.total),
+            customer: payingInvoice.partyName || payingInvoice.customer,
+          }}
+          profile={profile}
+          onClose={() => setPayingInvoice(null)}
+          onConfirmPayment={handleCollectPayment}
         />
       )}
 
