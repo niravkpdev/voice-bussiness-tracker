@@ -269,11 +269,11 @@ const navigationConfig = [
     icon: '⚡',
     children: [
       { id: 'sales-entry', path: '#sales-entry', tab: 'sales-entry', label: 'Sales Entry (F2)', icon: '⚡' },
-      { id: 'voucher-entry', path: '#voucher-entry', tab: 'voucher-entry', label: 'Cash / Bank Voucher', icon: '▣' },
+      { id: 'voucher-entry', path: '#voucher-entry', tab: 'voucher-entry', label: 'Voucher Entry (Purchase, Cash & Bank)', icon: '▣' },
       { id: 'invoices', path: '#invoices', tab: 'invoices', label: 'Tax Invoices Register', icon: '▧' },
       { id: 'payments', path: '#upi-payments', tab: 'upi-payments', label: 'Payments & UPI', icon: '▥' },
       { id: 'day-book', path: '#day-book', tab: 'day-book', label: 'Day Book (Daily Log)', icon: '☷' },
-      { id: 'inventory-inward', path: '#inventory', tab: 'inventory', label: 'Purchase Entry & Stock', icon: '⬢' },
+      { id: 'inventory-inward', path: '#inventory', tab: 'inventory', label: 'Stock & Inventory Management', icon: '⬢' },
       { id: 'orders', path: '#orders', tab: 'orders', label: 'Storefront Orders', icon: '🛒' },
     ],
   },
@@ -321,8 +321,7 @@ const navigationConfig = [
     label: '5. Production',
     icon: '⚙',
     children: [
-      { id: 'production', path: '#production', tab: 'production', label: 'Batch Production Run', icon: '⚙' },
-      { id: 'production-recipes', path: '#production', tab: 'production', label: 'Recipe / BOM Master', icon: '📋' },
+      { id: 'production', path: '#production', tab: 'production', label: 'Batch Production Run & BOM', icon: '⚙' },
       { id: 'production-stock', path: '#inventory', tab: 'inventory', label: 'Raw Materials & Finished Stock', icon: '⬢' },
     ],
   },
@@ -944,7 +943,7 @@ const searchRoutes = [
   { id: 'employees', label: 'Employees', route: 'employees', aliases: ['staff', 'employee'] },
   { id: 'party-management', label: 'Party Management', route: 'party-management', aliases: ['crm', 'party'] },
   { id: 'party-ledger', label: 'Party Ledger', route: 'party-statement', aliases: ['ledger'] },
-  { id: 'voucher-entry', label: 'Voucher Entry', route: 'voucher-entry', aliases: ['voucher', 'receipt', 'payment'] },
+  { id: 'voucher-entry', label: 'Voucher Entry (Purchase, Expense, Cash & Bank)', route: 'voucher-entry', aliases: ['voucher', 'receipt', 'payment', 'purchase', 'expense', 'supplier bill'] },
   { id: 'day-book', label: 'Day Book', route: 'day-book', aliases: ['transactions'] },
   { id: 'inventory', label: 'Inventory', route: 'inventory', aliases: ['stock', 'product', 'products'] },
   { id: 'orders', label: 'Orders', route: 'orders', aliases: ['order'] },
@@ -5458,7 +5457,7 @@ export default function VoiceExpenseTrackerPreview() {
                     📋 Tax Invoices Register
                   </button>
                   <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('voucher-entry'); setOpenNxMenu(null); }}>
-                    ▣ Cash &amp; Bank Voucher Entry
+                    ▣ Voucher Entry (Purchase, Expense, Cash &amp; Bank)
                   </button>
                   <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('day-book'); setOpenNxMenu(null); }}>
                     ☷ Daily Day Book &amp; Passbook
@@ -5467,17 +5466,11 @@ export default function VoiceExpenseTrackerPreview() {
                   <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('upi-payments'); setOpenNxMenu(null); }}>
                     💳 Payments &amp; UPI Receipts
                   </button>
-                  <button type="button" className="trinetr-dropdown-item" onClick={() => { setVoucherType('Purchase'); navigateToTab('voucher-entry'); setOpenNxMenu(null); }}>
-                    📦 Purchase Entry / Supplier Bill (Credit)
-                  </button>
                   <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('inventory'); setOpenNxMenu(null); }}>
-                    ⬢ Raw Material &amp; Stock Inward
+                    ⬢ Stock &amp; Inventory Management (Inward, Raw Material &amp; Transfers)
                   </button>
                   <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('orders'); setOpenNxMenu(null); }}>
                     🛒 Storefront Customer Orders
-                  </button>
-                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('inventory'); setOpenNxMenu(null); }}>
-                    🔄 Stock Adjustments &amp; Transfers
                   </button>
                 </div>
               )}
@@ -5551,10 +5544,7 @@ export default function VoiceExpenseTrackerPreview() {
               {openNxMenu === 'analytics' && (
                 <div className="trinetr-dropdown-menu">
                   <button type="button" className="trinetr-dropdown-item featured" onClick={() => { navigateToTab('analytics'); setOpenNxMenu(null); }}>
-                    ⌁ Business Analytics &amp; Revenue Trends
-                  </button>
-                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('analytics'); setOpenNxMenu(null); }}>
-                    📈 Product &amp; Category Performance
+                    ⌁ Business Analytics, Revenue Trends &amp; Product Performance
                   </button>
                   <div className="trinetr-dropdown-divider" />
                   <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('ai-assistant'); setOpenNxMenu(null); }}>
@@ -5635,20 +5625,14 @@ export default function VoiceExpenseTrackerPreview() {
               {openNxMenu === 'production' && (
                 <div className="trinetr-dropdown-menu">
                   <button type="button" className="trinetr-dropdown-item featured" onClick={() => { navigateToTab('production'); setOpenNxMenu(null); }}>
-                    ⚙ Batch Production Run &amp; Work Orders
-                  </button>
-                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('production'); setOpenNxMenu(null); }}>
-                    📋 Namkeen Recipe &amp; BOM Master
+                    ⚙ Batch Production Run &amp; Recipe BOM Master
                   </button>
                   <div className="trinetr-dropdown-divider" />
                   <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('inventory'); setOpenNxMenu(null); }}>
-                    ⬢ Raw Material Consumption &amp; Stock
-                  </button>
-                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('inventory'); setOpenNxMenu(null); }}>
-                    📦 Finished Goods Stock Register
+                    ⬢ Production Inventory (Raw Materials &amp; Finished Goods Stock)
                   </button>
                   <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('production'); setOpenNxMenu(null); }}>
-                    ⚡ Output Yield &amp; Wastage Summary
+                    ⚡ Output Yield, Wastage &amp; Batch Production History
                   </button>
                 </div>
               )}
@@ -5681,13 +5665,7 @@ export default function VoiceExpenseTrackerPreview() {
                   </button>
                   <div className="trinetr-dropdown-divider" />
                   <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('employees'); setOpenNxMenu(null); }}>
-                    💵 Monthly Payroll &amp; Payslips
-                  </button>
-                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('employees'); setOpenNxMenu(null); }}>
-                    📝 Leave Requests &amp; Holiday Calendar
-                  </button>
-                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('employees'); setOpenNxMenu(null); }}>
-                    📋 Staff Identity &amp; KYC Documents
+                    💵 Monthly Payroll, Payslips, Leaves &amp; KYC Documents
                   </button>
                 </div>
               )}
@@ -5719,10 +5697,7 @@ export default function VoiceExpenseTrackerPreview() {
                     ◎ Supplier Master (Sundry Creditors)
                   </button>
                   <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('inventory'); setOpenNxMenu(null); }}>
-                    ⬢ Item / Product Master (Inventory)
-                  </button>
-                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('inventory'); setOpenNxMenu(null); }}>
-                    🏷 Price Lists, Units &amp; Categories
+                    ⬢ Item &amp; Product Master (Inventory, Price Lists &amp; Units)
                   </button>
                   <div className="trinetr-dropdown-divider" />
                   <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('whatsapp-automation'); setOpenNxMenu(null); }}>
@@ -5754,27 +5729,6 @@ export default function VoiceExpenseTrackerPreview() {
                 }}
               >
                 TRINETR Dashboard
-              </button>
-            </div>
-
-            {/* Online Store */}
-            <div className="profitnx-menu-item" style={{ marginLeft: 'auto' }}>
-              <button
-                type="button"
-                onClick={() => { navigateToTab('store'); setOpenNxMenu(null); }}
-                style={{
-                  background: '#d97706',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '4px',
-                  margin: '4px',
-                  padding: '4px 10px',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  cursor: 'pointer'
-                }}
-              >
-                🛍️ Online Store
               </button>
             </div>
           </nav>
@@ -5949,10 +5903,10 @@ export default function VoiceExpenseTrackerPreview() {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '8px' }}>
-                <button className="btn btn-primary" onClick={() => navigateToTab('voucher-entry')} style={{ minHeight: '48px' }}>
+                <button className="btn btn-primary" onClick={() => { setVoucherType('Receipt'); navigateToTab('voucher-entry'); }} style={{ minHeight: '48px' }}>
                   <Plus size={16} /> Add Income
                 </button>
-                <button className="btn btn-danger" onClick={() => navigateToTab('voucher-entry')} style={{ minHeight: '48px', background: 'var(--danger)', color: '#fff', border: 'none' }}>
+                <button className="btn btn-danger" onClick={() => { setVoucherType('Payment'); navigateToTab('voucher-entry'); }} style={{ minHeight: '48px', background: 'var(--danger)', color: '#fff', border: 'none' }}>
                   <Minus size={16} /> Add Expense
                 </button>
               </div>
