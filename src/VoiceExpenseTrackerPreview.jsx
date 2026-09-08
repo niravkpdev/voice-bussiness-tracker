@@ -143,6 +143,7 @@ const DEFAULT_PROFILE = {
   hours: 'Mon - Sun: 9:00 AM - 10:00 PM',
   bannerOffer: 'FLAT 20% OFF',
   bannerRegion: "For All Gujarat and Mumbai City's Customers",
+  upiId: 'trinetr.namkeen@icici',
 };
 
 const DEFAULT_PREFERENCES = {
@@ -4155,6 +4156,7 @@ export default function VoiceExpenseTrackerPreview() {
       hours: sanitizeText(formData.get('profileHours'), 100) || DEFAULT_PROFILE.hours,
       bannerOffer: sanitizeText(formData.get('profileBannerOffer'), 80) || DEFAULT_PROFILE.bannerOffer,
       bannerRegion: sanitizeText(formData.get('profileBannerRegion'), 120) || DEFAULT_PROFILE.bannerRegion,
+      upiId: sanitizeText(formData.get('profileUpiId'), 80) || profile.upiId || DEFAULT_PROFILE.upiId,
     };
 
     if (!validateEmail(nextProfile.email)) {
@@ -4203,6 +4205,29 @@ export default function VoiceExpenseTrackerPreview() {
       setSecureError(publicSafeError(error, 'Profile cloud sync failed. Please try again.'));
       setStatus('Profile save failed');
     }
+  };
+
+  const updateBusinessProfile = async (updates) => {
+    const nextProfile = { ...profile, ...updates };
+    try {
+      if (authUser?.uid) {
+        await saveUserProfileSettings(authUser.uid, {
+          ...nextProfile,
+          userId: authUser.uid,
+        });
+      }
+    } catch (e) {
+      console.warn('Cloud profile sync warning:', e);
+    }
+    try {
+      writeScopedString(PROFILE_KEY, JSON.stringify(nextProfile));
+    } catch {}
+    try {
+      localStorage.setItem('businessProfile', JSON.stringify(nextProfile));
+    } catch {}
+    setProfile(nextProfile);
+    setStatus('Business profile updated successfully');
+    return nextProfile;
   };
 
   const resetBusinessProfile = () => {
@@ -6587,6 +6612,7 @@ export default function VoiceExpenseTrackerPreview() {
                     refreshVouchers();
                   }
                 }}
+                onUpdateProfile={updateBusinessProfile}
               />
             </Suspense>
           )}
@@ -6599,6 +6625,7 @@ export default function VoiceExpenseTrackerPreview() {
                 inventory={cloudInventory}
                 customers={cloudCustomers}
                 profile={profile}
+                onUpdateProfile={updateBusinessProfile}
                 onSaveInvoice={async (newInv) => {
                   setCloudInvoices((prev) => [newInv, ...(Array.isArray(prev) ? prev.filter(i => i.id !== newInv.id) : [])]);
                   if (supabaseEnabled && saveAuthenticatedCloudRecord) {
@@ -7825,6 +7852,37 @@ export default function VoiceExpenseTrackerPreview() {
                         Business Address
                       </label>
                       <textarea id="profile-address" name="profileAddress" defaultValue={profile.address} placeholder="Street, City, State, ZIP" />
+                    </div>
+
+                    <div className="wide-field" style={{ marginTop: '16px', padding: '16px 18px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '20px' }}>💳</span>
+                        <div>
+                          <strong style={{ fontSize: '15px', color: '#14532d', display: 'block' }}>
+                            Merchant UPI ID (VPA) & Digital Payments QR Code
+                          </strong>
+                          <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#166534' }}>
+                            All invoice QR codes, Pay Now buttons, and Counter Standees will deposit payments directly into your bank account via this UPI ID.
+                          </p>
+                        </div>
+                      </div>
+                      <label className="field-label" htmlFor="profile-upi-id" style={{ marginTop: '10px', color: '#14532d', fontWeight: 600 }}>
+                        Your Bank / App UPI ID (VPA)
+                      </label>
+                      <input
+                        id="profile-upi-id"
+                        name="profileUpiId"
+                        key={profile.upiId || 'default-upi'}
+                        defaultValue={profile.upiId || 'trinetr.namkeen@icici'}
+                        placeholder="e.g. 9876543210@paytm, shopname@icici, mobile@okhdfcbank, name@ybl"
+                        style={{ background: '#ffffff', borderColor: '#4ade80', fontWeight: 700, fontSize: '14px', color: '#0f172a' }}
+                      />
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '8px', flexWrap: 'wrap', fontSize: '11px', color: '#374151' }}>
+                        <span>📱 <strong>Google Pay:</strong> Tap profile &rarr; UPI ID</span>
+                        <span>📱 <strong>PhonePe:</strong> Tap profile photo &rarr; My QR / UPI ID</span>
+                        <span>📱 <strong>Paytm:</strong> Tap top-left avatar &rarr; UPI ID</span>
+                        <span>📱 <strong>BHIM:</strong> Home screen &rarr; Profile &rarr; UPI ID</span>
+                      </div>
                     </div>
 
                     <div className="wide-field" style={{ marginTop: '24px', borderTop: '2px dashed var(--border, #e2e8f0)', paddingTop: '20px' }}>

@@ -253,6 +253,7 @@ export default function Phase3Ops({
   onAtomicPaymentDelete,
   onUpdateInvoice,
   onAddVoucher,
+  onUpdateProfile,
 }) {
   const [orders, setOrders] = useState(() => readArray(ORDER_KEY));
   const [employees, setEmployees] = useState(() => readArray(EMPLOYEE_KEY));
@@ -1913,6 +1914,20 @@ export default function Phase3Ops({
             <p className="panel-hint" style={{ marginTop: '4px', maxWidth: '640px' }}>
               Scan to pay via GPay, PhonePe, Paytm, or BHIM. Payments automatically update invoice balances and reconcile party ledgers.
             </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '12px', background: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0', padding: '3px 10px', borderRadius: '12px', fontWeight: 600 }}>
+                💳 Active Payee UPI: <strong id="hero-active-upi-id">{profile?.upiId || 'trinetr.namkeen@icici'}</strong>
+              </span>
+              <button
+                type="button"
+                className="chip-btn"
+                style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '8px', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', cursor: 'pointer', fontWeight: 600 }}
+                onClick={() => setStandeeModalOpen(true)}
+                title="Click to view or edit Merchant UPI ID"
+              >
+                ✏️ Change UPI ID
+              </button>
+            </div>
           </div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <button
@@ -2230,6 +2245,7 @@ export default function Phase3Ops({
             profile={profile}
             onClose={() => setPayingInvoice(null)}
             onConfirmPayment={recordPayment}
+            onUpdateProfile={onUpdateProfile}
           />
         )}
 
@@ -2247,6 +2263,7 @@ export default function Phase3Ops({
             profile={profile}
             onClose={() => setStandeeModalOpen(false)}
             onConfirmPayment={recordPayment}
+            onUpdateProfile={onUpdateProfile}
           />
         )}
 

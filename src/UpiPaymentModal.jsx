@@ -42,6 +42,7 @@ export default function UpiPaymentModal({
   invoice,
   profile = {},
   onConfirmPayment,
+  onUpdateProfile,
 }) {
   const [activeTab, setActiveTab] = useState('qr'); // 'qr' | 'record' | 'standee'
   const [qrDataUrl, setQrDataUrl] = useState('');
@@ -56,15 +57,46 @@ export default function UpiPaymentModal({
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
+  // Editable merchant UPI ID
+  const [isEditingUpi, setIsEditingUpi] = useState(false);
+  const [customUpiId, setCustomUpiId] = useState('');
+  const [currentUpiId, setCurrentUpiId] = useState(() => profile.upiId || 'trinetr.namkeen@icici');
+
+  useEffect(() => {
+    if (profile.upiId) {
+      setCurrentUpiId(profile.upiId);
+    }
+  }, [profile.upiId]);
+
   const standeeRef = useRef(null);
 
   const businessName = profile.name || profile.businessName || 'TRINETR Merchant';
-  const upiId = profile.upiId || 'trinetr.namkeen@icici';
+  const upiId = currentUpiId || profile.upiId || 'trinetr.namkeen@icici';
   const invoiceNo = invoice?.invoiceNo || invoice?.id || 'INV-DRAFT';
   const customerName = invoice?.customer || invoice?.customerName || 'Valued Customer';
   const invoiceTotal = Number(invoice?.total || invoice?.grandTotal || 0);
   const invoiceBalance = Number(invoice?.balance ?? invoiceTotal);
   const payableAmount = invoiceBalance > 0 ? invoiceBalance : invoiceTotal;
+
+  const handleSaveUpiId = async () => {
+    const trimmed = customUpiId.trim();
+    if (!trimmed || !trimmed.includes('@')) {
+      setErrorMsg('Please enter a valid UPI ID containing "@" (e.g. yourname@icici or 9876543210@paytm)');
+      return;
+    }
+    setCurrentUpiId(trimmed);
+    setIsEditingUpi(false);
+    setErrorMsg('');
+    setSuccessMsg(`UPI ID updated to "${trimmed}"! Scannable QR now sends payments directly to your account.`);
+    if (typeof onUpdateProfile === 'function') {
+      try {
+        await onUpdateProfile({ upiId: trimmed });
+      } catch (err) {
+        console.warn('Could not sync profile upiId:', err);
+      }
+    }
+    setTimeout(() => setSuccessMsg(''), 4000);
+  };
 
   // Initialize amount whenever invoice changes
   useEffect(() => {
@@ -471,47 +503,142 @@ export default function UpiPaymentModal({
                 </div>
               </div>
 
-              {/* UPI ID Copy Box */}
+              {/* UPI ID Box with One-Click Inline Change / Edit */}
               <div
                 style={{
                   width: '100%',
-                  background: '#f1f5f9',
+                  background: '#f8fafc',
                   borderRadius: '10px',
-                  padding: '10px 14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  border: '1px solid #e2e8f0',
+                  padding: '12px 14px',
+                  border: '1px solid #cbd5e1',
                   marginBottom: '16px',
                 }}
               >
-                <div>
-                  <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Merchant UPI ID (VPA)</span>
-                  <strong style={{ fontSize: '14px', color: '#1e293b' }}>{upiId}</strong>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => copyToClipboard(upiId, setCopiedUpi)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '6px 12px',
-                    background: copiedUpi ? '#16a34a' : '#ffffff',
-                    color: copiedUpi ? '#ffffff' : '#1e293b',
-                    border: '1px solid #cbd5e1',
-                    borderRadius: '6px',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    minHeight: 'unset',
-                    margin: 0,
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  {copiedUpi ? <Check size={14} /> : <Copy size={14} />}
-                  {copiedUpi ? 'Copied!' : 'Copy UPI'}
-                </button>
+                {isEditingUpi ? (
+                  <div>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#1e40af', display: 'block', marginBottom: '6px' }}>
+                      ⚙️ Set Your Merchant UPI ID (VPA)
+                    </span>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <input
+                        id="input-modal-upi"
+                        type="text"
+                        value={customUpiId}
+                        onChange={(e) => setCustomUpiId(e.target.value.trim())}
+                        placeholder="e.g. 9876543210@paytm, shop@icici, mobile@ybl"
+                        style={{
+                          flex: 1,
+                          minWidth: '220px',
+                          padding: '8px 12px',
+                          borderRadius: '6px',
+                          border: '1.5px solid #3b82f6',
+                          fontSize: '13px',
+                          fontWeight: 700,
+                          color: '#0f172a',
+                          background: '#ffffff',
+                        }}
+                      />
+                      <button
+                        type="button"
+                        id="btn-save-modal-upi"
+                        onClick={handleSaveUpiId}
+                        style={{
+                          padding: '8px 14px',
+                          background: '#16a34a',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        ✓ Save UPI ID
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingUpi(false)}
+                        style={{
+                          padding: '8px 10px',
+                          background: '#e2e8f0',
+                          color: '#475569',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginTop: '6px' }}>
+                      Money paid by customers scanning this QR code will be deposited into this bank account / UPI ID.
+                    </span>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>
+                          Merchant UPI ID (VPA)
+                        </span>
+                        <span style={{ fontSize: '10px', background: '#dcfce7', color: '#166534', padding: '1px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                          Active
+                        </span>
+                      </div>
+                      <strong style={{ fontSize: '14px', color: '#0f172a', display: 'block', marginTop: '2px' }}>{upiId}</strong>
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      <button
+                        type="button"
+                        id="btn-edit-modal-upi"
+                        onClick={() => {
+                          setCustomUpiId(upiId);
+                          setIsEditingUpi(true);
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '6px 10px',
+                          background: '#e0f2fe',
+                          color: '#0369a1',
+                          border: '1px solid #bae6fd',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                        title="Change your UPI ID to receive payments directly in your bank account"
+                      >
+                        ✏️ Change UPI ID
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(upiId, setCopiedUpi)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '6px 12px',
+                          background: copiedUpi ? '#16a34a' : '#ffffff',
+                          color: copiedUpi ? '#ffffff' : '#1e293b',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          minHeight: 'unset',
+                          margin: 0,
+                          transition: 'all 0.2s',
+                        }}
+                      >
+                        {copiedUpi ? <Check size={14} /> : <Copy size={14} />}
+                        {copiedUpi ? 'Copied!' : 'Copy'}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Action Buttons Grid */}
@@ -984,6 +1111,31 @@ export default function UpiPaymentModal({
                 >
                   ⚡ Powered by TRINETR ERP
                 </div>
+              </div>
+
+              <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '12px', color: '#64748b' }}>Need to use your own bank UPI ID?</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('qr');
+                    setCustomUpiId(upiId);
+                    setIsEditingUpi(true);
+                  }}
+                  style={{
+                    fontSize: '12px',
+                    color: '#2563eb',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                    textDecoration: 'underline',
+                    padding: 0,
+                    minHeight: 'unset',
+                  }}
+                >
+                  ✏️ Change Standee UPI ID
+                </button>
               </div>
 
               <div style={{ marginTop: '16px', display: 'flex', gap: '10px' }}>

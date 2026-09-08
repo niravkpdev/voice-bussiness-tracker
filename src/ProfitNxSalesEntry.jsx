@@ -12,6 +12,7 @@ export default function ProfitNxSalesEntry({
   inventory = [],
   customers = [],
   profile = {},
+  onUpdateProfile,
   onSaveInvoice,
   onDeleteInvoice,
   onNavigate,
@@ -842,6 +843,7 @@ export default function ProfitNxSalesEntry({
           profile={profile}
           onClose={() => setPayingInvoice(null)}
           onConfirmPayment={handleCollectPayment}
+          onUpdateProfile={onUpdateProfile}
         />
       )}
 
