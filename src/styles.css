@@ -7119,4 +7119,64 @@ input, textarea, [contenteditable="true"] {
   }
 }
 
+/* ============================================================
+   TRINETR MENUBAR DROPDOWN STYLES
+   ============================================================ */
+.trinetr-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  box-shadow: 0 12px 30px -4px rgba(0, 0, 0, 0.18), 0 4px 10px rgba(0, 0, 0, 0.08) !important;
+  border-radius: 8px !important;
+  border: 1px solid #cbd5e1 !important;
+  min-width: 260px !important;
+  z-index: 1000 !important;
+  padding: 6px !important;
+  animation: trinetrDropdownFadeIn 0.15s ease-out;
+}
 
+@keyframes trinetrDropdownFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.trinetr-dropdown-item {
+  width: 100% !important;
+  text-align: left !important;
+  padding: 8px 12px !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: #1e293b !important;
+  min-height: unset !important;
+  height: auto !important;
+  margin: 0 !important;
+  margin-top: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  line-height: 1.4 !important;
+  transition: background 0.12s ease, color 0.12s ease !important;
+}
+
+.trinetr-dropdown-item:hover,
+.trinetr-dropdown-item:focus {
+  background: #f1f5f9 !important;
+  color: #0284c7 !important;
+}
+
+.trinetr-dropdown-item.featured {
+  font-weight: 700 !important;
+  color: #1e3a8a !important;
+}
+
+.trinetr-dropdown-divider {
+  height: 1px;
+  background: #e2e8f0;
+  margin: 4px 6px;
+}

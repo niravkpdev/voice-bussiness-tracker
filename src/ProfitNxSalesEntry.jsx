@@ -56,7 +56,7 @@ export default function ProfitNxSalesEntry({
         list.push({
           id: inv.id || `inv-${index}`,
           original: inv,
-          source: inv.source || 'Profit Nx',
+          source: inv.source || 'Trinetr ERP',
           billNo,
           date: inv.date || inv.invoice_date || '2026-05-15',
           partyName,
@@ -294,7 +294,7 @@ export default function ProfitNxSalesEntry({
       <div className="profitnx-header-card" style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '12px 18px', marginBottom: '14px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ background: '#1e3a8a', color: '#ffffff', fontWeight: 700, padding: '3px 8px', borderRadius: '4px', fontSize: '12px' }}>PROFIT NX</span>
+            <span style={{ background: '#1e3a8a', color: '#ffffff', fontWeight: 700, padding: '3px 8px', borderRadius: '4px', fontSize: '12px' }}>TRINETR ERP</span>
             <h1 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#0f172a' }}>
               1. Transaction &gt; Sales Register / Entry
             </h1>
@@ -961,7 +961,7 @@ function SalesEntryModal({ editingInvoice, customers = [], inventory = [], profi
       grandTotal: invoiceSummary.grandTotal,
       paid: status === 'Paid' ? invoiceSummary.grandTotal : 0,
       balance: status === 'Paid' ? 0 : invoiceSummary.grandTotal,
-      source: editingInvoice ? editingInvoice.source : 'Profit Nx'
+      source: editingInvoice ? editingInvoice.source : 'Trinetr ERP'
     };
 
     onSave(payload);
@@ -977,7 +977,7 @@ function SalesEntryModal({ editingInvoice, customers = [], inventory = [], profi
             <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 700 }}>
               {editingInvoice ? '✎ Modify Sales Bill (F3)' : '+ New Sales Entry (F2)'}
             </h2>
-            <span style={{ fontSize: '11px', opacity: 0.85 }}>Profit Nx ERP &gt; Transaction &gt; Sales Entry</span>
+            <span style={{ fontSize: '11px', opacity: 0.85 }}>Trinetr ERP &gt; Transaction &gt; Sales Entry</span>
           </div>
           <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', color: '#ffffff', fontSize: '20px', cursor: 'pointer' }}>
             <X size={20} />

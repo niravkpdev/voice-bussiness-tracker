@@ -345,7 +345,7 @@ const navigationConfig = [
   },
   {
     id: 'overview-menu',
-    label: 'Nx Dashboard',
+    label: 'TRINETR Dashboard',
     icon: '⌂',
     children: [
       { id: 'dashboard', path: '#dashboard', tab: 'dashboard', label: 'Dashboard Overview', icon: '⌂' },
@@ -5069,10 +5069,10 @@ export default function VoiceExpenseTrackerPreview() {
         />
         <aside className={`sidebar mobile-drawer ${mobileNavOpen ? 'drawer-open' : ''}`} aria-label="Mobile Navigation Menu" style={{ borderRight: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column' }}>
         <div className="sidebar-brand" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px solid var(--border-subtle)' }}>
-          {profile.logo ? <img src={profile.logo} alt="" style={{ width: '28px', height: '28px', borderRadius: '6px', objectFit: 'cover' }} /> : <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: '#1e3a8a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '13px' }}>NX</div>}
+          {profile.logo ? <img src={profile.logo} alt="" style={{ width: '28px', height: '28px', borderRadius: '6px', objectFit: 'cover' }} /> : <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: '#1e3a8a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '13px' }}>TR</div>}
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <strong style={{ fontSize: '13px', fontWeight: '700', lineHeight: '1.2' }}>{profile.name || 'JAY AMBE NAMKEEN'}</strong>
-            <span style={{ fontSize: '10px', color: '#d97706', fontWeight: 700, letterSpacing: '0.05em' }}>PROFIT NX [2026-2027]</span>
+            <span style={{ fontSize: '10px', color: '#d97706', fontWeight: 700, letterSpacing: '0.05em' }}>TRINETR ERP [2026-2027]</span>
           </div>
           <button className="drawer-close-button" type="button" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--text-secondary)' }}>
             ×
@@ -5184,7 +5184,7 @@ export default function VoiceExpenseTrackerPreview() {
             fontSize: '12px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <span style={{ background: '#f59e0b', color: '#000000', fontWeight: 800, padding: '2px 6px', borderRadius: '3px', fontSize: '11px', letterSpacing: '0.05em' }}>PROFIT NX</span>
+              <span style={{ background: '#2563eb', color: '#ffffff', fontWeight: 800, padding: '2px 8px', borderRadius: '3px', fontSize: '11px', letterSpacing: '0.05em' }}>TRINETR ERP</span>
               <span style={{ fontWeight: 800, fontSize: '13px', letterSpacing: '0.03em' }}>{profile.name || 'JAY AMBE NAMKEEN'}</span>
               <span style={{ opacity: 0.85, fontSize: '11px' }}>[2026 - 2027]</span>
               <span style={{ opacity: 0.5 }}>|</span>
@@ -5245,7 +5245,7 @@ export default function VoiceExpenseTrackerPreview() {
             </div>
           </div>
 
-          {/* Profit Nx Numbered Menu Bar */}
+          {/* Trinetr Numbered Menu Bar */}
           <nav className="profitnx-menubar hide-on-mobile" style={{
             background: '#0f172a',
             color: '#e2e8f0',
@@ -5278,39 +5278,31 @@ export default function VoiceExpenseTrackerPreview() {
                 1. Transaction ▾
               </button>
               {openNxMenu === 'trans' && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  background: '#ffffff',
-                  color: '#0f172a',
-                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)',
-                  borderRadius: '6px',
-                  border: '1px solid #cbd5e1',
-                  minWidth: '220px',
-                  zIndex: 200,
-                  padding: '6px 0'
-                }}>
-                  <button type="button" onClick={() => { navigateToTab('sales-entry'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 700, color: '#1e3a8a' }}>
-                    ⚡ Sales Entry (F2)
+                <div className="trinetr-dropdown-menu">
+                  <button type="button" className="trinetr-dropdown-item featured" onClick={() => { navigateToTab('sales-entry'); setOpenNxMenu(null); }}>
+                    ⚡ Sales Entry &amp; Quick Bill (F2)
                   </button>
-                  <button type="button" onClick={() => { navigateToTab('voucher-entry'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    ▣ Cash / Bank Voucher Entry
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('invoices'); setOpenNxMenu(null); }}>
+                    📋 Tax Invoices Register
                   </button>
-                  <button type="button" onClick={() => { navigateToTab('invoices'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    ▧ Invoices Register
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('voucher-entry'); setOpenNxMenu(null); }}>
+                    ▣ Cash &amp; Bank Voucher Entry
                   </button>
-                  <button type="button" onClick={() => { navigateToTab('upi-payments'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    ▥ Payments &amp; UPI
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('day-book'); setOpenNxMenu(null); }}>
+                    ☷ Daily Day Book &amp; Passbook
                   </button>
-                  <button type="button" onClick={() => { navigateToTab('day-book'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    ☷ Day Book (Daily Log)
+                  <div className="trinetr-dropdown-divider" />
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('upi-payments'); setOpenNxMenu(null); }}>
+                    💳 Payments &amp; UPI Receipts
                   </button>
-                  <button type="button" onClick={() => { navigateToTab('inventory'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    ⬢ Purchase Entry / Inward Stock
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('inventory'); setOpenNxMenu(null); }}>
+                    ⬢ Purchase Entry / Stock Inward
                   </button>
-                  <button type="button" onClick={() => { navigateToTab('orders'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('orders'); setOpenNxMenu(null); }}>
                     🛒 Storefront Customer Orders
+                  </button>
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('inventory'); setOpenNxMenu(null); }}>
+                    🔄 Stock Adjustments &amp; Transfers
                   </button>
                 </div>
               )}
@@ -5334,41 +5326,30 @@ export default function VoiceExpenseTrackerPreview() {
                 2. Reports ▾
               </button>
               {openNxMenu === 'reports' && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  background: '#ffffff',
-                  color: '#0f172a',
-                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)',
-                  borderRadius: '6px',
-                  border: '1px solid #cbd5e1',
-                  minWidth: '220px',
-                  zIndex: 200,
-                  padding: '6px 0'
-                }}>
-                  <button type="button" onClick={() => { navigateToTab('sales-entry'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: '#1e3a8a' }}>
-                    ⚡ Sales Register &amp; GST
+                <div className="trinetr-dropdown-menu">
+                  <button type="button" className="trinetr-dropdown-item featured" onClick={() => { navigateToTab('sales-entry'); setOpenNxMenu(null); }}>
+                    ⚡ Sales Register &amp; Item Wise Analysis
                   </button>
-                  <button type="button" onClick={() => { navigateToTab('day-book'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    ☷ Day Book Register
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('day-book'); setOpenNxMenu(null); }}>
+                    ☷ Day Book Summary &amp; Vouchers
                   </button>
-                  <button type="button" onClick={() => { navigateToTab('party-statement'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    ▤ Party Statement / Khata
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('party-statement'); setOpenNxMenu(null); }}>
+                    ▤ Customer / Supplier Khata Statement
                   </button>
-                  <button type="button" onClick={() => { navigateToTab('gst'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    ◇ GST Returns (GSTR-1 / 3B)
+                  <div className="trinetr-dropdown-divider" />
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('gst'); setOpenNxMenu(null); }}>
+                    ◇ GST Returns (GSTR-1, GSTR-3B)
                   </button>
-                  <button type="button" onClick={() => { navigateToTab('accounting-ledgers'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    ▦ Accounting Ledgers
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('accounting-ledgers'); setOpenNxMenu(null); }}>
+                    ▦ Accounting Ledgers &amp; Trial Balance
                   </button>
-                  <button type="button" onClick={() => { navigateToTab('vouchers-hub'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    ▣ Voucher Types Register
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('reports'); setOpenNxMenu(null); }}>
+                    📊 Profit &amp; Loss / Balance Sheet
                   </button>
-                  <button type="button" onClick={() => { navigateToTab('reports'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    ▱ Business Reports Summary
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('crm'); setOpenNxMenu(null); }}>
+                    ▱ Outstanding Receivables &amp; Payables
                   </button>
-                  <button type="button" onClick={() => { navigateToTab('reports-hub'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('reports-hub'); setOpenNxMenu(null); }}>
                     ⌁ Advanced Analytics Reports Hub
                   </button>
                 </div>
@@ -5393,27 +5374,22 @@ export default function VoiceExpenseTrackerPreview() {
                 3. Analytics ▾
               </button>
               {openNxMenu === 'analytics' && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  background: '#ffffff',
-                  color: '#0f172a',
-                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)',
-                  borderRadius: '6px',
-                  border: '1px solid #cbd5e1',
-                  minWidth: '220px',
-                  zIndex: 200,
-                  padding: '6px 0'
-                }}>
-                  <button type="button" onClick={() => { navigateToTab('analytics'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}>
-                    ⌁ Business Analytics &amp; Insights
+                <div className="trinetr-dropdown-menu">
+                  <button type="button" className="trinetr-dropdown-item featured" onClick={() => { navigateToTab('analytics'); setOpenNxMenu(null); }}>
+                    ⌁ Business Analytics &amp; Revenue Trends
                   </button>
-                  <button type="button" onClick={() => { navigateToTab('ai-assistant'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    ✣ AI Business Assistant
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('analytics'); setOpenNxMenu(null); }}>
+                    📈 Product &amp; Category Performance
                   </button>
-                  <button type="button" onClick={() => { navigateToTab('voice-bookkeeper'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    🎙️ Voice Bookkeeper
+                  <div className="trinetr-dropdown-divider" />
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('ai-assistant'); setOpenNxMenu(null); }}>
+                    ✣ AI Business Assistant &amp; Forecasts
+                  </button>
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('voice-bookkeeper'); setOpenNxMenu(null); }}>
+                    🎙️ Voice Command Center &amp; History
+                  </button>
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('crm'); setOpenNxMenu(null); }}>
+                    👥 Customer Growth &amp; Lifetime Value (LTV)
                   </button>
                 </div>
               )}
@@ -5437,39 +5413,28 @@ export default function VoiceExpenseTrackerPreview() {
                 4. Process ▾
               </button>
               {openNxMenu === 'process' && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  background: '#ffffff',
-                  color: '#0f172a',
-                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)',
-                  borderRadius: '6px',
-                  border: '1px solid #cbd5e1',
-                  minWidth: '220px',
-                  zIndex: 200,
-                  padding: '6px 0'
-                }}>
-                  <button type="button" onClick={() => { navigateToTab('masters'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    ◈ Masters Management
+                <div className="trinetr-dropdown-menu">
+                  <button type="button" className="trinetr-dropdown-item featured" onClick={() => { navigateToTab('masters'); setOpenNxMenu(null); }}>
+                    ◈ Masters Central Console
                   </button>
-                  <button type="button" onClick={() => { navigateToTab('company-setup'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    ▦ Company Setup &amp; FY
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('company-setup'); setOpenNxMenu(null); }}>
+                    ▦ Company Setup &amp; Financial Year
                   </button>
-                  <button type="button" onClick={() => { navigateToTab('businesses'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('businesses'); setOpenNxMenu(null); }}>
                     ⌖ Multi-Business / Branches
                   </button>
-                  <button type="button" onClick={() => { navigateToTab('cloud-backup'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    ⎇ Cloud Backup &amp; Restore
+                  <div className="trinetr-dropdown-divider" />
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('cloud-backup'); setOpenNxMenu(null); }}>
+                    ⎇ Cloud Backup, Sync &amp; Restore
                   </button>
-                  <button type="button" onClick={() => { navigateToTab('security-center'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    ◇ Security Center
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('security-center'); setOpenNxMenu(null); }}>
+                    ◇ Security Center &amp; Audit Logs
                   </button>
-                  <button type="button" onClick={() => { navigateToTab('user-management'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    ♙ Users &amp; Permissions
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('user-management'); setOpenNxMenu(null); }}>
+                    ♙ Users, Roles &amp; Permissions
                   </button>
-                  <button type="button" onClick={() => { navigateToTab('accountant-portal'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    ☷ Accountant Portal
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('accountant-portal'); setOpenNxMenu(null); }}>
+                    ☷ CA / Accountant Access Portal
                   </button>
                 </div>
               )}
@@ -5493,27 +5458,22 @@ export default function VoiceExpenseTrackerPreview() {
                 5. Production ▾
               </button>
               {openNxMenu === 'production' && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  background: '#ffffff',
-                  color: '#0f172a',
-                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)',
-                  borderRadius: '6px',
-                  border: '1px solid #cbd5e1',
-                  minWidth: '220px',
-                  zIndex: 200,
-                  padding: '6px 0'
-                }}>
-                  <button type="button" onClick={() => { navigateToTab('production'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: '#059669' }}>
-                    ⚙ Batch Production Run
+                <div className="trinetr-dropdown-menu">
+                  <button type="button" className="trinetr-dropdown-item featured" onClick={() => { navigateToTab('production'); setOpenNxMenu(null); }}>
+                    ⚙ Batch Production Run &amp; Work Orders
                   </button>
-                  <button type="button" onClick={() => { navigateToTab('production'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    📋 Recipe / BOM Master
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('production'); setOpenNxMenu(null); }}>
+                    📋 Namkeen Recipe &amp; BOM Master
                   </button>
-                  <button type="button" onClick={() => { navigateToTab('inventory'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    ⬢ Raw &amp; Finished Stock
+                  <div className="trinetr-dropdown-divider" />
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('inventory'); setOpenNxMenu(null); }}>
+                    ⬢ Raw Material Consumption &amp; Stock
+                  </button>
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('inventory'); setOpenNxMenu(null); }}>
+                    📦 Finished Goods Stock Register
+                  </button>
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('production'); setOpenNxMenu(null); }}>
+                    ⚡ Output Yield &amp; Wastage Summary
                   </button>
                 </div>
               )}
@@ -5537,27 +5497,22 @@ export default function VoiceExpenseTrackerPreview() {
                 6. Payroll ▾
               </button>
               {openNxMenu === 'payroll' && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  background: '#ffffff',
-                  color: '#0f172a',
-                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)',
-                  borderRadius: '6px',
-                  border: '1px solid #cbd5e1',
-                  minWidth: '220px',
-                  zIndex: 200,
-                  padding: '6px 0'
-                }}>
-                  <button type="button" onClick={() => { navigateToTab('employees'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    👥 Employee Directory &amp; HRMS
+                <div className="trinetr-dropdown-menu">
+                  <button type="button" className="trinetr-dropdown-item featured" onClick={() => { navigateToTab('employees'); setOpenNxMenu(null); }}>
+                    👥 Employee Directory &amp; Staff Profiles
                   </button>
-                  <button type="button" onClick={() => { navigateToTab('employees'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    📅 Attendance &amp; Shifts
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('employees'); setOpenNxMenu(null); }}>
+                    📅 Daily Attendance &amp; Shift Register
                   </button>
-                  <button type="button" onClick={() => { navigateToTab('employees'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    💵 Salary &amp; Payslips
+                  <div className="trinetr-dropdown-divider" />
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('employees'); setOpenNxMenu(null); }}>
+                    💵 Monthly Payroll &amp; Payslips
+                  </button>
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('employees'); setOpenNxMenu(null); }}>
+                    📝 Leave Requests &amp; Holiday Calendar
+                  </button>
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('employees'); setOpenNxMenu(null); }}>
+                    📋 Staff Identity &amp; KYC Documents
                   </button>
                 </div>
               )}
@@ -5581,48 +5536,40 @@ export default function VoiceExpenseTrackerPreview() {
                 7. Master ▾
               </button>
               {openNxMenu === 'master' && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  background: '#ffffff',
-                  color: '#0f172a',
-                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)',
-                  borderRadius: '6px',
-                  border: '1px solid #cbd5e1',
-                  minWidth: '220px',
-                  zIndex: 200,
-                  padding: '6px 0'
-                }}>
-                  <button type="button" onClick={() => { navigateToTab('crm'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    ☉ Party / Customer Master
+                <div className="trinetr-dropdown-menu">
+                  <button type="button" className="trinetr-dropdown-item featured" onClick={() => { navigateToTab('crm'); setOpenNxMenu(null); }}>
+                    ☉ Party / Customer Master (Sundry Debtors)
                   </button>
-                  <button type="button" onClick={() => { navigateToTab('suppliers'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    ◎ Supplier Master
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('suppliers'); setOpenNxMenu(null); }}>
+                    ◎ Supplier Master (Sundry Creditors)
                   </button>
-                  <button type="button" onClick={() => { navigateToTab('inventory'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    ⬢ Item / Product Master
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('inventory'); setOpenNxMenu(null); }}>
+                    ⬢ Item / Product Master (Inventory)
                   </button>
-                  <button type="button" onClick={() => { navigateToTab('whatsapp-automation'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    ⚡ WhatsApp Automation
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('inventory'); setOpenNxMenu(null); }}>
+                    🏷 Price Lists, Units &amp; Categories
                   </button>
-                  <button type="button" onClick={() => { navigateToTab('app-settings'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    ⚙ Company Profile &amp; Settings
+                  <div className="trinetr-dropdown-divider" />
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('whatsapp-automation'); setOpenNxMenu(null); }}>
+                    ⚡ WhatsApp Messaging Automation
                   </button>
-                  <button type="button" onClick={() => { navigateToTab('billing'); setOpenNxMenu(null); }} style={{ width: '100%', textAlign: 'left', padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px' }}>
-                    💳 Subscription &amp; Billing
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('app-settings'); setOpenNxMenu(null); }}>
+                    ⚙ Company Profile &amp; GST Settings
+                  </button>
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('billing'); setOpenNxMenu(null); }}>
+                    💳 Subscription Plan &amp; Billing Center
                   </button>
                 </div>
               )}
             </div>
 
-            {/* Nx Dashboard */}
+            {/* TRINETR Dashboard */}
             <div className="profitnx-menu-item">
               <button
                 type="button"
                 onClick={() => { navigateToTab('dashboard'); setOpenNxMenu(null); }}
                 style={{
-                  background: 'transparent',
+                  background: activeTab === 'dashboard' ? '#1e293b' : 'transparent',
                   color: '#93c5fd',
                   border: 'none',
                   padding: '8px 12px',
@@ -5631,7 +5578,7 @@ export default function VoiceExpenseTrackerPreview() {
                   cursor: 'pointer'
                 }}
               >
-                Nx Dashboard
+                TRINETR Dashboard
               </button>
             </div>
 
@@ -6476,7 +6423,7 @@ export default function VoiceExpenseTrackerPreview() {
           )}
 
           {activeTab === 'sales-entry' && (
-            <Suspense fallback={<div className="panel skeleton-panel">Loading Profit Nx Sales Register...</div>}>
+            <Suspense fallback={<div className="panel skeleton-panel">Loading Sales Register & Entry...</div>}>
               <ProfitNxSalesEntry
                 invoices={cloudInvoices}
                 orders={cloudOrders}
@@ -6515,7 +6462,7 @@ export default function VoiceExpenseTrackerPreview() {
           )}
 
           {activeTab === 'production' && (
-            <Suspense fallback={<div className="panel skeleton-panel">Loading Profit Nx Production...</div>}>
+            <Suspense fallback={<div className="panel skeleton-panel">Loading Production Module...</div>}>
               <ProfitNxProduction
                 inventory={cloudInventory}
                 profile={profile}
