@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Play, Pause, Volume2, VolumeX, Maximize2, Sparkles, Utensils, Video } from 'lucide-react';
 
-export function VideoReelSection({ onExploreMenu, onWatchVideos }) {
+export function VideoReelSection({ onExploreMenu, onWatchVideos, storeName }) {
   const videoRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
@@ -87,7 +87,7 @@ export function VideoReelSection({ onExploreMenu, onWatchVideos }) {
 
             {/* Reel Badge */}
             <div className="bhole-reel-shop-tag">
-              <span>Bhole G Fresh Farsan Daily</span>
+              <span>{storeName ? `${storeName} Fresh Farsan Daily` : 'Fresh Farsan Daily'}</span>
             </div>
           </div>
         </div>

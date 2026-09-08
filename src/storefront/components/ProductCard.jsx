@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Heart, ShoppingBag, Check, Star } from 'lucide-react';
+import { Heart, ShoppingBag, Check, Star, Edit3 } from 'lucide-react';
 import { useStoreCart } from '../context/StoreCartContext';
 
 export function ProductCard({ product }) {
-  const { addToCart, wishlist, toggleWishlist } = useStoreCart();
+  const { addToCart, wishlist, toggleWishlist, setEditingProduct } = useStoreCart();
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
   const [justAdded, setJustAdded] = useState(false);
 
@@ -66,6 +66,21 @@ export function ProductCard({ product }) {
             e.target.src = 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=500&auto=format&fit=crop&q=80';
           }}
         />
+
+        {/* Owner In-Place Edit Option on Image */}
+        <button
+          type="button"
+          className="bhole-product-img-edit-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (setEditingProduct) setEditingProduct(product);
+          }}
+          title="Edit image, name, pack weights, and prices"
+          aria-label={`Edit ${product.name}`}
+        >
+          <Edit3 size={13} />
+          <span>Edit Product</span>
+        </button>
       </div>
 
       {/* Product Information */}

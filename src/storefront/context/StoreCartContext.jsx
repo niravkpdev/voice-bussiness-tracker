@@ -3,8 +3,24 @@ import { STORE_INFO, PRODUCTS } from '../data/namkeenData';
 
 const StoreCartContext = createContext(null);
 
-const CART_STORAGE_KEY = 'bhole_g_store_cart_v1';
-const WISHLIST_STORAGE_KEY = 'bhole_g_store_wishlist_v1';
+const CART_STORAGE_KEY = 'trinetr_store_cart_v1';
+const WISHLIST_STORAGE_KEY = 'trinetr_store_wishlist_v1';
+const PRODUCT_OVERRIDES_KEY = 'storefront_product_overrides';
+
+function applyProductOverrides(items) {
+  let overrides = {};
+  try {
+    const raw = localStorage.getItem(PRODUCT_OVERRIDES_KEY);
+    if (raw) overrides = JSON.parse(raw) || {};
+  } catch {}
+
+  return items.map(item => {
+    if (overrides[item.id]) {
+      return { ...item, ...overrides[item.id] };
+    }
+    return item;
+  });
+}
 
 function resolveStoreInfo(customProfile) {
   let profileData = customProfile;
@@ -22,7 +38,7 @@ function resolveStoreInfo(customProfile) {
     }
   }
 
-  const name = profileData?.storeName || profileData?.name || STORE_INFO.name;
+  const name = profileData?.storeName || profileData?.name || STORE_INFO.name || 'Jay Ambe Namkeen';
   const tagline = profileData?.storeTagline || profileData?.tagline || STORE_INFO.tagline;
   const phone = profileData?.phone || STORE_INFO.phone;
   const whatsapp = profileData?.whatsapp || profileData?.phone || STORE_INFO.whatsapp;
@@ -35,7 +51,7 @@ function resolveStoreInfo(customProfile) {
 
   return {
     ...STORE_INFO,
-    name: name === 'Trinetr Business Suite' ? STORE_INFO.name : name,
+    name: (name && name !== 'Trinetr Business Suite') ? name : (STORE_INFO.name || 'Jay Ambe Namkeen'),
     tagline,
     phone,
     whatsapp,
@@ -87,7 +103,7 @@ function resolveInventoryItems(customInventoryProp) {
   }
 
   if (!customItems || customItems.length === 0) {
-    return PRODUCTS;
+    return applyProductOverrides(PRODUCTS);
   }
 
   // Map ERP items into Storefront Product schema
@@ -118,7 +134,7 @@ function resolveInventoryItems(customInventoryProp) {
   const customIds = new Set(mappedCustom.map(c => c.id));
   const remainingStatic = PRODUCTS.filter(p => !customIds.has(p.id) && !customNames.has(p.name.toLowerCase().trim()));
 
-  return [...mappedCustom, ...remainingStatic];
+  return applyProductOverrides([...mappedCustom, ...remainingStatic]);
 }
 
 export function StoreCartProvider({ children, storeProfile, customInventory }) {
@@ -147,7 +163,7 @@ export function StoreCartProvider({ children, storeProfile, customInventory }) {
   // Cart state
   const [cart, setCart] = useState(() => {
     try {
-      const saved = localStorage.getItem(CART_STORAGE_KEY);
+      const saved = localStorage.getItem(CART_STORAGE_KEY) || localStorage.getItem('bhole_g_store_cart_v1');
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -157,7 +173,7 @@ export function StoreCartProvider({ children, storeProfile, customInventory }) {
   // Wishlist state
   const [wishlist, setWishlist] = useState(() => {
     try {
-      const saved = localStorage.getItem(WISHLIST_STORAGE_KEY);
+      const saved = localStorage.getItem(WISHLIST_STORAGE_KEY) || localStorage.getItem('bhole_g_store_wishlist_v1');
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -313,6 +329,107 @@ export function StoreCartProvider({ children, storeProfile, customInventory }) {
     return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
   };
 
+  // Editing Product state (Owner In-Place Product Editor)
+  const [editingProduct, setEditingProduct] = useState(null);
+
+  // Update a product: persists override, syncs with ERP, updates cart & triggers event
+  const updateProduct = (productId, updatedFields) => {
+    setProducts(prevProducts => {
+      const updatedList = prevProducts.map(p => {
+        if (p.id === productId) {
+          return { ...p, ...updatedFields };
+        }
+        return p;
+      });
+
+      // 1. Save override in localStorage
+      try {
+        const raw = localStorage.getItem(PRODUCT_OVERRIDES_KEY);
+        const overrides = raw ? JSON.parse(raw) : {};
+        overrides[productId] = { ...(overrides[productId] || {}), ...updatedFields };
+        localStorage.setItem(PRODUCT_OVERRIDES_KEY, JSON.stringify(overrides));
+      } catch (e) {
+        console.error('Failed to save product override', e);
+      }
+
+      // 2. Sync to erpProducts
+      try {
+        const fromErp = localStorage.getItem('erpProducts');
+        let erpItems = fromErp ? JSON.parse(fromErp) : [];
+        if (Array.isArray(erpItems)) {
+          const idx = erpItems.findIndex(e => e.id === productId || (e.name && e.name.toLowerCase() === updatedFields.name?.toLowerCase()));
+          if (idx >= 0) {
+            erpItems[idx] = {
+              ...erpItems[idx],
+              name: updatedFields.name || erpItems[idx].name,
+              category: updatedFields.categoryLabel || updatedFields.category || erpItems[idx].category,
+              sellingPrice: updatedFields.variants?.[0]?.price ?? erpItems[idx].sellingPrice,
+              image: updatedFields.image || erpItems[idx].image,
+              details: updatedFields.description || erpItems[idx].details,
+              isTopSeller: Boolean(updatedFields.isTopSeller),
+              isNotForJain: Boolean(updatedFields.isNotForJain),
+              unit: updatedFields.variants?.[0]?.weight || erpItems[idx].unit
+            };
+          } else {
+            erpItems.push({
+              id: productId,
+              name: updatedFields.name,
+              category: updatedFields.categoryLabel || updatedFields.category || 'Namkeen',
+              sellingPrice: updatedFields.variants?.[0]?.price || 100,
+              currentStock: updatedFields.isOutOfStock ? 0 : 50,
+              image: updatedFields.image,
+              details: updatedFields.description,
+              isTopSeller: Boolean(updatedFields.isTopSeller),
+              isNotForJain: Boolean(updatedFields.isNotForJain),
+              unit: updatedFields.variants?.[0]?.weight || '250 GM'
+            });
+          }
+          localStorage.setItem('erpProducts', JSON.stringify(erpItems));
+        }
+      } catch (e) {
+        console.error('Failed to sync product to ERP', e);
+      }
+
+      // 3. Dispatch global sync event
+      window.dispatchEvent(new CustomEvent('trinetr-inventory-updated', { detail: { productId, updatedFields } }));
+
+      return updatedList;
+    });
+
+    // 4. Update cart items if variant prices or titles changed
+    setCart(prevCart => {
+      return prevCart.map(item => {
+        if (item.productId === productId) {
+          const matchingVariant = updatedFields.variants?.find(v => v.weight === item.variantWeight);
+          return {
+            ...item,
+            name: updatedFields.name || item.name,
+            image: updatedFields.image || item.image,
+            price: matchingVariant ? matchingVariant.price : item.price
+          };
+        }
+        return item;
+      });
+    });
+  };
+
+  // Reset product back to its defaults
+  const resetProductOverride = (productId) => {
+    try {
+      const raw = localStorage.getItem(PRODUCT_OVERRIDES_KEY);
+      if (raw) {
+        const overrides = JSON.parse(raw);
+        delete overrides[productId];
+        localStorage.setItem(PRODUCT_OVERRIDES_KEY, JSON.stringify(overrides));
+      }
+    } catch (e) {
+      console.error('Failed to reset product override', e);
+    }
+
+    setProducts(resolveInventoryItems(customInventory));
+    window.dispatchEvent(new CustomEvent('trinetr-inventory-updated', { detail: { productId, reset: true } }));
+  };
+
   const value = {
     storeInfo,
     cart,
@@ -335,7 +452,11 @@ export function StoreCartProvider({ children, storeProfile, customInventory }) {
     dietaryFilter,
     setDietaryFilter,
     generateWhatsAppOrderUrl,
-    products
+    products,
+    editingProduct,
+    setEditingProduct,
+    updateProduct,
+    resetProductOverride
   };
 
   return (

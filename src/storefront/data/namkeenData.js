@@ -1,4 +1,4 @@
-// Comprehensive namkeen and snack catalog data modeled from Bhole G Namkeen (modification.mp4)
+// Comprehensive namkeen and snack catalog data for online store
 
 export const CATEGORIES = [
   { id: 'all', name: 'All', count: 48, icon: '🥨' },
@@ -25,7 +25,7 @@ export const PRODUCTS = [
   // Best Sellers & Featured
   {
     id: 'prod-special-combo',
-    name: 'Bhole G Special Combo - 8 Taste Pack',
+    name: 'Special Royal Combo - 8 Taste Pack',
     category: 'mix-namkeen',
     categoryLabel: 'Best Combo',
     description: 'Our signature combination pack featuring 8 distinct handcrafted authentic Gujarati snacks in one family bundle.',
@@ -407,13 +407,13 @@ export const PRODUCTS = [
 ];
 
 export const STORE_INFO = {
-  name: 'Bhole G Namkeen',
+  name: 'Jay Ambe Namkeen',
   tagline: 'namkeen & wafers',
   phone: '+91 9979668339',
   whatsapp: '919979668339',
-  email: 'bholegnamkeen@gmail.com',
-  instagram: '@bholegnamkeen',
-  facebook: '@bholegnamkeen',
+  email: 'info@jayambenamkeen.com',
+  instagram: '@jayambenamkeen',
+  facebook: '@jayambenamkeen',
   address: 'Shop No 1 to 4, Hawda Sheri, Hira Bazar, Mahidharpura, Haripura, Surat, Gujarat 395003',
   hours: 'Open at 10:30 AM Every Day',
   fssaiNumber: '20723031002714',

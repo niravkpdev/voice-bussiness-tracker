@@ -957,6 +957,7 @@
   overflow: hidden;
   margin-bottom: 12px;
   background: #faf5ee;
+  position: relative;
 }
 
 .bhole-product-img {
@@ -968,6 +969,34 @@
 
 .bhole-product-card:hover .bhole-product-img {
   transform: scale(1.04);
+}
+
+.bhole-product-img-edit-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(17, 24, 39, 0.85);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 20px;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  z-index: 5;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.bhole-product-img-edit-btn:hover {
+  background: #b45309;
+  border-color: #f59e0b;
+  transform: scale(1.06);
 }
 
 .bhole-product-info {
@@ -1164,42 +1193,47 @@
 }
 
 .bhole-mandala-box {
-  background: #700f2b;
+  background: linear-gradient(135deg, #700f2b 0%, #881337 50%, #4c0519 100%);
   border: 2px dashed #f59e0b;
-  border-radius: 18px;
-  padding: 32px 24px;
-  color: #fff;
+  border-radius: 20px;
+  padding: 36px 24px;
+  color: #ffffff;
   text-align: center;
+  box-shadow: 0 10px 25px -5px rgba(112, 15, 43, 0.4);
 }
 
 .bhole-mandala-emblem h3 {
-  font-size: 26px;
+  font-size: 28px;
   font-weight: 900;
   letter-spacing: 2px;
-  color: #fde68a;
-  margin: 0 0 8px 0;
+  color: #fde68a !important;
+  margin: 0 0 10px 0;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 .timing-notice {
   font-size: 14px;
   font-weight: 800;
-  color: #fff;
-  margin: 0 0 6px 0;
+  color: #ffffff !important;
+  margin: 0 0 8px 0;
+  letter-spacing: 1px;
 }
 
 .address-line {
-  font-size: 13px;
-  opacity: 0.85;
-  margin: 0 0 14px 0;
+  font-size: 14px;
+  color: #fef3c7 !important;
+  margin: 0 0 16px 0;
+  opacity: 0.95;
 }
 
 .brand-social-handles {
   display: flex;
   justify-content: center;
   gap: 16px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
-  color: #fde68a;
+  color: #fde68a !important;
+  flex-wrap: wrap;
 }
 
 /* --------------------------------------------------------------------------
@@ -2917,4 +2951,580 @@
   .bhole-cat-circle-name {
     font-size: 11px;
   }
+}
+
+/* =========================================================
+   OWNER PRODUCT EDIT MODAL STYLES
+   ========================================================= */
+.bhole-edit-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  padding: 16px;
+  overflow-y: auto;
+  animation: bholeFadeIn 0.2s ease-out;
+}
+
+.bhole-edit-modal-content {
+  background: #ffffff;
+  width: 100%;
+  max-width: 840px;
+  max-height: 92vh;
+  border-radius: 20px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  animation: bholeModalSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes bholeFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes bholeModalSlideUp {
+  from { opacity: 0; transform: translateY(20px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.bhole-edit-modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  background: #f8fafc;
+}
+
+.bhole-edit-header-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.bhole-edit-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 4px 0;
+}
+
+.bhole-edit-subtitle {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+}
+
+.bhole-edit-modal-close {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.bhole-edit-modal-close:hover {
+  background: #fee2e2;
+  color: #ef4444;
+  border-color: #fca5a5;
+}
+
+.bhole-edit-alert {
+  margin: 12px 24px 0 24px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.bhole-edit-alert.error {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.bhole-edit-alert.success {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.bhole-edit-modal-form {
+  padding: 20px 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  flex: 1;
+}
+
+.bhole-edit-grid {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 640px) {
+  .bhole-edit-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bhole-edit-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bhole-edit-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  display: block;
+}
+
+.bhole-field-sublabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.bhole-edit-img-preview-box {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 14px;
+  border: 2px dashed #cbd5e1;
+  background: #f8fafc;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bhole-edit-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bhole-edit-no-img {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.bhole-edit-upload-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bhole-file-upload-btn {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.bhole-file-upload-btn:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+}
+
+.bhole-upload-tip {
+  font-size: 10px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.bhole-sample-images {
+  margin-top: 4px;
+}
+
+.bhole-sample-label {
+  font-size: 11px;
+  color: #64748b;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.bhole-sample-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.bhole-sample-pill {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 11px;
+  color: #475569;
+  cursor: pointer;
+}
+
+.bhole-sample-pill:hover {
+  background: #e0e7ff;
+  color: #3730a3;
+  border-color: #c7d2fe;
+}
+
+.bhole-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bhole-edit-row-two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.bhole-edit-input,
+.bhole-edit-select,
+.bhole-edit-textarea {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 13px;
+  color: #0f172a;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  width: 100%;
+}
+
+.bhole-edit-input:focus,
+.bhole-edit-select:focus,
+.bhole-edit-textarea:focus {
+  border-color: #d97706;
+  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.15);
+}
+
+.bhole-edit-textarea {
+  resize: vertical;
+  min-height: 70px;
+  font-family: inherit;
+}
+
+.bhole-edit-flags-section {
+  background: #f8fafc;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+
+.bhole-flags-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.bhole-checkbox-card {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+}
+
+.bhole-checkbox-card.danger {
+  border-color: #fecaca;
+  background: #fff5f5;
+  color: #b91c1c;
+}
+
+.bhole-edit-variants-section {
+  background: #fefce8;
+  border: 1px solid #fef08a;
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bhole-variants-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.bhole-variants-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #78350f;
+  margin: 0 0 2px 0;
+}
+
+.bhole-variants-subtitle {
+  font-size: 12px;
+  color: #92400e;
+  margin: 0;
+}
+
+.bhole-quick-size-buttons {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 6px !important;
+  flex-wrap: wrap !important;
+}
+
+.quick-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #92400e;
+}
+
+.bhole-quick-btn {
+  background: #ffffff !important;
+  border: 1px solid #fde047 !important;
+  border-radius: 6px !important;
+  padding: 4px 10px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: #854d0e !important;
+  cursor: pointer !important;
+  transition: all 0.15s !important;
+  width: auto !important;
+  min-width: unset !important;
+  height: auto !important;
+  min-height: unset !important;
+  display: inline-flex !important;
+}
+
+.bhole-quick-btn:hover {
+  background: #fef08a !important;
+  border-color: #ca8a04 !important;
+}
+
+.bhole-variants-table-wrap {
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+.bhole-variants-table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  font-size: 13px !important;
+  display: table !important;
+}
+
+.bhole-variants-table th {
+  background: #f8fafc;
+  padding: 8px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #475569;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 12px;
+}
+
+.bhole-variants-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.bhole-table-input {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  outline: none;
+}
+
+.bhole-table-input.weight-input {
+  width: 100%;
+  min-width: 140px;
+}
+
+.bhole-table-price-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.currency-symbol {
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.bhole-table-input.price-input {
+  width: 100px;
+}
+
+.bhole-stock-switch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.bhole-var-delete-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.15s;
+}
+
+.bhole-var-delete-btn:hover:not(:disabled) {
+  color: #ef4444;
+  background: #fee2e2;
+}
+
+.bhole-var-delete-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.bhole-add-variant-row-btn {
+  align-self: flex-start;
+  background: #ffffff;
+  border: 1px dashed #d97706;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #b45309;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.bhole-add-variant-row-btn:hover {
+  background: #fef3c7;
+}
+
+.bhole-edit-modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #f1f5f9;
+  background: #f8fafc;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.bhole-reset-btn {
+  background: none;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.bhole-reset-btn:hover {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.bhole-footer-right-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.bhole-cancel-btn {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.bhole-cancel-btn:hover {
+  background: #f1f5f9;
+}
+
+.bhole-save-btn {
+  background: #d97706;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.35);
+  transition: all 0.2s;
+}
+
+.bhole-save-btn:hover {
+  background: #b45309;
+  transform: translateY(-1px);
 }

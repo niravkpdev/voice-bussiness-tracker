@@ -7871,7 +7871,7 @@ export default function VoiceExpenseTrackerPreview() {
                         id="profile-store-name"
                         name="profileStoreName"
                         defaultValue={profile.storeName || profile.name}
-                        placeholder="e.g. Bhole G Namkeen or My Brand"
+                        placeholder="e.g. Jay Ambe Namkeen or My Brand"
                       />
                       <span className="field-help" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Displays in storefront header, logo badge, and order confirmations.</span>
                     </div>

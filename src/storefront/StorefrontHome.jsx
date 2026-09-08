@@ -9,6 +9,7 @@ import { CategoriesView } from './components/CategoriesView';
 import { ContactView } from './components/ContactView';
 import { VideoReelSection } from './components/VideoReelSection';
 import { CartDrawer } from './components/CartDrawer';
+import { ProductEditModal } from './components/ProductEditModal';
 import { StoreFooter } from './components/StoreFooter';
 import { PRODUCTS, CATEGORIES, STORE_INFO } from './data/namkeenData';
 import { Truck, Award, Headphones, Zap, ShoppingBag, ArrowRight, Sparkles, CheckCircle2 } from 'lucide-react';
@@ -61,6 +62,9 @@ function StorefrontContent({ initialTab = 'store', onSwitchToErp }) {
 
       {/* Cart Slide-Over Drawer */}
       <CartDrawer />
+
+      {/* Owner In-Place Product Editor Modal */}
+      <ProductEditModal />
 
       {/* Render Current Tab Page */}
       {currentTab === 'shop' && (
@@ -115,6 +119,7 @@ function StorefrontContent({ initialTab = 'store', onSwitchToErp }) {
           <VideoReelSection 
             onExploreMenu={() => navigateTo('product-menu')}
             onWatchVideos={() => navigateTo('shop')}
+            storeName={activeStore.name}
           />
 
           {/* Section: Explore Best Sellers */}
@@ -233,13 +238,13 @@ function StorefrontContent({ initialTab = 'store', onSwitchToErp }) {
           <section className="bhole-brand-mandala-banner">
             <div className="bhole-mandala-box">
               <div className="bhole-mandala-emblem">
-                <h3>{STORE_INFO.name.toUpperCase()}</h3>
-                <p className="timing-notice">OPEN AT 10:30 AM EVERY DAY</p>
-                <p className="address-line">{STORE_INFO.address}</p>
+                <h3>{activeStore.name.toUpperCase()}</h3>
+                <p className="timing-notice">{activeStore.hours ? activeStore.hours.toUpperCase() : 'OPEN AT 10:30 AM EVERY DAY'}</p>
+                <p className="address-line">{activeStore.address}</p>
                 <div className="brand-social-handles">
                   <span>FOLLOW US:</span>
-                  <span>{STORE_INFO.email}</span>
-                  <span>{STORE_INFO.instagram}</span>
+                  <span>{activeStore.email}</span>
+                  <span>{activeStore.instagram}</span>
                 </div>
               </div>
             </div>

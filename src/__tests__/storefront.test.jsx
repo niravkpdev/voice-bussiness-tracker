@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { PRODUCTS, CATEGORIES, STORE_INFO } from '../storefront/data/namkeenData';
 
-describe('Bhole G Namkeen Storefront Catalog & Variants', () => {
+describe('Online Storefront Catalog, Brand Dynamic Profile & Variants', () => {
   it('loads valid categories with positive counts', () => {
     expect(CATEGORIES.length).toBeGreaterThan(10);
     const wafer = CATEGORIES.find(c => c.id === 'wafer');
@@ -128,7 +128,7 @@ describe('Bhole G Namkeen Storefront Catalog & Variants', () => {
     expect(orderUrl).toContain(encodeURIComponent('JAY AMBE FARSAN MART'));
   });
 
-  it('falls back gracefully to Bhole G Namkeen defaults when user profile is unconfigured', () => {
+  it('falls back gracefully to Jay Ambe Namkeen defaults when user profile is unconfigured', () => {
     const unconfiguredProfile = {
       name: 'Trinetr Business Suite',
       storeName: '',
@@ -137,10 +137,10 @@ describe('Bhole G Namkeen Storefront Catalog & Variants', () => {
     };
 
     const resolvedName = (!unconfiguredProfile.storeName || unconfiguredProfile.name === 'Trinetr Business Suite')
-      ? STORE_INFO.name
+      ? (STORE_INFO.name || 'Jay Ambe Namkeen')
       : unconfiguredProfile.storeName;
 
-    expect(resolvedName).toBe('Bhole G Namkeen');
+    expect(resolvedName).toBe('Jay Ambe Namkeen');
   });
 
   it('merges custom ERP inventory items seamlessly into storefront catalog', () => {
@@ -203,7 +203,7 @@ describe('Bhole G Namkeen Storefront Catalog & Variants', () => {
       {
         productId: 'prod-special-combo',
         cartItemId: 'prod-special-combo-1 KG',
-        name: 'Bhole G Special Combo - 8 Taste Pack',
+        name: 'Special Royal Combo - 8 Taste Pack',
         variantWeight: '1 KG',
         price: 499.00,
         quantity: 2
@@ -247,9 +247,34 @@ describe('Bhole G Namkeen Storefront Catalog & Variants', () => {
     expect(erpOrder.customer).toBe('Priya Sharma');
     expect(erpOrder.amount).toBe(998);
     expect(erpOrder.source).toBe('Online Storefront / WhatsApp');
-    expect(erpOrder.details).toContain('Bhole G Special Combo');
+    expect(erpOrder.details).toContain('Special Royal Combo');
     expect(erpOrder.details).toContain('Vesu, Surat');
     expect(erpOrder.items[0].total).toBe(998);
     expect(erpOrder.timeline.length).toBeGreaterThan(0);
+  });
+
+  it('allows store owner to edit product title, image, gram/kilogram weights, and pricing', () => {
+    const originalProduct = PRODUCTS.find(p => p.id === 'prod-bhavnagari-gathiya') || PRODUCTS[0];
+    expect(originalProduct).toBeDefined();
+
+    // Owner edits image, title, and adds custom pack sizes
+    const editedProduct = {
+      ...originalProduct,
+      name: 'Super Crisp Bhavnagari Gathiya (Special)',
+      image: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      variants: [
+        { weight: '250 GM', price: 110.00, inStock: true },
+        { weight: '500 GM', price: 210.00, inStock: true },
+        { weight: '1 KG', price: 410.00, inStock: true },
+        { weight: '2 KG', price: 799.00, inStock: true }
+      ]
+    };
+
+    expect(editedProduct.name).toBe('Super Crisp Bhavnagari Gathiya (Special)');
+    expect(editedProduct.image.startsWith('data:image/')).toBe(true);
+    expect(editedProduct.variants.length).toBe(4);
+    expect(editedProduct.variants[0].price).toBe(110.00);
+    expect(editedProduct.variants[3].weight).toBe('2 KG');
+    expect(editedProduct.variants[3].price).toBe(799.00);
   });
 });
