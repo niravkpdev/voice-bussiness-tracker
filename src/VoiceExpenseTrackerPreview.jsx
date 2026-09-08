@@ -1156,9 +1156,33 @@ export default function VoiceExpenseTrackerPreview() {
       writeSavedArray(VOUCHERS_KEY, vouchers);
     }
   }, [vouchers]);
-  const [cloudCustomers, setCloudCustomers] = useState([]);
-  const [cloudSuppliers, setCloudSuppliers] = useState([]);
+
+  const [cloudCustomers, setCloudCustomers] = useState(() => {
+    try {
+      const raw = readScopedString('erpCustomers');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    const local = readSavedArray('erpCustomers');
+    return Array.isArray(local) ? local : [];
+  });
+
+  const [cloudSuppliers, setCloudSuppliers] = useState(() => {
+    try {
+      const raw = readScopedString('erpSuppliers');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    const local = readSavedArray('erpSuppliers');
+    return Array.isArray(local) ? local : [];
+  });
+
   const [cloudInventory, setCloudInventory] = useState([]);
+
   const [cloudInvoices, setCloudInvoices] = useState(() => {
     try {
       const raw = readScopedString('erpInvoices');
@@ -1172,10 +1196,41 @@ export default function VoiceExpenseTrackerPreview() {
   });
 
   useEffect(() => {
+    if (Array.isArray(cloudCustomers)) {
+      writeScopedString('erpCustomers', JSON.stringify(cloudCustomers));
+    }
+  }, [cloudCustomers]);
+
+  useEffect(() => {
+    if (Array.isArray(cloudSuppliers)) {
+      writeScopedString('erpSuppliers', JSON.stringify(cloudSuppliers));
+    }
+  }, [cloudSuppliers]);
+
+  useEffect(() => {
     if (Array.isArray(cloudInvoices)) {
       writeScopedString('erpInvoices', JSON.stringify(cloudInvoices));
     }
   }, [cloudInvoices]);
+
+  useEffect(() => {
+    const handlePartyUpdate = (event) => {
+      const { person, kind } = event.detail || {};
+      if (person?.name) {
+        try {
+          const { ledgers: nextL } = addPartyLedger(person.name, kind || (person.type === 'supplier' ? 'supplier' : 'customer'));
+          setLedgers(nextL);
+          if (kind === 'supplier') {
+            setCloudSuppliers((prev) => [person, ...(Array.isArray(prev) ? prev.filter((s) => s.id !== person.id) : [])]);
+          } else {
+            setCloudCustomers((prev) => [person, ...(Array.isArray(prev) ? prev.filter((c) => c.id !== person.id) : [])]);
+          }
+        } catch (e) {}
+      }
+    };
+    window.addEventListener('trinetr-party-updated', handlePartyUpdate);
+    return () => window.removeEventListener('trinetr-party-updated', handlePartyUpdate);
+  }, []);
   const [cloudStockTransactions, setCloudStockTransactions] = useState([]);
   const [cloudOrders, setCloudOrders] = useState(() => {
     const local = readSavedArray(ORDERS_KEY);
@@ -3999,8 +4054,26 @@ export default function VoiceExpenseTrackerPreview() {
       setStatementLedgerId(ledger.id);
       setUseSalesInsteadOfParty(false);
       setNewPartyName('');
-      setVoucherFormSuccess(`Party "${newPartyName.trim()}" added successfully as ${newPartyType}!`);
       setVoucherFormError('');
+
+      if (newPartyType === 'supplier') {
+        setVoucherType('Purchase');
+        setUseExpenseInsteadOfSupplier(false);
+        setCloudSuppliers((prev) => [payload, ...(Array.isArray(prev) ? prev.filter((s) => s.id !== ledger.id) : [])]);
+        try {
+          const existing = readSavedArray('erpSuppliers');
+          writeSavedArray('erpSuppliers', [payload, ...existing.filter((s) => s.id !== ledger.id)]);
+        } catch (e) {}
+        setVoucherFormSuccess(`Party "${newPartyName.trim()}" added as Supplier and selected for Purchase Voucher! Enter purchase amount below, or switch to Payment voucher to record cash paid.`);
+      } else {
+        setVoucherType('Sales');
+        setCloudCustomers((prev) => [payload, ...(Array.isArray(prev) ? prev.filter((c) => c.id !== ledger.id) : [])]);
+        try {
+          const existing = readSavedArray('erpCustomers');
+          writeSavedArray('erpCustomers', [payload, ...existing.filter((c) => c.id !== ledger.id)]);
+        } catch (e) {}
+        setVoucherFormSuccess(`Party "${newPartyName.trim()}" added as Customer and selected for Sales Voucher! Enter amount below.`);
+      }
       setStatus(`Party ledger added successfully.`);
     } catch (error) {
       console.error("Party save error:", error);
@@ -5335,8 +5408,11 @@ export default function VoiceExpenseTrackerPreview() {
                   <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('upi-payments'); setOpenNxMenu(null); }}>
                     💳 Payments &amp; UPI Receipts
                   </button>
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { setVoucherType('Purchase'); navigateToTab('voucher-entry'); setOpenNxMenu(null); }}>
+                    📦 Purchase Entry / Supplier Bill (Credit)
+                  </button>
                   <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('inventory'); setOpenNxMenu(null); }}>
-                    ⬢ Purchase Entry / Stock Inward
+                    ⬢ Raw Material &amp; Stock Inward
                   </button>
                   <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('orders'); setOpenNxMenu(null); }}>
                     🛒 Storefront Customer Orders
@@ -6572,6 +6648,44 @@ export default function VoiceExpenseTrackerPreview() {
                   </div>
                 )}
                 <form onSubmit={saveVoucherEntry}>
+                  {/* One-Click Voucher Type Pills */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px', marginBottom: '18px' }}>
+                    {[
+                      { type: 'Sales', label: '🛒 Sales', sub: 'Customer (credit)', color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
+                      { type: 'Purchase', label: '📦 Purchase', sub: 'Supplier (credit)', color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
+                      { type: 'Receipt', label: '💰 Receipt', sub: 'Cash / Bank In', color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
+                      { type: 'Payment', label: '💳 Payment', sub: 'To Supplier / Exp', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
+                    ].map((item) => {
+                      const isSelected = voucherType === item.type;
+                      return (
+                        <button
+                          key={item.type}
+                          type="button"
+                          onClick={() => {
+                            setVoucherType(item.type);
+                            setVoucherFormError('');
+                          }}
+                          style={{
+                            padding: '10px 12px',
+                            borderRadius: '8px',
+                            border: isSelected ? `2px solid ${item.color}` : '1px solid var(--border-subtle, #e2e8f0)',
+                            background: isSelected ? item.bg : '#ffffff',
+                            color: isSelected ? item.color : 'var(--text-primary, #334155)',
+                            textAlign: 'center',
+                            cursor: 'pointer',
+                            minHeight: 'unset',
+                            margin: 0,
+                            boxShadow: isSelected ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          <div style={{ fontWeight: '700', fontSize: '13px' }}>{item.label}</div>
+                          <div style={{ fontSize: '11px', opacity: 0.8, marginTop: '2px' }}>{item.sub}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
                   <div className="form-grid">
                     <div>
                       <label className="field-label" htmlFor="voucher-type">
@@ -6641,7 +6755,7 @@ export default function VoiceExpenseTrackerPreview() {
                     {voucherType === 'Receipt' ? (
                       <div>
                         <label className="field-label" htmlFor="receipt-counter">
-                          Credit To
+                          Credit To (Receive from Customer or Income)
                         </label>
                         <select
                           id="receipt-counter"
@@ -6656,24 +6770,37 @@ export default function VoiceExpenseTrackerPreview() {
                           }}
                         >
                           <option value={SALES_LEDGER_ID}>Sales (general income)</option>
-                          {customerParties.map((ledger) => (
-                            <option key={ledger.id} value={ledger.id}>
-                              {ledger.name} (party)
-                            </option>
-                          ))}
+                          {customerParties.length > 0 && (
+                            <optgroup label="Customers (Sundry Debtors)">
+                              {customerParties.map((ledger) => (
+                                <option key={ledger.id} value={ledger.id}>
+                                  {ledger.name} (Customer)
+                                </option>
+                              ))}
+                            </optgroup>
+                          )}
+                          {supplierParties.length > 0 && (
+                            <optgroup label="Suppliers (Sundry Creditors)">
+                              {supplierParties.map((ledger) => (
+                                <option key={ledger.id} value={ledger.id}>
+                                  {ledger.name} (Supplier refund/adjustment)
+                                </option>
+                              ))}
+                            </optgroup>
+                          )}
                         </select>
                       </div>
                     ) : voucherType === 'Payment' ? (
                       <div>
                         <label className="field-label" htmlFor="payment-expense">
-                          Debit To
+                          Debit To (Pay Supplier or Expense)
                         </label>
                         <select
                           id="payment-expense"
                           value={useExpenseInsteadOfSupplier ? voucherExpenseId : voucherPartyId}
                           onChange={(event) => {
                             const value = event.target.value;
-                            if (supplierParties.some((party) => party.id === value)) {
+                            if (supplierParties.some((party) => party.id === value) || customerParties.some((party) => party.id === value)) {
                               setUseExpenseInsteadOfSupplier(false);
                               setVoucherPartyId(value);
                               return;
@@ -6682,18 +6809,27 @@ export default function VoiceExpenseTrackerPreview() {
                             setVoucherExpenseId(value);
                           }}
                         >
-                          <optgroup label="Expenses">
+                          {supplierParties.length > 0 && (
+                            <optgroup label="Suppliers (Pay Outstanding Bill)">
+                              {supplierParties.map((ledger) => (
+                                <option key={ledger.id} value={ledger.id}>
+                                  {ledger.name} (Supplier)
+                                </option>
+                              ))}
+                            </optgroup>
+                          )}
+                          <optgroup label="Expense Categories">
                             {expenseLedgers.map((ledger) => (
                               <option key={ledger.id} value={ledger.id}>
                                 {ledger.name}
                               </option>
                             ))}
                           </optgroup>
-                          {supplierParties.length > 0 && (
-                            <optgroup label="Suppliers">
-                              {supplierParties.map((ledger) => (
+                          {customerParties.length > 0 && (
+                            <optgroup label="Customers (Sundry Debtors)">
+                              {customerParties.map((ledger) => (
                                 <option key={ledger.id} value={ledger.id}>
-                                  {ledger.name}
+                                  {ledger.name} (Customer)
                                 </option>
                               ))}
                             </optgroup>
@@ -6714,12 +6850,34 @@ export default function VoiceExpenseTrackerPreview() {
                           }}
                         >
                           <option value="">Select customer</option>
-                          {customerParties.map((ledger) => (
-                            <option key={ledger.id} value={ledger.id}>
-                              {ledger.name}
-                            </option>
-                          ))}
+                          {customerParties.length > 0 && (
+                            <optgroup label="Customers (Sundry Debtors)">
+                              {customerParties.map((ledger) => (
+                                <option key={ledger.id} value={ledger.id}>
+                                  {ledger.name}
+                                </option>
+                              ))}
+                            </optgroup>
+                          )}
+                          {supplierParties.length > 0 && (
+                            <optgroup label="Suppliers (Sundry Creditors)">
+                              {supplierParties.map((ledger) => (
+                                <option key={ledger.id} value={ledger.id}>
+                                  {ledger.name} (Supplier)
+                                </option>
+                              ))}
+                            </optgroup>
+                          )}
                         </select>
+                        {customerParties.length === 0 && supplierParties.length > 0 && (
+                          <div style={{ marginTop: '8px', fontSize: '12px', color: '#92400e', background: '#fef3c7', padding: '8px 12px', borderRadius: '6px', border: '1px solid #fde68a' }}>
+                            💡 You have {supplierParties.length} supplier(s) registered (such as <strong>"{supplierParties[0]?.name}"</strong>). To record a bill from a supplier, switch to:
+                            <div style={{ marginTop: '6px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                              <button type="button" onClick={() => { setVoucherType('Purchase'); setVoucherPartyId(supplierParties[0]?.id || ''); }} style={{ fontSize: '11px', padding: '4px 10px', background: '#d97706', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', minHeight: 'unset', margin: 0 }}>📦 Switch to Purchase Voucher</button>
+                              <button type="button" onClick={() => { setVoucherType('Payment'); setVoucherPartyId(supplierParties[0]?.id || ''); }} style={{ fontSize: '11px', padding: '4px 10px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', minHeight: 'unset', margin: 0 }}>💳 Switch to Payment Voucher</button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ) : voucherType === 'Purchase' ? (
                       <>
@@ -6752,12 +6910,30 @@ export default function VoiceExpenseTrackerPreview() {
                             }}
                           >
                             <option value="">Select supplier</option>
-                            {supplierParties.map((ledger) => (
-                              <option key={ledger.id} value={ledger.id}>
-                                {ledger.name}
-                              </option>
-                            ))}
+                            {supplierParties.length > 0 && (
+                              <optgroup label="Suppliers (Sundry Creditors)">
+                                {supplierParties.map((ledger) => (
+                                  <option key={ledger.id} value={ledger.id}>
+                                    {ledger.name}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            )}
+                            {customerParties.length > 0 && (
+                              <optgroup label="Customers (Sundry Debtors)">
+                                {customerParties.map((ledger) => (
+                                  <option key={ledger.id} value={ledger.id}>
+                                    {ledger.name} (Customer)
+                                  </option>
+                                ))}
+                              </optgroup>
+                            )}
                           </select>
+                          {supplierParties.length === 0 && (
+                            <div style={{ marginTop: '8px', fontSize: '12px', color: '#92400e', background: '#fef3c7', padding: '8px 12px', borderRadius: '6px', border: '1px solid #fde68a' }}>
+                              💡 No suppliers saved yet. Enter your supplier name in the <strong>"Add Party (Khata)"</strong> form on the right with type <strong>"Supplier"</strong> to select them here.
+                            </div>
+                          )}
                         </div>
                       </>
                     ) : null}

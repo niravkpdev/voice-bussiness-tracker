@@ -76,6 +76,11 @@ function formatCurrency(amount) {
   }).format(Number(amount) || 0);
 }
 
+const safeMoney = (val) => {
+  const n = Number(val);
+  return Number.isFinite(n) ? n : 0;
+};
+
 function monthKey(date) {
   return (date || today()).slice(0, 7);
 }
@@ -272,6 +277,31 @@ export default function Phase2ERP({
     }
   }, [cloudSuppliers]);
   useEffect(() => {
+    if (Array.isArray(ledgers) && ledgers.length > 0) {
+      const creditorLedgers = ledgers.filter((l) => l.group === 'Sundry Creditors');
+      if (creditorLedgers.length > 0) {
+        setSuppliers((prev) => {
+          const map = new Map();
+          (prev || []).forEach((s) => map.set(s.id, s));
+          creditorLedgers.forEach((l) => {
+            if (!map.has(l.id)) {
+              map.set(l.id, {
+                id: l.id,
+                name: l.name,
+                type: 'supplier',
+                group: 'Sundry Creditors',
+                payableAmount: 0,
+                balance: 0,
+                createdAt: new Date().toISOString(),
+              });
+            }
+          });
+          return Array.from(map.values());
+        });
+      }
+    }
+  }, [ledgers]);
+  useEffect(() => {
     if (Array.isArray(cloudBusinesses)) {
       setBusinesses(cloudBusinesses);
     }
@@ -324,13 +354,19 @@ export default function Phase2ERP({
   }, [activeBusinessId, customers, cloudUserId]);
 
   const scopedSuppliers = useMemo(() => {
-    const activeScope = activeBusinessId;
+    const activeScope = activeBusinessId || 'default';
     return suppliers.filter((supplier) => {
-      const isOwner = supplier.user_id === cloudUserId || supplier.ownerUid === cloudUserId || supplier.userId === cloudUserId;
-      if (cloudUserId && !isOwner) return false;
-      const supplierCompanyId = supplier.company_id || supplier.businessId || supplier.business_id;
-      if (!supplier.company_id && supplierCompanyId === 'default') return true;
-      return supplierCompanyId === activeScope;
+      const isOwner =
+        !cloudUserId ||
+        !supplier.user_id ||
+        !supplier.userId ||
+        !supplier.ownerUid ||
+        supplier.user_id === cloudUserId ||
+        supplier.ownerUid === cloudUserId ||
+        supplier.userId === cloudUserId;
+      if (!isOwner) return false;
+      const supplierCompanyId = supplier.company_id || supplier.businessId || supplier.business_id || 'default';
+      return supplierCompanyId === activeScope || !supplier.company_id || activeScope === 'default';
     });
   }, [activeBusinessId, suppliers, cloudUserId]);
 
@@ -890,6 +926,9 @@ export default function Phase2ERP({
         debugDatabase(current ? 'SUPPLIER_UPDATE_SUCCESS' : 'SUPPLIER_SAVE_SUCCESS', { path, supplierId: id });
       }
       setEditingPerson(null);
+      try {
+        window.dispatchEvent(new CustomEvent('trinetr-party-updated', { detail: { person, kind } }));
+      } catch (e) {}
       if (targetForm) targetForm.reset(); else if (event && event.target && event.target.reset) event.target.reset();;
       onStatus(`${isCustomer ? 'Customer' : 'Supplier'} ${current ? 'updated' : 'saved'}`);
     } catch (error) {
@@ -1429,6 +1468,7 @@ export default function Phase2ERP({
           </div>
           <div className="hrms-header-actions">
             <button className="primary-button" onClick={() => setEditingProduct({})}>+ Add Product</button>
+            <a href="#voucher-entry" className="secondary-button" style={{ display: 'inline-flex', alignItems: 'center', textDecoration: 'none', color: 'inherit' }}>📦 + New Purchase Voucher</a>
             <button className="secondary-button" onClick={() => setShowImportModal(true)}>Import</button>
             <button className="secondary-button" onClick={handleExportCSV}>Export</button>
             <button className="secondary-button" onClick={() => setShowStockReport(true)}>Stock Report</button>
