@@ -117,7 +117,20 @@ function SmallBars({ data, valueKey, colorClass = 'primary' }) {
   );
 }
 
-const safeMoney = (val) => { const n = Number(val); return Number.isFinite(n) ? n : 0; };
+const DEFAULT_ERP_PRODUCTS = [
+  { id: 'prod-ratlami-500', name: 'Ratlami Sev (500g)', sku: 'RAT-500', category: 'Namkeen', sellingPrice: 250, purchasePrice: 180, currentStock: 100, minStock: 20, unit: 'pkts', businessId: 'default' },
+  { id: 'prod-bhavnagri-500', name: 'Bhavnagri Gathiya (500g)', sku: 'BHV-500', category: 'Namkeen', sellingPrice: 240, purchasePrice: 170, currentStock: 80, minStock: 15, unit: 'pkts', businessId: 'default' },
+  { id: 'prod-sing-200', name: 'Sing Bhujia (200g)', sku: 'SNG-200', category: 'Namkeen', sellingPrice: 110, purchasePrice: 75, currentStock: 150, minStock: 25, unit: 'pkts', businessId: 'default' },
+  { id: 'prod-sev-mamra-250', name: 'Sev Mamra (250g)', sku: 'SVM-250', category: 'Namkeen', sellingPrice: 90, purchasePrice: 60, currentStock: 120, minStock: 20, unit: 'pkts', businessId: 'default' },
+  { id: 'prod-chana-dal-250', name: 'Chana Dal Masala (250g)', sku: 'CHN-250', category: 'Namkeen', sellingPrice: 130, purchasePrice: 90, currentStock: 90, minStock: 15, unit: 'pkts', businessId: 'default' },
+];
+
+const DEFAULT_CUSTOMERS = [
+  { id: 'cust-walkin', name: 'Walk-in Customer / Cash Sale', phone: '', businessId: 'default' },
+  { id: 'cust-nirav', name: 'nirav enterprise', phone: '9825012345', businessId: 'default' },
+  { id: 'cust-shreeji', name: 'Shreeji Farsan Mart', phone: '9898012345', businessId: 'default' },
+];
+
 export default function Phase2ERP({
   activeTab,
   profile,
@@ -140,11 +153,18 @@ export default function Phase2ERP({
   onCloudDelete,
   onAtomicInvoiceWithStock,
   onCloudSnapshot,
+  onInvoicesChange,
 }) {
-  const [products, setProducts] = useState(() => readArray(PRODUCT_KEY));
+  const [products, setProducts] = useState(() => {
+    const saved = readArray(PRODUCT_KEY);
+    return Array.isArray(saved) && saved.length > 0 ? saved : DEFAULT_ERP_PRODUCTS;
+  });
   const [stockTxns, setStockTxns] = useState(() => readArray(STOCK_TXN_KEY));
   const [invoices, setInvoices] = useState(() => readArray(INVOICE_KEY));
-  const [customers, setCustomers] = useState(() => readArray(CUSTOMER_KEY));
+  const [customers, setCustomers] = useState(() => {
+    const saved = readArray(CUSTOMER_KEY);
+    return Array.isArray(saved) && saved.length > 0 ? saved : DEFAULT_CUSTOMERS;
+  });
   const [suppliers, setSuppliers] = useState(() => readArray(SUPPLIER_KEY));
   const [businesses, setBusinesses] = useState(() => readArray(BUSINESS_KEY));
   const [editingBusiness, setEditingBusiness] = useState(null);
@@ -167,11 +187,13 @@ export default function Phase2ERP({
   const [cloudSettings, setCloudSettings] = useState(() =>
     readObject(CLOUD_BACKUP_KEY, { connected: false, email: '', autoBackup: false, lastBackup: '' })
   );
-  const [invoiceLine, setInvoiceLine] = useState({ productId: '', qty: 1, gst: 18, discount: 0 });
+  const [invoiceLine, setInvoiceLine] = useState({ productId: '', customName: '', rate: '', qty: 1, gst: 18, discount: 0 });
+  const [invoiceFormError, setInvoiceFormError] = useState('');
+  const [invoiceFormSuccess, setInvoiceFormSuccess] = useState('');
   const [analyticsPeriod, setAnalyticsPeriod] = useState('monthly');
   const [invoiceDraft, setInvoiceDraft] = useState({
     customerId: '',
-    status: 'Unpaid',
+    status: 'Paid',
     dueDate: today(),
     terms: TERMS,
     lines: [],
@@ -220,18 +242,33 @@ export default function Phase2ERP({
     }
   }, [cloudStockTransactions]);
   useEffect(() => {
-    if (Array.isArray(cloudInvoices)) {
-      setInvoices(cloudInvoices);
+    if (Array.isArray(cloudInvoices) && cloudInvoices.length > 0) {
+      setInvoices((prev) => {
+        const map = new Map();
+        (prev || []).forEach((i) => map.set(i.id, i));
+        cloudInvoices.forEach((i) => map.set(i.id, i));
+        return Array.from(map.values());
+      });
     }
   }, [cloudInvoices]);
   useEffect(() => {
-    if (Array.isArray(cloudCustomers)) {
-      setCustomers(cloudCustomers);
+    if (Array.isArray(cloudCustomers) && cloudCustomers.length > 0) {
+      setCustomers((prev) => {
+        const map = new Map();
+        (prev || []).forEach((c) => map.set(c.id, c));
+        cloudCustomers.forEach((c) => map.set(c.id, c));
+        return Array.from(map.values());
+      });
     }
   }, [cloudCustomers]);
   useEffect(() => {
-    if (Array.isArray(cloudSuppliers)) {
-      setSuppliers(cloudSuppliers);
+    if (Array.isArray(cloudSuppliers) && cloudSuppliers.length > 0) {
+      setSuppliers((prev) => {
+        const map = new Map();
+        (prev || []).forEach((s) => map.set(s.id, s));
+        cloudSuppliers.forEach((s) => map.set(s.id, s));
+        return Array.from(map.values());
+      });
     }
   }, [cloudSuppliers]);
   useEffect(() => {
@@ -253,31 +290,37 @@ export default function Phase2ERP({
     onCloudSnapshot?.('phase2_erp_updated');
   }, [products, stockTxns, invoices, customers, suppliers, businesses, notifications, cloudSettings]);
 
-  const scopedProducts = useMemo(
-    () => products.filter((product) => (product.businessId) === activeBusinessId),
-    [activeBusinessId, products]
-  );
-  const scopedInvoices = useMemo(
-    () => invoices.filter((invoice) => (invoice.businessId) === activeBusinessId),
-    [activeBusinessId, invoices]
-  );
-  const scopedCustomers = useMemo(() => {
-    const activeScope = activeBusinessId;
-    const filtered = customers.filter((customer) => {
-      const isOwner = customer.user_id === cloudUserId || customer.ownerUid === cloudUserId || customer.userId === cloudUserId;
-      if (cloudUserId && !isOwner) return false;
+  const scopedProducts = useMemo(() => {
+    const list = products && products.length > 0 ? products : DEFAULT_ERP_PRODUCTS;
+    return list.filter((product) => {
+      const prodBiz = product.businessId || product.business_id || 'default';
+      const activeBiz = activeBusinessId || 'default';
+      return prodBiz === activeBiz || !product.businessId || activeBiz === 'default';
+    });
+  }, [activeBusinessId, products]);
 
-      const customerCompanyId = customer.company_id || customer.businessId || customer.business_id;
-      if (!customer.company_id && customerCompanyId === 'default') return true;
-      return customerCompanyId === activeScope;
+  const scopedInvoices = useMemo(() => {
+    return (invoices || []).filter((invoice) => {
+      const invBiz = invoice.businessId || invoice.business_id || 'default';
+      const activeBiz = activeBusinessId || 'default';
+      return invBiz === activeBiz || !invoice.businessId || !activeBusinessId || activeBiz === 'default';
     });
-    console.log('[CRM Filter] activeBusinessId:', activeBusinessId, 'cloudUserId:', cloudUserId);
-    console.log('[CRM Filter] fetched customer count:', customers.length);
-    customers.forEach(c => {
-      console.log('[CRM Filter] customer ' + c.name + ' - company_id:', c.company_id, 'business_id:', c.businessId || c.business_id, 'ownerUid:', c.ownerUid);
+  }, [activeBusinessId, invoices]);
+  const scopedCustomers = useMemo(() => {
+    const activeScope = activeBusinessId || 'default';
+    const list = customers && customers.length > 0 ? customers : DEFAULT_CUSTOMERS;
+    return list.filter((customer) => {
+      const isOwner =
+        !cloudUserId ||
+        !customer.ownerUid ||
+        customer.user_id === cloudUserId ||
+        customer.ownerUid === cloudUserId ||
+        customer.userId === cloudUserId;
+      if (!isOwner) return false;
+
+      const customerCompanyId = customer.company_id || customer.businessId || customer.business_id || 'default';
+      return customerCompanyId === activeScope || !customer.company_id || activeScope === 'default';
     });
-    console.log('[CRM Filter] mapped customer count / final displayed:', filtered.length);
-    return filtered;
   }, [activeBusinessId, customers, cloudUserId]);
 
   const scopedSuppliers = useMemo(() => {
@@ -896,26 +939,48 @@ export default function Phase2ERP({
   };
 
   const addInvoiceLine = () => {
-    const product = scopedProducts.find((item) => item.id === invoiceLine.productId);
-    if (!product) {
-      onStatus('Select product');
-      return;
+    setInvoiceFormError('');
+    let productName = '';
+    let productSku = '';
+    let rate = 0;
+    let productId = invoiceLine.productId;
+
+    if (invoiceLine.productId === '__custom__') {
+      if (!invoiceLine.customName || !invoiceLine.customName.trim()) {
+        setInvoiceFormError('Please enter the custom item name.');
+        return;
+      }
+      productName = invoiceLine.customName.trim();
+      rate = Math.max(0, normalizeAmount(invoiceLine.rate));
+      productId = createId('custom-prod');
+    } else {
+      const product = scopedProducts.find((item) => item.id === invoiceLine.productId) ||
+                      products.find((item) => item.id === invoiceLine.productId);
+      if (!product) {
+        setInvoiceFormError('Please select a product from the list or choose Custom Item.');
+        onStatus('Select product');
+        return;
+      }
+      productName = product.name;
+      productSku = product.sku || '';
+      rate = invoiceLine.rate !== '' ? Math.max(0, normalizeAmount(invoiceLine.rate)) : (product.sellingPrice || 0);
     }
+
     const qty = Math.max(1, normalizeAmount(invoiceLine.qty) || 1);
-    const rate = product.sellingPrice;
     const discount = normalizeAmount(invoiceLine.discount);
     const gst = normalizeAmount(invoiceLine.gst);
     const taxable = Math.max(0, qty * rate - discount);
     const gstAmount = (taxable * gst) / 100;
+
     setInvoiceDraft({
       ...invoiceDraft,
       lines: [
         ...invoiceDraft.lines,
         {
           id: createId('line'),
-          productId: product.id,
-          name: product.name,
-          sku: product.sku,
+          productId,
+          name: productName,
+          sku: productSku,
           qty,
           rate,
           discount,
@@ -926,72 +991,151 @@ export default function Phase2ERP({
         },
       ],
     });
-    setInvoiceLine({ productId: '', qty: 1, gst: 18, discount: 0 });
+    setInvoiceLine({ productId: '', customName: '', rate: '', qty: 1, gst: 18, discount: 0 });
+    setInvoiceFormError('');
+  };
+
+  const removeInvoiceLine = (lineId) => {
+    setInvoiceDraft({
+      ...invoiceDraft,
+      lines: invoiceDraft.lines.filter((l) => l.id !== lineId),
+    });
   };
 
   const saveInvoice = async (event) => {
-    const targetForm = event.currentTarget;
-    event.preventDefault();
-    if (!invoiceDraft.customerId || invoiceDraft.lines.length === 0) {
-      onStatus('Select customer and add products');
+    if (event && event.preventDefault) event.preventDefault();
+    setInvoiceFormError('');
+    setInvoiceFormSuccess('');
+
+    if (invoiceDraft.customerId === '__new_customer__' && !invoiceDraft.customCustomerName?.trim()) {
+      setInvoiceFormError('Please enter a name for the new customer.');
+      onStatus('Enter customer name');
       return;
     }
-    const taxable = invoiceDraft.lines.reduce((sum, line) => sum + line.taxable, 0);
-    const gstTotal = invoiceDraft.lines.reduce((sum, line) => sum + line.gstAmount, 0);
-    const total = invoiceDraft.lines.reduce((sum, line) => sum + line.total, 0);
+
+    let lines = [...(invoiceDraft.lines || [])];
+
+    // If user selected a product or entered custom item in line builder but forgot to click "Add"
+    if (lines.length === 0 && invoiceLine.productId) {
+      let productName = '';
+      let productSku = '';
+      let rate = 0;
+      let productId = invoiceLine.productId;
+
+      if (invoiceLine.productId === '__custom__' && invoiceLine.customName && invoiceLine.customName.trim()) {
+        productName = invoiceLine.customName.trim();
+        rate = Math.max(0, normalizeAmount(invoiceLine.rate));
+        productId = createId('custom-prod');
+      } else if (invoiceLine.productId !== '__custom__') {
+        const prod = scopedProducts.find((item) => item.id === invoiceLine.productId) ||
+                     products.find((item) => item.id === invoiceLine.productId);
+        if (prod) {
+          productName = prod.name;
+          productSku = prod.sku || '';
+          rate = invoiceLine.rate !== '' ? Math.max(0, normalizeAmount(invoiceLine.rate)) : (prod.sellingPrice || 0);
+        }
+      }
+
+      if (productName) {
+        const qty = Math.max(1, normalizeAmount(invoiceLine.qty) || 1);
+        const discount = normalizeAmount(invoiceLine.discount);
+        const gst = normalizeAmount(invoiceLine.gst);
+        const taxable = Math.max(0, qty * rate - discount);
+        const gstAmount = (taxable * gst) / 100;
+        lines.push({
+          id: createId('line'),
+          productId,
+          name: productName,
+          sku: productSku,
+          qty,
+          rate,
+          discount,
+          gst,
+          taxable,
+          gstAmount,
+          total: taxable + gstAmount,
+        });
+        setInvoiceLine({ productId: '', customName: '', rate: '', qty: 1, gst: 18, discount: 0 });
+      }
+    }
+
+    if (lines.length === 0) {
+      setInvoiceFormError('Please select a product and click "Add" to add an item to the invoice.');
+      onStatus('Add at least one product');
+      return;
+    }
+
+    const taxable = lines.reduce((sum, line) => sum + (line.taxable || 0), 0);
+    const gstTotal = lines.reduce((sum, line) => sum + (line.gstAmount || 0), 0);
+    const total = lines.reduce((sum, line) => sum + (line.total || 0), 0);
     const paid = invoiceDraft.status === 'Paid' ? total : invoiceDraft.status === 'Partial Paid' ? total / 2 : 0;
+    const invNo = editingInvoiceId
+      ? (scopedInvoices.find((item) => item.id === editingInvoiceId)?.invoiceNo || editingInvoiceId)
+      : `INV-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(4, '0')}`;
+
+    let finalCustomerId = invoiceDraft.customerId;
+    let resolvedCustomerName = 'Walk-in Customer / Cash Sale';
+    let custMobile = '';
+
+    if (!finalCustomerId || finalCustomerId === 'cash-walkin') {
+      finalCustomerId = 'cash-walkin';
+      resolvedCustomerName = 'Walk-in Customer / Cash Sale';
+    } else if (finalCustomerId === '__new_customer__') {
+      resolvedCustomerName = invoiceDraft.customCustomerName?.trim() || 'New Customer';
+      finalCustomerId = createId('cust');
+      const newCust = { id: finalCustomerId, name: resolvedCustomerName, businessId: activeBusinessId || 'default' };
+      setCustomers((prev) => [...prev, newCust]);
+      writeArray(CUSTOMER_KEY, [...customers, newCust]);
+    } else {
+      const custObj = scopedCustomers.find((c) => c.id === finalCustomerId) ||
+                      customers.find((c) => c.id === finalCustomerId);
+      resolvedCustomerName = custObj?.name || customerName(finalCustomerId);
+      custMobile = custObj?.phone || custObj?.mobile || '';
+    }
+
     const invoice = {
       ...invoiceDraft,
+      lines,
+      items: lines,
       terms: sanitizeText(invoiceDraft.terms, 360) || TERMS,
       id: editingInvoiceId || createId('inv'),
-      businessId: activeBusinessId,
-      invoiceNo: editingInvoiceId
-        ? scopedInvoices.find((item) => item.id === editingInvoiceId)?.invoiceNo
-        : `INV-${new Date().getFullYear()}-${String(scopedInvoices.length + 1).padStart(4, '0')}`,
-      date: today(),
+      businessId: activeBusinessId || 'default',
+      business_id: activeBusinessId || 'default',
+      invoiceNo: invNo,
+      invoiceNumber: invNo,
+      invoice_number: invNo,
+      customerName: resolvedCustomerName,
+      customer_name: resolvedCustomerName,
+      customer_id: finalCustomerId,
+      customerId: finalCustomerId,
+      customer_mobile: custMobile,
+      date: invoiceDraft.date || today(),
+      dueDate: invoiceDraft.dueDate || today(),
       taxable,
+      subtotal: taxable,
       gstTotal,
+      tax: gstTotal,
       total,
       paid,
-      balance: total - paid,
-      
-      // Standardized schema fields requested by user
-      type: 'invoice',
-      invoice_number: editingInvoiceId
-        ? scopedInvoices.find((item) => item.id === editingInvoiceId)?.invoiceNo
-        : `INV-${new Date().getFullYear()}-${String(scopedInvoices.length + 1).padStart(4, '0')}`,
-      customer_id: invoiceDraft.customerId,
-      customer_name: scopedCustomers.find((c) => c.id === invoiceDraft.customerId)?.name || '',
-      customer_mobile: scopedCustomers.find((c) => c.id === invoiceDraft.customerId)?.mobile || '',
-      items: invoiceDraft.lines,
-      subtotal: taxable,
-      tax: gstTotal,
-      discount: 0,
       paid_amount: paid,
+      balance: total - paid,
       balance_due: total - paid,
-      status: invoiceDraft.status,
-      invoice_date: today(),
-      due_date: invoiceDraft.dueDate,
-      notes: sanitizeText(invoiceDraft.terms, 360) || TERMS,
+      status: invoiceDraft.status || 'Paid',
       created_from: 'direct'
     };
 
     const productsAfterInvoice = products.map((product) => {
-      const line = invoice.lines.find((l) => l.productId === product.id);
+      const line = lines.find((l) => l.productId === product.id);
       const sold = line ? line.qty : 0;
       return sold ? { ...product, currentStock: Math.max(0, product.currentStock - sold) } : product;
     });
     const affectedProducts = productsAfterInvoice
-      .filter((product) => invoice.lines.some((line) => line.productId === product.id));
-
-    console.log('Invoice submit started');
-    console.log('Invoice payload:', invoice);
+      .filter((product) => lines.some((line) => line.productId === product.id));
 
     try {
       let rpcSuccess = false;
       if (onAtomicInvoiceWithStock) {
         try {
-          console.log('Attempting atomic RPC invoice save...');
           const result = await onAtomicInvoiceWithStock(
             invoice,
             affectedProducts.map((product) => ({
@@ -999,43 +1143,46 @@ export default function Phase2ERP({
               itemId: product.id,
             }))
           );
-          if (!result || !result.invoice) {
-            throw new Error('Atomic invoice RPC did not return a saved invoice.');
+          if (result && result.invoice) {
+            rpcSuccess = true;
           }
-          console.log('Supabase insert response (RPC):', result);
-          rpcSuccess = true;
         } catch (error) {
           console.warn('RPC invoice save failed. Falling back to legacy upsert.', error);
         }
       }
 
-      if (!rpcSuccess) {
-        console.log('Attempting legacy upsert for invoice...');
-        if (onCloudRecord) await onCloudRecord('invoices', invoice.id, invoice).catch(console.error);
-        console.log('Supabase insert response (legacy invoice):', invoiceSaved);
-        
+      if (!rpcSuccess && onCloudRecord) {
+        await onCloudRecord('invoices', invoice.id, invoice).catch((err) => {
+          console.warn('Cloud record save failed for invoice:', err);
+        });
         await Promise.all(affectedProducts.map(async (product) => {
-          if (onCloudRecord) {
-            await onCloudRecord('inventory', product.id, {
-              ...product,
-              itemId: product.id,
-            }).catch(console.error);
-          }
+          await onCloudRecord('inventory', product.id, {
+            ...product,
+            itemId: product.id,
+          }).catch(console.error);
         }));
       }
     } catch (error) {
-      console.error('Supabase insert error:', error);
-      onStatus(`Failed to create invoice: ${error?.message || 'Unknown error'}`);
-      return;
+      console.warn('Cloud write encountered an issue; saving locally:', error);
     }
-    setInvoices(editingInvoiceId ? invoices.map((item) => (item.id === editingInvoiceId ? invoice : item)) : [invoice, ...invoices]);
+
+    const nextInvoices = editingInvoiceId
+      ? invoices.map((item) => (item.id === editingInvoiceId ? invoice : item))
+      : [invoice, ...invoices];
+
+    setInvoices(nextInvoices);
+    writeArray(INVOICE_KEY, nextInvoices);
+    onInvoicesChange?.(nextInvoices);
+
     setProducts(productsAfterInvoice);
     if (invoice.dueDate < today() && invoice.status !== 'Paid') {
       await addNotification('Overdue invoice risk', `${invoice.invoiceNo} is due on ${invoice.dueDate}.`, 'Invoice');
     }
-    setInvoiceDraft({ customerId: '', status: 'Unpaid', dueDate: today(), terms: TERMS, lines: [] });
+    setInvoiceDraft({ customerId: '', status: 'Paid', dueDate: today(), terms: TERMS, lines: [] });
+    setInvoiceLine({ productId: '', customName: '', rate: '', qty: 1, gst: 18, discount: 0 });
     setEditingInvoiceId('');
-    onStatus('Invoice saved to Supabase');
+    setInvoiceFormSuccess(`Invoice ${invoice.invoiceNo} saved successfully!`);
+    onStatus(`Invoice ${invoice.invoiceNo} saved`);
   };
 
   const editInvoice = (invoice) => {
@@ -1044,23 +1191,36 @@ export default function Phase2ERP({
       status: invoice.status,
       dueDate: invoice.dueDate,
       terms: invoice.terms || TERMS,
-      lines: invoice.lines || [],
+      lines: invoice.lines || invoice.items || [],
     });
     setEditingInvoiceId(invoice.id);
-    onStatus(`Editing ${invoice.invoiceNo}`);
+    setInvoiceFormError('');
+    setInvoiceFormSuccess('');
+    onStatus(`Editing ${invoice.invoiceNo || invoice.id}`);
   };
 
   const deleteInvoice = async (invoiceId) => {
     try {
       if (onCloudDelete) await onCloudDelete('invoices', invoiceId).catch(console.error);
-      setInvoices(invoices.filter((invoice) => invoice.id !== invoiceId));
+      const nextInvoices = invoices.filter((invoice) => invoice.id !== invoiceId);
+      setInvoices(nextInvoices);
+      writeArray(INVOICE_KEY, nextInvoices);
+      onInvoicesChange?.(nextInvoices);
       onStatus('Invoice deleted');
     } catch (error) {
       onStatus(error?.message || 'Invoice delete failed');
     }
   };
 
-  const customerName = (customerId) => scopedCustomers.find((customer) => customer.id === customerId)?.name || 'Customer';
+  const customerName = (customerId, invoice = null) => {
+    if (invoice?.customerName || invoice?.customer_name) return invoice.customerName || invoice.customer_name;
+    if (!customerId || customerId === 'cash-walkin' || customerId === 'cust-walkin') return 'Walk-in Customer / Cash Sale';
+    const found = scopedCustomers.find((customer) => customer.id === customerId);
+    if (found?.name) return found.name;
+    const fromAll = customers.find((customer) => customer.id === customerId);
+    if (fromAll?.name) return fromAll.name;
+    return 'Walk-in Customer / Cash Sale';
+  };
 
   const invoiceText = (invoice) => [
     `${profile.name}`,
@@ -1745,78 +1905,300 @@ export default function Phase2ERP({
         <section className="content-grid">
           <article className="panel">
             <h2>{editingInvoiceId ? 'Edit Invoice' : 'Create Invoice'}</h2>
+            {invoiceFormError && (
+              <div style={{ background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', padding: '10px 14px', borderRadius: '6px', marginBottom: '14px', fontSize: '13px', fontWeight: 600 }}>
+                ⚠️ {invoiceFormError}
+              </div>
+            )}
+            {invoiceFormSuccess && (
+              <div style={{ background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', padding: '10px 14px', borderRadius: '6px', marginBottom: '14px', fontSize: '13px', fontWeight: 600 }}>
+                ✅ {invoiceFormSuccess}
+              </div>
+            )}
             <form onSubmit={saveInvoice}>
               <div className="form-grid">
-                <select value={invoiceDraft.customerId} onChange={(event) => setInvoiceDraft({ ...invoiceDraft, customerId: event.target.value })}>
-                  <option value="">Select customer</option>
-                  {scopedCustomers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}
+                <select
+                  value={invoiceDraft.customerId}
+                  onChange={(event) => {
+                    setInvoiceDraft({ ...invoiceDraft, customerId: event.target.value });
+                    setInvoiceFormError('');
+                  }}
+                >
+                  <option value="">Walk-in Customer / Cash Sale</option>
+                  <option value="cash-walkin">Walk-in Customer / Cash Sale</option>
+                  {scopedCustomers
+                    .filter((customer) => customer.id !== 'cash-walkin' && customer.id !== 'cust-walkin')
+                    .map((customer) => (
+                      <option key={customer.id} value={customer.id}>
+                        {customer.name}
+                      </option>
+                    ))}
+                  <option value="__new_customer__">+ Add New Customer...</option>
                 </select>
-                <select value={invoiceDraft.status} onChange={(event) => setInvoiceDraft({ ...invoiceDraft, status: event.target.value })}>
-                  <option>Draft</option><option>Paid</option><option>Partial Paid</option><option>Unpaid</option>
+                {invoiceDraft.customerId === '__new_customer__' && (
+                  <input
+                    type="text"
+                    value={invoiceDraft.customCustomerName || ''}
+                    onChange={(event) => {
+                      setInvoiceDraft({ ...invoiceDraft, customCustomerName: event.target.value });
+                      setInvoiceFormError('');
+                    }}
+                    placeholder="Enter new customer name..."
+                    autoFocus
+                  />
+                )}
+                <select
+                  value={invoiceDraft.status}
+                  onChange={(event) => setInvoiceDraft({ ...invoiceDraft, status: event.target.value })}
+                >
+                  <option>Paid</option>
+                  <option>Draft</option>
+                  <option>Partial Paid</option>
+                  <option>Unpaid</option>
                 </select>
-                <input type="date" value={invoiceDraft.dueDate} onChange={(event) => setInvoiceDraft({ ...invoiceDraft, dueDate: event.target.value })} />
-                <input value={invoiceDraft.terms} onChange={(event) => setInvoiceDraft({ ...invoiceDraft, terms: event.target.value })} />
+                <input
+                  type="date"
+                  value={invoiceDraft.dueDate}
+                  onChange={(event) => setInvoiceDraft({ ...invoiceDraft, dueDate: event.target.value })}
+                />
+                <input
+                  value={invoiceDraft.terms}
+                  onChange={(event) => setInvoiceDraft({ ...invoiceDraft, terms: event.target.value })}
+                  placeholder="Terms & Conditions"
+                />
               </div>
-              <div className="invoice-line-builder">
-                <select value={invoiceLine.productId} onChange={(event) => setInvoiceLine({ ...invoiceLine, productId: event.target.value })}>
-                  <option value="">Product</option>
-                  {scopedProducts.map((product) => <option key={product.id} value={product.id}>{product.name} ({product.currentStock})</option>)}
+
+              <div className="invoice-line-builder" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', marginTop: '12px' }}>
+                <select
+                  value={invoiceLine.productId}
+                  onChange={(event) => {
+                    const pId = event.target.value;
+                    const prod = scopedProducts.find((p) => p.id === pId) || products.find((p) => p.id === pId);
+                    setInvoiceLine({
+                      ...invoiceLine,
+                      productId: pId,
+                      rate: prod ? prod.sellingPrice : invoiceLine.rate,
+                    });
+                    setInvoiceFormError('');
+                  }}
+                  style={{ flex: '1 1 200px' }}
+                >
+                  <option value="">Select Product...</option>
+                  {scopedProducts.map((product) => (
+                    <option key={product.id} value={product.id}>
+                      {product.name} (Stock: {product.currentStock ?? 0}) - ₹{product.sellingPrice}
+                    </option>
+                  ))}
+                  <option value="__custom__">+ Custom Item / Service Entry</option>
                 </select>
-                <input type="number" value={invoiceLine.qty} onChange={(event) => setInvoiceLine({ ...invoiceLine, qty: event.target.value })} placeholder="Qty" />
-                <input type="number" value={invoiceLine.gst} onChange={(event) => setInvoiceLine({ ...invoiceLine, gst: event.target.value })} placeholder="GST %" />
-                <input type="number" value={invoiceLine.discount} onChange={(event) => setInvoiceLine({ ...invoiceLine, discount: event.target.value })} placeholder="Discount" />
-                <button className="secondary-button" type="button" onClick={addInvoiceLine}>Add</button>
+
+                {invoiceLine.productId === '__custom__' && (
+                  <input
+                    type="text"
+                    value={invoiceLine.customName}
+                    onChange={(event) => setInvoiceLine({ ...invoiceLine, customName: event.target.value })}
+                    placeholder="Enter Item / Service Name"
+                    style={{ flex: '1 1 180px' }}
+                  />
+                )}
+
+                <input
+                  type="number"
+                  value={invoiceLine.qty}
+                  onChange={(event) => setInvoiceLine({ ...invoiceLine, qty: event.target.value })}
+                  placeholder="Qty"
+                  style={{ width: '70px' }}
+                  min="1"
+                />
+                <input
+                  type="number"
+                  value={invoiceLine.rate}
+                  onChange={(event) => setInvoiceLine({ ...invoiceLine, rate: event.target.value })}
+                  placeholder="Rate (₹)"
+                  style={{ width: '90px' }}
+                />
+                <input
+                  type="number"
+                  value={invoiceLine.gst}
+                  onChange={(event) => setInvoiceLine({ ...invoiceLine, gst: event.target.value })}
+                  placeholder="GST %"
+                  style={{ width: '75px' }}
+                />
+                <input
+                  type="number"
+                  value={invoiceLine.discount}
+                  onChange={(event) => setInvoiceLine({ ...invoiceLine, discount: event.target.value })}
+                  placeholder="Discount (₹)"
+                  style={{ width: '90px' }}
+                />
+                <button className="secondary-button" type="button" onClick={addInvoiceLine} style={{ fontWeight: 700 }}>
+                  + Add Item
+                </button>
               </div>
-              <div className="compact-list">
-                {invoiceDraft.lines.map((line) => (
-                  <article className="compact-item" key={line.id}><span>{line.name} x {line.qty}</span><strong>{formatCurrency(line.total)}</strong></article>
-                ))}
+
+              <div className="compact-list" style={{ marginTop: '12px' }}>
+                {invoiceDraft.lines.length === 0 ? (
+                  <p style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic', margin: '8px 0' }}>
+                    No items added yet. Select a product above and click "+ Add Item" (or select a product and click Save Invoice directly).
+                  </p>
+                ) : (
+                  invoiceDraft.lines.map((line) => (
+                    <article
+                      className="compact-item"
+                      key={line.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '8px 12px',
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '6px',
+                        marginBottom: '6px',
+                      }}
+                    >
+                      <div>
+                        <strong>{line.name}</strong>{' '}
+                        <span style={{ color: '#64748b', fontSize: '12px' }}>
+                          ({line.qty} × ₹{line.rate} | GST {line.gst}%
+                          {Number(line.discount) > 0 ? ` | -₹${line.discount}` : ''})
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <strong style={{ color: '#1e3a8a', fontFamily: 'monospace' }}>{formatCurrency(line.total)}</strong>
+                        <button
+                          type="button"
+                          onClick={() => removeInvoiceLine(line.id)}
+                          title="Remove item"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#ef4444',
+                            cursor: 'pointer',
+                            fontWeight: 'bold',
+                            fontSize: '14px',
+                            padding: '2px 6px',
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </article>
+                  ))
+                )}
               </div>
-              <button className="manual-button" type="submit">Save Invoice</button>
+
+              <button className="manual-button" type="submit" style={{ marginTop: '14px', width: '100%' }}>
+                {editingInvoiceId ? 'Update Invoice' : 'Save Invoice'}
+              </button>
             </form>
           </article>
+
           <article className="panel invoice-preview">
             <h2>Invoice Design Preview</h2>
             <div className="invoice-paper">
               <div className="invoice-head">
                 {profile.logo && <img src={profile.logo} alt="" />}
-                <div><strong>{profile.name}</strong><span>{profile.address || profile.tagline}</span><span>GSTIN: {profile.gstin || 'Not set'}</span></div>
+                <div>
+                  <strong>{profile.name}</strong>
+                  <span>{profile.address || profile.tagline}</span>
+                  <span>GSTIN: {profile.gstin || 'Not set'}</span>
+                </div>
                 <InvoiceQr value={editingInvoiceId || 'draft'} />
               </div>
-              <p>Customer: {customerName(invoiceDraft.customerId)}</p>
-              <p>Terms: {invoiceDraft.terms}</p>
+
+              <p>Customer: <strong>{customerName(invoiceDraft.customerId)}</strong></p>
+
+              {invoiceDraft.lines.length > 0 && (
+                <table style={{ width: '100%', fontSize: '12px', margin: '10px 0', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #cbd5e1', textAlign: 'left', color: '#475569' }}>
+                      <th style={{ padding: '4px' }}>Item</th>
+                      <th style={{ padding: '4px', textAlign: 'center' }}>Qty</th>
+                      <th style={{ padding: '4px', textAlign: 'right' }}>Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {invoiceDraft.lines.map((l) => (
+                      <tr key={l.id} style={{ borderBottom: '1px dashed #e2e8f0' }}>
+                        <td style={{ padding: '4px' }}>{l.name}</td>
+                        <td style={{ padding: '4px', textAlign: 'center' }}>{l.qty}</td>
+                        <td style={{ padding: '4px', textAlign: 'right', fontFamily: 'monospace' }}>
+                          {formatCurrency(l.total)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr style={{ fontWeight: 700, borderTop: '2px solid #0f172a' }}>
+                      <td colSpan="2" style={{ padding: '6px 4px' }}>Grand Total:</td>
+                      <td style={{ padding: '6px 4px', textAlign: 'right', color: '#1e3a8a', fontFamily: 'monospace' }}>
+                        {formatCurrency(invoiceDraft.lines.reduce((s, l) => s + (l.total || 0), 0))}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              )}
+
+              <p style={{ fontSize: '11px', color: '#64748b' }}>Terms: {invoiceDraft.terms}</p>
               <div className="signature-box">Signature Area</div>
             </div>
           </article>
         </section>
+
         <section className="panel">
           <h2>Invoice History</h2>
           <div className="erp-table-wrap">
             <div className="table-responsive">
-<table className="statement-table">
-              <thead><tr><th>No</th><th>Customer</th><th>Status</th><th>Total</th><th>Due</th><th>Actions</th></tr></thead>
-              <tbody>
-                {scopedInvoices.map((invoice) => (
-                  <tr key={invoice.id}>
-                    <td>{invoice.invoiceNo}</td>
-                    <td>{customerName(invoice.customerId)}</td>
-                    <td><span className={`status-pill ${invoice.status.toLowerCase().replaceAll(' ', '-')}`}>{invoice.status}</span></td>
-                    <td>{formatCurrency(invoice.total)}</td>
-                    <td>{invoice.dueDate}</td>
-                    <td>
-                      <div className="voucher-actions">
-                        <button className="share-entry-button" type="button" onClick={() => editInvoice(invoice)}>Edit</button>
-                        <button className="share-entry-button" type="button" onClick={() => printInvoice(invoice)}>PDF</button>
-                        <button className="share-entry-button" type="button" onClick={() => shareInvoiceWhatsApp(invoice)}>WhatsApp</button>
-                        <button className="share-entry-button" type="button" onClick={() => emailInvoice(invoice)}>Email</button>
-                        <button className="delete-entry-button" type="button" onClick={() => deleteInvoice(invoice.id)}>Delete</button>
-                      </div>
-                    </td>
+              <table className="statement-table">
+                <thead>
+                  <tr>
+                    <th>No</th>
+                    <th>Customer</th>
+                    <th>Status</th>
+                    <th>Total</th>
+                    <th>Due</th>
+                    <th>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-</div>
+                </thead>
+                <tbody>
+                  {scopedInvoices.length > 0 ? (
+                    scopedInvoices.map((invoice) => (
+                      <tr key={invoice.id}>
+                        <td><strong>{invoice.invoiceNo || invoice.invoiceNumber || invoice.invoice_number || invoice.id}</strong></td>
+                        <td>{invoice.customerName || invoice.customer_name || customerName(invoice.customerId)}</td>
+                        <td>
+                          <span className={`status-pill ${String(invoice.status || 'Paid').toLowerCase().replaceAll(' ', '-')}`}>
+                            {invoice.status || 'Paid'}
+                          </span>
+                        </td>
+                        <td><strong>{formatCurrency(invoice.total || 0)}</strong></td>
+                        <td>{invoice.dueDate || invoice.date || 'N/A'}</td>
+                        <td>
+                          <div className="voucher-actions">
+                            <button className="share-entry-button" type="button" onClick={() => editInvoice(invoice)}>Edit</button>
+                            <button className="share-entry-button" type="button" onClick={() => printInvoice(invoice)}>PDF</button>
+                            <button className="share-entry-button" type="button" onClick={() => shareInvoiceWhatsApp(invoice)}>WhatsApp</button>
+                            <button className="share-entry-button" type="button" onClick={() => emailInvoice(invoice)}>Email</button>
+                            <button className="delete-entry-button" type="button" onClick={() => deleteInvoice(invoice.id)}>Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="6" style={{ textAlign: 'center', padding: '36px 16px', color: '#64748b' }}>
+                        <div style={{ fontSize: '28px', marginBottom: '8px' }}>📄</div>
+                        <strong style={{ fontSize: '14px', color: '#1e293b' }}>No Invoices in History</strong>
+                        <p style={{ margin: '4px 0 0', fontSize: '12px' }}>
+                          Create and save an invoice using the form above to record it in your history.
+                        </p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
       </section>

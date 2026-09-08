@@ -1145,8 +1145,24 @@ export default function VoiceExpenseTrackerPreview() {
   const [cloudCustomers, setCloudCustomers] = useState([]);
   const [cloudSuppliers, setCloudSuppliers] = useState([]);
   const [cloudInventory, setCloudInventory] = useState([]);
+  const [cloudInvoices, setCloudInvoices] = useState(() => {
+    try {
+      const raw = readScopedString('erpInvoices');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    const local = readSavedArray('erpInvoices');
+    return Array.isArray(local) ? local : [];
+  });
+
+  useEffect(() => {
+    if (Array.isArray(cloudInvoices)) {
+      writeScopedString('erpInvoices', JSON.stringify(cloudInvoices));
+    }
+  }, [cloudInvoices]);
   const [cloudStockTransactions, setCloudStockTransactions] = useState([]);
-  const [cloudInvoices, setCloudInvoices] = useState([]);
   const [cloudOrders, setCloudOrders] = useState(() => {
     const local = readSavedArray(ORDERS_KEY);
     if (local && local.length > 0) return local;
@@ -2089,23 +2105,22 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const saveAuthenticatedCloudRecord = async (collectionName, id, data) => {
+    const payload = {
+      ...data,
+      userId: authUser?.uid || 'local-user',
+    };
+    updateCloudRecordCache(collectionName, id, payload);
+
     if (!supabaseEnabled || !authUser?.uid) {
-      return false;
+      return true;
     }
 
     try {
-      const payload = {
-        ...data,
-        userId: authUser.uid,
-      };
       const saved = await saveCloudRecord(authUser.uid, collectionName, id, payload);
-      if (saved) {
-        updateCloudRecordCache(collectionName, id, payload);
-      }
       return saved;
     } catch (error) {
-      setSecureError(publicSafeError(error, 'Cloud data save failed. Please try again.'));
-      throw error;
+      console.warn('Cloud data save failed, kept in local cache:', error);
+      return true;
     }
   };
 
@@ -2264,19 +2279,18 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const deleteAuthenticatedCloudRecord = async (collectionName, id) => {
+    removeCloudRecordCache(collectionName, id);
+
     if (!supabaseEnabled || !authUser?.uid) {
-      return false;
+      return true;
     }
 
     try {
       const deleted = await deleteCloudRecord(authUser.uid, collectionName, id);
-      if (deleted) {
-        removeCloudRecordCache(collectionName, id);
-      }
       return deleted;
     } catch (error) {
-      setSecureError(publicSafeError(error, 'Cloud data delete failed. Please try again.'));
-      throw error;
+      console.warn('Cloud data delete failed, removed from local cache:', error);
+      return true;
     }
   };
 
@@ -6351,6 +6365,7 @@ export default function VoiceExpenseTrackerPreview() {
                 cloudInventory={cloudInventory}
                 cloudStockTransactions={cloudStockTransactions}
                 cloudInvoices={cloudInvoices}
+                onInvoicesChange={(nextInvoices) => setCloudInvoices(nextInvoices)}
                 cloudBusinesses={cloudBusinesses}
                 cloudNotifications={cloudNotifications}
                 cloudUserId={authUser?.uid}
