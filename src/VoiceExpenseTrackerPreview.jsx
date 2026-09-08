@@ -922,6 +922,17 @@ const safeTrackEvent = (...args) => {
 };
 const trackEvent = safeTrackEvent;
 
+const safeTrackPageView = (...args) => {
+  try {
+    if (typeof window !== 'undefined' && typeof window.trackPageView === 'function') {
+      window.trackPageView(...args);
+    }
+  } catch (e) {
+    console.warn("Tracking page view failed:", e);
+  }
+};
+const trackPageView = safeTrackPageView;
+
 const searchRoutes = [
   { id: 'dashboard', label: 'Dashboard', route: 'dashboard', aliases: ['home'] },
   { id: 'customers', label: 'Customers', route: 'crm', aliases: ['customer'] },
@@ -1016,6 +1027,7 @@ function GlobalSearch({ onNavigate }) {
                 <li key={r.id}>
                   <button 
                     onMouseDown={(e) => { e.preventDefault(); handleSelect(r.route); }}
+                    onClick={() => handleSelect(r.route)}
                     style={{ width: '100%', padding: '12px 16px', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', color: '#334155', fontSize: '14px', transition: 'background 0.2s' }}
                     className="saas-dropdown-item"
                   >
@@ -1418,7 +1430,7 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const refreshCompanyMembers = async () => {
-    if (!supabaseEnabled || !authUser?.uid || !isCompanyOwner) {
+    if (!supabaseEnabled || !authUser?.uid || !isCompanyOwner || authUser?.mode === 'demo' || authUser?.uid === 'demo-user') {
       setCompanyMembers([]);
       return;
     }
@@ -1436,7 +1448,7 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const refreshEmployeeUserMappings = async () => {
-    if (!supabaseEnabled || !authUser?.uid || !isCompanyOwner) {
+    if (!supabaseEnabled || !authUser?.uid || !isCompanyOwner || authUser?.mode === 'demo' || authUser?.uid === 'demo-user') {
       setEmployeeUserMappings([]);
       return;
     }
@@ -6889,339 +6901,6 @@ export default function VoiceExpenseTrackerPreview() {
             </section>
           )}
 
-          {activeTab === 'party-management' && (
-            <section className="panel fade-in crm-container" id="party-management" style={{ background: 'transparent', border: 'none', boxShadow: 'none', padding: 0 }}>
-              {!selectedCrmCustomer ? (
-                <>
-                  <div className="section-header" style={{ background: 'var(--bg-primary)', padding: '24px', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-subtle)', marginBottom: '0' }}>
-                    <div>
-                      <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Users size={24} className="text-blue" /> CRM & Party Hub</h2>
-                      <p className="panel-hint">Manage customers, suppliers, financial standing, and interactions.</p>
-                    </div>
-                    <div className="inline-actions">
-                      <button type="button" className="primary-button" onClick={() => checkLimit('customers', cloudCustomers.length, () => { trackEvent('Customer added'); setStatus('Add Customer drawer coming soon'); })}><Plus size={16}/> New Party</button>
-                    </div>
-                  </div>
-                  
-                  <div className="crm-toolbar">
-                    <div className="search-wrap" style={{ position: 'relative' }}>
-                      <Search size={16} style={{ position: 'absolute', left: 12, top: 10, color: 'var(--text-secondary)' }} />
-                      <input type="text" className="crm-search-input" placeholder="Search by name, phone, or GST..." />
-                    </div>
-                    <div className="crm-toolbar-actions">
-                      <button type="button" className="secondary-button" onClick={() => setStatus('Filters coming soon')}><Filter size={16}/> Filters</button>
-                      <button type="button" className="secondary-button" onClick={() => setStatus('Tags coming soon')}><Tag size={16}/> Tags</button>
-                      <button type="button" className="secondary-button" onClick={() => setStatus('Export coming soon')}><Download size={16}/> Export</button>
-                    </div>
-                  </div>
-
-                  <div className="crm-table-wrapper fade-in">
-                    <table className="crm-table">
-                      <thead>
-                        <tr>
-                          <th>Customer / Supplier</th>
-                          <th>Status & Tags</th>
-                          <th>Lifetime Value (LTV)</th>
-                          <th>Outstanding Balance</th>
-                          <th>Last Activity</th>
-                          <th style={{ textAlign: 'right' }}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {([...(cloudCustomers || []), ...(cloudSuppliers || [])]).length === 0 ? (
-                          <tr>
-                            <td colSpan={6} style={{ padding: '60px 20px', textAlign: 'center' }}>
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-                                <div style={{ width: '80px', height: '80px', background: 'var(--bg-secondary)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                  <Users size={32} color="var(--text-secondary)" />
-                                </div>
-                                <div>
-                                  <h3 style={{ fontSize: '16px', marginBottom: '8px' }}>No Customers Yet</h3>
-                                  <p className="text-secondary" style={{ fontSize: '14px', maxWidth: '300px', margin: '0 auto' }}>No customers yet. Add your first customer or import customers.</p>
-                                </div>
-                                <button type="button" className="primary-button" style={{ marginTop: '8px' }} onClick={() => checkLimit('customers', cloudCustomers.length, () => { trackEvent('Customer added'); setStatus('Add Customer drawer coming soon'); })}><Plus size={16}/> Add Customer</button>
-                              </div>
-                            </td>
-                          </tr>
-                        ) : (
-                            ([...(cloudCustomers || []), ...(cloudSuppliers || [])]).map((party, i) => {
-                              const isDebtor = party.group === 'Sundry Debtors';
-                              const balance = safeMoney(party.balance || party.outstandingAmount || party.opening_balance || 0);
-                              const ltv = safeMoney(party.lifetimeValue || party.ltv || party.totalSales || 0);
-                            // Mock CRM tags for demonstration
-                            const tags = [];
-                            if (party.totalSales > 50000) tags.push({ label: 'VIP', class: 'vip' });
-                            if (isDebtor && balance > 10000) tags.push({ label: 'High Risk', class: 'high-risk' });
-                            if (i % 3 === 0) tags.push({ label: 'Wholesale', class: 'wholesale' });
-                            if (tags.length === 0) tags.push({ label: 'Retail', class: 'retail' });
-                            
-                            return (
-                              <tr key={party?.id || Math.random()} onClick={() => setSelectedCrmCustomer(party)} style={{cursor: 'pointer'}}>
-                                <td>
-                                  <div className="crm-customer-cell">
-                                    <div className="crm-avatar">{(party?.name || 'Unnamed').charAt(0).toUpperCase()}</div>
-                                    <div>
-                                      <div style={{ fontWeight: '600', color: 'var(--text-primary)', marginBottom: '4px' }}>
-                                          {party?.name || 'Unnamed'} <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 'normal', marginLeft: '4px' }}>#{party.id?.slice(0,4)}</span>
-                                        </div>
-                                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                                          {isDebtor ? 'Customer' : 'Supplier'} • Added: {party.createdAt ? new Date(party.createdAt).toLocaleDateString() : 'N/A'}
-                                        </div>
-                                    </div>
-                                  </div>
-                                </td>
-                                <td>
-                                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                                    {tags.map((t, idx) => (
-                                      <span key={idx} className={`crm-tag ${t.class}`}>{t.label}</span>
-                                    ))}
-                                  </div>
-                                </td>
-                                <td style={{ fontWeight: '500' }}>{formatCurrency(ltv)}</td>
-                                <td>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: balance === 0 ? 'var(--success)' : isDebtor ? 'var(--warning)' : 'var(--danger)' }}></div>
-                                    <strong style={{ color: balance === 0 ? 'var(--text-secondary)' : isDebtor ? 'var(--warning)' : 'var(--danger)' }}>
-                                      {balance === 0 ? 'Settled' : isDebtor ? `${formatCurrency(balance)}` : `${formatCurrency(Math.abs(balance))} Cr`}
-                                    </strong>
-                                  </div>
-                                </td>
-                                <td className="text-secondary">{party.lastTransactionDate || 'N/A'}</td>
-                                <td style={{ textAlign: 'right' }}>
-                                  <div style={{ position: 'relative' }}>
-                                    <button className="icon-button" onClick={(e) => { e.stopPropagation(); setActiveActionMenuId(activeActionMenuId === party.id ? null : party.id); }} title="Quick Actions">
-                                      <MoreHorizontal size={18} />
-                                    </button>
-                                    {activeActionMenuId === party.id && <div style={{position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99}} onClick={(e) => { e.stopPropagation(); setActiveActionMenuId(null); }} />}
-                                    {activeActionMenuId === party.id && (
-                                      <div className="dropdown-menu fade-in" style={{ position: 'absolute', right: 0, top: '100%', zIndex: 100, background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', padding: '4px', minWidth: '160px', textAlign: 'left' }}>
-                                        <button type="button" className="saas-dropdown-item" onClick={(e) => { e.stopPropagation(); setSelectedCrmCustomer(party); setActiveActionMenuId(null); }} style={{ width: '100%', padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', color: 'var(--text-primary)' }}>View Profile</button>
-                                        <button type="button" className="saas-dropdown-item" onClick={(e) => { e.stopPropagation(); setStatus('Edit Profile coming soon'); setActiveActionMenuId(null); }} style={{ width: '100%', padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', color: 'var(--text-primary)' }}>Edit Profile</button>
-                                        <button type="button" className="saas-dropdown-item" onClick={(e) => { e.stopPropagation(); setActiveTab('invoices'); setStatus('Redirecting to Invoices'); setActiveActionMenuId(null); }} style={{ width: '100%', padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', color: 'var(--text-primary)' }}>Create Invoice</button>
-                                        <button type="button" className="saas-dropdown-item" onClick={(e) => { e.stopPropagation(); setActiveTab('vouchers'); setVoucherPartyId(party.id); setActiveActionMenuId(null); }} style={{ width: '100%', padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', color: 'var(--text-primary)' }}>Add Voucher</button>
-                                        <button type="button" className="saas-dropdown-item" onClick={(e) => { e.stopPropagation(); setActiveTab('reports'); setStatus('Redirecting to Reports'); setActiveActionMenuId(null); }} style={{ width: '100%', padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', color: 'var(--text-primary)' }}>View Ledger</button>
-                                        <button type="button" className="saas-dropdown-item" onClick={async (e) => { 
-                                          e.stopPropagation(); 
-                                          setActiveActionMenuId(null); 
-                                          if (window.confirm(`Are you sure you want to delete ${party.name}?`)) {
-                                            try {
-                                              const col = party.group === 'Sundry Debtors' ? 'customers' : 'suppliers';
-                                              const success = await deleteAuthenticatedCloudRecord(col, party.id);
-                                              if (success) {
-                                                setStatus('Party deleted successfully');
-                                              } else {
-                                                setStatus('Cannot delete party due to existing transactions.');
-                                              }
-                                            } catch (err) {
-                                              setStatus('Cannot delete party due to existing transactions.');
-                                            }
-                                          }
-                                        }} style={{ width: '100%', padding: '8px 12px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', color: 'var(--danger)' }}>Delete Party</button>
-                                      </div>
-                                    )}
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="crm-toolbar fade-in" style={{ border: 'none', padding: '0 0 16px 0', background: 'transparent' }}>
-                    <button className="secondary-button" onClick={() => setSelectedCrmCustomer(null)}>
-                      <ArrowLeft size={16} /> Back to List
-                    </button>
-                    <div className="crm-toolbar-actions">
-                      <button type="button" className="secondary-button" onClick={() => { console.log("[REAL PARTY PROFILE] Edit clicked", selectedCrmCustomer); setStatus('Edit Profile coming soon'); }}><Edit3 size={16} /> Edit Profile</button>
-                      <button type="button" className="secondary-button text-danger" onClick={async () => {
-                        console.log("[REAL PARTY PROFILE] Delete clicked", selectedCrmCustomer);
-                        if (window.confirm(`Are you sure you want to delete ${selectedCrmCustomer.name}?`)) {
-                          try {
-                            const col = selectedCrmCustomer.group === 'Sundry Debtors' ? 'customers' : 'suppliers';
-                            const success = await deleteAuthenticatedCloudRecord(col, selectedCrmCustomer.id);
-                            if (success) {
-                              setSelectedCrmCustomer(null);
-                              setStatus('Party deleted successfully');
-                            } else {
-                              setStatus('Cannot delete party due to existing transactions.');
-                            }
-                          } catch (err) {
-                            setStatus('Cannot delete party due to existing transactions.');
-                          }
-                        }
-                      }}><X size={16} /> Delete Party</button>
-                      <button type="button" className="primary-button" onClick={() => { setStatus('Redirecting to New Invoice'); setActiveTab('invoices'); }}><Plus size={16} /> Create Invoice</button>
-                    </div>
-                  </div>
-                  
-                  <div className="profile-grid-layout fade-in">
-                    {/* Sidebar */}
-                    <div className="profile-sidebar">
-                       <div className="profile-avatar-large">{selectedCrmCustomer.name.charAt(0).toUpperCase()}</div>
-                       <div style={{ textAlign: 'center' }}>
-                         <h2 style={{ fontSize: '20px', marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                           {selectedCrmCustomer.name}
-                           <button className="icon-button" style={{ color: 'var(--text-secondary)' }} onClick={() => { console.log("[REAL PARTY PROFILE] Star clicked"); setStatus('Favorite feature coming soon'); }} title="Coming soon">
-                             <Star size={16} />
-                           </button>
-                         </h2>
-                         <p className="text-secondary" style={{ fontSize: '14px' }}>{selectedCrmCustomer.group === 'Sundry Debtors' ? 'Customer' : 'Supplier'} Profile</p>
-                       </div>
-                       
-                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                         {(() => {
-                           const bal = safeMoney(selectedCrmCustomer.outstandingAmount || 0);
-                           const pTags = [];
-                           if (bal > 50000) pTags.push({ label: 'VIP', class: 'vip' });
-                           if (selectedCrmCustomer.group === 'Sundry Debtors' && bal > 10000) pTags.push({ label: 'High Risk', class: 'high-risk' });
-                           if (pTags.length === 0) pTags.push({ label: 'Retail', class: 'retail' });
-                           return pTags.map((t, i) => <span key={i} className={`crm-tag ${t.class}`}>{t.label}</span>);
-                         })()}
-                       </div>
-                       
-                       <hr style={{ border: 'none', borderTop: '1px solid var(--border-subtle)', margin: '8px 0' }} />
-                       
-                       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                           <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                             <Phone size={16} className="text-secondary" />
-                           </div>
-                           <div style={{ fontSize: '13px' }}>
-                             <div className="text-secondary">Phone</div>
-                             <div style={{ fontWeight: '500' }}>{selectedCrmCustomer.phone || selectedCrmCustomer.mobile || 'N/A'}</div>
-                           </div>
-                         </div>
-                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                           <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                             <Mail size={16} className="text-secondary" />
-                           </div>
-                           <div style={{ fontSize: '13px' }}>
-                             <div className="text-secondary">Email</div>
-                             <div style={{ fontWeight: '500' }}>{selectedCrmCustomer.email || 'N/A'}</div>
-                           </div>
-                         </div>
-                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                           <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                             <MapPin size={16} className="text-secondary" />
-                           </div>
-                           <div style={{ fontSize: '13px' }}>
-                             <div className="text-secondary">Location</div>
-                             <div style={{ fontWeight: '500' }}>{selectedCrmCustomer.address || selectedCrmCustomer.city || 'N/A'}</div>
-                           </div>
-                         </div>
-                       </div>
-                       
-                       <hr style={{ border: 'none', borderTop: '1px solid var(--border-subtle)', margin: '8px 0' }} />
-                       
-                       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                         <button type="button" className="secondary-button" style={{ width: '100%', justifyContent: 'center' }} onClick={() => {
-                           console.log("[REAL PARTY PROFILE] WhatsApp clicked", selectedCrmCustomer);
-                           alert("WhatsApp clicked");
-                           const rawPhone = selectedCrmCustomer.phone || selectedCrmCustomer.mobile || '';
-                           const p = String(rawPhone).replace(/\D/g, '');
-                           if (p) window.open(`https://wa.me/${p}`, '_blank');
-                           else setStatus('Phone number not available');
-                         }}><MessageCircle size={16} /> Send WhatsApp</button>
-                         <button type="button" className="secondary-button" style={{ width: '100%', justifyContent: 'center' }} onClick={() => {
-                           console.log("[REAL PARTY PROFILE] Email clicked", selectedCrmCustomer);
-                           if (selectedCrmCustomer.email) window.location.href = `mailto:${selectedCrmCustomer.email}`;
-                           else setStatus('Email not available');
-                         }}><Mail size={16} /> Send Email</button>
-                       </div>
-                    </div>
-                    
-                    {/* Main Content */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                      {/* Financials Row */}
-                      <div className="dashboard-kpi-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
-                        <div className="kpi-card" style={{ padding: '20px' }}>
-                          <div className="kpi-header">
-                            <span className="text-secondary" style={{ fontSize: '13px', fontWeight: '500' }}>Lifetime Value</span>
-                            <div className="kpi-icon-wrap" style={{ background: 'rgba(59, 130, 246, 0.1)', color: 'var(--brand-primary)' }}>
-                              <Star size={18} />
-                            </div>
-                          </div>
-                          <div className="kpi-value" style={{ fontSize: '24px', margin: '12px 0 4px' }}>{formatCurrency(safeMoney(selectedCrmCustomer.lifetimeValue || selectedCrmCustomer.ltv || selectedCrmCustomer.totalSales || 0))}</div>
-                          <div className="kpi-trend trend-up" style={{ fontSize: '12px' }}><ArrowUpRight size={14}/> Top 10% Customer</div>
-                        </div>
-                        
-                        <div className="kpi-card" style={{ padding: '20px' }}>
-                          <div className="kpi-header">
-                            <span className="text-secondary" style={{ fontSize: '13px', fontWeight: '500' }}>Outstanding</span>
-                            <div className="kpi-icon-wrap" style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)' }}>
-                              <AlertCircle size={18} />
-                            </div>
-                          </div>
-                          <div className="kpi-value" style={{ fontSize: '24px', margin: '12px 0 4px', color: selectedCrmCustomer.outstandingAmount > 0 ? 'var(--danger)' : 'var(--text-primary)' }}>
-                            {formatCurrency(selectedCrmCustomer.outstandingAmount)}
-                          </div>
-                          <div className="kpi-trend trend-neutral" style={{ fontSize: '12px' }}>Credit Limit: ₹50,000</div>
-                        </div>
-                        
-                        <div className="kpi-card" style={{ padding: '20px' }}>
-                          <div className="kpi-header">
-                            <span className="text-secondary" style={{ fontSize: '13px', fontWeight: '500' }}>Last Payment</span>
-                            <div className="kpi-icon-wrap" style={{ background: 'rgba(16, 185, 129, 0.1)', color: 'var(--success)' }}>
-                              <CheckCircle size={18} />
-                            </div>
-                          </div>
-                          <div className="kpi-value" style={{ fontSize: '24px', margin: '12px 0 4px' }}>{selectedCrmCustomer.lastTransactionDate || 'None'}</div>
-                          <div className="kpi-trend text-secondary" style={{ fontSize: '12px' }}>Via UPI</div>
-                        </div>
-                      </div>
-                      
-                      {/* Timeline & Notes Grid */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
-                        {/* Timeline */}
-                        <div className="panel" style={{ padding: '24px' }}>
-                          <h3 style={{ fontSize: '16px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Activity size={18} className="text-brand" /> CRM Activity
-                          </h3>
-                          <div className="timeline">
-                            <p className="text-secondary" style={{ fontSize: '13px' }}>No activity yet</p>
-                          </div>
-                        </div>
-                        
-                        {/* Documents & Notes */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                          {/* Notes */}
-                          <div className="panel" style={{ padding: '24px', background: '#fffbeb', border: '1px solid #fde68a' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                              <h3 style={{ fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#b45309' }}>
-                                <Star size={18} /> Pinned Note
-                              </h3>
-                              <button type="button" className="icon-button" style={{ color: '#b45309' }} onClick={() => { console.log("[REAL PARTY PROFILE] Pinned note clicked"); setStatus('Edit coming soon'); }}><Edit3 size={16}/></button>
-                            </div>
-                            <p style={{ fontSize: '14px', color: '#92400e', lineHeight: '1.6' }}>
-                              {selectedCrmCustomer.notes || 'No pinned note'}
-                            </p>
-                          </div>
-                          
-                          {/* Documents */}
-                          <div className="panel" style={{ padding: '24px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                              <h3 style={{ fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <Paperclip size={18} className="text-secondary" /> Documents
-                              </h3>
-                              <button type="button" className="secondary-button" style={{ padding: '4px 8px', fontSize: '12px' }} onClick={() => { console.log("[REAL PARTY PROFILE] Upload clicked"); setStatus('Coming soon'); }}><Plus size={14}/> Upload</button>
-                            </div>
-                            
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                              <p className="text-secondary" style={{ fontSize: '13px' }}>No documents uploaded</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-            </section>
-          )}
 
           {activeTab === 'reports' && (
             <section className="panel reports-panel fade-in" id="reports">

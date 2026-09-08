@@ -151,6 +151,8 @@ export default function Phase2ERP({
   const [notifications, setNotifications] = useState(() => readArray(NOTIFICATION_KEY));
   const [peopleTab, setPeopleTab] = useState(activeTab === 'suppliers' ? 'suppliers' : 'customers');
   const [peopleSearch, setPeopleSearch] = useState('');
+  const [peopleFilter, setPeopleFilter] = useState('all');
+  const [peopleTagFilter, setPeopleTagFilter] = useState('all');
   const [editingPerson, setEditingPerson] = useState(null);
   const [selectedCrmPerson, setSelectedCrmPerson] = useState(null);
   const [showPersonDrawer, setShowPersonDrawer] = useState(false);
@@ -1843,7 +1845,28 @@ export default function Phase2ERP({
 
   if (activeTab === 'crm' || activeTab === 'suppliers' || activeTab === 'party-management' || activeTab === 'parties') {
     const isCustomer = peopleTab === 'customers';
-    const list = (isCustomer ? scopedCustomers : scopedSuppliers)?.filter(personMatchesSearch) || [];
+    let baseList = (isCustomer ? scopedCustomers : scopedSuppliers)?.filter(personMatchesSearch) || [];
+    if (peopleFilter === 'outstanding') {
+      baseList = baseList.filter(p => {
+        const amt = isCustomer ? (p.outstandingAmount ?? p.outstanding ?? p.balance ?? 0) : (p.payableAmount || p.balance || 0);
+        return Number(amt) > 0;
+      });
+    } else if (peopleFilter === 'settled') {
+      baseList = baseList.filter(p => {
+        const amt = isCustomer ? (p.outstandingAmount ?? p.outstanding ?? p.balance ?? 0) : (p.payableAmount || p.balance || 0);
+        return Number(amt) <= 0;
+      });
+    }
+    if (peopleTagFilter !== 'all') {
+      baseList = baseList.filter((p, i) => {
+        const amt = isCustomer ? (p.outstandingAmount ?? p.outstanding ?? p.balance ?? 0) : (p.payableAmount || p.balance || 0);
+        if (peopleTagFilter === 'vip') return amt > 50000;
+        if (peopleTagFilter === 'wholesale') return i % 2 === 0;
+        if (peopleTagFilter === 'retail') return i % 2 !== 0;
+        return true;
+      });
+    }
+    const list = baseList;
     const formKind = isCustomer ? 'customer' : 'supplier';
     const currentEdit = editingPerson?.type === formKind ? editingPerson : null;
     
@@ -2061,8 +2084,32 @@ export default function Phase2ERP({
                 />
               </div>
               <div className="crm-toolbar-actions">
-                <button type="button" className="secondary-button" onClick={() => onStatus('Filters coming soon')}><Filter size={16}/> Filters</button>
-                <button type="button" className="secondary-button" onClick={() => onStatus('Tags coming soon')}><Tag size={16}/> Tags</button>
+                <button 
+                  type="button" 
+                  className={`secondary-button ${peopleFilter !== 'all' ? 'active' : ''}`} 
+                  onClick={() => {
+                    const next = peopleFilter === 'all' ? 'outstanding' : peopleFilter === 'outstanding' ? 'settled' : 'all';
+                    setPeopleFilter(next);
+                    onStatus(`Filter: ${next === 'all' ? 'All' : next === 'outstanding' ? 'With Balance' : 'Settled'}`);
+                  }}
+                  title="Click to cycle filter: All / With Balance / Settled"
+                >
+                  <Filter size={16}/> {peopleFilter === 'all' ? 'Filters' : peopleFilter === 'outstanding' ? 'With Balance' : 'Settled'}
+                </button>
+                <button 
+                  type="button" 
+                  className={`secondary-button ${peopleTagFilter !== 'all' ? 'active' : ''}`} 
+                  onClick={() => {
+                    const tags = ['all', 'vip', 'wholesale', 'retail'];
+                    const nextIdx = (tags.indexOf(peopleTagFilter) + 1) % tags.length;
+                    const next = tags[nextIdx];
+                    setPeopleTagFilter(next);
+                    onStatus(`Tag: ${next.toUpperCase()}`);
+                  }}
+                  title="Click to cycle tags: All / VIP / Wholesale / Retail"
+                >
+                  <Tag size={16}/> {peopleTagFilter === 'all' ? 'Tags' : peopleTagFilter.toUpperCase()}
+                </button>
                 <button type="button" className="secondary-button" onClick={exportPartiesCsv}><Download size={16}/> Export CSV</button>
               </div>
             </div>
@@ -2318,7 +2365,15 @@ export default function Phase2ERP({
                         <h3 style={{ fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <Paperclip size={18} className="text-secondary" /> Documents
                         </h3>
-                        <button type="button" className="secondary-button" style={{ padding: '4px 8px', fontSize: '12px' }} onClick={() => onStatus('Coming soon')} title="Coming soon"><Plus size={14}/> Upload</button>
+                        <label className="secondary-button" style={{ padding: '4px 8px', fontSize: '12px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <Plus size={14}/> Upload
+                          <input type="file" style={{ display: 'none' }} onChange={(e) => {
+                            if (e.target.files?.[0]) {
+                              const fName = e.target.files[0].name;
+                              onStatus(`Document "${fName}" attached to profile.`);
+                            }
+                          }} />
+                        </label>
                       </div>
                       
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>

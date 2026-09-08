@@ -1881,7 +1881,7 @@ export default function Phase3Ops({
           <div className="hrms-header-actions">
             {canManageEmployees && <button className="primary-button" onClick={() => setEditingEmployee({})}>+ Add Employee</button>}
             <button className="secondary-button" onClick={() => window.print()}>Export</button>
-            <button className="secondary-button" onClick={() => onStatus('Coming soon')}>Attendance Report</button>
+            <button className="secondary-button" onClick={exportAttendanceReport}>Attendance Report</button>
           </div>
         </header>
 
