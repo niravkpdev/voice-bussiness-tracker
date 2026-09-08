@@ -23,6 +23,7 @@ import {
   computeLedgerBalance,
   createVoucher,
   createVoucherId,
+  DEFAULT_LEDGERS,
   deleteVoucher,
   downloadCsv,
   ensureDefaultLedgers,
@@ -1142,7 +1143,13 @@ export default function VoiceExpenseTrackerPreview() {
   const [status, setStatus] = useState('Idle');
   const [language, setLanguage] = useState('en-IN');
   const [logs, setLogs] = useState([]);
-  const [ledgers, setLedgers] = useState([]);
+  const [ledgers, setLedgers] = useState(() => {
+    try {
+      const saved = ensureDefaultLedgers();
+      if (Array.isArray(saved) && saved.length > 0) return saved;
+    } catch {}
+    return DEFAULT_LEDGERS;
+  });
   const [vouchers, setVouchers] = useState(() => {
     try {
       const local = readVouchers();
@@ -2833,7 +2840,7 @@ export default function VoiceExpenseTrackerPreview() {
     clearStorageScope();
     setAuthUser(null);
     setLogs([]);
-    setLedgers([]);
+    setLedgers(ensureDefaultLedgers());
     setVouchers([]);
     setCloudCustomers([]);
     setCloudSuppliers([]);
@@ -6663,6 +6670,9 @@ export default function VoiceExpenseTrackerPreview() {
                           type="button"
                           onClick={() => {
                             setVoucherType(item.type);
+                            if (item.type === 'Purchase' && (!voucherExpenseId || voucherExpenseId === DEFAULT_EXPENSE_LEDGER_ID)) {
+                              setVoucherExpenseId(MATERIAL_LEDGER_ID);
+                            }
                             setVoucherFormError('');
                           }}
                           style={{
@@ -6693,8 +6703,16 @@ export default function VoiceExpenseTrackerPreview() {
                       </label>
                       <select
                         id="voucher-type"
+                        className="saas-input"
+                        style={{ backgroundColor: '#fff', color: '#111827', zIndex: 10, minHeight: '44px', width: '100%', appearance: 'auto', borderRadius: '6px', border: '1px solid #d1d5db', padding: '8px 12px', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}
                         value={voucherType}
-                        onChange={(event) => setVoucherType(event.target.value)}
+                        onChange={(event) => {
+                          const val = event.target.value;
+                          setVoucherType(val);
+                          if (val === 'Purchase' && (!voucherExpenseId || voucherExpenseId === DEFAULT_EXPENSE_LEDGER_ID)) {
+                            setVoucherExpenseId(MATERIAL_LEDGER_ID);
+                          }
+                        }}
                       >
                         <option value="Receipt">Receipt (cash in)</option>
                         <option value="Payment">Payment (cash out)</option>
@@ -6759,6 +6777,8 @@ export default function VoiceExpenseTrackerPreview() {
                         </label>
                         <select
                           id="receipt-counter"
+                          className="saas-input"
+                          style={{ backgroundColor: '#fff', color: '#111827', zIndex: 10, minHeight: '44px', width: '100%', appearance: 'auto', borderRadius: '6px', border: '1px solid #d1d5db', padding: '8px 12px', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}
                           value={useSalesInsteadOfParty ? SALES_LEDGER_ID : voucherPartyId}
                           onChange={(event) => {
                             if (event.target.value === SALES_LEDGER_ID) {
@@ -6797,6 +6817,8 @@ export default function VoiceExpenseTrackerPreview() {
                         </label>
                         <select
                           id="payment-expense"
+                          className="saas-input"
+                          style={{ backgroundColor: '#fff', color: '#111827', zIndex: 10, minHeight: '44px', width: '100%', appearance: 'auto', borderRadius: '6px', border: '1px solid #d1d5db', padding: '8px 12px', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}
                           value={useExpenseInsteadOfSupplier ? voucherExpenseId : voucherPartyId}
                           onChange={(event) => {
                             const value = event.target.value;
@@ -6819,11 +6841,19 @@ export default function VoiceExpenseTrackerPreview() {
                             </optgroup>
                           )}
                           <optgroup label="Expense Categories">
-                            {expenseLedgers.map((ledger) => (
-                              <option key={ledger.id} value={ledger.id}>
-                                {ledger.name}
-                              </option>
-                            ))}
+                            {expenseLedgers.length > 0 ? (
+                              expenseLedgers.map((ledger) => (
+                                <option key={ledger.id} value={ledger.id}>
+                                  {ledger.name}
+                                </option>
+                              ))
+                            ) : (
+                              <>
+                                <option value="ledger-misc-expense">General Expense</option>
+                                <option value="ledger-material">Material / Purchase</option>
+                                <option value="ledger-rent">Rent</option>
+                              </>
+                            )}
                           </optgroup>
                           {customerParties.length > 0 && (
                             <optgroup label="Customers (Sundry Debtors)">
@@ -6843,6 +6873,8 @@ export default function VoiceExpenseTrackerPreview() {
                         </label>
                         <select
                           id="sales-customer"
+                          className="saas-input"
+                          style={{ backgroundColor: '#fff', color: '#111827', zIndex: 10, minHeight: '44px', width: '100%', appearance: 'auto', borderRadius: '6px', border: '1px solid #d1d5db', padding: '8px 12px', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}
                           value={voucherPartyId}
                           onChange={(event) => {
                             setUseSalesInsteadOfParty(false);
@@ -6887,14 +6919,40 @@ export default function VoiceExpenseTrackerPreview() {
                           </label>
                           <select
                             id="purchase-ledger"
-                            value={voucherExpenseId}
+                            className="saas-input"
+                            style={{
+                              backgroundColor: '#fff',
+                              color: '#111827',
+                              zIndex: 10,
+                              minHeight: '44px',
+                              width: '100%',
+                              appearance: 'auto',
+                              borderRadius: '6px',
+                              border: '1px solid #d1d5db',
+                              padding: '8px 12px',
+                              fontSize: '14px',
+                              fontWeight: 500,
+                              cursor: 'pointer',
+                            }}
+                            value={voucherExpenseId || MATERIAL_LEDGER_ID}
                             onChange={(event) => setVoucherExpenseId(event.target.value)}
                           >
-                            {expenseLedgers.map((ledger) => (
-                              <option key={ledger.id} value={ledger.id}>
-                                {ledger.name}
-                              </option>
-                            ))}
+                            {expenseLedgers.length > 0 ? (
+                              expenseLedgers.map((ledger) => (
+                                <option key={ledger.id} value={ledger.id}>
+                                  {ledger.name} {ledger.group ? `(${ledger.group})` : ''}
+                                </option>
+                              ))
+                            ) : (
+                              <>
+                                <option value="ledger-material">Material / Purchase (Purchase Accounts)</option>
+                                <option value="ledger-raw-materials">Raw Materials (Purchase Accounts)</option>
+                                <option value="ledger-packaging">Packaging Material (Purchase Accounts)</option>
+                                <option value="ledger-freight">Transport / Freight (Direct Expenses)</option>
+                                <option value="ledger-misc-expense">General Expense (Indirect Expenses)</option>
+                                <option value="ledger-rent">Rent (Indirect Expenses)</option>
+                              </>
+                            )}
                           </select>
                         </div>
                         <div>
@@ -6903,6 +6961,21 @@ export default function VoiceExpenseTrackerPreview() {
                           </label>
                           <select
                             id="purchase-supplier"
+                            className="saas-input"
+                            style={{
+                              backgroundColor: '#fff',
+                              color: '#111827',
+                              zIndex: 10,
+                              minHeight: '44px',
+                              width: '100%',
+                              appearance: 'auto',
+                              borderRadius: '6px',
+                              border: '1px solid #d1d5db',
+                              padding: '8px 12px',
+                              fontSize: '14px',
+                              fontWeight: 500,
+                              cursor: 'pointer',
+                            }}
                             value={voucherPartyId}
                             onChange={(event) => {
                               setUseExpenseInsteadOfSupplier(false);
@@ -6991,6 +7064,8 @@ export default function VoiceExpenseTrackerPreview() {
                       </label>
                       <select
                         id="party-type"
+                        className="saas-input"
+                        style={{ backgroundColor: '#fff', color: '#111827', zIndex: 10, minHeight: '44px', width: '100%', appearance: 'auto', borderRadius: '6px', border: '1px solid #d1d5db', padding: '8px 12px', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}
                         value={newPartyType}
                         onChange={(event) => setNewPartyType(event.target.value)}
                       >
@@ -7452,6 +7527,8 @@ export default function VoiceExpenseTrackerPreview() {
                   </label>
                   <select
                     id="statement-party"
+                    className="saas-input"
+                    style={{ backgroundColor: '#fff', color: '#111827', zIndex: 10, minHeight: '44px', width: '100%', appearance: 'auto', borderRadius: '6px', border: '1px solid #d1d5db', padding: '8px 12px', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}
                     value={statementLedgerId}
                     onChange={(event) => setStatementLedgerId(event.target.value)}
                   >

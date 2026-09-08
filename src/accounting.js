@@ -33,6 +33,27 @@ export const DEFAULT_LEDGERS = [
     balanceType: 'debit',
   },
   {
+    id: 'ledger-raw-materials',
+    name: 'Raw Materials',
+    group: 'Purchase Accounts',
+    openingBalance: 0,
+    balanceType: 'debit',
+  },
+  {
+    id: 'ledger-packaging',
+    name: 'Packaging Material',
+    group: 'Purchase Accounts',
+    openingBalance: 0,
+    balanceType: 'debit',
+  },
+  {
+    id: 'ledger-freight',
+    name: 'Transport / Freight',
+    group: 'Direct Expenses',
+    openingBalance: 0,
+    balanceType: 'debit',
+  },
+  {
     id: 'ledger-rent',
     name: 'Rent',
     group: 'Indirect Expenses',
@@ -73,11 +94,22 @@ export function readVouchers() {
 
 export function ensureDefaultLedgers() {
   const existing = readLedgers();
-  if (existing.length > 0) {
-    return existing;
+  const map = new Map();
+  // Guarantee all default system accounts exist
+  DEFAULT_LEDGERS.forEach((dl) => {
+    map.set(dl.id, dl);
+  });
+  // Overlay existing ledgers (preserves user custom accounts, parties, balances)
+  existing.forEach((el) => {
+    if (el && el.id) {
+      map.set(el.id, el);
+    }
+  });
+  const merged = Array.from(map.values());
+  if (merged.length !== existing.length || existing.length === 0) {
+    writeSavedArray(LEDGERS_KEY, merged);
   }
-  writeSavedArray(LEDGERS_KEY, DEFAULT_LEDGERS);
-  return DEFAULT_LEDGERS;
+  return merged;
 }
 
 export function createLedgerId(name) {
@@ -170,7 +202,7 @@ export function addPartyLedger(name, partyType) {
 
   const group = partyType === 'supplier' ? 'Sundry Creditors' : 'Sundry Debtors';
   const balanceType = partyType === 'supplier' ? 'credit' : 'debit';
-  const ledgers = readLedgers();
+  const ledgers = ensureDefaultLedgers();
   const duplicate = ledgers.find(
     (ledger) => ledger.name.toLowerCase() === trimmed.toLowerCase() && ledger.group === group
   );
@@ -205,6 +237,7 @@ export function getExpenseLedgers(ledgers) {
     (ledger) =>
       ledger.group === 'Purchase Accounts' ||
       ledger.group === 'Indirect Expenses' ||
+      ledger.group === 'Direct Expenses' ||
       ledger.group === 'Sales Accounts'
   );
 }
