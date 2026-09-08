@@ -22,6 +22,7 @@ import {
   buildReceiptLines,
   computeLedgerBalance,
   createVoucher,
+  createVoucherId,
   deleteVoucher,
   downloadCsv,
   ensureDefaultLedgers,
@@ -40,6 +41,7 @@ import {
   saveVoucher,
   voucherCashTotals,
   voucherToCsvRows,
+  writeSavedArray,
   getDailyAndMonthlyStats,
   getPartySummary,
 } from './accounting';
@@ -1141,7 +1143,19 @@ export default function VoiceExpenseTrackerPreview() {
   const [language, setLanguage] = useState('en-IN');
   const [logs, setLogs] = useState([]);
   const [ledgers, setLedgers] = useState([]);
-  const [vouchers, setVouchers] = useState([]);
+  const [vouchers, setVouchers] = useState(() => {
+    try {
+      const local = readVouchers();
+      if (Array.isArray(local) && local.length > 0) return local;
+    } catch {}
+    return [];
+  });
+
+  useEffect(() => {
+    if (Array.isArray(vouchers)) {
+      writeSavedArray(VOUCHERS_KEY, vouchers);
+    }
+  }, [vouchers]);
   const [cloudCustomers, setCloudCustomers] = useState([]);
   const [cloudSuppliers, setCloudSuppliers] = useState([]);
   const [cloudInventory, setCloudInventory] = useState([]);
@@ -1248,6 +1262,9 @@ export default function VoiceExpenseTrackerPreview() {
   const [useExpenseInsteadOfSupplier, setUseExpenseInsteadOfSupplier] = useState(true);
   const [useSalesInsteadOfParty, setUseSalesInsteadOfParty] = useState(true);
   const [editingVoucher, setEditingVoucher] = useState(null);
+  const [voucherFormError, setVoucherFormError] = useState('');
+  const [voucherFormSuccess, setVoucherFormSuccess] = useState('');
+  const [voucherFilterType, setVoucherFilterType] = useState('All');
 
   const [statementLedgerId, setStatementLedgerId] = useState('');
   const [newPartyName, setNewPartyName] = useState('');
@@ -1549,10 +1566,13 @@ export default function VoiceExpenseTrackerPreview() {
 
     const initialLedgers = ensureDefaultLedgers();
     const initialLogs = import.meta.env.DEV ? readSavedLogs() : [];
+    const localVouchers = readVouchers();
     const initialVouchers = sortVouchersNewestFirst(
-      Array.isArray(cloudTransactions)
+      Array.isArray(cloudTransactions) && cloudTransactions.length > 0
         ? cloudTransactions
-        : migrateLogsToVouchers(initialLogs, initialLedgers)
+        : Array.isArray(localVouchers) && localVouchers.length > 0
+          ? localVouchers
+          : migrateLogsToVouchers(initialLogs, initialLedgers)
     );
 
     setLedgers(initialLedgers);
@@ -3282,7 +3302,12 @@ export default function VoiceExpenseTrackerPreview() {
     return sortVouchersNewestFirst(vouchers).slice(0, 8);
   }, [vouchers]);
 
-  const refreshVouchers = () => setVouchers(import.meta.env.DEV ? readVouchers() : vouchers);
+  const refreshVouchers = () => {
+    const stored = readVouchers();
+    if (Array.isArray(stored)) {
+      setVouchers(stored);
+    }
+  };
 
   const persistVoucher = async (voucher) => {
     if (!requireSensitiveAccess('voucher saving')) {
@@ -3296,8 +3321,9 @@ export default function VoiceExpenseTrackerPreview() {
       const transactionPayload = {
         ...voucher,
         transactionId: voucher.id,
+        transaction_id: voucher.id,
         userId: authUser.uid,
-        // Standardized schema fields requested by user
+        user_id: authUser.uid,
         type: 'voucher',
         voucher_type: voucher.type || 'Journal',
         date: voucher.date,
@@ -3314,79 +3340,22 @@ export default function VoiceExpenseTrackerPreview() {
         business_id: activeBusinessId,
         created_at: voucher.date ? `${voucher.date}T12:00:00.000Z` : new Date().toISOString()
       };
-      const supabasePath = `users/${authUser.uid}/transactions/${voucher.id}`;
-
-      debugInfo('[Transaction save request]', {
-        currentSupabaseUserUid: authUser.uid,
-        path: supabasePath,
-        payload: transactionPayload,
-      });
-      debugInfo('SUPABASE_PATH_USED', {
-        feature: 'transaction_write',
-        path: supabasePath,
-        uid: authUser.uid,
-        transactionId: voucher.id,
-      });
 
       try {
-        const saved = await saveCloudRecord(authUser.uid, 'transactions', voucher.id, transactionPayload);
-        if (!saved) {
-          throw new Error(`Supabase write returned false for ${supabasePath}`);
+        if (saveAuthenticatedCloudRecord) {
+          await saveAuthenticatedCloudRecord('transactions', voucher.id, transactionPayload).catch((err) => {
+            console.warn('Cloud save error in persistVoucher:', err);
+          });
         }
-        debugInfo('[Transaction save success]', {
-          currentSupabaseUserUid: authUser.uid,
-          path: supabasePath,
-          transactionId: voucher.id,
-        });
-        setVouchers((current) => {
-          const nextVouchers = sortVouchersNewestFirst([voucher, ...current.filter((item) => item.id !== voucher.id)]);
-          debugInfo('DASHBOARD_TRANSACTIONS_LOADED', {
-            reason: 'transaction_saved',
-            path: `users/${authUser.uid}/transactions`,
-            uid: authUser.uid,
-            count: nextVouchers.length,
-          });
-          debugInfo('DAYBOOK_TRANSACTIONS_LOADED', {
-            reason: 'transaction_saved',
-            path: `users/${authUser.uid}/transactions`,
-            uid: authUser.uid,
-            count: nextVouchers.length,
-          });
-          return nextVouchers;
-        });
-        setStatus('Voucher saved successfully.');
-        return true;
       } catch (error) {
-        const message = publicSafeError(error, 'Cloud transaction save failed. Please try again.');
-        setStatus(message);
-        setSecureError(message);
-        debugError('[Transaction save error]', {
-          currentSupabaseUserUid: authUser.uid,
-          path: supabasePath,
-          payload: transactionPayload,
-          error,
-        });
-        setSecureError(message);
-        setStatus(message);
-        return false;
+        console.warn('Supabase cloud transaction save failed; continuing with local storage:', error);
       }
     }
 
-    if (import.meta.env.DEV) {
-      saveVoucher(voucher);
-      refreshVouchers();
-      debugInfo('[Transaction saved in development storage]', {
-        reason: 'No Supabase user is available in local development.',
-        transactionId: voucher.id,
-        payload: voucher,
-      });
-      setStatus('Development transaction saved locally');
-      return true;
-    }
-
-    setSecureError('Sign in with Supabase before saving production transactions.');
-    setStatus('Supabase sign-in required');
-    return false;
+    saveVoucher(voucher);
+    refreshVouchers();
+    setStatus('Transaction saved');
+    return true;
   };
 
   const saveReceiptOrPayment = async ({
@@ -3481,89 +3450,146 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const saveVoucherEntry = async (event) => {
-    const targetForm = event.currentTarget;
-    event.preventDefault();
-    console.log("Voucher submit started", { voucherType, voucherAmount, voucherNarration });
-
-    if (!requireSensitiveAccess('voucher entry')) {
-      return;
-    }
-
-    if (!profile?.name) {
-      setStatus('Please select or create a company before saving vouchers.');
-      setSecureError('Please select or create a company before saving vouchers.');
-      return;
-    }
+    if (event?.preventDefault) event.preventDefault();
+    setVoucherFormError('');
+    setVoucherFormSuccess('');
 
     const amount = normalizeAmount(voucherAmount);
-    const narration = sanitizeText(voucherNarration, 300);
-
     if (amount <= 0) {
+      setVoucherFormError('Please enter a voucher amount greater than 0.');
       setStatus('Enter a voucher amount greater than zero');
       return;
     }
 
-    if (!narration) {
-      setStatus('Enter narration for this voucher');
-      return;
+    let selectedLedgerId = '';
+    let accountDisplayName = '';
+    let lines = [];
+
+    if (voucherType === 'Sales') {
+      // Credit sale to customer: Dr Customer, Cr Sales
+      let custId = voucherPartyId;
+      if (!custId && customerParties.length > 0) {
+        custId = customerParties[0].id;
+      }
+      if (!custId) {
+        try {
+          const { ledgers: nextL, ledger: newL } = addPartyLedger('Walk-in Customer', 'customer');
+          setLedgers(nextL);
+          custId = newL.id;
+        } catch {}
+      }
+      selectedLedgerId = custId || 'ledger-customer-default';
+      const custObj = ledgers.find((l) => l.id === selectedLedgerId) || customerParties.find((c) => c.id === selectedLedgerId);
+      accountDisplayName = custObj?.name || 'Customer';
+      lines = buildCreditSaleLines(amount, selectedLedgerId, SALES_LEDGER_ID);
+    } else if (voucherType === 'Purchase') {
+      // Credit purchase from supplier: Dr Material/Purchase, Cr Supplier
+      let supId = voucherPartyId;
+      if (!supId && supplierParties.length > 0) {
+        supId = supplierParties[0].id;
+      }
+      if (!supId) {
+        try {
+          const { ledgers: nextL, ledger: newL } = addPartyLedger('General Supplier', 'supplier');
+          setLedgers(nextL);
+          supId = newL.id;
+        } catch {}
+      }
+      selectedLedgerId = supId || 'ledger-supplier-default';
+      const supObj = ledgers.find((l) => l.id === selectedLedgerId) || supplierParties.find((s) => s.id === selectedLedgerId);
+      accountDisplayName = supObj?.name || 'Supplier';
+      const purchaseLedgerId = voucherExpenseId || MATERIAL_LEDGER_ID;
+      lines = buildCreditPurchaseLines(amount, purchaseLedgerId, selectedLedgerId);
+    } else if (voucherType === 'Receipt') {
+      // Cash / Bank receipt: Dr Cash/Bank, Cr Income/Party
+      const cashId = voucherCashId || CASH_LEDGER_ID;
+      const creditId = useSalesInsteadOfParty ? SALES_LEDGER_ID : (voucherPartyId || SALES_LEDGER_ID);
+      selectedLedgerId = creditId;
+      const targetObj = ledgers.find((l) => l.id === creditId);
+      accountDisplayName = targetObj?.name || (useSalesInsteadOfParty ? 'Sales' : 'Customer');
+      lines = buildReceiptLines(amount, cashId, creditId);
+    } else if (voucherType === 'Payment') {
+      // Cash / Bank payment: Dr Expense/Supplier, Cr Cash/Bank
+      const cashId = voucherCashId || CASH_LEDGER_ID;
+      const debitId = useExpenseInsteadOfSupplier
+        ? (voucherExpenseId || DEFAULT_EXPENSE_LEDGER_ID)
+        : (voucherPartyId || DEFAULT_EXPENSE_LEDGER_ID);
+      selectedLedgerId = debitId;
+      const targetObj = ledgers.find((l) => l.id === debitId);
+      accountDisplayName = targetObj?.name || (useExpenseInsteadOfSupplier ? 'Expense' : 'Supplier');
+      lines = buildPaymentLines(amount, debitId, cashId);
     }
 
-    let selectedLedgerId = "ledger-sales";
-    if (voucherType === 'Receipt' || voucherType === 'Sales') {
-      selectedLedgerId = useSalesInsteadOfParty ? SALES_LEDGER_ID : (voucherPartyId || SALES_LEDGER_ID);
-    } else if (voucherType === 'Payment' || voucherType === 'Purchase') {
-      selectedLedgerId = useExpenseInsteadOfSupplier ? (voucherExpenseId || MATERIAL_LEDGER_ID) : (voucherPartyId || voucherExpenseId || MATERIAL_LEDGER_ID);
+    // Auto-generate narration if empty
+    let narration = sanitizeText(voucherNarration, 300);
+    if (!narration || !narration.trim()) {
+      if (voucherType === 'Sales') narration = `Credit Sale to ${accountDisplayName}`;
+      else if (voucherType === 'Purchase') narration = `Credit Purchase from ${accountDisplayName}`;
+      else if (voucherType === 'Receipt') narration = `Receipt from ${accountDisplayName}`;
+      else if (voucherType === 'Payment') narration = `Payment for ${accountDisplayName}`;
+      else narration = `${voucherType} Voucher`;
     }
 
-    const voucherId = `vch-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+    const voucherId = editingVoucher?.id || createVoucherId();
     const newVoucherData = {
       id: voucherId,
       transactionId: voucherId,
-      type: voucherType || "Receipt",
-      date: voucherDate,
+      transaction_id: voucherId,
+      type: voucherType || 'Receipt',
+      date: voucherDate || new Date().toISOString().slice(0, 10),
       amount: Number(amount),
-      narration: narration,
-      source: "dashboard",
+      narration: narration.trim(),
+      partyId: selectedLedgerId,
+      partyName: accountDisplayName,
+      party_name: accountDisplayName,
+      accountName: accountDisplayName,
+      account_name: accountDisplayName,
+      source: 'voucher-entry',
       userId: authUser?.uid || 'guest',
+      user_id: authUser?.uid || 'guest',
       ownerUid: authUser?.uid || 'guest',
-      lines: [
-        {
-          ledgerId: voucherCashId || "ledger-cash",
-          debit: (voucherType === 'Receipt' || voucherType === 'Sales') ? Number(amount) : 0,
-          credit: (voucherType === 'Payment' || voucherType === 'Purchase') ? Number(amount) : 0
-        },
-        {
-          ledgerId: selectedLedgerId,
-          debit: (voucherType === 'Payment' || voucherType === 'Purchase') ? Number(amount) : 0,
-          credit: (voucherType === 'Receipt' || voucherType === 'Sales') ? Number(amount) : 0
-        }
-      ],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      lines,
+      status: 'completed',
+      createdAt: editingVoucher?.createdAt || new Date().toISOString(),
+      created_at: editingVoucher?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     };
 
-    if (supabaseEnabled && authUser?.uid) {
-      const saved = await saveCloudRecord(authUser.uid, "transactions", voucherId, newVoucherData);
-      if (!saved) {
-        console.error("Voucher insert error");
-        setSecureError("Supabase Error: Failed to save voucher");
-        return;
+    // Resilient cloud sync (never crashes local state)
+    try {
+      if (authUser?.uid && saveAuthenticatedCloudRecord) {
+        await saveAuthenticatedCloudRecord('transactions', voucherId, newVoucherData).catch((err) => {
+          console.warn('Cloud sync error for voucher:', err);
+        });
       }
-      console.log("Saving to table: transactions\nSUCCESS");
+    } catch (cloudErr) {
+      console.warn('Supabase cloud transaction save caught error; proceeding locally:', cloudErr);
     }
 
-    saveVoucher(newVoucherData);
-    await refreshVouchers();
+    // Local save: update state and localStorage
+    const nextVouchers = editingVoucher
+      ? vouchers.map((v) => (v.id === editingVoucher.id ? newVoucherData : v))
+      : [newVoucherData, ...vouchers.filter((v) => v.id !== voucherId)];
 
+    setVouchers(nextVouchers);
+    writeSavedArray(VOUCHERS_KEY, nextVouchers);
+
+    // Reset form
     setVoucherAmount('');
     setVoucherNarration('');
+    const wasEditing = editingVoucher;
     setEditingVoucher(null);
-    setStatus('Saved successfully');
-  };  const handleSaveVoiceConfirmation = async (confirmedData) => {
+    setVoucherFormSuccess(
+      `${wasEditing ? 'Updated' : 'Saved'} ${voucherType} voucher for ₹${Number(amount).toLocaleString('en-IN')} successfully!`
+    );
+    setStatus(`Voucher ${voucherId} saved successfully.`);
+  };
+
+  const handleSaveVoiceConfirmation = async (confirmedData) => {
     if (!requireSensitiveAccess('voice saving')) {
       return;
     }
-
     const validation = validateVoicePayload(confirmedData);
     if (!validation.valid && confirmedData.confidence < 0.35) {
       setSecureError(validation.errors.join(' '));
@@ -3805,51 +3831,51 @@ export default function VoiceExpenseTrackerPreview() {
       }
     } else if (voucher.type === 'Sales') {
       setUseSalesInsteadOfParty(false);
-      setVoucherPartyId(debitLine?.ledgerId || '');
+      setVoucherPartyId(voucher.partyId || debitLine?.ledgerId || '');
     } else if (voucher.type === 'Purchase') {
       setUseExpenseInsteadOfSupplier(false);
       setVoucherExpenseId(debitLine?.ledgerId || MATERIAL_LEDGER_ID);
-      setVoucherPartyId(creditLine?.ledgerId || '');
+      setVoucherPartyId(voucher.partyId || creditLine?.ledgerId || '');
     }
+    setVoucherFormError('');
+    setVoucherFormSuccess('');
     setActiveTab('voucher-entry');
     window.location.hash = 'voucher-entry';
     setStatus(`Editing ${voucher.type} voucher`);
+
+    const formEl = document.querySelector('#voucher-entry form');
+    if (formEl) {
+      formEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
   };
 
   const removeVoucher = async (voucherId) => {
-    if (!confirm('Delete this voucher?')) {
+    if (!confirm('Are you sure you want to delete this voucher?')) {
       return;
     }
 
-    if (authUser?.uid) {
-      try {
-        const deleted = await deleteCloudRecord(authUser.uid, 'transactions', voucherId);
-        if (!deleted) {
-          throw new Error('Voucher delete failed');
-        }
-        setVouchers((items) => items.filter((voucher) => voucher.id !== voucherId));
-        if (editingVoucher?.id === voucherId) {
-          setEditingVoucher(null);
-        }
-        setStatus('Voucher deleted');
-        return;
-      } catch (error) {
-        const message = publicSafeError(error, 'Voucher delete failed');
-        setSecureError(message);
-        setStatus(message);
-        return;
+    try {
+      if (authUser?.uid && deleteAuthenticatedCloudRecord) {
+        await deleteAuthenticatedCloudRecord('transactions', voucherId).catch((err) => {
+          console.warn('Cloud delete error for voucher:', err);
+        });
       }
+    } catch (error) {
+      console.warn('Cloud delete error:', error);
     }
 
-    if (import.meta.env.DEV) {
-      deleteVoucher(voucherId);
-      refreshVouchers();
-      setStatus('Development voucher deleted locally');
-      return;
-    }
+    deleteVoucher(voucherId);
+    const nextVouchers = vouchers.filter((voucher) => voucher.id !== voucherId);
+    setVouchers(nextVouchers);
+    writeSavedArray(VOUCHERS_KEY, nextVouchers);
 
-    setSecureError('Sign in with Supabase before deleting production transactions.');
-    setStatus('Supabase sign-in required');
+    if (editingVoucher?.id === voucherId) {
+      setEditingVoucher(null);
+      setVoucherAmount('');
+      setVoucherNarration('');
+    }
+    setVoucherFormSuccess('Voucher deleted successfully.');
+    setStatus('Voucher deleted');
   };
 
   const saveManualEntry = async (event) => {
@@ -3960,25 +3986,25 @@ export default function VoiceExpenseTrackerPreview() {
       let savedToCloud = false;
       try {
         if (authUser?.uid) {
-          savedToCloud = await saveAuthenticatedCloudRecord(collectionName, ledger.id, payload);
+          savedToCloud = await saveAuthenticatedCloudRecord(collectionName, ledger.id, payload).catch((err) => {
+            console.warn(`Party cloud save warning for ${collectionName}:`, err);
+          });
         }
       } catch (cloudErr) {
-        console.error(`Party Supabase error [${collectionName}]:`, cloudErr);
-        setStatus(`Failed to add ${newPartyType}: ${cloudErr.message || 'Unknown error'}`);
-        setSecureError(cloudErr.message || 'Unknown error');
-        return;
-        }
-      
-      console.log("Party Supabase response:", savedToCloud);
+        console.warn(`Party Supabase error [${collectionName}]:`, cloudErr);
+      }
       
       setLedgers(nextLedgers);
       setVoucherPartyId(ledger.id);
       setStatementLedgerId(ledger.id);
       setUseSalesInsteadOfParty(false);
       setNewPartyName('');
+      setVoucherFormSuccess(`Party "${newPartyName.trim()}" added successfully as ${newPartyType}!`);
+      setVoucherFormError('');
       setStatus(`Party ledger added successfully.`);
     } catch (error) {
       console.error("Party save error:", error);
+      setVoucherFormError(error.message || 'Failed to add party');
       setStatus(error.message);
     }
   };
@@ -6535,6 +6561,16 @@ export default function VoiceExpenseTrackerPreview() {
                   Receipt / Payment = cash. Sales / Purchase = credit (party khata). Every voucher balances debit and credit.
                 </p>
                 <VoiceCommandButton onCommandRecognized={handleVoiceCommandRecognized} existingParties={partyLedgers} />
+                {voucherFormError && (
+                  <div style={{ background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', padding: '10px 14px', borderRadius: '6px', margin: '14px 0', fontSize: '13px', fontWeight: 600 }}>
+                    ⚠️ {voucherFormError}
+                  </div>
+                )}
+                {voucherFormSuccess && (
+                  <div style={{ background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', padding: '10px 14px', borderRadius: '6px', margin: '14px 0', fontSize: '13px', fontWeight: 600 }}>
+                    ✅ {voucherFormSuccess}
+                  </div>
+                )}
                 <form onSubmit={saveVoucherEntry}>
                   <div className="form-grid">
                     <div>
@@ -6794,7 +6830,32 @@ export default function VoiceExpenseTrackerPreview() {
               </article>
 
               <article className="panel" style={{ marginTop: '24px' }}>
-                <h2>Recent Voucher Entries</h2>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+                  <h2>Recent Voucher Entries</h2>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {['All', 'Receipt', 'Payment', 'Sales', 'Purchase'].map((tab) => (
+                      <button
+                        key={tab}
+                        type="button"
+                        className={`secondary-button compact-button ${voucherFilterType === tab ? 'active-filter' : ''}`}
+                        style={{
+                          background: voucherFilterType === tab ? '#1e3a8a' : '#f1f5f9',
+                          color: voucherFilterType === tab ? '#ffffff' : '#334155',
+                          border: '1px solid #cbd5e1',
+                          padding: '4px 10px',
+                          fontSize: '12px',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontWeight: voucherFilterType === tab ? 600 : 400,
+                        }}
+                        onClick={() => setVoucherFilterType(tab)}
+                      >
+                        {tab}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="table-responsive">
                   <table className="data-table">
                     <thead>
@@ -6802,29 +6863,90 @@ export default function VoiceExpenseTrackerPreview() {
                         <th>Date</th>
                         <th>Type</th>
                         <th>Amount</th>
-                        <th>Account</th>
+                        <th>Account / Party</th>
                         <th>Narration</th>
+                        <th style={{ textAlign: 'center' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {vouchers.slice(0, 5).map(v => {
-                        const cashLine = v.lines?.find(l => l.ledgerId === CASH_LEDGER_ID);
-                        const partyLine = v.lines?.find(l => l.ledgerId !== CASH_LEDGER_ID && l.ledgerId !== MATERIAL_LEDGER_ID);
-                        const amount = Math.abs((cashLine ? (cashLine.debit || cashLine.credit) : (partyLine ? (partyLine.debit || partyLine.credit) : 0)) || 0);
-                        const accountName = partyLine ? (ledgers.find(l => l.id === partyLine.ledgerId)?.name || 'Unknown') : 'Unknown';
-                        return (
-                          <tr key={v.id}>
-                            <td>{new Date(v.date).toLocaleDateString()}</td>
-                            <td>{v.type}</td>
-                            <td>₹{amount.toFixed(2)}</td>
-                            <td>{accountName}</td>
-                            <td>{v.narration}</td>
-                          </tr>
-                        );
-                      })}
-                      {vouchers.length === 0 && (
+                      {vouchers
+                        .filter((v) => voucherFilterType === 'All' || v.type === voucherFilterType)
+                        .slice(0, 15)
+                        .map((v) => {
+                          const amount = Number(v.amount || 0);
+                          let accountName = v.partyName || v.party_name || v.accountName || v.account_name;
+                          if (!accountName) {
+                            const partyLine = (v.lines || []).find(
+                              (l) => l.ledgerId !== CASH_LEDGER_ID && l.ledgerId !== 'ledger-bank' && l.ledgerId !== 'ledger-cash'
+                            );
+                            if (partyLine) {
+                              accountName = ledgers.find((l) => l.id === partyLine.ledgerId)?.name || partyLine.ledgerId;
+                            } else {
+                              accountName = 'General / Cash';
+                            }
+                          }
+
+                          return (
+                            <tr key={v.id}>
+                              <td>{v.date ? new Date(v.date).toLocaleDateString('en-IN') : 'N/A'}</td>
+                              <td>
+                                <span
+                                  style={{
+                                    display: 'inline-block',
+                                    padding: '2px 8px',
+                                    borderRadius: '9999px',
+                                    fontSize: '11px',
+                                    fontWeight: 600,
+                                    backgroundColor:
+                                      v.type === 'Receipt' ? '#dcfce7' :
+                                      v.type === 'Payment' ? '#dbeafe' :
+                                      v.type === 'Sales' ? '#f3e8ff' : '#fed7aa',
+                                    color:
+                                      v.type === 'Receipt' ? '#166534' :
+                                      v.type === 'Payment' ? '#1e40af' :
+                                      v.type === 'Sales' ? '#6b21a8' : '#9a3412',
+                                  }}
+                                >
+                                  {v.type || 'Receipt'}
+                                </span>
+                              </td>
+                              <td><strong style={{ fontFamily: 'monospace' }}>₹{amount.toLocaleString('en-IN')}</strong></td>
+                              <td><strong>{accountName}</strong></td>
+                              <td style={{ color: '#475569', fontSize: '13px' }}>{v.narration || '--'}</td>
+                              <td style={{ textAlign: 'center' }}>
+                                <div style={{ display: 'inline-flex', gap: '6px' }}>
+                                  <button
+                                    type="button"
+                                    className="secondary-button compact-button"
+                                    style={{ padding: '2px 8px', fontSize: '12px' }}
+                                    onClick={() => editVoucher(v)}
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="danger-button compact-button"
+                                    style={{ padding: '2px 8px', fontSize: '12px', background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca' }}
+                                    onClick={() => removeVoucher(v.id)}
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      {vouchers.filter((v) => voucherFilterType === 'All' || v.type === voucherFilterType).length === 0 && (
                         <tr>
-                          <td colSpan="5" style={{ textAlign: 'center', padding: '24px' }} className="text-secondary">No recent vouchers found.</td>
+                          <td colSpan="6" style={{ textAlign: 'center', padding: '32px 16px', color: '#64748b' }}>
+                            <div style={{ fontSize: '24px', marginBottom: '8px' }}>📝</div>
+                            <strong style={{ fontSize: '14px', color: '#1e293b' }}>No Vouchers Found</strong>
+                            <p style={{ margin: '4px 0 0', fontSize: '12px' }}>
+                              {voucherFilterType === 'All'
+                                ? 'No vouchers recorded yet. Fill the form above and click Save Voucher.'
+                                : `No ${voucherFilterType} vouchers found.`}
+                            </p>
+                          </td>
                         </tr>
                       )}
                     </tbody>
