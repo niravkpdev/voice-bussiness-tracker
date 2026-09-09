@@ -15,6 +15,7 @@ export default function ProfitNxSalesEntry({
   onUpdateProfile,
   onSaveInvoice,
   onDeleteInvoice,
+  onDeleteOrder,
   onNavigate,
   onStatus
 }) {
@@ -255,12 +256,17 @@ export default function ProfitNxSalesEntry({
     const item = unifiedSalesList.find(i => i.id === id);
     if (!item) return;
 
-    if (window.confirm(`Are you sure you want to delete invoice ${item.billNo} for ${item.partyName}?`)) {
-      if (onDeleteInvoice) {
+    const isStoreOrder = item.source === 'Online Store' || String(item.id).startsWith('ord-') || Boolean(item.original?.orderNo);
+    const label = isStoreOrder ? `order ${item.billNo}` : `invoice ${item.billNo}`;
+
+    if (window.confirm(`Are you sure you want to delete ${label} for ${item.partyName}?`)) {
+      if (isStoreOrder && onDeleteOrder) {
+        onDeleteOrder(item.original?.id || item.id);
+      } else if (onDeleteInvoice) {
         onDeleteInvoice(item.original?.id || item.id);
       }
       if (selectedInvoiceId === id) setSelectedInvoiceId(null);
-      if (onStatus) onStatus(`Invoice ${item.billNo} deleted successfully.`);
+      if (onStatus) onStatus(`${label} deleted successfully.`);
     }
   };
 

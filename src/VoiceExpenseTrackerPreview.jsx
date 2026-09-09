@@ -598,20 +598,44 @@ function safeMathAnswer(input) {
   }
 }
 
-function getLast6MonthsData(vouchers) {
+function getLast6MonthsData(vouchers = [], invoices = [], orders = []) {
   const months = [];
   const now = new Date();
+  const invoiceBillNos = new Set((invoices || []).map(inv => inv.invoiceNo || inv.invoiceNumber || inv.billNo || '').filter(Boolean));
+
   for (let i = 5; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const key = d.toLocaleDateString('en-CA').slice(0, 7);
     const label = d.toLocaleString('default', { month: 'short' });
     let sales = 0, expenses = 0;
-    vouchers.forEach(v => {
+
+    // 1. Vouchers (Receipt/Sales and Payment/Purchase, excluding deleted)
+    (vouchers || []).forEach(v => {
+      if (!v || v.deleted || v.isDeleted || v.status === 'deleted' || v.status === 'cancelled') return;
       if ((v.date || '').slice(0, 7) === key) {
-        if (v.type === 'Receipt' || v.type === 'Sales') sales += v.amount || 0;
-        if (v.type === 'Payment' || v.type === 'Purchase') expenses += v.amount || 0;
+        if (v.type === 'Receipt' || v.type === 'Sales') sales += Number(v.amount) || 0;
+        if (v.type === 'Payment' || v.type === 'Purchase') expenses += Number(v.amount) || 0;
       }
     });
+
+    // 2. Active Invoices from Sales Register
+    (invoices || []).forEach(inv => {
+      if (!inv || inv.deleted || inv.isDeleted || inv.status === 'Deleted' || inv.status === 'Cancelled') return;
+      if ((inv.date || '').slice(0, 7) === key) {
+        sales += Number(inv.total || inv.grandTotal || inv.netTotal) || 0;
+      }
+    });
+
+    // 3. Active Online Store Orders (deduplicated)
+    (orders || []).forEach(ord => {
+      if (!ord || ord.deleted || ord.isDeleted || ord.status === 'Deleted' || ord.status === 'Cancelled') return;
+      const ordMonth = (ord.createdAt || ord.date || '').slice(0, 7);
+      const ordNo = ord.orderNo || `ORD-${ord.id}`;
+      if (ordMonth === key && !invoiceBillNos.has(ordNo)) {
+        sales += Number(ord.total || ord.amount) || 0;
+      }
+    });
+
     months.push({ label, key, sales, expenses, profit: sales - expenses });
   }
   return months;
@@ -1204,7 +1228,23 @@ export default function VoiceExpenseTrackerPreview() {
     return Array.isArray(local) ? local : [];
   });
 
-  const [cloudInventory, setCloudInventory] = useState([]);
+  const [cloudInventory, setCloudInventory] = useState(() => {
+    try {
+      const raw = readScopedString('erpProducts');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    const local = readSavedArray('erpProducts');
+    return Array.isArray(local) && local.length > 0 ? local : [
+      { id: 'prod-ratlami-500', name: 'Ratlami Sev (500g)', sku: 'RAT-500', category: 'Namkeen', sellingPrice: 250, purchasePrice: 180, currentStock: 100, minStock: 20, unit: 'pkts', businessId: 'default' },
+      { id: 'prod-bhavnagri-500', name: 'Bhavnagri Gathiya (500g)', sku: 'BHV-500', category: 'Namkeen', sellingPrice: 240, purchasePrice: 170, currentStock: 80, minStock: 15, unit: 'pkts', businessId: 'default' },
+      { id: 'prod-sing-200', name: 'Sing Bhujia (200g)', sku: 'SNG-200', category: 'Namkeen', sellingPrice: 110, purchasePrice: 75, currentStock: 150, minStock: 25, unit: 'pkts', businessId: 'default' },
+      { id: 'prod-sev-mamra-250', name: 'Sev Mamra (250g)', sku: 'SVM-250', category: 'Namkeen', sellingPrice: 90, purchasePrice: 60, currentStock: 120, minStock: 20, unit: 'pkts', businessId: 'default' },
+      { id: 'prod-chana-dal-250', name: 'Chana Dal Masala (250g)', sku: 'CHN-250', category: 'Namkeen', sellingPrice: 130, purchasePrice: 90, currentStock: 90, minStock: 15, unit: 'pkts', businessId: 'default' },
+    ];
+  });
 
   const [cloudInvoices, setCloudInvoices] = useState(() => {
     try {
@@ -1263,6 +1303,43 @@ export default function VoiceExpenseTrackerPreview() {
   });
 
   useEffect(() => {
+    if (Array.isArray(cloudOrders)) {
+      writeSavedArray(ORDERS_KEY, cloudOrders);
+      writeScopedString('phase3Orders', JSON.stringify(cloudOrders));
+    }
+  }, [cloudOrders]);
+
+  const handleDeleteOrder = async (orderId) => {
+    setCloudOrders((prev) => (Array.isArray(prev) ? prev.filter((o) => o.id !== orderId) : []));
+    const nextOrders = (readSavedArray(ORDERS_KEY) || []).filter((o) => o.id !== orderId);
+    writeSavedArray(ORDERS_KEY, nextOrders);
+    writeScopedString('phase3Orders', JSON.stringify(nextOrders));
+    if (supabaseEnabled && deleteAuthenticatedCloudRecord) {
+      try {
+        await deleteAuthenticatedCloudRecord('orders', orderId);
+      } catch (e) {
+        console.warn('Could not delete order from cloud:', e);
+      }
+    }
+    setStatus('Order deleted successfully.');
+  };
+
+  useEffect(() => {
+    const handleOrderDeleted = (e) => {
+      if (e?.detail?.id) handleDeleteOrder(e.detail.id);
+    };
+    const handleOrdersUpdated = (e) => {
+      if (Array.isArray(e?.detail)) setCloudOrders(e.detail);
+    };
+    window.addEventListener('trinetr-order-deleted', handleOrderDeleted);
+    window.addEventListener('trinetr-orders-updated', handleOrdersUpdated);
+    return () => {
+      window.removeEventListener('trinetr-order-deleted', handleOrderDeleted);
+      window.removeEventListener('trinetr-orders-updated', handleOrdersUpdated);
+    };
+  }, [supabaseEnabled]);
+
+  useEffect(() => {
     const handleNewStoreOrder = (event) => {
       const newOrder = event?.detail;
       if (!newOrder) return;
@@ -1275,8 +1352,44 @@ export default function VoiceExpenseTrackerPreview() {
     window.addEventListener('trinetr-new-order', handleNewStoreOrder);
     return () => window.removeEventListener('trinetr-new-order', handleNewStoreOrder);
   }, [supabaseEnabled]);
-  const [cloudEmployees, setCloudEmployees] = useState([]);
-  const [cloudAttendance, setCloudAttendance] = useState([]);
+
+  // Purge any previously deleted records on mount so they never leak into calculations
+  useEffect(() => {
+    const purgeDeleted = (key) => {
+      try {
+        const items = readSavedArray(key);
+        if (Array.isArray(items) && items.length > 0) {
+          const cleaned = items.filter(
+            (item) => item && !item.deleted && !item.isDeleted && item.status !== 'deleted' && item.status !== 'Deleted'
+          );
+          if (cleaned.length !== items.length) {
+            writeSavedArray(key, cleaned);
+            return cleaned;
+          }
+        }
+      } catch {}
+      return null;
+    };
+
+    const cleanOrd = purgeDeleted(ORDERS_KEY);
+    purgeDeleted('phase3Orders');
+    if (cleanOrd) setCloudOrders(cleanOrd);
+
+    const cleanInv = purgeDeleted('erpInvoices');
+    if (cleanInv) setCloudInvoices(cleanInv);
+
+    const cleanVch = purgeDeleted(VOUCHERS_KEY);
+    if (cleanVch) setVouchers(cleanVch);
+  }, []);
+
+  const [cloudEmployees, setCloudEmployees] = useState(() => {
+    const local = readSavedArray('phase3Employees');
+    return Array.isArray(local) ? local : [];
+  });
+  const [cloudAttendance, setCloudAttendance] = useState(() => {
+    const local = readSavedArray('phase3Attendance');
+    return Array.isArray(local) ? local : [];
+  });
   const [cloudLeaveBalances, setCloudLeaveBalances] = useState([]);
   const [cloudLeaveRequests, setCloudLeaveRequests] = useState([]);
   const [cloudHolidays, setCloudHolidays] = useState([]);
@@ -3276,28 +3389,286 @@ export default function VoiceExpenseTrackerPreview() {
   const cashLedgers = useMemo(() => getCashLedgers(ledgers), [ledgers]);
   const expenseLedgers = useMemo(() => getExpenseLedgers(ledgers), [ledgers]);
 
-  const totals = useMemo(() => voucherCashTotals(vouchers), [vouchers]);
+  const activeVouchers = useMemo(() => {
+    return (Array.isArray(vouchers) ? vouchers : []).filter(
+      (v) => v && !v.deleted && !v.isDeleted && v.status !== 'deleted' && v.status !== 'cancelled'
+    );
+  }, [vouchers]);
+
+  const activeInvoices = useMemo(() => {
+    return (Array.isArray(cloudInvoices) ? cloudInvoices : []).filter(
+      (i) => i && !i.deleted && !i.isDeleted && i.status !== 'Deleted' && i.status !== 'Cancelled'
+    );
+  }, [cloudInvoices]);
+
+  const activeOrders = useMemo(() => {
+    return (Array.isArray(cloudOrders) ? cloudOrders : []).filter(
+      (o) => o && !o.deleted && !o.isDeleted && o.status !== 'Deleted' && o.status !== 'Cancelled'
+    );
+  }, [cloudOrders]);
+
+  const totals = useMemo(() => voucherCashTotals(activeVouchers), [activeVouchers]);
 
   const statement = useMemo(
-    () => getLedgerStatement(statementLedgerId, ledgers, vouchers),
-    [statementLedgerId, ledgers, vouchers]
+    () => getLedgerStatement(statementLedgerId, ledgers, activeVouchers),
+    [statementLedgerId, ledgers, activeVouchers]
   );
 
-  const partySummary = useMemo(() => getPartySummary(ledgers, vouchers), [ledgers, vouchers]);
+  const partySummary = useMemo(() => getPartySummary(ledgers, activeVouchers), [ledgers, activeVouchers]);
 
   const stats = useMemo(() => {
-    return getDailyAndMonthlyStats(vouchers, ledgers);
-  }, [vouchers, ledgers]);
+    return getDailyAndMonthlyStats(activeVouchers, ledgers);
+  }, [activeVouchers, ledgers]);
 
   const cashInHand = useMemo(() => {
-    return cashLedgers.reduce((sum, ledger) => sum + computeLedgerBalance(ledger.id, ledgers, vouchers), 0);
-  }, [cashLedgers, ledgers, vouchers]);
+    return cashLedgers.reduce((sum, ledger) => sum + computeLedgerBalance(ledger.id, ledgers, activeVouchers), 0);
+  }, [cashLedgers, ledgers, activeVouchers]);
 
-  const receivableTotal = useMemo(() => {
-    return partySummary
-      .filter(p => p.group === 'Sundry Debtors' && p.outstandingAmount > 0)
-      .reduce((sum, item) => sum + item.outstandingAmount, 0);
-  }, [partySummary]);
+  const dashboardMetrics = useMemo(() => {
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    const currentMonthStr = todayStr.slice(0, 7);
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() - 1);
+    const prevMonthStr = d.toLocaleDateString('en-CA').slice(0, 7);
+
+    // Set of invoice numbers to avoid double-counting converted online orders
+    const invoiceBillNos = new Set(
+      activeInvoices.map((inv) => inv.invoiceNo || inv.invoiceNumber || inv.billNo || '').filter(Boolean)
+    );
+
+    // 1. Current Month Revenue
+    const invCurrentTotal = activeInvoices
+      .filter((inv) => (inv.date || '').slice(0, 7) === currentMonthStr)
+      .reduce((sum, inv) => sum + (Number(inv.total || inv.grandTotal || inv.netTotal) || 0), 0);
+
+    const ordCurrentTotal = activeOrders
+      .filter((ord) => {
+        const ordMonth = (ord.createdAt || ord.date || '').slice(0, 7);
+        const ordNo = ord.orderNo || `ORD-${ord.id}`;
+        return ordMonth === currentMonthStr && !invoiceBillNos.has(ordNo);
+      })
+      .reduce((sum, ord) => sum + (Number(ord.total || ord.amount) || 0), 0);
+
+    const vchSalesCurrent = activeVouchers
+      .filter((vch) => {
+        const vchMonth = (vch.date || '').slice(0, 7);
+        return vchMonth === currentMonthStr && (vch.type === 'Receipt' || vch.type === 'Sales');
+      })
+      .reduce((sum, vch) => sum + (Number(vch.amount) || 0), 0);
+
+    const totalMonthlyRevenue = invCurrentTotal + ordCurrentTotal + vchSalesCurrent;
+
+    // 2. Previous Month Revenue for MoM Trend
+    const invPrevTotal = activeInvoices
+      .filter((inv) => (inv.date || '').slice(0, 7) === prevMonthStr)
+      .reduce((sum, inv) => sum + (Number(inv.total || inv.grandTotal || inv.netTotal) || 0), 0);
+
+    const ordPrevTotal = activeOrders
+      .filter((ord) => {
+        const ordMonth = (ord.createdAt || ord.date || '').slice(0, 7);
+        const ordNo = ord.orderNo || `ORD-${ord.id}`;
+        return ordMonth === prevMonthStr && !invoiceBillNos.has(ordNo);
+      })
+      .reduce((sum, ord) => sum + (Number(ord.total || ord.amount) || 0), 0);
+
+    const vchSalesPrev = activeVouchers
+      .filter((vch) => {
+        const vchMonth = (vch.date || '').slice(0, 7);
+        return vchMonth === prevMonthStr && (vch.type === 'Receipt' || vch.type === 'Sales');
+      })
+      .reduce((sum, vch) => sum + (Number(vch.amount) || 0), 0);
+
+    const prevMonthlyRevenue = invPrevTotal + ordPrevTotal + vchSalesPrev;
+    const salesGrowth = prevMonthlyRevenue > 0
+      ? Math.round(((totalMonthlyRevenue - prevMonthlyRevenue) / prevMonthlyRevenue) * 100)
+      : (totalMonthlyRevenue > 0 ? 100 : 0);
+
+    // 3. Current Month Expenses (Vouchers Payment / Purchase)
+    const currentExpenses = activeVouchers
+      .filter((vch) => {
+        const vchMonth = (vch.date || '').slice(0, 7);
+        return vchMonth === currentMonthStr && (vch.type === 'Payment' || vch.type === 'Purchase');
+      })
+      .reduce((sum, vch) => sum + (Number(vch.amount) || 0), 0);
+
+    const prevExpenses = activeVouchers
+      .filter((vch) => {
+        const vchMonth = (vch.date || '').slice(0, 7);
+        return vchMonth === prevMonthStr && (vch.type === 'Payment' || vch.type === 'Purchase');
+      })
+      .reduce((sum, vch) => sum + (Number(vch.amount) || 0), 0);
+
+    const expenseGrowth = prevExpenses > 0
+      ? Math.round(((currentExpenses - prevExpenses) / prevExpenses) * 100)
+      : (currentExpenses > 0 ? 100 : 0);
+
+    // 4. Profit & Margin
+    const monthlyProfit = totalMonthlyRevenue - currentExpenses;
+    const profitMargin = totalMonthlyRevenue > 0
+      ? Math.round((monthlyProfit / totalMonthlyRevenue) * 100)
+      : 0;
+
+    // 5. Outstanding / Receivables
+    const debtorOutstanding = partySummary
+      .filter((p) => p.group === 'Sundry Debtors' && p.outstandingAmount > 0)
+      .reduce((sum, p) => sum + p.outstandingAmount, 0);
+
+    const unpaidInvoices = activeInvoices.filter((inv) => {
+      const bal = Number(inv.balance !== undefined ? inv.balance : (Number(inv.total) - Number(inv.paidAmount || 0)));
+      return inv.status !== 'Paid' && bal > 0;
+    });
+
+    const invoiceOutstanding = unpaidInvoices.reduce(
+      (sum, inv) => sum + (Number(inv.balance !== undefined ? inv.balance : (Number(inv.total) - Number(inv.paidAmount || 0))) || 0),
+      0
+    );
+
+    const combinedOutstanding = debtorOutstanding + invoiceOutstanding;
+    const pendingCount = partySummary.filter((p) => p.group === 'Sundry Debtors' && p.outstandingAmount > 0).length + unpaidInvoices.length;
+
+    // 6. Inventory Value
+    const invItems = Array.isArray(cloudInventory) ? cloudInventory : [];
+    const totalInventoryVal = invItems.reduce(
+      (sum, p) => sum + ((Number(p.currentStock) || 0) * (Number(p.purchasePrice || p.costPrice || p.rate || p.sellingPrice) || 0)),
+      0
+    );
+    const lowStockItems = invItems.filter(
+      (p) => (Number(p.currentStock) || 0) > 0 && (Number(p.currentStock) || 0) <= (Number(p.minStock) || 15)
+    );
+    const outOfStockItems = invItems.filter((p) => (Number(p.currentStock) || 0) <= 0);
+
+    // 7. Attendance
+    const employeesList = Array.isArray(cloudEmployees) ? cloudEmployees : [];
+    const attendanceList = Array.isArray(cloudAttendance) ? cloudAttendance : [];
+    const todayAtt = attendanceList.filter((a) => a.date === todayStr && a.status === 'Present');
+    const presentStaffCount = todayAtt.length;
+    const attendancePct = employeesList.length > 0
+      ? Math.round((presentStaffCount / employeesList.length) * 100)
+      : 100;
+
+    // 8. Dynamic Health Score (0-100)
+    let dynamicHealth = 50;
+    dynamicHealth += totalMonthlyRevenue >= currentExpenses ? 20 : -15;
+    dynamicHealth += cashInHand > 0 ? 15 : -20;
+    if (profitMargin >= 20) dynamicHealth += 10;
+    else if (profitMargin >= 10) dynamicHealth += 5;
+    if (combinedOutstanding > totalMonthlyRevenue && combinedOutstanding > 25000) dynamicHealth -= 10;
+    if (outOfStockItems.length > 0) dynamicHealth -= 5;
+    dynamicHealth = Math.max(10, Math.min(100, dynamicHealth));
+
+    return {
+      totalMonthlyRevenue,
+      prevMonthlyRevenue,
+      salesGrowth,
+      currentExpenses,
+      prevExpenses,
+      expenseGrowth,
+      monthlyProfit,
+      profitMargin,
+      combinedOutstanding,
+      pendingCount,
+      totalInventoryVal,
+      lowStockItems,
+      outOfStockItems,
+      totalStaffCount: employeesList.length,
+      presentStaffCount,
+      attendancePct,
+      dynamicHealth
+    };
+  }, [activeVouchers, activeInvoices, activeOrders, partySummary, cloudInventory, cloudEmployees, cloudAttendance, cashInHand]);
+
+  const dynamicAIInsights = useMemo(() => {
+    const list = [];
+    // 1. Revenue / Sales insight
+    if (dashboardMetrics.totalMonthlyRevenue > 0) {
+      if (dashboardMetrics.prevMonthlyRevenue > 0) {
+        list.push({
+          text: `Revenue is ${dashboardMetrics.salesGrowth >= 0 ? 'up' : 'down'} ${Math.abs(dashboardMetrics.salesGrowth)}% compared to last month.`,
+          icon: TrendingUp,
+          class: dashboardMetrics.salesGrowth >= 0 ? 'trend-up' : 'trend-down'
+        });
+      } else {
+        list.push({
+          text: `Recorded ${formatCurrency(dashboardMetrics.totalMonthlyRevenue)} in revenue this month.`,
+          icon: TrendingUp,
+          class: 'trend-up'
+        });
+      }
+    } else {
+      list.push({
+        text: 'No sales recorded yet this month. Create your first bill in Sales Register (F2).',
+        icon: TrendingUp,
+        class: 'trend-neutral'
+      });
+    }
+
+    // 2. Overdue / Outstanding insight
+    if (dashboardMetrics.combinedOutstanding > 0) {
+      const topDebtor = partySummary
+        .filter(p => p.group === 'Sundry Debtors' && p.outstandingAmount > 0)
+        .sort((a, b) => b.outstandingAmount - a.outstandingAmount)[0];
+      const debtorNotice = topDebtor ? ` (${topDebtor.name}: ${formatCurrency(topDebtor.outstandingAmount)})` : '';
+      list.push({
+        text: `${dashboardMetrics.pendingCount} pending payment(s) totaling ${formatCurrency(dashboardMetrics.combinedOutstanding)}${debtorNotice}. Consider sending reminders.`,
+        icon: AlertCircle,
+        class: 'trend-down'
+      });
+    } else {
+      list.push({
+        text: 'All customer accounts are clear with zero overdue outstanding balances.',
+        icon: CheckCircle,
+        class: 'trend-up'
+      });
+    }
+
+    // 3. Inventory Stock insight (Namkeen products)
+    if (dashboardMetrics.outOfStockItems.length > 0) {
+      list.push({
+        text: `Stock for "${dashboardMetrics.outOfStockItems[0].name}" is completely depleted. Production entry recommended.`,
+        icon: Package,
+        class: 'trend-down'
+      });
+    } else if (dashboardMetrics.lowStockItems.length > 0) {
+      const item = dashboardMetrics.lowStockItems[0];
+      list.push({
+        text: `Inventory for "${item.name}" is low (${item.currentStock} ${item.unit || 'pkts'} remaining). Reorder recommended.`,
+        icon: Package,
+        class: 'trend-neutral'
+      });
+    } else {
+      list.push({
+        text: `Inventory levels are optimal across all ${(cloudInventory || []).length} namkeen products.`,
+        icon: Package,
+        class: 'trend-up'
+      });
+    }
+
+    // 4. Cash Flow & Profit insight
+    if (cashInHand >= 0 && dashboardMetrics.monthlyProfit >= 0) {
+      list.push({
+        text: `Cash flow is healthy with ${formatCurrency(cashInHand)} in liquid balance and ${formatCurrency(dashboardMetrics.monthlyProfit)} net profit.`,
+        icon: CheckCircle,
+        class: 'trend-up'
+      });
+    } else if (cashInHand < 0) {
+      list.push({
+        text: `Cash in hand is running in deficit (${formatCurrency(cashInHand)}). Review upcoming voucher payments.`,
+        icon: AlertCircle,
+        class: 'trend-down'
+      });
+    } else {
+      list.push({
+        text: `Net profit for the month is ${formatCurrency(dashboardMetrics.monthlyProfit)}. Operating within budget.`,
+        icon: CheckCircle,
+        class: 'trend-up'
+      });
+    }
+
+    return list;
+  }, [dashboardMetrics, cashInHand, partySummary, cloudInventory]);
+
+  const receivableTotal = dashboardMetrics.combinedOutstanding;
 
   const payableTotal = useMemo(() => {
     return partySummary
@@ -3305,8 +3676,8 @@ export default function VoiceExpenseTrackerPreview() {
       .reduce((sum, item) => sum + item.outstandingAmount, 0);
   }, [partySummary]);
 
-  const monthlyNetProfit = stats.monthlySales - stats.monthlyExpenses;
-  const prevMonthlyNetProfit = stats.prevMonthlySales - stats.prevMonthlyExpenses;
+  const monthlyNetProfit = dashboardMetrics.monthlyProfit;
+  const prevMonthlyNetProfit = dashboardMetrics.prevMonthlyRevenue - dashboardMetrics.prevExpenses;
 
   const netProfitGrowth = useMemo(() => {
     if (prevMonthlyNetProfit === 0) return monthlyNetProfit > 0 ? 100 : 0;
@@ -6266,19 +6637,19 @@ export default function VoiceExpenseTrackerPreview() {
               <div className="dashboard-summary-grid">
                 <div className="stat-card-modern" style={{ background: 'var(--bg-primary)' }}>
                   <span className="metric-label">Monthly Revenue</span>
-                  <strong className="metric-value">{formatCurrency(stats?.monthlySales || 0)}</strong>
+                  <strong className="metric-value">{formatCurrency(dashboardMetrics.totalMonthlyRevenue)}</strong>
                 </div>
                 <div className="stat-card-modern" style={{ background: 'var(--bg-primary)' }}>
                   <span className="metric-label">Total Expenses</span>
-                  <strong className="metric-value">{formatCurrency(stats?.monthlyExpenses || 0)}</strong>
+                  <strong className="metric-value">{formatCurrency(dashboardMetrics.currentExpenses)}</strong>
                 </div>
                 <div className="stat-card-modern" style={{ background: 'var(--bg-primary)' }}>
                   <span className="metric-label">Net Profit</span>
-                  <strong className="metric-value">{formatCurrency(monthlyNetProfit || 0)}</strong>
+                  <strong className="metric-value">{formatCurrency(dashboardMetrics.monthlyProfit)}</strong>
                 </div>
                 <div className="stat-card-modern" style={{ background: 'var(--bg-primary)' }}>
                   <span className="metric-label">Pending Payments</span>
-                  <strong className="metric-value">{formatCurrency(receivableTotal || 0)}</strong>
+                  <strong className="metric-value">{formatCurrency(dashboardMetrics.combinedOutstanding)}</strong>
                 </div>
               </div>
 
@@ -6345,14 +6716,90 @@ export default function VoiceExpenseTrackerPreview() {
                     {/* SECTION 1: EXECUTIVE OVERVIEW (8 KPIs) */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
                       {[
-                        { title: 'Business Health', val: '92/100', icon: Star, color: 'var(--brand-primary)', bg: 'var(--brand-secondary)', trend: '+5 pts', up: true },
-                        { title: 'Monthly Revenue', val: formatCurrency(stats.monthlySales || 345000), icon: Activity, color: 'var(--success)', bg: 'var(--success-bg)', trend: '+12%', up: true },
-                        { title: 'Total Expenses', val: formatCurrency(stats.monthlyExpenses || 125000), icon: DollarSign, color: 'var(--danger)', bg: 'var(--danger-bg)', trend: '+4%', up: false },
-                        { title: 'Cash Flow', val: formatCurrency(monthlyNetProfit || 85000), icon: CreditCard, color: 'var(--brand-primary)', bg: 'var(--brand-secondary)', trend: 'Healthy', up: true },
-                        { title: 'Outstanding', val: formatCurrency(receivableTotal || 45200), icon: Clock, color: 'var(--warning)', bg: 'var(--warning-bg)', trend: '12 Pending', up: false },
-                        { title: 'Monthly Profit', val: formatCurrency((stats.monthlySales || 345000) - (stats.monthlyExpenses || 125000)), icon: TrendingUp, color: 'var(--success)', bg: 'var(--success-bg)', trend: '+8.2%', up: true },
-                        { title: 'Inventory Value', val: formatCurrency(945000), icon: Package, color: '#8b5cf6', bg: '#ede9fe', trend: 'Optimal', up: true },
-                        { title: 'Attendance', val: '92%', icon: Users, color: '#06b6d4', bg: '#cffafe', trend: '24/26 Present', up: true },
+                        {
+                          title: 'Business Health',
+                          val: `${dashboardMetrics.dynamicHealth}/100`,
+                          icon: Star,
+                          color: 'var(--brand-primary)',
+                          bg: 'var(--brand-secondary)',
+                          trend: dashboardMetrics.dynamicHealth >= 80 ? 'Excellent' : dashboardMetrics.dynamicHealth >= 60 ? 'Good' : dashboardMetrics.dynamicHealth >= 40 ? 'Fair' : 'Needs Attention',
+                          up: dashboardMetrics.dynamicHealth >= 50
+                        },
+                        {
+                          title: 'Monthly Revenue',
+                          val: formatCurrency(dashboardMetrics.totalMonthlyRevenue),
+                          icon: Activity,
+                          color: 'var(--success)',
+                          bg: 'var(--success-bg)',
+                          trend: dashboardMetrics.prevMonthlyRevenue > 0
+                            ? `${dashboardMetrics.salesGrowth >= 0 ? '+' : ''}${dashboardMetrics.salesGrowth}% MoM`
+                            : (dashboardMetrics.totalMonthlyRevenue > 0 ? '+100% (New)' : 'No Sales Yet'),
+                          up: dashboardMetrics.salesGrowth >= 0
+                        },
+                        {
+                          title: 'Total Expenses',
+                          val: formatCurrency(dashboardMetrics.currentExpenses),
+                          icon: DollarSign,
+                          color: 'var(--danger)',
+                          bg: 'var(--danger-bg)',
+                          trend: dashboardMetrics.prevExpenses > 0
+                            ? `${dashboardMetrics.expenseGrowth >= 0 ? '+' : ''}${dashboardMetrics.expenseGrowth}% MoM`
+                            : (dashboardMetrics.currentExpenses > 0 ? 'Recorded' : 'Zero Expense'),
+                          up: dashboardMetrics.expenseGrowth <= 0
+                        },
+                        {
+                          title: 'Cash Flow',
+                          val: formatCurrency(cashInHand !== 0 ? cashInHand : dashboardMetrics.monthlyProfit),
+                          icon: CreditCard,
+                          color: 'var(--brand-primary)',
+                          bg: 'var(--brand-secondary)',
+                          trend: (cashInHand >= 0 && dashboardMetrics.monthlyProfit >= 0) ? 'Healthy' : cashInHand < 0 ? 'Deficit' : 'Strained',
+                          up: cashInHand >= 0
+                        },
+                        {
+                          title: 'Outstanding',
+                          val: formatCurrency(dashboardMetrics.combinedOutstanding),
+                          icon: Clock,
+                          color: 'var(--warning)',
+                          bg: 'var(--warning-bg)',
+                          trend: dashboardMetrics.combinedOutstanding > 0 ? `${dashboardMetrics.pendingCount} Pending` : 'All Cleared',
+                          up: dashboardMetrics.combinedOutstanding === 0
+                        },
+                        {
+                          title: 'Monthly Profit',
+                          val: formatCurrency(dashboardMetrics.monthlyProfit),
+                          icon: TrendingUp,
+                          color: 'var(--success)',
+                          bg: 'var(--success-bg)',
+                          trend: dashboardMetrics.totalMonthlyRevenue > 0
+                            ? `${dashboardMetrics.profitMargin >= 0 ? '+' : ''}${dashboardMetrics.profitMargin}% Margin`
+                            : '0% Margin',
+                          up: dashboardMetrics.monthlyProfit >= 0
+                        },
+                        {
+                          title: 'Inventory Value',
+                          val: formatCurrency(dashboardMetrics.totalInventoryVal),
+                          icon: Package,
+                          color: '#8b5cf6',
+                          bg: '#ede9fe',
+                          trend: dashboardMetrics.outOfStockItems.length > 0
+                            ? `${dashboardMetrics.outOfStockItems.length} Out of Stock`
+                            : (dashboardMetrics.lowStockItems.length > 0
+                              ? `${dashboardMetrics.lowStockItems.length} Low Stock`
+                              : `${(cloudInventory || []).length} Products`),
+                          up: dashboardMetrics.outOfStockItems.length === 0
+                        },
+                        {
+                          title: 'Attendance',
+                          val: dashboardMetrics.totalStaffCount > 0 ? `${dashboardMetrics.attendancePct}%` : '100%',
+                          icon: Users,
+                          color: '#06b6d4',
+                          bg: '#cffafe',
+                          trend: dashboardMetrics.totalStaffCount > 0
+                            ? `${dashboardMetrics.presentStaffCount}/${dashboardMetrics.totalStaffCount} Present`
+                            : 'Owner / Self-run',
+                          up: dashboardMetrics.attendancePct >= 75
+                        },
                       ].map((kpi, i) => (
                         <div key={i} className="glass-panel hover-scale" style={{ padding: '20px', margin: 0, position: 'relative', overflow: 'hidden' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
@@ -6383,7 +6830,7 @@ export default function VoiceExpenseTrackerPreview() {
                             <option>Last 6 Months</option>
                           </select>
                         </div>
-                        <ProfitTrendChart data={getLast6MonthsData(vouchers)} />
+                        <ProfitTrendChart data={getLast6MonthsData(activeVouchers, activeInvoices, activeOrders)} />
                       </div>
 
                       {/* SECTION 4: BUSINESS INSIGHTS */}
@@ -6392,12 +6839,7 @@ export default function VoiceExpenseTrackerPreview() {
                           <h2 className="panel-title"><Sparkles size={18} color="#8b5cf6" /> AI Business Insights</h2>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                          {[
-                            { text: 'Revenue increased 12% this week compared to last week.', icon: TrendingUp, class: 'trend-up' },
-                            { text: '3 High-value invoices are overdue. Consider sending reminders.', icon: AlertCircle, class: 'trend-down' },
-                            { text: 'Inventory for "A4 Paper Rims" is running extremely low.', icon: Package, class: 'trend-neutral' },
-                            { text: 'Cash flow is healthy. You have sufficient capital for upcoming payroll.', icon: CheckCircle, class: 'trend-up' }
-                          ].map((insight, i) => (
+                          {dynamicAIInsights.map((insight, i) => (
                             <div key={i} className="insight-card">
                               <insight.icon size={18} className={insight.class} style={{ flexShrink: 0, marginTop: '2px' }} />
                               <span style={{ fontSize: '14px', lineHeight: '1.5', color: 'var(--text-primary)' }}>{insight.text}</span>
@@ -6867,6 +7309,12 @@ export default function VoiceExpenseTrackerPreview() {
                   }
                 }}
                 onUpdateProfile={updateBusinessProfile}
+                onDeleteOrder={handleDeleteOrder}
+                onOrdersChange={(nextOrders) => {
+                  setCloudOrders(nextOrders);
+                  writeSavedArray(ORDERS_KEY, nextOrders);
+                  writeScopedString('phase3Orders', JSON.stringify(nextOrders));
+                }}
               />
             </Suspense>
           )}
@@ -6902,6 +7350,7 @@ export default function VoiceExpenseTrackerPreview() {
                   }
                   setStatus('Sales invoice deleted.');
                 }}
+                onDeleteOrder={handleDeleteOrder}
                 onNavigate={(tab) => {
                   setActiveTab(tab);
                   window.location.hash = tab;

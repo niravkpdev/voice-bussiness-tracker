@@ -254,6 +254,8 @@ export default function Phase3Ops({
   onUpdateInvoice,
   onAddVoucher,
   onUpdateProfile,
+  onDeleteOrder,
+  onOrdersChange,
 }) {
   const [orders, setOrders] = useState(() => readArray(ORDER_KEY));
   const [employees, setEmployees] = useState(() => readArray(EMPLOYEE_KEY));
@@ -726,7 +728,11 @@ export default function Phase3Ops({
       onStatus(error?.message || 'Order save failed');
       return;
     }
-    setOrders((items) => [order, ...items.filter((item) => item.id !== order.id)]);
+    const nextOrders = [order, ...orders.filter((item) => item.id !== order.id)];
+    setOrders(nextOrders);
+    writeArray(ORDER_KEY, nextOrders);
+    onOrdersChange?.(nextOrders);
+    window.dispatchEvent(new CustomEvent('trinetr-orders-updated', { detail: nextOrders }));
     await queueOfflineAction(current ? 'order-updated' : 'order-created', order);
     await logAudit(`${current ? 'Updated' : 'Created'} ${order.orderNo}`, 'Orders');
     setEditingOrder(null);
@@ -739,7 +745,12 @@ export default function Phase3Ops({
       if (onCloudDelete) {
         await onCloudDelete('orders', order.id).catch(console.error);
       }
-      setOrders((items) => items.filter((item) => item.id !== order.id));
+      const nextOrders = orders.filter((item) => item.id !== order.id);
+      setOrders(nextOrders);
+      writeArray(ORDER_KEY, nextOrders);
+      onDeleteOrder?.(order.id);
+      onOrdersChange?.(nextOrders);
+      window.dispatchEvent(new CustomEvent('trinetr-order-deleted', { detail: { id: order.id } }));
       if (editingOrder?.id === order.id) setEditingOrder(null);
       if (typeof onStatus === 'function') onStatus(`Deleted order ${order.orderNo}`);
       await logAudit(`order deleted: ${order.orderNo}`, 'Orders');
@@ -816,7 +827,11 @@ export default function Phase3Ops({
       onStatus(error?.message || 'Order status update failed');
       return;
     }
-    setOrders(orders.map((item) => item.id === order.id ? updatedOrder : item));
+    const nextOrders = orders.map((item) => item.id === order.id ? updatedOrder : item);
+    setOrders(nextOrders);
+    writeArray(ORDER_KEY, nextOrders);
+    onOrdersChange?.(nextOrders);
+    window.dispatchEvent(new CustomEvent('trinetr-orders-updated', { detail: nextOrders }));
     await logAudit(`Updated ${order.orderNo} to ${nextStatus}`, 'Orders');
   };
 
