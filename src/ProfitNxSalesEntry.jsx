@@ -332,8 +332,9 @@ export default function ProfitNxSalesEntry({
           <button
             type="button"
             className="btn btn-secondary"
-            onClick={() => onNavigate?.('store')}
+            onClick={() => onNavigate?.('orders')}
             style={{ fontSize: '12px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', background: '#fef3c7', color: '#92400e', borderColor: '#fde68a', fontWeight: 600 }}
+            title="View incoming storefront customer orders"
           >
             <ShoppingBag size={14} /> Storefront Orders ({orders.length})
           </button>
