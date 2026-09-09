@@ -136,6 +136,7 @@ export function StoreHeader({
                 type="button" 
                 className="bhole-search-submit"
                 onClick={() => onNavigate('shop')}
+                aria-label="Submit search"
               >
                 <Search size={18} />
               </button>

@@ -1,18 +1,9 @@
-import React, { useRef } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import React from 'react';
 import { CATEGORIES } from '../data/namkeenData';
 import { useStoreCart } from '../context/StoreCartContext';
 
 export function CategoryCarousel({ onSelectCategory }) {
   const { activeCategory, setActiveCategory } = useStoreCart();
-  const scrollContainerRef = useRef(null);
-
-  const scroll = (direction) => {
-    if (scrollContainerRef.current) {
-      const scrollAmount = direction === 'left' ? -260 : 260;
-      scrollContainerRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-    }
-  };
 
   const handleCategorySelect = (id) => {
     setActiveCategory(id);
@@ -25,27 +16,9 @@ export function CategoryCarousel({ onSelectCategory }) {
     <div className="bhole-category-carousel-section">
       <div className="bhole-carousel-header">
         <h3 className="bhole-carousel-title">Explore Categories</h3>
-        <div className="bhole-carousel-nav-arrows hide-on-mobile">
-          <button 
-            type="button" 
-            onClick={() => scroll('left')} 
-            className="bhole-arrow-btn"
-            aria-label="Previous categories"
-          >
-            <ChevronLeft size={18} />
-          </button>
-          <button 
-            type="button" 
-            onClick={() => scroll('right')} 
-            className="bhole-arrow-btn"
-            aria-label="Next categories"
-          >
-            <ChevronRight size={18} />
-          </button>
-        </div>
       </div>
 
-      <div className="bhole-category-scroll-container" ref={scrollContainerRef}>
+      <div className="bhole-category-scroll-container">
         {CATEGORIES.filter(c => c.id !== 'all').map((cat) => {
           const isActive = activeCategory === cat.id;
           return (

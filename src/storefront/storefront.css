@@ -186,44 +186,69 @@
 .bhole-search-bar {
   flex: 1;
   max-width: 520px;
+  min-width: 0;
 }
 
 .bhole-search-input-wrap {
   display: flex;
   align-items: center;
-  border: 2px solid #f3e8d9;
+  border: 2px solid #e2e8f0;
   border-radius: 28px;
   overflow: hidden;
   background: #fff;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  height: 44px;
+  width: 100%;
 }
 
 .bhole-search-input-wrap:focus-within {
   border-color: var(--bhole-accent);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
 }
 
 .bhole-search-input-wrap input {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
   border: none;
   outline: none;
-  padding: 10px 18px;
+  padding: 0 16px 0 20px;
   font-size: 14px;
+  color: var(--bhole-text-dark);
+  background: transparent;
+}
+
+.bhole-search-input-wrap input::placeholder {
+  color: #94a3b8;
+  font-size: 13.5px;
 }
 
 .bhole-search-submit {
-  background: var(--bhole-accent);
-  border: none;
-  color: #fff;
-  padding: 10px 18px;
+  flex: 0 0 48px !important;
+  width: 48px !important;
+  min-width: 48px !important;
+  max-width: 48px !important;
+  height: 100% !important;
+  min-height: unset !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: var(--bhole-accent) !important;
+  color: #fff !important;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.2s;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: background 0.2s, filter 0.15s !important;
+  flex-shrink: 0 !important;
 }
 
 .bhole-search-submit:hover {
-  background: #b45309;
+  background: #d97706 !important;
+  transform: none !important;
+  filter: brightness(1.05) !important;
 }
 
 /* Nav Actions (Wishlist & Cart) */
