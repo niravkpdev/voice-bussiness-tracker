@@ -79,9 +79,9 @@ export function CartDrawer() {
 
     // 1. Save to guest orders for storefront history
     try {
-      const orders = JSON.parse(localStorage.getItem('bhole_g_guest_orders') || '[]');
+      const orders = JSON.parse(localStorage.getItem('trinetr_store_guest_orders') || localStorage.getItem('bhole_g_guest_orders') || '[]');
       orders.unshift(orderData);
-      localStorage.setItem('bhole_g_guest_orders', JSON.stringify(orders));
+      localStorage.setItem('trinetr_store_guest_orders', JSON.stringify(orders));
     } catch (err) {
       console.error(err);
     }

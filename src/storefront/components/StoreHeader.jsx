@@ -108,7 +108,7 @@ export function StoreHeader({
               <img src={storeInfo.logo} alt={storeInfo.name} style={{ width: 44, height: 44, borderRadius: 10, objectFit: 'cover' }} />
             ) : (
               <div className="bhole-logo-emblem">
-                <span className="bhole-logo-accent">{(storeInfo?.name || 'B')[0].toUpperCase()}</span>
+                <span className="bhole-logo-accent">{(storeInfo?.name || 'J')[0].toUpperCase()}</span>
               </div>
             )}
             <div className="bhole-logo-text">

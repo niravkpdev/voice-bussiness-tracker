@@ -324,5 +324,39 @@ describe('Online Storefront Catalog, Brand Dynamic Profile & Variants', () => {
     expect(GSTIN_REGEX.test('XXCPVPC7753J1Z8')).toBe(false); // letters instead of state code
     expect(GSTIN_REGEX.test('24CPVPC7753J1A8')).toBe(false); // 14th char not Z
   });
+
+  it('ensures authentic category images without mismatched burgers or bananas', () => {
+    const burgerImageId = 'photo-1568901346375-23c9450c58cd';
+    const bananaImageId = 'photo-1587132137056-bfbf0166836e';
+
+    CATEGORIES.forEach(cat => {
+      if (cat.image) {
+        expect(cat.image).not.toContain(burgerImageId);
+        expect(cat.image).not.toContain(bananaImageId);
+      }
+    });
+
+    PRODUCTS.forEach(prod => {
+      if (prod.image) {
+        expect(prod.image).not.toContain(burgerImageId);
+        expect(prod.image).not.toContain(bananaImageId);
+      }
+    });
+  });
+
+  it('uses Royal Sapphire Navy & Saffron Gold brand palette without Bhole G maroon', () => {
+    // Check STORE_INFO branding
+    expect(STORE_INFO.name).toBe('Jay Ambe Namkeen');
+
+    // Check Soya Sticks & Vatana image resolution
+    const soyaSticks = CATEGORIES.find(c => c.id === 'soya-sticks');
+    expect(soyaSticks.image).toContain('photo-1599490659213-e2b9527bd087');
+
+    const vatana = CATEGORIES.find(c => c.id === 'vatana');
+    expect(vatana.image).toContain('photo-1515543237350-b3eea1ec8082');
+
+    const chikki = CATEGORIES.find(c => c.id === 'chikki');
+    expect(chikki.image).toContain('photo-1590080875515-8a3a8dc5735e');
+  });
 });
 
