@@ -1383,11 +1383,15 @@ export default function VoiceExpenseTrackerPreview() {
   const quickAddRef = useRef(null);
   const profileDropdownRef = useRef(null);
   const notificationsRef = useRef(null);
+  const menubarRef = useRef(null);
   const [showShareStoreModal, setShowShareStoreModal] = useState(false);
   const [storeLinkCopied, setStoreLinkCopied] = useState(false);
 
   useEffect(() => {
     const handleOutsideClick = (e) => {
+      if (menubarRef.current && !menubarRef.current.contains(e.target)) {
+        setOpenNxMenu(null);
+      }
       if (quickAddRef.current && !quickAddRef.current.contains(e.target)) {
         setQuickAddOpen(false);
       }
@@ -1409,6 +1413,7 @@ export default function VoiceExpenseTrackerPreview() {
     if (target === 'party-management' || target === 'parties') target = 'crm';
     setActiveTab(target);
     window.location.hash = target;
+    setOpenNxMenu(null);
     setQuickAddOpen(false);
     setProfileDropdownOpen(false);
     setNotificationsOpen(false);
@@ -5500,7 +5505,7 @@ export default function VoiceExpenseTrackerPreview() {
         {showTour && <GuidedTour onFinish={() => setShowTour(false)} />}
         
         {/* PROFIT NX ERP TOP NUMBERED MENUBAR (Matching FR.mp4) */}
-        <div className="profitnx-erp-top-wrapper" style={{ position: 'relative', zIndex: 110 }}>
+        <div className="profitnx-erp-top-wrapper" ref={menubarRef} style={{ position: 'relative', zIndex: 500 }}>
           {/* Trinetr Numbered Menu Bar */}
           <nav className="profitnx-menubar hide-on-mobile" style={{
             background: '#0f172a',
@@ -5830,7 +5835,7 @@ export default function VoiceExpenseTrackerPreview() {
           </nav>
         </div>
 
-        <header className="topbar" style={{ padding: '8px 20px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'nowrap', overflow: 'visible', position: 'sticky', top: 0, zIndex: 120 }}>
+        <header className="topbar" style={{ padding: '8px 20px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'nowrap', overflow: 'visible', position: 'sticky', top: 0, zIndex: 100 }}>
           {authUser?.mode === 'demo' && (
             <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', background: 'var(--brand-primary)', color: 'white', padding: '4px 16px', fontSize: '12px', fontWeight: 600, borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px', zIndex: 100 }}>
               Demo Mode

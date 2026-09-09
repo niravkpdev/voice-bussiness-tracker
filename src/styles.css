@@ -7129,6 +7129,8 @@ input, textarea, [contenteditable="true"] {
    PROFIT NX ERP - JAY AMBE NAMKEEN STYLING (MATCHING FR.mp4)
    ========================================================================== */
 .profitnx-erp-top-wrapper {
+  position: relative !important;
+  z-index: 500 !important;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
 }
 
@@ -7256,7 +7258,7 @@ input, textarea, [contenteditable="true"] {
   border-radius: 8px !important;
   border: 1px solid #cbd5e1 !important;
   min-width: 270px !important;
-  z-index: 1000 !important;
+  z-index: 99999 !important;
   padding: 6px !important;
   animation: trinetrDropdownFadeIn 0.15s ease-out;
 }
@@ -7347,7 +7349,7 @@ input, textarea, [contenteditable="true"] {
   overflow: visible !important;
   position: sticky !important;
   top: 0 !important;
-  z-index: 120 !important;
+  z-index: 100 !important;
 }
 
 /* Dropdown containers and menus in ERP header */
