@@ -40,7 +40,6 @@ export function StoreFooter({ onNavigate }) {
             <div className="trust-text">
               <h4>We Are FSSAI Certified</h4>
               <p>Adhering to the highest standards of food safety, hygiene, and authentic taste.</p>
-              <span className="fssai-license">Lic No: {activeStore.fssaiNumber || '10722026001234'}</span>
             </div>
           </div>
 
@@ -62,22 +61,6 @@ export function StoreFooter({ onNavigate }) {
               </a>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Store Location Map */}
-      <div className="bhole-map-section">
-        <div className="bhole-map-wrapper">
-          <iframe
-            title={`${activeStore.name} Location`}
-            src={`https://maps.google.com/maps?q=${mapQuery}&t=&z=14&ie=UTF8&iwloc=&output=embed`}
-            width="100%"
-            height="260"
-            style={{ border: 0 }}
-            allowFullScreen=""
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-          />
         </div>
       </div>
 
