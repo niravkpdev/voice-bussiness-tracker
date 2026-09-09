@@ -7294,3 +7294,25 @@ input, textarea, [contenteditable="true"] {
   background: #e2e8f0;
   margin: 4px 6px;
 }
+
+/* ERP Topbar Actions - strictly single horizontal line, no stacking */
+.erp-top-actions-row {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  width: auto !important;
+  gap: 8px !important;
+}
+
+.erp-top-actions-row > button,
+.erp-top-actions-row .btn,
+.erp-top-actions-row > div,
+.erp-top-actions-row > a {
+  width: auto !important;
+  min-width: 0 !important;
+  flex: 0 0 auto !important;
+  white-space: nowrap !important;
+  display: inline-flex !important;
+}
+

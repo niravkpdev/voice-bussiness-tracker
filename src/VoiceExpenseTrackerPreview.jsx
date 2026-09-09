@@ -955,10 +955,11 @@ const searchRoutes = [
   { id: 'voice-bookkeeper', label: 'Voice Bookkeeper', route: 'voice-bookkeeper', aliases: ['voice', 'mic'] },
 ];
 
-function GlobalSearch({ onNavigate }) {
+function GlobalSearch({ onNavigate, theme }) {
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const inputRef = useRef(null);
+  const isDark = theme === 'dark';
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -997,8 +998,8 @@ function GlobalSearch({ onNavigate }) {
   };
 
   return (
-    <div className="search-wrapper" style={{ position: 'relative' }}>
-      <Search size={16} className="search-icon" style={{ pointerEvents: 'none' }} />
+    <div className={`search-wrapper ${isDark ? 'theme-dark' : ''}`} style={{ position: 'relative', width: '100%', maxWidth: isDark ? '280px' : '480px' }}>
+      <Search size={15} className="search-icon" style={{ pointerEvents: 'none', color: isDark ? '#94a3b8' : undefined, left: '10px' }} />
       <input 
         ref={inputRef}
         type="text" 
@@ -1009,29 +1010,43 @@ function GlobalSearch({ onNavigate }) {
         onFocus={() => setIsOpen(true)}
         onKeyDown={handleKeyDown}
         onBlur={() => setTimeout(() => setIsOpen(false), 150)}
-        style={{ paddingRight: query ? '32px' : '16px' }}
+        style={{
+          paddingRight: query ? '32px' : '14px',
+          paddingLeft: '32px',
+          height: isDark ? '32px' : '40px',
+          fontSize: isDark ? '12.5px' : '14px',
+          background: isDark ? 'rgba(255, 255, 255, 0.12)' : undefined,
+          color: isDark ? '#ffffff' : undefined,
+          borderColor: isDark ? 'rgba(255, 255, 255, 0.25)' : undefined,
+          borderRadius: '6px'
+        }}
       />
-      <div className="search-shortcut hide-on-mobile">Ctrl + K</div>
+      <div
+        className="search-shortcut hide-on-mobile"
+        style={isDark ? { background: 'rgba(255, 255, 255, 0.18)', color: '#e2e8f0', borderColor: 'rgba(255, 255, 255, 0.25)', fontSize: '10.5px', padding: '1px 5px', right: '8px' } : undefined}
+      >
+        Ctrl + K
+      </div>
       {query && (
         <button 
           type="button"
           onClick={() => { setQuery(''); inputRef.current?.focus(); }}
-          style={{ position: 'absolute', right: '48px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#999', padding: '0 4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ position: 'absolute', right: '48px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: isDark ? '#cbd5e1' : '#999', padding: '0 4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
           <X size={14} />
         </button>
       )}
 
       {isOpen && query && (
-        <div style={{ position: 'absolute', top: 'calc(100% + 8px)', left: 0, right: 0, background: '#fff', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 9999, maxHeight: '300px', overflowY: 'auto', border: '1px solid #e2e8f0' }}>
+        <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, background: '#ffffff', borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.2)', zIndex: 9999, maxHeight: '300px', overflowY: 'auto', border: '1px solid #cbd5e1' }}>
           {results.length > 0 ? (
-            <ul style={{ listStyle: 'none', padding: '8px 0', margin: 0 }}>
+            <ul style={{ listStyle: 'none', padding: '6px 0', margin: 0 }}>
               {results.map((r) => (
                 <li key={r.id}>
                   <button 
                     onMouseDown={(e) => { e.preventDefault(); handleSelect(r.route); }}
                     onClick={() => handleSelect(r.route)}
-                    style={{ width: '100%', padding: '12px 16px', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', color: '#334155', fontSize: '14px', transition: 'background 0.2s' }}
+                    style={{ width: '100%', padding: '10px 14px', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', color: '#0f172a', fontSize: '13.5px', fontWeight: 600, transition: 'background 0.15s' }}
                     className="saas-dropdown-item"
                   >
                     {r.label}
@@ -1040,7 +1055,7 @@ function GlobalSearch({ onNavigate }) {
               ))}
             </ul>
           ) : (
-            <div style={{ padding: '16px', textAlign: 'center', color: '#64748b', fontSize: '14px' }}>
+            <div style={{ padding: '14px', textAlign: 'center', color: '#475569', fontSize: '13px', fontWeight: 600 }}>
               No matching page found
             </div>
           )}
@@ -5469,34 +5484,36 @@ export default function VoiceExpenseTrackerPreview() {
           <nav className="profitnx-menubar hide-on-mobile" style={{
             background: '#0f172a',
             color: '#f1f5f9',
-            padding: '0 8px',
+            padding: '2px 14px',
             display: 'flex',
             alignItems: 'center',
-            gap: '2px',
+            justifyContent: 'space-between',
+            gap: '12px',
             borderBottom: '2px solid #2563eb',
             fontSize: '13px',
             position: 'relative'
           }}>
-            {/* 1. Transaction */}
-            <div className="profitnx-menu-item" style={{ position: 'relative' }}>
-              <button
-                type="button"
-                onClick={() => setOpenNxMenu(openNxMenu === 'trans' ? null : 'trans')}
-                style={{
-                  background: openNxMenu === 'trans' ? '#1e293b' : 'transparent',
-                  color: '#ffffff',
-                  border: 'none',
-                  padding: '9px 14px',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
-              >
-                1. Transaction ▾
-              </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
+              {/* 1. Transaction */}
+              <div className="profitnx-menu-item" style={{ position: 'relative' }}>
+                <button
+                  type="button"
+                  onClick={() => setOpenNxMenu(openNxMenu === 'trans' ? null : 'trans')}
+                  style={{
+                    background: openNxMenu === 'trans' ? '#1e293b' : 'transparent',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '9px 14px',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  1. Transaction ▾
+                </button>
               {openNxMenu === 'trans' && (
                 <div className="trinetr-dropdown-menu">
                   <button type="button" className="trinetr-dropdown-item featured" onClick={() => { navigateToTab('sales-entry'); setOpenNxMenu(null); }}>
@@ -5780,16 +5797,25 @@ export default function VoiceExpenseTrackerPreview() {
                 TRINETR Dashboard
               </button>
             </div>
+            </div>
+
+            {/* Global Search in Top Section */}
+            <div className="profitnx-search-container" style={{ width: '280px', maxWidth: '30vw', flexShrink: 0, padding: '3px 0' }}>
+              <GlobalSearch onNavigate={(route) => {
+                setActiveTab(route);
+                window.location.hash = route;
+              }} theme="dark" />
+            </div>
           </nav>
         </div>
 
-        <header className="topbar" style={{ padding: '10px 20px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+        <header className="topbar" style={{ padding: '8px 20px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'nowrap', overflowX: 'auto' }}>
           {authUser?.mode === 'demo' && (
             <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', background: 'var(--brand-primary)', color: 'white', padding: '4px 16px', fontSize: '12px', fontWeight: 600, borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px', zIndex: 100 }}>
               Demo Mode
             </div>
           )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0, flexWrap: 'nowrap' }}>
             <button
               className="topbar-menu-button"
               type="button"
@@ -5799,21 +5825,17 @@ export default function VoiceExpenseTrackerPreview() {
             >
               ☰
             </button>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <span style={{ background: '#1e3a8a', color: '#ffffff', fontWeight: 800, padding: '3px 8px', borderRadius: '4px', fontSize: '11px', letterSpacing: '0.05em' }}>TRINETR ERP</span>
-              <strong style={{ fontWeight: 800, fontSize: '14.5px', color: '#0f172a', letterSpacing: '0.01em' }}>{profile.name || 'JAY AMBE NAMKEEN'}</strong>
-              <span style={{ fontSize: '12px', color: '#475569', fontWeight: 600 }}>[2026 - 2027]</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
+              <span style={{ background: '#1e3a8a', color: '#ffffff', fontWeight: 800, padding: '3px 8px', borderRadius: '4px', fontSize: '11px', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>TRINETR ERP</span>
+              <strong style={{ fontWeight: 800, fontSize: '14.5px', color: '#0f172a', letterSpacing: '0.01em', whiteSpace: 'nowrap' }}>{profile.name || 'JAY AMBE NAMKEEN'}</strong>
+              <span style={{ fontSize: '12px', color: '#475569', fontWeight: 600, whiteSpace: 'nowrap' }}>[2026 - 2027]</span>
               <span className="hide-on-mobile" style={{ color: '#cbd5e1' }}>|</span>
-              <span className="hide-on-mobile" style={{ fontSize: '12px', color: '#334155', fontWeight: 600 }}>
+              <span className="hide-on-mobile" style={{ fontSize: '12px', color: '#334155', fontWeight: 600, whiteSpace: 'nowrap' }}>
                 GSTIN: <strong style={{ color: '#0f172a', fontFamily: 'monospace', fontSize: '12.5px', fontWeight: 750 }}>{profile.gstin || '24CPVPC7753J1Z8'}</strong>
               </span>
             </div>
           </div>
-          <GlobalSearch onNavigate={(route) => {
-            setActiveTab(route);
-            window.location.hash = route;
-          }} />
-          <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <div className="erp-top-actions-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap', flexShrink: 0 }}>
             {/* 1. Sales Register (F2) Quick Access */}
             <button
               type="button"
@@ -5821,7 +5843,7 @@ export default function VoiceExpenseTrackerPreview() {
               onClick={() => { setActiveTab('sales-entry'); window.location.hash = 'sales-entry'; }}
               title="Open Sales Register & Quick Bill (Shortcut F2)"
               style={{
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
                 fontSize: '12.5px',
@@ -5831,7 +5853,10 @@ export default function VoiceExpenseTrackerPreview() {
                 fontWeight: '750',
                 padding: '7px 12px',
                 borderRadius: '6px',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                width: 'auto',
+                flex: '0 0 auto'
               }}
             >
               <FileText size={15} />
@@ -5845,7 +5870,7 @@ export default function VoiceExpenseTrackerPreview() {
               onClick={() => { setActiveTab('production'); window.location.hash = 'production'; }}
               title="Open Production Run Entry & Recipes BOM"
               style={{
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
                 fontSize: '12.5px',
@@ -5855,7 +5880,10 @@ export default function VoiceExpenseTrackerPreview() {
                 fontWeight: '750',
                 padding: '7px 12px',
                 borderRadius: '6px',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                width: 'auto',
+                flex: '0 0 auto'
               }}
             >
               <Package size={15} />
@@ -5869,7 +5897,7 @@ export default function VoiceExpenseTrackerPreview() {
               onClick={() => { setActiveTab('store'); window.location.hash = 'store'; }}
               title={`View Customer Online Storefront (${profile.storeName || profile.name || 'Store'})`}
               style={{
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
                 fontSize: '12.5px',
@@ -5879,19 +5907,22 @@ export default function VoiceExpenseTrackerPreview() {
                 fontWeight: '750',
                 padding: '7px 12px',
                 borderRadius: '6px',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                width: 'auto',
+                flex: '0 0 auto'
               }}
             >
               <ShoppingBag size={15} />
-              <span className="hide-on-mobile">Online Storefront</span>
+              <span>Online Storefront</span>
             </button>
             
             {/* Quick Add Dropdown */}
-            <div className="saas-dropdown-container">
+            <div className="saas-dropdown-container" style={{ flexShrink: 0 }}>
               <button
                 type="button"
                 className="btn btn-primary"
-                style={{ padding: '8px 14px', borderRadius: '8px', fontSize: '13px' }}
+                style={{ padding: '8px 14px', borderRadius: '8px', fontSize: '13px', whiteSpace: 'nowrap', width: 'auto', flex: '0 0 auto', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
                 onClick={() => {
                   setQuickAddOpen(!quickAddOpen);
                   setProfileDropdownOpen(false);
@@ -5912,12 +5943,12 @@ export default function VoiceExpenseTrackerPreview() {
               </div>
             </div>
 
-            <a href="#notifications" onClick={() => navigateToTab('notifications')} className="hover-scale" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: '50%', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', textDecoration: 'none', background: 'var(--bg-secondary)' }}>
+            <a href="#notifications" onClick={() => navigateToTab('notifications')} className="hover-scale" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: '50%', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', textDecoration: 'none', background: 'var(--bg-secondary)', flexShrink: 0 }}>
               <Bell size={18} />
             </a>
 
             {/* Profile Dropdown */}
-            <div className="saas-dropdown-container">
+            <div className="saas-dropdown-container" style={{ flexShrink: 0 }}>
               <div
                 className="hover-scale"
                 style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--brand-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '600', fontSize: '14px', cursor: 'pointer', border: '2px solid transparent', outline: 'none' }}
