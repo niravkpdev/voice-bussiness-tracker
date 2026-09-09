@@ -4,14 +4,14 @@ import { useStoreCart } from '../context/StoreCartContext';
 import { CATEGORIES } from '../data/namkeenData';
 
 export function ProductEditModal() {
-  const { editingProduct, setEditingProduct, updateProduct, resetProductOverride } = useStoreCart();
+  const { editingProduct, setEditingProduct, updateProduct, resetProductOverride, isOwner } = useStoreCart();
 
   const [formData, setFormData] = useState(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
-    if (editingProduct) {
+    if (editingProduct && isOwner) {
       setFormData({
         id: editingProduct.id,
         name: editingProduct.name || '',
@@ -31,9 +31,9 @@ export function ProductEditModal() {
     } else {
       setFormData(null);
     }
-  }, [editingProduct]);
+  }, [editingProduct, isOwner]);
 
-  if (!editingProduct || !formData) {
+  if (!isOwner || !editingProduct || !formData) {
     return null;
   }
 

@@ -3,7 +3,16 @@ import { Search, ShoppingBag, Heart, Phone, Menu, X, ChevronDown, Sparkles, Slid
 import { useStoreCart } from '../context/StoreCartContext';
 import { CATEGORIES } from '../data/namkeenData';
 
-export function StoreHeader({ currentTab, onNavigate, onSwitchToErp }) {
+export function StoreHeader({
+  currentTab,
+  onNavigate,
+  onSwitchToErp,
+  onSwitchToLogin,
+  isOwner = false,
+  actualIsOwner = false,
+  customerPreview = false,
+  onToggleCustomerPreview
+}) {
   const { storeInfo, cartTotalCount, cartSubtotal, setCartDrawerOpen, wishlist, searchQuery, setSearchQuery, setActiveCategory, dietaryFilter, setDietaryFilter } = useStoreCart();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [deptDropdownOpen, setDeptDropdownOpen] = useState(false);
@@ -26,18 +35,52 @@ export function StoreHeader({ currentTab, onNavigate, onSwitchToErp }) {
           </div>
 
           <div className="bhole-top-bar-actions">
-            {onSwitchToErp && (
-              <button 
-                type="button" 
-                onClick={onSwitchToErp} 
-                className="bhole-erp-switch-btn"
-                title="Switch to Internal ERP & Business Manager"
-              >
-                <SlidersHorizontal size={13} />
-                <span>Switch to Business ERP</span>
-              </button>
+            {/* Owner Controls: Only shown to registered business owners */}
+            {actualIsOwner && (
+              <>
+                <span className={`bhole-owner-mode-badge ${customerPreview ? 'preview-mode' : 'active-mode'}`}>
+                  {customerPreview ? '👁️ Customer Preview Mode' : '👑 Owner Mode (Edit Enabled)'}
+                </span>
+                {onToggleCustomerPreview && (
+                  <button
+                    type="button"
+                    onClick={onToggleCustomerPreview}
+                    className="bhole-preview-toggle-btn"
+                    title={customerPreview ? "Exit preview and enable editing" : "Preview store exactly as customers see it"}
+                  >
+                    {customerPreview ? 'Exit Preview' : 'Preview as Customer'}
+                  </button>
+                )}
+                {onSwitchToErp && (
+                  <button 
+                    type="button" 
+                    onClick={onSwitchToErp} 
+                    className="bhole-erp-switch-btn"
+                    title="Switch to Internal ERP & Business Manager"
+                  >
+                    <SlidersHorizontal size={13} />
+                    <span>Switch to Business ERP</span>
+                  </button>
+                )}
+                <span className="bhole-top-divider">|</span>
+              </>
             )}
-            <span className="bhole-top-divider">|</span>
+
+            {/* Customer Side: Retailer Login link for store owners wanting to log in */}
+            {!actualIsOwner && onSwitchToLogin && (
+              <>
+                <button
+                  type="button"
+                  onClick={onSwitchToLogin}
+                  className="bhole-retailer-login-link"
+                  title="Retailer or Business Owner? Login with GSTIN"
+                >
+                  Retailer Login (GST)
+                </button>
+                <span className="bhole-top-divider">|</span>
+              </>
+            )}
+
             <a href={`tel:${storeInfo?.phone || ''}`} className="bhole-top-link">
               <Phone size={12} />
               <span>{storeInfo?.phone || ''}</span>

@@ -137,7 +137,7 @@ function resolveInventoryItems(customInventoryProp) {
   return applyProductOverrides([...mappedCustom, ...remainingStatic]);
 }
 
-export function StoreCartProvider({ children, storeProfile, customInventory }) {
+export function StoreCartProvider({ children, storeProfile, customInventory, isOwner = false }) {
   const storeInfo = useMemo(() => resolveStoreInfo(storeProfile), [storeProfile]);
   
   // Catalog products state (merged ERP inventory + Storefront catalog)
@@ -329,11 +329,23 @@ export function StoreCartProvider({ children, storeProfile, customInventory }) {
     return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
   };
 
-  // Editing Product state (Owner In-Place Product Editor)
+  // Editing Product state (Strictly controlled by Registered Owner)
   const [editingProduct, setEditingProduct] = useState(null);
+
+  const safeSetEditingProduct = (product) => {
+    if (!isOwner) {
+      console.warn('Unauthorized: Storefront product editing is restricted to registered owners.');
+      return;
+    }
+    setEditingProduct(product);
+  };
 
   // Update a product: persists override, syncs with ERP, updates cart & triggers event
   const updateProduct = (productId, updatedFields) => {
+    if (!isOwner) {
+      console.warn('Unauthorized: Storefront product updates are restricted to registered owners.');
+      return;
+    }
     setProducts(prevProducts => {
       const updatedList = prevProducts.map(p => {
         if (p.id === productId) {
@@ -415,6 +427,10 @@ export function StoreCartProvider({ children, storeProfile, customInventory }) {
 
   // Reset product back to its defaults
   const resetProductOverride = (productId) => {
+    if (!isOwner) {
+      console.warn('Unauthorized: Resetting product overrides is restricted to registered owners.');
+      return;
+    }
     try {
       const raw = localStorage.getItem(PRODUCT_OVERRIDES_KEY);
       if (raw) {
@@ -431,6 +447,7 @@ export function StoreCartProvider({ children, storeProfile, customInventory }) {
   };
 
   const value = {
+    isOwner: Boolean(isOwner),
     storeInfo,
     cart,
     cartTotalCount,
@@ -454,7 +471,7 @@ export function StoreCartProvider({ children, storeProfile, customInventory }) {
     generateWhatsAppOrderUrl,
     products,
     editingProduct,
-    setEditingProduct,
+    setEditingProduct: safeSetEditingProduct,
     updateProduct,
     resetProductOverride
   };

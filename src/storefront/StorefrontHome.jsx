@@ -15,7 +15,15 @@ import { PRODUCTS, CATEGORIES, STORE_INFO } from './data/namkeenData';
 import { Truck, Award, Headphones, Zap, ShoppingBag, ArrowRight, Sparkles, CheckCircle2 } from 'lucide-react';
 import './storefront.css';
 
-function StorefrontContent({ initialTab = 'store', onSwitchToErp }) {
+function StorefrontContent({
+  initialTab = 'store',
+  onSwitchToErp,
+  onSwitchToLogin,
+  isOwner = false,
+  actualIsOwner = false,
+  customerPreview = false,
+  onToggleCustomerPreview
+}) {
   const [currentTab, setCurrentTab] = useState(initialTab);
   const { setActiveCategory, setDietaryFilter, storeInfo, products } = useStoreCart();
   const activeStore = storeInfo || STORE_INFO;
@@ -58,13 +66,18 @@ function StorefrontContent({ initialTab = 'store', onSwitchToErp }) {
         currentTab={currentTab}
         onNavigate={(tab) => navigateTo(tab)}
         onSwitchToErp={onSwitchToErp}
+        onSwitchToLogin={onSwitchToLogin}
+        isOwner={isOwner}
+        actualIsOwner={actualIsOwner}
+        customerPreview={customerPreview}
+        onToggleCustomerPreview={onToggleCustomerPreview}
       />
 
       {/* Cart Slide-Over Drawer */}
       <CartDrawer />
 
-      {/* Owner In-Place Product Editor Modal */}
-      <ProductEditModal />
+      {/* Owner In-Place Product Editor Modal (Strictly for Registered Owner) */}
+      {isOwner && <ProductEditModal />}
 
       {/* Render Current Tab Page */}
       {currentTab === 'shop' && (
@@ -352,9 +365,22 @@ function StorefrontContent({ initialTab = 'store', onSwitchToErp }) {
 }
 
 export default function StorefrontHome(props) {
+  const [customerPreview, setCustomerPreview] = useState(false);
+  const effectiveIsOwner = Boolean(props.isOwner && !customerPreview);
+
   return (
-    <StoreCartProvider storeProfile={props.profile} customInventory={props.customInventory}>
-      <StorefrontContent {...props} />
+    <StoreCartProvider
+      storeProfile={props.profile}
+      customInventory={props.customInventory}
+      isOwner={effectiveIsOwner}
+    >
+      <StorefrontContent
+        {...props}
+        isOwner={effectiveIsOwner}
+        actualIsOwner={Boolean(props.isOwner)}
+        customerPreview={customerPreview}
+        onToggleCustomerPreview={() => setCustomerPreview(prev => !prev)}
+      />
     </StoreCartProvider>
   );
 }

@@ -2977,6 +2977,121 @@ body {
   text-align: center;
 }
 
+/* --------------------------------------------------------------------------
+   CUSTOMER DIRECT STORE ACCESS & RETAILER GST STYLES
+   -------------------------------------------------------------------------- */
+.auth-customer-direct-box {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border: 2px solid #fde68a;
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin: 16px 0 12px;
+  text-align: left;
+  box-shadow: 0 4px 14px rgba(217, 119, 6, 0.08);
+}
+
+.auth-customer-direct-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.auth-customer-tag {
+  font-size: 13px;
+  font-weight: 800;
+  color: #92400e;
+  letter-spacing: 0.2px;
+}
+
+.auth-customer-pill {
+  background: #10b981;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.auth-customer-desc {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: #78350f;
+  margin: 0 0 12px 0;
+}
+
+.auth-customer-shop-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #d97706;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 11px 16px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);
+  transition: all 0.2s ease;
+}
+
+.auth-customer-shop-btn:hover {
+  background: #b45309;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(217, 119, 6, 0.4);
+}
+
+.auth-customer-shop-btn .btn-arrow {
+  font-size: 15px;
+  transition: transform 0.2s ease;
+}
+
+.auth-customer-shop-btn:hover .btn-arrow {
+  transform: translateX(4px);
+}
+
+.auth-portal-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 18px 0 14px;
+}
+
+.auth-portal-divider::before,
+.auth-portal-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.auth-portal-divider span {
+  padding: 0 12px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 1px;
+}
+
+.auth-badge-small {
+  font-size: 10px;
+  font-weight: 700;
+  background: #fee2e2;
+  color: #ef4444;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.auth-field-group {
+  margin-bottom: 14px;
+}
+
 .security-mode,
 .runtime-pill {
   display: inline-flex;

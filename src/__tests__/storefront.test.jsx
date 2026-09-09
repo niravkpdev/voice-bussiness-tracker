@@ -1,5 +1,9 @@
+import React from 'react';
 import { describe, it, expect } from 'vitest';
+import { render, screen } from '@testing-library/react';
 import { PRODUCTS, CATEGORIES, STORE_INFO } from '../storefront/data/namkeenData';
+import { StoreCartProvider } from '../storefront/context/StoreCartContext';
+import { ProductCard } from '../storefront/components/ProductCard';
 
 describe('Online Storefront Catalog, Brand Dynamic Profile & Variants', () => {
   it('loads valid categories with positive counts', () => {
@@ -277,4 +281,48 @@ describe('Online Storefront Catalog, Brand Dynamic Profile & Variants', () => {
     expect(editedProduct.variants[3].weight).toBe('2 KG');
     expect(editedProduct.variants[3].price).toBe(799.00);
   });
+
+  it('strictly hides the image edit button from customer visitors and shows it only for registered owner', () => {
+    const testProduct = PRODUCTS[0];
+
+    // 1. Customer visit (isOwner = false): Edit button must NOT exist
+    const customerRender = render(
+      <StoreCartProvider isOwner={false}>
+        <ProductCard product={testProduct} />
+      </StoreCartProvider>
+    );
+
+    expect(screen.queryByText(/Edit Product/i)).toBeNull();
+    expect(document.querySelector('.bhole-product-img-edit-btn')).toBeNull();
+
+    customerRender.unmount();
+
+    // 2. Registered Owner visit (isOwner = true): Edit button must be present
+    render(
+      <StoreCartProvider isOwner={true}>
+        <ProductCard product={testProduct} />
+      </StoreCartProvider>
+    );
+
+    expect(screen.getByText(/Edit Product/i)).toBeDefined();
+    expect(document.querySelector('.bhole-product-img-edit-btn')).not.toBeNull();
+  });
+
+  it('validates 15-character Indian GSTIN format for retailer login', () => {
+    const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+
+    // Valid retailer GSTINs
+    expect(GSTIN_REGEX.test('24CPVPC7753J1Z8')).toBe(true);
+    expect(GSTIN_REGEX.test('27AAAAA0000A1Z5')).toBe(true);
+    expect(GSTIN_REGEX.test('07AAAAA0000A1Z5')).toBe(true);
+
+    // Invalid GSTINs
+    expect(GSTIN_REGEX.test('')).toBe(false);
+    expect(GSTIN_REGEX.test('12345')).toBe(false);
+    expect(GSTIN_REGEX.test('24CPVPC7753J1')).toBe(false); // only 13 chars
+    expect(GSTIN_REGEX.test('24CPVPC7753J1Z89')).toBe(false); // 16 chars
+    expect(GSTIN_REGEX.test('XXCPVPC7753J1Z8')).toBe(false); // letters instead of state code
+    expect(GSTIN_REGEX.test('24CPVPC7753J1A8')).toBe(false); // 14th char not Z
+  });
 });
+

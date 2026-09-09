@@ -3528,3 +3528,66 @@
   background: #b45309;
   transform: translateY(-1px);
 }
+
+/* --------------------------------------------------------------------------
+   OWNER / CUSTOMER STOREFRONT ACCESS CONTROLS
+   -------------------------------------------------------------------------- */
+.bhole-owner-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.2px;
+}
+
+.bhole-owner-mode-badge.active-mode {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.bhole-owner-mode-badge.preview-mode {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+
+.bhole-preview-toggle-btn {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.bhole-preview-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: #ffffff;
+}
+
+.bhole-retailer-login-link {
+  background: none;
+  border: none;
+  color: #fbbf24;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: color 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+}
+
+.bhole-retailer-login-link:hover {
+  color: #ffffff;
+  text-decoration: underline;
+}
+

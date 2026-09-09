@@ -1093,8 +1093,9 @@ export default function VoiceExpenseTrackerPreview() {
       if (import.meta.env.PROD) {
         return null;
       }
+      let storedUser = null;
       try {
-        const storedUser = JSON.parse(localStorage.getItem(AUTH_KEY) || 'null');
+        storedUser = JSON.parse(localStorage.getItem(AUTH_KEY) || 'null');
         if (storedUser?.uid || storedUser?.email) {
           setStorageScope(storedUser.uid || storedUser.email);
         }
@@ -2552,6 +2553,7 @@ export default function VoiceExpenseTrackerPreview() {
     const password = String(form.get('password') || '');
     const businessName = sanitizeText(form.get('businessName') || profile.name, 140);
     const ownerName = sanitizeText(form.get('ownerName') || profile.owner, 120);
+    const gstin = sanitizeText(form.get('gstin') || '', 20).toUpperCase().replace(/\s+/g, '');
 
     if (!validateEmail(email)) {
       setSecureError('Enter a valid email address.');
@@ -2563,9 +2565,29 @@ export default function VoiceExpenseTrackerPreview() {
       return;
     }
 
+    // Retailer GSTIN requirement
+    const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+    if (!gstin) {
+      setSecureError('GST number is required. Only verified retailers with a valid 15-digit GSTIN can log in. Customers can directly access the online store without GST.');
+      return;
+    }
+
+    if (!GSTIN_REGEX.test(gstin)) {
+      setSecureError('Invalid GSTIN format. Please enter a valid 15-character GST number (e.g. 24CPVPC7753J1Z8).');
+      return;
+    }
+
     setAuthLoading(true);
     setSecureError('');
     setAuthNotice('');
+
+    // Update active business GSTIN
+    setProfile(prev => ({ ...prev, gstin }));
+    try {
+      const savedProfile = JSON.parse(localStorage.getItem('businessProfile') || '{}');
+      savedProfile.gstin = gstin;
+      localStorage.setItem('businessProfile', JSON.stringify(savedProfile));
+    } catch {}
 
     try {
       if (import.meta.env.DEV) {
@@ -2610,6 +2632,7 @@ export default function VoiceExpenseTrackerPreview() {
         businessName,
         ownerName,
         email,
+        gstin,
         role: 'Owner',
         emailVerified: true,
         loginAt: new Date().toISOString(),
@@ -2640,6 +2663,7 @@ export default function VoiceExpenseTrackerPreview() {
         businessName: 'Demo Workspace',
         ownerName: 'Demo User',
         email: 'demo@trinetr.in',
+        gstin: profile.gstin || '24CPVPC7753J1Z8',
         role: 'Owner',
         provider: 'Demo',
         emailVerified: true,
@@ -4642,10 +4666,16 @@ export default function VoiceExpenseTrackerPreview() {
       <StorefrontHome
         profile={profile}
         customInventory={cloudInventory}
+        isOwner={Boolean(isCompanyOwner && authUser)}
         initialTab={activeTab === 'store-contact' ? 'contact' : activeTab === 'storefront' ? 'store' : activeTab}
         onSwitchToErp={() => {
           setActiveTab('dashboard');
           window.location.hash = 'dashboard';
+        }}
+        onSwitchToLogin={() => {
+          setActiveTab('dashboard');
+          setAuthView('login');
+          window.location.hash = 'login';
         }}
       />
     );
@@ -4917,21 +4947,56 @@ export default function VoiceExpenseTrackerPreview() {
               <span className={`security-mode ${supabaseEnabled ? 'live' : 'demo'}`}>
                 {supabaseEnabled ? 'Supabase secure mode' : ALLOW_DEMO_AUTH ? 'Local demo mode' : 'Supabase required'}
               </span>
+
+              {/* Customer Direct Storefront Access Card */}
+              {authView === 'login' && (
+                <div className="auth-customer-direct-box">
+                  <div className="auth-customer-direct-header">
+                    <span className="auth-customer-tag">🛍️ Customer Direct Access</span>
+                    <span className="auth-customer-pill">No Login or GST Required</span>
+                  </div>
+                  <p className="auth-customer-desc">
+                    Looking to buy fresh Gujarati namkeen, wafers & snacks? Customers can directly browse our full store and place orders without any login!
+                  </p>
+                  <button
+                    type="button"
+                    className="auth-customer-shop-btn"
+                    onClick={() => {
+                      setActiveTab('store');
+                      window.location.hash = 'store';
+                    }}
+                  >
+                    <span>Directly Access Online Store</span>
+                    <span className="btn-arrow">→</span>
+                  </button>
+                </div>
+              )}
+
+              {authView === 'login' && (
+                <div className="auth-portal-divider">
+                  <span>OR RETAILER BUSINESS PORTAL</span>
+                </div>
+              )}
+
               <span className="saas-kicker">
-                {authView === 'reset-password' ? 'Account recovery' : authView === 'login' ? 'Welcome back' : 'Create account'}
+                {authView === 'reset-password'
+                  ? 'Account recovery'
+                  : authView === 'login'
+                    ? 'Retailer Business Portal'
+                    : 'Retailer Onboarding'}
               </span>
               <h1>
                 {authView === 'reset-password'
                   ? 'Reset your password'
                   : authView === 'login'
-                    ? 'Login to your dashboard'
-                    : 'Start managing your business'}
+                    ? 'Retailer / Business Login'
+                    : 'Register Your Business'}
               </h1>
               {authNotice && <div className="notice">{authNotice}</div>}
               {secureError && <div className="notice error">{secureError}</div>}
               {authView === 'login' && (
                 <div className="notice auth-help-note">
-                  Use your registered email and password to access your dashboard.
+                  Restricted to registered retailers. Enter your 15-character GSTIN, registered email, and password to manage business operations.
                 </div>
               )}
               {authView === 'reset-password' ? (
@@ -4952,16 +5017,47 @@ export default function VoiceExpenseTrackerPreview() {
               <form onSubmit={completeAuth} autoComplete="on">
                 {authView === 'register' && (
                   <>
-                    <label className="field-label" htmlFor="auth-business">Business Name</label>
-                    <input id="auth-business" name="businessName" placeholder="Your business name" />
-                    <label className="field-label" htmlFor="auth-owner">Owner Name</label>
-                    <input id="auth-owner" name="ownerName" placeholder="Owner name" />
+                    <label className="field-label" htmlFor="auth-business">Business Name <span style={{ color: '#ef4444' }}>*</span></label>
+                    <input id="auth-business" name="businessName" placeholder="Your business name" required />
+                    <label className="field-label" htmlFor="auth-owner">Owner Name <span style={{ color: '#ef4444' }}>*</span></label>
+                    <input id="auth-owner" name="ownerName" placeholder="Owner name" required />
                   </>
                 )}
-                <label className="field-label" htmlFor="auth-email">Email</label>
-                <input id="auth-email" name="email" type="email" placeholder="owner@business.com" autoComplete="username email" inputMode="email" />
+
+                {/* GST Number Fill Box: Restricted to Retailers */}
+                <div className="auth-field-group">
+                  <div className="password-label-row">
+                    <label className="field-label" htmlFor="auth-gstin">
+                      Retailer GSTIN Number <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <span className="auth-badge-small">15-Digit GST Required</span>
+                  </div>
+                  <input
+                    id="auth-gstin"
+                    name="gstin"
+                    type="text"
+                    defaultValue={profile?.gstin || ''}
+                    placeholder="e.g. 24CPVPC7753J1Z8"
+                    maxLength={15}
+                    required
+                    style={{
+                      textTransform: 'uppercase',
+                      fontFamily: 'monospace',
+                      letterSpacing: '1.2px',
+                      fontWeight: 700
+                    }}
+                    autoComplete="off"
+                    spellCheck="false"
+                  />
+                  <p className="field-help" style={{ marginTop: '4px', fontSize: '11px', color: '#64748b' }}>
+                    Only verified retailers with a valid 15-digit GSTIN can login. Customers can access store above.
+                  </p>
+                </div>
+
+                <label className="field-label" htmlFor="auth-email">Business Email <span style={{ color: '#ef4444' }}>*</span></label>
+                <input id="auth-email" name="email" type="email" placeholder="owner@business.com" autoComplete="username email" inputMode="email" required />
                 <div className="password-label-row">
-                  <label className="field-label" htmlFor="auth-password">Password</label>
+                  <label className="field-label" htmlFor="auth-password">Password <span style={{ color: '#ef4444' }}>*</span></label>
                   <button
                     className="password-toggle-button"
                     type="button"
@@ -4976,6 +5072,7 @@ export default function VoiceExpenseTrackerPreview() {
                   type={showAuthPassword ? 'text' : 'password'}
                   placeholder="Enter your password"
                   autoComplete={authView === 'login' ? 'current-password' : 'new-password'}
+                  required
                 />
                 {authView === 'login' && (
                   <div className="auth-row">
@@ -4986,7 +5083,7 @@ export default function VoiceExpenseTrackerPreview() {
                   </div>
                 )}
                 <button className="saas-primary-button full" type="submit" disabled={authLoading}>
-                  {authLoading ? 'Please wait...' : authView === 'login' ? 'Login' : 'Create Account'}
+                  {authLoading ? 'Please wait...' : authView === 'login' ? 'Login to Retailer Portal' : 'Register Retailer Business'}
                 </button>
               </form>
               )}

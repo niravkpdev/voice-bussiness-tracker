@@ -3,7 +3,7 @@ import { Heart, ShoppingBag, Check, Star, Edit3 } from 'lucide-react';
 import { useStoreCart } from '../context/StoreCartContext';
 
 export function ProductCard({ product }) {
-  const { addToCart, wishlist, toggleWishlist, setEditingProduct } = useStoreCart();
+  const { addToCart, wishlist, toggleWishlist, setEditingProduct, isOwner } = useStoreCart();
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
   const [justAdded, setJustAdded] = useState(false);
 
@@ -67,20 +67,22 @@ export function ProductCard({ product }) {
           }}
         />
 
-        {/* Owner In-Place Edit Option on Image */}
-        <button
-          type="button"
-          className="bhole-product-img-edit-btn"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (setEditingProduct) setEditingProduct(product);
-          }}
-          title="Edit image, name, pack weights, and prices"
-          aria-label={`Edit ${product.name}`}
-        >
-          <Edit3 size={13} />
-          <span>Edit Product</span>
-        </button>
+        {/* Owner In-Place Edit Option on Image (Strictly for Registered Owner) */}
+        {isOwner && (
+          <button
+            type="button"
+            className="bhole-product-img-edit-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (setEditingProduct) setEditingProduct(product);
+            }}
+            title="Edit image, name, pack weights, and prices (Owner only)"
+            aria-label={`Edit ${product.name}`}
+          >
+            <Edit3 size={13} />
+            <span>Edit Product</span>
+          </button>
+        )}
       </div>
 
       {/* Product Information */}
