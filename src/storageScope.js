@@ -3,6 +3,11 @@ const GLOBAL_KEYS = new Set([
   ACTIVE_SCOPE_KEY,
   'voiceBusinessTrackerAuth',
   'darkMode',
+  'businessProfile',
+  'business_profile',
+  'trinetr_store_cart_v1',
+  'trinetr_store_wishlist_v1',
+  'storefront_product_overrides',
 ]);
 
 function isProductionBusinessKey(key) {

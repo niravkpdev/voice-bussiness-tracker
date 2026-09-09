@@ -626,6 +626,37 @@
   border: 1px solid rgba(245, 158, 11, 0.2);
 }
 
+.bhole-banner-edit-trigger {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #1e3a8a;
+  border: 1px solid #cbd5e1;
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  transition: all 0.2s ease;
+  z-index: 5;
+  width: auto !important;
+  min-height: unset !important;
+  margin: 0 !important;
+}
+
+.bhole-banner-edit-trigger:hover {
+  background: #f59e0b;
+  color: #ffffff;
+  border-color: #d97706;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+}
+
 .bhole-promo-accent-stamp {
   display: inline-block;
   background: rgba(255, 255, 255, 0.15);

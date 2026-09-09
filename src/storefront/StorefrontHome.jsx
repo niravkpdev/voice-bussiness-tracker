@@ -10,21 +10,25 @@ import { ContactView } from './components/ContactView';
 import { VideoReelSection } from './components/VideoReelSection';
 import { CartDrawer } from './components/CartDrawer';
 import { ProductEditModal } from './components/ProductEditModal';
+import { BannerEditModal } from './components/BannerEditModal';
 import { StoreFooter } from './components/StoreFooter';
 import { PRODUCTS, CATEGORIES, STORE_INFO } from './data/namkeenData';
-import { Truck, Award, Headphones, Zap, ShoppingBag, ArrowRight, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Truck, Award, Headphones, Zap, ShoppingBag, ArrowRight, Sparkles, CheckCircle2, Edit3 } from 'lucide-react';
 import './storefront.css';
 
-function StorefrontContent({
-  initialTab = 'store',
-  onSwitchToErp,
-  onSwitchToLogin,
-  isOwner = false,
-  actualIsOwner = false,
-  customerPreview = false,
-  onToggleCustomerPreview
-}) {
+function StorefrontContent(props) {
+  const {
+    initialTab = 'store',
+    onSwitchToErp,
+    onSwitchToLogin,
+    isOwner = false,
+    actualIsOwner = false,
+    customerPreview = false,
+    onToggleCustomerPreview,
+    onUpdateProfile
+  } = props;
   const [currentTab, setCurrentTab] = useState(initialTab);
+  const [isEditingBanner, setIsEditingBanner] = useState(false);
   const { setActiveCategory, setDietaryFilter, storeInfo, products } = useStoreCart();
   const activeStore = storeInfo || STORE_INFO;
   const catalog = products && products.length > 0 ? products : PRODUCTS;
@@ -79,6 +83,15 @@ function StorefrontContent({
       {/* Owner In-Place Product Editor Modal (Strictly for Registered Owner) */}
       {isOwner && <ProductEditModal />}
 
+      {/* Owner In-Place Banner Offer Editor Modal */}
+      {isOwner && (
+        <BannerEditModal 
+          isOpen={isEditingBanner} 
+          onClose={() => setIsEditingBanner(false)} 
+          onUpdateProfile={onUpdateProfile} 
+        />
+      )}
+
       {/* Render Current Tab Page */}
       {currentTab === 'shop' && (
         <ShopGrid />
@@ -105,6 +118,17 @@ function StorefrontContent({
           {/* Hero Promotional Banner */}
           <section className="bhole-hero-promo-banner">
             <div className="bhole-hero-promo-card">
+              {isOwner && (
+                <button
+                  type="button"
+                  className="bhole-banner-edit-trigger"
+                  onClick={() => setIsEditingBanner(true)}
+                  title="Owner: Edit Hero Banner Headline & Offer"
+                >
+                  <Edit3 size={14} />
+                  <span>Edit Offer Banner</span>
+                </button>
+              )}
               <div className="bhole-promo-accent-stamp">
                 <span>{activeStore.tagline?.toUpperCase() || 'AUTHENTIC FRESH FOODS & SNACKS'}</span>
               </div>

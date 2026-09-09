@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { PRODUCTS, CATEGORIES, STORE_INFO } from '../storefront/data/namkeenData';
-import { StoreCartProvider } from '../storefront/context/StoreCartContext';
+import { StoreCartProvider, useStoreCart } from '../storefront/context/StoreCartContext';
 import { ProductCard } from '../storefront/components/ProductCard';
 
 describe('Online Storefront Catalog, Brand Dynamic Profile & Variants', () => {
@@ -357,6 +357,45 @@ describe('Online Storefront Catalog, Brand Dynamic Profile & Variants', () => {
 
     const chikki = CATEGORIES.find(c => c.id === 'chikki');
     expect(chikki.image).toContain('photo-1590080875515-8a3a8dc5735e');
+  });
+
+  it('persists customized bannerOffer (e.g. FLAT 40% OFF) without reverting to 20% default on refresh', () => {
+    // 1. Simulate owner saving FLAT 40% OFF into businessProfile
+    const customizedProfile = {
+      name: 'Jay Ambe Namkeen',
+      storeName: 'Jay Ambe Namkeen Store',
+      bannerOffer: 'FLAT 40% OFF',
+      bannerRegion: "For All Gujarat and Mumbai City's Customers",
+      tagline: 'Fresh & Authentic Homemade Snacks & Delicacies'
+    };
+    localStorage.setItem('businessProfile', JSON.stringify(customizedProfile));
+
+    // 2. Component mounts inside StoreCartProvider
+    function TestStoreBannerConsumer() {
+      const { storeInfo } = useStoreCart();
+      return (
+        <div data-testid="banner-offer">{storeInfo.bannerOffer}</div>
+      );
+    }
+
+    const { getByTestId, unmount } = render(
+      <StoreCartProvider storeProfile={customizedProfile} isOwner={true}>
+        <TestStoreBannerConsumer />
+      </StoreCartProvider>
+    );
+
+    expect(getByTestId('banner-offer').textContent).toBe('FLAT 40% OFF');
+    unmount();
+
+    // 3. Simulate page refresh where storeProfile prop is initialized from storage or defaults
+    const refreshedProfile = JSON.parse(localStorage.getItem('businessProfile'));
+    const { getByTestId: getByTestIdAfterRefresh } = render(
+      <StoreCartProvider storeProfile={refreshedProfile} isOwner={true}>
+        <TestStoreBannerConsumer />
+      </StoreCartProvider>
+    );
+
+    expect(getByTestIdAfterRefresh('banner-offer').textContent).toBe('FLAT 40% OFF');
   });
 });
 

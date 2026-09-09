@@ -1292,8 +1292,7 @@ export default function VoiceExpenseTrackerPreview() {
   const [peopleLoading, setPeopleLoading] = useState(false);
   const [manualType, setManualType] = useState('Expense');
   const [manualAmount, setManualAmount] = useState('');
-  const [manualText, setManualText] = useState('');
-  const [profile, setProfile] = useState(DEFAULT_PROFILE);
+  const [profile, setProfile] = useState(() => readProfile());
   const getActiveBusinessId = () => {
     return (
       (typeof selectedBusiness !== 'undefined' ? selectedBusiness?.id : null) ||
@@ -1419,6 +1418,28 @@ export default function VoiceExpenseTrackerPreview() {
       mediaQuery.removeEventListener('change', handleSystemThemeChange);
     };
   }, [userPreferences.themeMode]);
+
+  // Listen for profile updates from Storefront or Settings
+  useEffect(() => {
+    const handleProfileUpdate = (e) => {
+      if (e.detail) {
+        setProfile(prev => ({ ...prev, ...e.detail }));
+      } else {
+        setProfile(readProfile());
+      }
+    };
+    window.addEventListener('trinetr-profile-updated', handleProfileUpdate);
+    const handleStorageChange = (e) => {
+      if (e.key === 'businessProfile') {
+        setProfile(readProfile());
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('trinetr-profile-updated', handleProfileUpdate);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
   const [voiceConfirmation, setVoiceConfirmation] = useState(null);
 
   const { state, waveRef, startListening, stopListening, error } = useVoiceManager({
@@ -4197,9 +4218,20 @@ export default function VoiceExpenseTrackerPreview() {
       nextProfile.logo = await fileToDataUrl(uploadedLogo);
     }
 
+    // 1. Immediately persist locally so store details, banner offer, etc. NEVER revert on refresh
     try {
-      if (authUser?.uid) {
-        await Promise.all([
+      writeScopedString(PROFILE_KEY, JSON.stringify(nextProfile));
+    } catch {}
+    try {
+      localStorage.setItem('businessProfile', JSON.stringify(nextProfile));
+      window.dispatchEvent(new CustomEvent('trinetr-profile-updated', { detail: nextProfile }));
+    } catch {}
+    setProfile(nextProfile);
+
+    // 2. Cloud sync if Supabase is connected and user is logged in
+    try {
+      if (authUser?.uid && supabaseEnabled) {
+        await Promise.allSettled([
           saveUserProfile(authUser.uid, {
             businessName: nextProfile.name,
             ownerName: nextProfile.owner,
@@ -4211,29 +4243,28 @@ export default function VoiceExpenseTrackerPreview() {
             userId: authUser.uid,
           }),
         ]);
-      } else if (import.meta.env.PROD) {
-        throw new Error('Sign in with Supabase before saving profile settings.');
       }
-
-      if (import.meta.env.DEV) {
-        writeScopedString(PROFILE_KEY, JSON.stringify(nextProfile));
-      }
-      try {
-        localStorage.setItem('businessProfile', JSON.stringify(nextProfile));
-      } catch {}
-      setProfile(nextProfile);
       setSecureError('');
       setStatus('Business and Online Storefront profile saved');
     } catch (error) {
-      setSecureError(publicSafeError(error, 'Profile cloud sync failed. Please try again.'));
-      setStatus('Profile save failed');
+      console.warn('Cloud profile sync warning:', error);
+      setStatus('Business profile saved locally');
     }
   };
 
   const updateBusinessProfile = async (updates) => {
     const nextProfile = { ...profile, ...updates };
     try {
-      if (authUser?.uid) {
+      writeScopedString(PROFILE_KEY, JSON.stringify(nextProfile));
+    } catch {}
+    try {
+      localStorage.setItem('businessProfile', JSON.stringify(nextProfile));
+      window.dispatchEvent(new CustomEvent('trinetr-profile-updated', { detail: nextProfile }));
+    } catch {}
+    setProfile(nextProfile);
+
+    try {
+      if (authUser?.uid && supabaseEnabled) {
         await saveUserProfileSettings(authUser.uid, {
           ...nextProfile,
           userId: authUser.uid,
@@ -4242,13 +4273,6 @@ export default function VoiceExpenseTrackerPreview() {
     } catch (e) {
       console.warn('Cloud profile sync warning:', e);
     }
-    try {
-      writeScopedString(PROFILE_KEY, JSON.stringify(nextProfile));
-    } catch {}
-    try {
-      localStorage.setItem('businessProfile', JSON.stringify(nextProfile));
-    } catch {}
-    setProfile(nextProfile);
     setStatus('Business profile updated successfully');
     return nextProfile;
   };
@@ -4665,6 +4689,7 @@ export default function VoiceExpenseTrackerPreview() {
     return (
       <StorefrontHome
         profile={profile}
+        onUpdateProfile={updateBusinessProfile}
         customInventory={cloudInventory}
         isOwner={Boolean(isCompanyOwner && authUser)}
         initialTab={activeTab === 'store-contact' ? 'contact' : activeTab === 'storefront' ? 'store' : activeTab}

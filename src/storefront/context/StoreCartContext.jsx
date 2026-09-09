@@ -23,20 +23,35 @@ function applyProductOverrides(items) {
 }
 
 function resolveStoreInfo(customProfile) {
-  let profileData = customProfile;
-  if (!profileData || !profileData.name || profileData.name === 'Trinetr Business Suite') {
-    try {
-      const saved = localStorage.getItem('businessProfile');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed && (parsed.name || parsed.phone || parsed.address)) {
-          profileData = parsed;
-        }
+  let localData = {};
+  try {
+    const saved = localStorage.getItem('businessProfile');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed && typeof parsed === 'object') {
+        localData = parsed;
       }
-    } catch {
-      // ignore
     }
+  } catch {
+    // ignore
   }
+
+  const profileData = {
+    ...STORE_INFO,
+    ...localData,
+    ...(customProfile || {})
+  };
+
+  // Ensure customized fields from local storage take precedence over default fallbacks
+  if (localData?.bannerOffer) profileData.bannerOffer = localData.bannerOffer;
+  if (localData?.bannerRegion) profileData.bannerRegion = localData.bannerRegion;
+  if (localData?.storeName) profileData.storeName = localData.storeName;
+  if (localData?.storeTagline) profileData.storeTagline = localData.storeTagline;
+  if (localData?.whatsapp) profileData.whatsapp = localData.whatsapp;
+  if (localData?.phone) profileData.phone = localData.phone;
+  if (localData?.address) profileData.address = localData.address;
+  if (localData?.hours) profileData.hours = localData.hours;
+  if (localData?.fssaiNumber) profileData.fssaiNumber = localData.fssaiNumber;
 
   const name = profileData?.storeName || profileData?.name || STORE_INFO.name || 'Jay Ambe Namkeen';
   const tagline = profileData?.storeTagline || profileData?.tagline || STORE_INFO.tagline;
@@ -138,7 +153,48 @@ function resolveInventoryItems(customInventoryProp) {
 }
 
 export function StoreCartProvider({ children, storeProfile, customInventory, isOwner = false }) {
-  const storeInfo = useMemo(() => resolveStoreInfo(storeProfile), [storeProfile]);
+  const [storeInfo, setStoreInfo] = useState(() => resolveStoreInfo(storeProfile));
+
+  useEffect(() => {
+    setStoreInfo(resolveStoreInfo(storeProfile));
+  }, [storeProfile]);
+
+  useEffect(() => {
+    const handleProfileUpdate = (e) => {
+      const updated = e?.detail || resolveStoreInfo(storeProfile);
+      setStoreInfo(resolveStoreInfo(updated));
+    };
+    window.addEventListener('trinetr-profile-updated', handleProfileUpdate);
+    const handleStorage = (e) => {
+      if (e.key === 'businessProfile') {
+        setStoreInfo(resolveStoreInfo(storeProfile));
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      window.removeEventListener('trinetr-profile-updated', handleProfileUpdate);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, [storeProfile]);
+
+  const updateStoreProfile = (updates) => {
+    let currentProfile = {};
+    try {
+      const raw = localStorage.getItem('businessProfile');
+      if (raw) currentProfile = JSON.parse(raw);
+    } catch {}
+
+    const nextProfile = { ...currentProfile, ...updates };
+    try {
+      localStorage.setItem('businessProfile', JSON.stringify(nextProfile));
+      window.dispatchEvent(new CustomEvent('trinetr-profile-updated', { detail: nextProfile }));
+    } catch (e) {
+      console.error('Failed to save store profile update', e);
+    }
+
+    setStoreInfo(resolveStoreInfo(nextProfile));
+    return nextProfile;
+  };
   
   // Catalog products state (merged ERP inventory + Storefront catalog)
   const [products, setProducts] = useState(() => resolveInventoryItems(customInventory));
@@ -473,7 +529,8 @@ export function StoreCartProvider({ children, storeProfile, customInventory, isO
     editingProduct,
     setEditingProduct: safeSetEditingProduct,
     updateProduct,
-    resetProductOverride
+    resetProductOverride,
+    updateStoreProfile
   };
 
   return (
