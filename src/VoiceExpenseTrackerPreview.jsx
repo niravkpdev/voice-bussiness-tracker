@@ -1379,8 +1379,28 @@ export default function VoiceExpenseTrackerPreview() {
 
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const quickAddRef = useRef(null);
+  const profileDropdownRef = useRef(null);
+  const notificationsRef = useRef(null);
   const [showShareStoreModal, setShowShareStoreModal] = useState(false);
   const [storeLinkCopied, setStoreLinkCopied] = useState(false);
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (quickAddRef.current && !quickAddRef.current.contains(e.target)) {
+        setQuickAddOpen(false);
+      }
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(e.target)) {
+        setProfileDropdownOpen(false);
+      }
+      if (notificationsRef.current && !notificationsRef.current.contains(e.target)) {
+        setNotificationsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
 
   const navigateToTab = (tab) => {
     let target = tab;
@@ -1391,6 +1411,7 @@ export default function VoiceExpenseTrackerPreview() {
     window.location.hash = target;
     setQuickAddOpen(false);
     setProfileDropdownOpen(false);
+    setNotificationsOpen(false);
     setMobileNavOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -5809,7 +5830,7 @@ export default function VoiceExpenseTrackerPreview() {
           </nav>
         </div>
 
-        <header className="topbar" style={{ padding: '8px 20px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'nowrap', overflowX: 'auto' }}>
+        <header className="topbar" style={{ padding: '8px 20px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'nowrap', overflow: 'visible', position: 'sticky', top: 0, zIndex: 120 }}>
           {authUser?.mode === 'demo' && (
             <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', background: 'var(--brand-primary)', color: 'white', padding: '4px 16px', fontSize: '12px', fontWeight: 600, borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px', zIndex: 100 }}>
               Demo Mode
@@ -5835,7 +5856,7 @@ export default function VoiceExpenseTrackerPreview() {
               </span>
             </div>
           </div>
-          <div className="erp-top-actions-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap', flexShrink: 0 }}>
+          <div className="erp-top-actions-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap', flexShrink: 0, position: 'relative', overflow: 'visible' }}>
             {/* 1. Sales Register (F2) Quick Access */}
             <button
               type="button"
@@ -5918,58 +5939,268 @@ export default function VoiceExpenseTrackerPreview() {
             </button>
             
             {/* Quick Add Dropdown */}
-            <div className="saas-dropdown-container" style={{ flexShrink: 0 }}>
+            <div className="saas-dropdown-container" ref={quickAddRef} style={{ flexShrink: 0, position: 'relative' }}>
               <button
                 type="button"
                 className="btn btn-primary"
-                style={{ padding: '8px 14px', borderRadius: '8px', fontSize: '13px', whiteSpace: 'nowrap', width: 'auto', flex: '0 0 auto', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  whiteSpace: 'nowrap',
+                  width: 'auto',
+                  flex: '0 0 auto',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#0f172a',
+                  color: '#ffffff',
+                  border: '1px solid #334155',
+                  cursor: 'pointer'
+                }}
                 onClick={() => {
                   setQuickAddOpen(!quickAddOpen);
                   setProfileDropdownOpen(false);
+                  setNotificationsOpen(false);
                 }}
               >
-                <Plus size={16} /> Quick Add <ChevronDown size={14} style={{ opacity: 0.7 }} />
+                <Plus size={16} /> Quick Add <ChevronDown size={14} style={{ opacity: 0.8, transform: quickAddOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
               </button>
-              <div className={`saas-dropdown-menu ${quickAddOpen ? 'dropdown-active' : ''}`} style={quickAddOpen ? { opacity: 1, visibility: 'visible', transform: 'translateY(0)' } : undefined}>
-                <button type="button" onClick={() => navigateToTab('sales-entry')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', fontWeight: 600, color: '#1e3a8a' }}><FileText size={16} /> ⚡ Sales Entry (F2)</button>
-                <button type="button" onClick={() => navigateToTab('production')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', fontWeight: 600, color: '#059669' }}><Package size={16} /> ⚙ Production Batch</button>
-                <button type="button" onClick={() => navigateToTab('invoices')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><FileText size={16} /> New Invoice</button>
-                <button type="button" onClick={() => navigateToTab('orders')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Package size={16} /> New Order</button>
-                <button type="button" onClick={() => navigateToTab('crm')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Users size={16} /> New Customer</button>
-                <button type="button" onClick={() => navigateToTab('inventory')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Package size={16} /> New Product</button>
-                <button type="button" onClick={() => navigateToTab('employees')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><User size={16} /> New Employee</button>
-                <div className="saas-dropdown-divider"></div>
-                <button type="button" onClick={() => navigateToTab('voucher-entry')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><DollarSign size={16} /> Record Expense</button>
-              </div>
+              {quickAddOpen && (
+                <div
+                  className="saas-dropdown-menu dropdown-active"
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 8px)',
+                    right: 0,
+                    width: '240px',
+                    background: '#ffffff',
+                    borderRadius: '10px',
+                    boxShadow: '0 12px 32px rgba(15, 23, 42, 0.18)',
+                    border: '1px solid #cbd5e1',
+                    zIndex: 99999,
+                    padding: '8px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '3px'
+                  }}
+                >
+                  <button type="button" onClick={() => { navigateToTab('sales-entry'); setQuickAddOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', fontWeight: 700, color: '#1e3a8a', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}><FileText size={15} /> ⚡ Sales Entry (F2)</button>
+                  <button type="button" onClick={() => { navigateToTab('production'); setQuickAddOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', fontWeight: 700, color: '#059669', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}><Package size={15} /> ⚙ Production Batch</button>
+                  <button type="button" onClick={() => { navigateToTab('invoices'); setQuickAddOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: '#0f172a', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><FileText size={15} /> New Invoice</button>
+                  <button type="button" onClick={() => { navigateToTab('orders'); setQuickAddOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: '#0f172a', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><Package size={15} /> New Order</button>
+                  <button type="button" onClick={() => { navigateToTab('crm'); setQuickAddOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: '#0f172a', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><Users size={15} /> New Customer</button>
+                  <button type="button" onClick={() => { navigateToTab('inventory'); setQuickAddOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: '#0f172a', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><Package size={15} /> New Product</button>
+                  <button type="button" onClick={() => { navigateToTab('employees'); setQuickAddOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: '#0f172a', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><User size={15} /> New Employee</button>
+                  <div className="saas-dropdown-divider" style={{ height: '1px', background: '#e2e8f0', margin: '4px 0' }} />
+                  <button type="button" onClick={() => { navigateToTab('voucher-entry'); setQuickAddOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: '#d97706', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 700 }}><DollarSign size={15} /> Record Expense</button>
+                </div>
+              )}
             </div>
 
-            <a href="#notifications" onClick={() => navigateToTab('notifications')} className="hover-scale" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: '50%', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', textDecoration: 'none', background: 'var(--bg-secondary)', flexShrink: 0 }}>
-              <Bell size={18} />
-            </a>
+            {/* Notification Bell Dropdown */}
+            <div className="saas-dropdown-container" ref={notificationsRef} style={{ flexShrink: 0, position: 'relative' }}>
+              <button
+                type="button"
+                className="topbar-icon-btn hover-scale"
+                onClick={() => {
+                  setNotificationsOpen(!notificationsOpen);
+                  setQuickAddOpen(false);
+                  setProfileDropdownOpen(false);
+                }}
+                title="View Notifications & Alerts"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '36px',
+                  minWidth: '36px',
+                  maxWidth: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  border: '1.5px solid #cbd5e1',
+                  color: notificationsOpen ? '#1e3a8a' : '#334155',
+                  background: notificationsOpen ? '#eff6ff' : '#f8fafc',
+                  cursor: 'pointer',
+                  position: 'relative',
+                  padding: 0,
+                  flexShrink: 0
+                }}
+              >
+                <Bell size={18} />
+                <span style={{
+                  position: 'absolute',
+                  top: '4px',
+                  right: '4px',
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: '#ef4444',
+                  border: '2px solid #ffffff'
+                }} />
+              </button>
+              {notificationsOpen && (
+                <div
+                  className="saas-dropdown-menu dropdown-active"
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 8px)',
+                    right: 0,
+                    width: '320px',
+                    maxWidth: '90vw',
+                    background: '#ffffff',
+                    borderRadius: '10px',
+                    boxShadow: '0 12px 32px rgba(15, 23, 42, 0.18)',
+                    border: '1px solid #cbd5e1',
+                    zIndex: 99999,
+                    padding: '12px 14px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #e2e8f0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Bell size={16} color="#1e3a8a" />
+                      <strong style={{ fontSize: '13.5px', color: '#0f172a' }}>Notifications</strong>
+                      <span style={{ background: '#eff6ff', color: '#1e3a8a', fontSize: '11px', fontWeight: 750, padding: '2px 6px', borderRadius: '12px', border: '1px solid #bfdbfe' }}>2 New</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setStatus('All notifications marked as read')}
+                      style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '11.5px', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                    >
+                      Mark all read
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '240px', overflowY: 'auto' }}>
+                    {[
+                      { id: '1', title: 'Payment Received', desc: '₹4,500 via UPI from Globex Inc', time: 'Just now', unread: true, dot: '#2563eb' },
+                      { id: '2', title: 'Low Stock Alert', desc: 'Soya Sticks & Nylon Sev below minimum', time: '1h ago', unread: true, dot: '#f59e0b' },
+                      { id: '3', title: 'GST Reminder', desc: 'GSTR-3B return period ends this week', time: 'Today', unread: false, dot: '#94a3b8' },
+                      { id: '4', title: 'Cloud Backup Synced', desc: 'Daily database snapshot verified', time: 'Yesterday', unread: false, dot: '#10b981' }
+                    ].map((item) => (
+                      <div
+                        key={item.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '10px',
+                          padding: '8px 10px',
+                          borderRadius: '6px',
+                          background: item.unread ? '#f8fafc' : 'transparent',
+                          border: item.unread ? '1px solid #e2e8f0' : '1px solid transparent',
+                          cursor: 'pointer'
+                        }}
+                        onClick={() => {
+                          setNotificationsOpen(false);
+                          navigateToTab('notifications');
+                        }}
+                      >
+                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: item.dot, marginTop: '5px', flexShrink: 0 }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                            <strong style={{ fontSize: '12.5px', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</strong>
+                            <span style={{ fontSize: '10.5px', color: '#64748b', flexShrink: 0, marginLeft: '6px' }}>{item.time}</span>
+                          </div>
+                          <div style={{ fontSize: '11.5px', color: '#475569', marginTop: '2px', lineHeight: 1.3 }}>{item.desc}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ paddingTop: '8px', borderTop: '1px solid #e2e8f0', textAlign: 'center' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNotificationsOpen(false);
+                        navigateToTab('notifications');
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#1e3a8a',
+                        fontSize: '12px',
+                        fontWeight: 750,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      Open Full Notification Center ➔
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Profile Dropdown */}
-            <div className="saas-dropdown-container" style={{ flexShrink: 0 }}>
-              <div
-                className="hover-scale"
-                style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--brand-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '600', fontSize: '14px', cursor: 'pointer', border: '2px solid transparent', outline: 'none' }}
-                tabIndex="0"
+            <div className="saas-dropdown-container" ref={profileDropdownRef} style={{ flexShrink: 0, position: 'relative' }}>
+              <button
+                type="button"
+                className="topbar-avatar-btn hover-scale"
+                style={{
+                  width: '36px',
+                  minWidth: '36px',
+                  maxWidth: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  background: '#0f172a',
+                  color: '#ffffff',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: '800',
+                  fontSize: '14.5px',
+                  cursor: 'pointer',
+                  border: profileDropdownOpen ? '2px solid #2563eb' : '2px solid #cbd5e1',
+                  padding: 0,
+                  outline: 'none',
+                  flexShrink: 0
+                }}
                 onClick={() => {
                   setProfileDropdownOpen(!profileDropdownOpen);
                   setQuickAddOpen(false);
+                  setNotificationsOpen(false);
                 }}
+                title={`Account: ${profile.name || 'Owner'}`}
               >
-                {(profile.owner || authUser?.email || 'A')[0].toUpperCase()}
-              </div>
-              <div className={`saas-dropdown-menu ${profileDropdownOpen ? 'dropdown-active' : ''}`} style={profileDropdownOpen ? { opacity: 1, visibility: 'visible', transform: 'translateY(0)' } : undefined}>
-                <button type="button" onClick={() => navigateToTab('profile')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><User size={16} /> My Profile</button>
-                <button type="button" onClick={() => navigateToTab('app-settings')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Settings size={16} /> Company Settings</button>
-                <button type="button" onClick={() => navigateToTab('billing')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><CreditCard size={16} /> Billing & Plans</button>
-                <button type="button" onClick={() => navigateToTab('analytics')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><Activity size={16} /> Analytics</button>
-                <button type="button" onClick={() => navigateToTab('preferences')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><CheckSquare size={16} /> Preferences</button>
-                <button type="button" onClick={() => navigateToTab('help')} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><HelpCircle size={16} /> Help Center</button>
-                <div className="saas-dropdown-divider"></div>
-                <button type="button" onClick={() => { setProfileDropdownOpen(false); logout(); }} className="saas-dropdown-item danger" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left' }}><LogOut size={16} /> Logout</button>
-              </div>
+                {(profile.name || profile.owner || authUser?.email || 'J')[0].toUpperCase()}
+              </button>
+              {profileDropdownOpen && (
+                <div
+                  className="saas-dropdown-menu dropdown-active"
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 8px)',
+                    right: 0,
+                    width: '250px',
+                    background: '#ffffff',
+                    borderRadius: '10px',
+                    boxShadow: '0 12px 32px rgba(15, 23, 42, 0.18)',
+                    border: '1px solid #cbd5e1',
+                    zIndex: 99999,
+                    padding: '8px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '3px'
+                  }}
+                >
+                  <div style={{ padding: '8px 12px', borderBottom: '1px solid #e2e8f0', marginBottom: '4px' }}>
+                    <div style={{ fontWeight: 750, fontSize: '13.5px', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{profile.name || 'JAY AMBE NAMKEEN'}</div>
+                    <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{authUser?.email || profile.owner || 'Owner / Administrator'}</div>
+                  </div>
+                  <button type="button" onClick={() => { navigateToTab('profile'); setProfileDropdownOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: '#0f172a', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><User size={15} /> My Profile</button>
+                  <button type="button" onClick={() => { navigateToTab('app-settings'); setProfileDropdownOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: '#0f172a', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><Settings size={15} /> Company Settings</button>
+                  <button type="button" onClick={() => { navigateToTab('billing'); setProfileDropdownOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: '#0f172a', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><CreditCard size={15} /> Billing & Plans</button>
+                  <button type="button" onClick={() => { navigateToTab('analytics'); setProfileDropdownOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: '#0f172a', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><Activity size={15} /> Analytics</button>
+                  <button type="button" onClick={() => { navigateToTab('preferences'); setProfileDropdownOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: '#0f172a', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><CheckSquare size={15} /> Preferences</button>
+                  <button type="button" onClick={() => { navigateToTab('help'); setProfileDropdownOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: '#0f172a', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><HelpCircle size={15} /> Help Center</button>
+                  <div className="saas-dropdown-divider" style={{ height: '1px', background: '#e2e8f0', margin: '4px 0' }} />
+                  <button type="button" onClick={() => { setProfileDropdownOpen(false); logout(); }} className="saas-dropdown-item danger" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: '#dc2626', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 700 }}><LogOut size={15} /> Logout</button>
+                </div>
+              )}
             </div>
 
           </div>

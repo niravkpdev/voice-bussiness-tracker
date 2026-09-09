@@ -7303,16 +7303,58 @@ input, textarea, [contenteditable="true"] {
   align-items: center !important;
   width: auto !important;
   gap: 8px !important;
+  position: relative !important;
+  overflow: visible !important;
 }
 
-.erp-top-actions-row > button,
-.erp-top-actions-row .btn,
-.erp-top-actions-row > div,
-.erp-top-actions-row > a {
+.erp-top-actions-row > button:not(.topbar-icon-btn):not(.topbar-avatar-btn),
+.erp-top-actions-row .btn:not(.topbar-icon-btn):not(.topbar-avatar-btn) {
   width: auto !important;
-  min-width: 0 !important;
   flex: 0 0 auto !important;
   white-space: nowrap !important;
   display: inline-flex !important;
 }
+
+/* Strict circular buttons for Bell and Profile Avatar - never ovals */
+.erp-top-actions-row .topbar-icon-btn,
+.erp-top-actions-row .topbar-avatar-btn {
+  width: 36px !important;
+  min-width: 36px !important;
+  max-width: 36px !important;
+  height: 36px !important;
+  border-radius: 50% !important;
+  flex: 0 0 36px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure topbar itself NEVER clips dropdown popovers */
+.topbar {
+  overflow: visible !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 120 !important;
+}
+
+/* Dropdown containers and menus in ERP header */
+.saas-dropdown-container {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+.saas-dropdown-menu {
+  position: absolute !important;
+  top: calc(100% + 8px) !important;
+  right: 0 !important;
+  z-index: 99999 !important;
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18) !important;
+}
+
 
