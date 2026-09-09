@@ -6291,19 +6291,6 @@ export default function VoiceExpenseTrackerPreview() {
           {activeTab === 'dashboard' && !isMobile && (
             <section className="erp-dashboard fade-in" id="dashboard" style={{ padding: '24px 0', display: 'flex', flexDirection: 'column', gap: '32px' }}>
               
-              {userPreferences.enableVoiceShortcut && (
-                <VoiceCommandButton 
-                  onCommandRecognized={(data) => {
-                    handleVoiceCommandRecognized(data);
-                    navigateToTab('voucher-entry');
-                  }} 
-                  existingParties={partyLedgers}
-                  isIconOnly={true}
-                  className="floating-mic-btn"
-                  containerClassName="floating-mic-container"
-                />
-              )}
-
               {/* Dashboard Header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
                 <div>
@@ -6315,14 +6302,6 @@ export default function VoiceExpenseTrackerPreview() {
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  <VoiceCommandButton 
-                    onCommandRecognized={(data) => {
-                      handleVoiceCommandRecognized(data);
-                      navigateToTab('voucher-entry');
-                    }} 
-                    existingParties={partyLedgers}
-                    containerClassName="desktop-mic-container"
-                  />
                   <button className="btn btn-secondary hover-scale hide-on-mobile" onClick={() => navigateToTab('reports')}>
                     <FileText size={16} /> Reports
                   </button>
@@ -9097,10 +9076,22 @@ export default function VoiceExpenseTrackerPreview() {
           </div>
         </div>
         
-        <div className="print-footer">
-          <span>Page 1 of 1</span>
-        </div>
       </div>
+      
+      {/* Unified Professional Floating Voice Assistant (Pinned to corner across all pages) */}
+      {userPreferences.enableVoiceShortcut && (
+        <VoiceCommandButton 
+          onCommandRecognized={(data) => {
+            handleVoiceCommandRecognized(data);
+            navigateToTab('voucher-entry');
+          }} 
+          existingParties={partyLedgers}
+          isIconOnly={true}
+          className="floating-mic-btn"
+          containerClassName="floating-mic-container"
+        />
+      )}
+
       <SafeHelpCenterModal isOpen={isHelpCenterOpen} onClose={() => setIsHelpCenterOpen(false)} />
     </div>
   );
