@@ -270,6 +270,7 @@ export default function Phase3Ops({
   const [profileRequests, setProfileRequests] = useState(() => readArray(PROFILE_REQUEST_KEY));
   const [offlineQueue, setOfflineQueue] = useState(() => readArray(OFFLINE_QUEUE_KEY));
   const [editingOrder, setEditingOrder] = useState(null);
+  const [orderFilter, setOrderFilter] = useState('all');
   const [editingEmployee, setEditingEmployee] = useState(null);
   const [requestUpdateModal, setRequestUpdateModal] = useState(null);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
@@ -544,6 +545,23 @@ export default function Phase3Ops({
     () => attendance.filter((entry) => validEmployeeIds.has(entry.employeeId)),
     [attendance, validEmployeeIds]
   );
+  const filteredOrders = useMemo(() => {
+    return orders.filter((order) => {
+      if (orderFilter === 'active') return order.status !== 'Invoiced' && order.status !== 'Delivered';
+      if (orderFilter === 'invoiced') return order.status === 'Invoiced';
+      return true;
+    });
+  }, [orders, orderFilter]);
+
+  const activeOrdersCount = useMemo(
+    () => orders.filter((o) => o.status !== 'Invoiced' && o.status !== 'Delivered').length,
+    [orders]
+  );
+  const invoicedOrdersCount = useMemo(
+    () => orders.filter((o) => o.status === 'Invoiced').length,
+    [orders]
+  );
+
   const todayAttendance = useMemo(
     () => validAttendance.filter((entry) => entry.date === today()),
     [validAttendance]
@@ -2452,31 +2470,101 @@ export default function Phase3Ops({
           </article>
         </section>
         <section className="panel">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className={`secondary-button compact-button ${orderFilter === 'all' ? 'active' : ''}`}
+                style={{
+                  background: orderFilter === 'all' ? '#d97706' : '#f1f5f9',
+                  color: orderFilter === 'all' ? '#ffffff' : '#334155',
+                  fontWeight: 600,
+                  border: 'none',
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  cursor: 'pointer'
+                }}
+                onClick={() => setOrderFilter('all')}
+              >
+                All Orders ({orders.length})
+              </button>
+              <button
+                type="button"
+                className={`secondary-button compact-button ${orderFilter === 'active' ? 'active' : ''}`}
+                style={{
+                  background: orderFilter === 'active' ? '#0284c7' : '#f1f5f9',
+                  color: orderFilter === 'active' ? '#ffffff' : '#334155',
+                  fontWeight: 600,
+                  border: 'none',
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  cursor: 'pointer'
+                }}
+                onClick={() => setOrderFilter('active')}
+              >
+                Active / In Progress ({activeOrdersCount})
+              </button>
+              <button
+                type="button"
+                className={`secondary-button compact-button ${orderFilter === 'invoiced' ? 'active' : ''}`}
+                style={{
+                  background: orderFilter === 'invoiced' ? '#16a34a' : '#f1f5f9',
+                  color: orderFilter === 'invoiced' ? '#ffffff' : '#334155',
+                  fontWeight: 600,
+                  border: 'none',
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  cursor: 'pointer'
+                }}
+                onClick={() => setOrderFilter('invoiced')}
+              >
+                Invoiced to Tax Bills ({invoicedOrdersCount})
+              </button>
+            </div>
+          </div>
+
+          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', fontSize: '12px', color: '#475569', lineHeight: '1.5' }}>
+            💡 <strong>Storefront &amp; Invoiced Orders:</strong> Guest customer orders from the online store arrive directly to your WhatsApp (<strong>+91 84889 43771</strong>) and can be managed here. When an order is fulfilled and you click <strong>"Convert to Invoice"</strong>, it automatically generates the GST Tax Invoice in the Invoices Register and marks the order as <strong>"Invoiced"</strong> to maintain a complete audit history.
+          </div>
+
           <div className="compact-list">
-            {orders.map((order) => (
-              <article className="compact-item" key={order.id}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    <strong>{order.orderNo} · {order.customer}</strong>
-                    {order.source && (
-                      <span style={{ fontSize: '11px', background: '#e0e7ff', color: '#3730a3', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
-                        🛒 {order.source}
-                      </span>
-                    )}
+            {filteredOrders.length === 0 ? (
+              <p style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>No orders found for the selected filter.</p>
+            ) : (
+              filteredOrders.map((order) => (
+                <article className="compact-item" key={order.id}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <strong>{order.orderNo} · {order.customer}</strong>
+                      {order.source && (
+                        <span style={{ fontSize: '11px', background: '#e0e7ff', color: '#3730a3', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
+                          🛒 {order.source}
+                        </span>
+                      )}
+                      {order.status === 'Invoiced' && (
+                        <span style={{ fontSize: '11px', background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
+                          ✓ Invoiced
+                        </span>
+                      )}
+                    </div>
+                    <p>{order.status} · Delivery {order.deliveryDate} · {formatCurrency(order.amount)}</p>
+                    {order.details && <p style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>{order.details}</p>}
+                    <p>{order.timeline?.[0]?.date}: {order.timeline?.[0]?.note}</p>
                   </div>
-                  <p>{order.status} · Delivery {order.deliveryDate} · {formatCurrency(order.amount)}</p>
-                  {order.details && <p style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>{order.details}</p>}
-                  <p>{order.timeline?.[0]?.date}: {order.timeline?.[0]?.note}</p>
-                </div>
-                <div className="voucher-actions">
-                  <button className="share-entry-button" type="button" onClick={() => advanceOrder(order)}>Next Stage</button>
-                  <button className="share-entry-button" type="button" onClick={() => convertOrderToInvoice(order)}>Convert to Invoice</button>
-                  <button className="share-entry-button" type="button" onClick={() => setEditingOrder(order)}>Edit</button>
-                  <a className="share-entry-button" href={whatsappUrl(order.mobile, `Your order ${order.orderNo} status: ${order.status}`)} target="_blank" rel="noreferrer">Update Customer</a>
-                  <button className="delete-entry-button" type="button" onClick={() => deleteOrder(order)}>Delete</button>
-                </div>
-              </article>
-            ))}
+                  <div className="voucher-actions">
+                    {order.status !== 'Invoiced' && (
+                      <>
+                        <button className="share-entry-button" type="button" onClick={() => advanceOrder(order)}>Next Stage</button>
+                        <button className="share-entry-button" type="button" onClick={() => convertOrderToInvoice(order)}>Convert to Invoice</button>
+                      </>
+                    )}
+                    <button className="share-entry-button" type="button" onClick={() => setEditingOrder(order)}>Edit</button>
+                    <a className="share-entry-button" href={whatsappUrl(order.mobile, `Your order ${order.orderNo} status: ${order.status}`)} target="_blank" rel="noreferrer">Update Customer</a>
+                    <button className="delete-entry-button" type="button" onClick={() => deleteOrder(order)}>Delete</button>
+                  </div>
+                </article>
+              ))
+            )}
           </div>
         </section>
       </section>

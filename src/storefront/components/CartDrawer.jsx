@@ -120,6 +120,16 @@ export function CartDrawer() {
       console.error(err);
     }
 
+    // 4. Automatically launch WhatsApp order receipt for the owner
+    try {
+      const waUrl = generateWhatsAppOrderUrl(customer);
+      if (waUrl) {
+        window.open(waUrl, '_blank');
+      }
+    } catch (err) {
+      console.warn('Auto open WhatsApp skipped or blocked by browser', err);
+    }
+
     setCheckoutMode('success');
   };
 
@@ -162,6 +172,23 @@ export function CartDrawer() {
               Thank you, <strong>{customer.name}</strong>! We have received your order for {customer.city}.
               Our team will prepare your fresh namkeens and dispatch them shortly.
             </p>
+
+            <div style={{
+              background: '#ecfdf5',
+              border: '1px solid #6ee7b7',
+              borderRadius: '8px',
+              padding: '12px',
+              margin: '16px 0',
+              fontSize: '13px',
+              color: '#065f46',
+              lineHeight: '1.5',
+              textAlign: 'left'
+            }}>
+              <strong>📲 Direct WhatsApp Notification:</strong>
+              <p style={{ margin: '4px 0 0' }}>
+                Please tap <strong>"Send Order Receipt via WhatsApp"</strong> below to send your itemized receipt directly to the owner (+91 84889 43771). This ensures your order is packed and dispatched immediately!
+              </p>
+            </div>
 
             <div className="success-actions">
               <button
