@@ -45,6 +45,7 @@ function resolveStoreInfo(customProfile) {
   // Ensure customized fields from local storage take precedence over default fallbacks
   if (localData?.bannerOffer) profileData.bannerOffer = localData.bannerOffer;
   if (localData?.bannerRegion) profileData.bannerRegion = localData.bannerRegion;
+  if (localData?.bannerImage) profileData.bannerImage = localData.bannerImage;
   if (localData?.storeName) profileData.storeName = localData.storeName;
   if (localData?.storeTagline) profileData.storeTagline = localData.storeTagline;
   if (localData?.whatsapp) profileData.whatsapp = localData.whatsapp;
@@ -63,6 +64,7 @@ function resolveStoreInfo(customProfile) {
   const hours = profileData?.hours || STORE_INFO.hours;
   const bannerOffer = profileData?.bannerOffer || 'FLAT 20% OFF';
   const bannerRegion = profileData?.bannerRegion || "For All Gujarat and Mumbai City's Customers";
+  const bannerImage = profileData?.bannerImage || 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=700&auto=format&fit=crop&q=80';
 
   return {
     ...STORE_INFO,
@@ -76,6 +78,7 @@ function resolveStoreInfo(customProfile) {
     hours,
     bannerOffer,
     bannerRegion,
+    bannerImage,
     logo: profileData?.logo || null
   };
 }

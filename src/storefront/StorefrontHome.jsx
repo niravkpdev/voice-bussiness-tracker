@@ -7,7 +7,6 @@ import { ProductListMenu } from './components/ProductListMenu';
 import { ShopGrid } from './components/ShopGrid';
 import { CategoriesView } from './components/CategoriesView';
 import { ContactView } from './components/ContactView';
-import { VideoReelSection } from './components/VideoReelSection';
 import { CartDrawer } from './components/CartDrawer';
 import { ProductEditModal } from './components/ProductEditModal';
 import { QualityTrustStrip } from './components/QualityTrustStrip';
@@ -15,7 +14,7 @@ import { CustomerReviewsSection } from './components/CustomerReviewsSection';
 import { BannerEditModal } from './components/BannerEditModal';
 import { StoreFooter } from './components/StoreFooter';
 import { PRODUCTS, CATEGORIES, STORE_INFO } from './data/namkeenData';
-import { Truck, Award, Headphones, Zap, ShoppingBag, ArrowRight, Sparkles, CheckCircle2, Edit3, Star } from 'lucide-react';
+import { Truck, Award, Headphones, Zap, ShoppingBag, ArrowRight, Sparkles, CheckCircle2, Edit3, Star, Camera } from 'lucide-react';
 import './storefront.css';
 
 function StorefrontContent(props) {
@@ -191,10 +190,25 @@ function StorefrontContent(props) {
                 <div className="trinetr-hero-visual-col">
                   <div className="trinetr-hero-snack-card">
                     <img 
-                      src="https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=600&auto=format&fit=crop&q=80" 
+                      src={activeStore.bannerImage || 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=700&auto=format&fit=crop&q=80'} 
                       alt="Fresh Kathiyawadi Namkeen" 
                       className="trinetr-hero-snack-img"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=700&auto=format&fit=crop&q=80';
+                      }}
                     />
+                    {isOwner && (
+                      <button
+                        type="button"
+                        className="trinetr-banner-img-edit-btn"
+                        onClick={() => setIsEditingBanner(true)}
+                        title="Owner: Change Banner Photo"
+                      >
+                        <Camera size={13} />
+                        <span>Change Photo</span>
+                      </button>
+                    )}
                     <div className="trinetr-hero-glass-pill">
                       <Star size={16} fill="#f59e0b" color="#f59e0b" />
                       <div className="pill-text">
@@ -207,13 +221,6 @@ function StorefrontContent(props) {
               </div>
             </div>
           </section>
-
-          {/* Video Reels Showcase */}
-          <VideoReelSection 
-            onExploreMenu={() => navigateTo('product-menu')}
-            onWatchVideos={() => navigateTo('shop')}
-            storeName={activeStore.name}
-          />
 
           {/* Section: Explore Best Sellers */}
           <section className="trinetr-product-showcase-section">

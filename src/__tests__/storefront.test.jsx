@@ -451,5 +451,26 @@ describe('Online Storefront Catalog, Brand Dynamic Profile & Variants', () => {
     const bholeElements = container.querySelectorAll('[class*="bhole-"]');
     expect(bholeElements.length).toBe(0);
   });
+
+  it('supports custom bannerImage and persists it in StoreCartContext', () => {
+    const customBannerUrl = 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=700&auto=format&fit=crop&q=80';
+    const profileWithBanner = {
+      ...STORE_INFO,
+      bannerImage: customBannerUrl
+    };
+
+    function TestBannerImageConsumer() {
+      const { storeInfo } = useStoreCart();
+      return <img data-testid="banner-img" src={storeInfo.bannerImage} alt="banner" />;
+    }
+
+    const { getByTestId } = render(
+      <StoreCartProvider storeProfile={profileWithBanner} isOwner={true}>
+        <TestBannerImageConsumer />
+      </StoreCartProvider>
+    );
+
+    expect(getByTestId('banner-img').getAttribute('src')).toBe(customBannerUrl);
+  });
 });
 
