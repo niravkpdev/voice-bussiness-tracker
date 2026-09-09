@@ -14,6 +14,9 @@ export function ProductCard({ product }) {
   const currentVariant = product.variants[selectedVariantIndex] || product.variants[0];
   const isWishlisted = wishlist.includes(product.id);
   const isAvailable = !product.isOutOfStock && currentVariant.inStock;
+  const currentPrice = currentVariant.price;
+  const estimatedMrp = Math.round(currentPrice * 1.25);
+  const savingsAmount = estimatedMrp - currentPrice;
 
   const handleAddToCart = () => {
     if (!isAvailable) return;
@@ -23,22 +26,26 @@ export function ProductCard({ product }) {
   };
 
   return (
-    <div className={`bhole-product-card ${!isAvailable ? 'out-of-stock-card' : ''}`}>
+    <div className={`trinetr-product-card ${!isAvailable ? 'out-of-stock-card' : ''}`}>
       {/* Badges & Wishlist Overlay */}
-      <div className="bhole-card-badge-row">
-        <div className="bhole-badge-stack">
+      <div className="trinetr-card-badge-row">
+        <div className="trinetr-badge-stack">
           {product.isTopSeller && (
-            <span className="bhole-badge-pill badge-top" title="Top Selling Namkeen">
-              TOP
+            <span className="trinetr-badge-pill badge-top" title="Top Selling Namkeen">
+              ⭐ Bestseller
             </span>
           )}
-          {product.isNotForJain && (
-            <span className="bhole-badge-pill badge-nj" title="Not For Jain (Contains Garlic / Onion / Potatoes)">
+          {!product.isNotForJain ? (
+            <span className="trinetr-badge-pill badge-jain" title="Pure Jain Friendly (No Garlic / Onion / Potatoes)">
+              🌱 Jain
+            </span>
+          ) : (
+            <span className="trinetr-badge-pill badge-nj" title="Contains Garlic / Onion / Potatoes">
               NJ
             </span>
           )}
           {!isAvailable && (
-            <span className="bhole-badge-pill badge-out" title="Currently Out of Stock">
+            <span className="trinetr-badge-pill badge-out" title="Currently Out of Stock">
               OUT OF STOCK
             </span>
           )}
@@ -46,7 +53,7 @@ export function ProductCard({ product }) {
 
         <button
           type="button"
-          className={`bhole-wishlist-toggle ${isWishlisted ? 'liked' : ''}`}
+          className={`trinetr-wishlist-toggle ${isWishlisted ? 'liked' : ''}`}
           onClick={() => toggleWishlist(product.id)}
           aria-label={isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
         >
@@ -55,12 +62,12 @@ export function ProductCard({ product }) {
       </div>
 
       {/* Image */}
-      <div className="bhole-product-img-wrap">
+      <div className="trinetr-product-img-wrap">
         <img
           src={product.image}
           alt={product.name}
           loading="lazy"
-          className="bhole-product-img"
+          className="trinetr-product-img"
           onError={(e) => {
             e.target.onerror = null;
             e.target.src = 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=500&auto=format&fit=crop&q=80';
@@ -71,7 +78,7 @@ export function ProductCard({ product }) {
         {isOwner && (
           <button
             type="button"
-            className="bhole-product-img-edit-btn"
+            className="trinetr-product-img-edit-btn"
             onClick={(e) => {
               e.stopPropagation();
               if (setEditingProduct) setEditingProduct(product);
@@ -86,30 +93,30 @@ export function ProductCard({ product }) {
       </div>
 
       {/* Product Information */}
-      <div className="bhole-product-info">
-        <div className="bhole-cat-rating-row">
-          <span className="bhole-category-tag">{product.categoryLabel || product.category}</span>
+      <div className="trinetr-product-info">
+        <div className="trinetr-cat-rating-row">
+          <span className="trinetr-category-tag">{product.categoryLabel || product.category}</span>
           {product.rating && (
-            <div className="bhole-rating-badge">
+            <div className="trinetr-rating-badge">
               <Star size={12} fill="#d97706" color="#d97706" />
               <span>{product.rating.toFixed(1)}</span>
             </div>
           )}
         </div>
 
-        <h4 className="bhole-product-title" title={product.name}>
+        <h4 className="trinetr-product-title" title={product.name}>
           {product.name}
         </h4>
 
         {/* Multi-Weight Variant Selector Chips */}
-        <div className="bhole-weight-selector">
-          <span className="bhole-weight-label">Select Pack Size:</span>
-          <div className="bhole-chips-grid">
+        <div className="trinetr-weight-selector">
+          <span className="trinetr-weight-label">Select Pack Size:</span>
+          <div className="trinetr-chips-grid">
             {product.variants.map((v, idx) => (
               <button
                 key={v.weight}
                 type="button"
-                className={`bhole-weight-chip ${idx === selectedVariantIndex ? 'active' : ''}`}
+                className={`trinetr-weight-chip ${idx === selectedVariantIndex ? 'active' : ''}`}
                 onClick={() => setSelectedVariantIndex(idx)}
               >
                 {v.weight}
@@ -119,15 +126,21 @@ export function ProductCard({ product }) {
         </div>
 
         {/* Pricing & Add To Cart Button */}
-        <div className="bhole-price-action-footer">
-          <div className="bhole-price-box">
-            <span className="bhole-currency">₹</span>
-            <span className="bhole-price-num">{currentVariant.price.toFixed(2)}</span>
+        <div className="trinetr-price-action-footer">
+          <div className="trinetr-price-box">
+            <div className="trinetr-price-main-line">
+              <span className="trinetr-currency">₹</span>
+              <span className="trinetr-price-num">{currentPrice.toFixed(2)}</span>
+            </div>
+            <div className="trinetr-price-sub-line">
+              <span className="trinetr-mrp-strike">MRP ₹{estimatedMrp}</span>
+              <span className="trinetr-save-pill">Save ₹{savingsAmount}</span>
+            </div>
           </div>
 
           <button
             type="button"
-            className={`bhole-add-cart-btn ${justAdded ? 'added' : ''}`}
+            className={`trinetr-add-cart-btn ${justAdded ? 'added' : ''}`}
             onClick={handleAddToCart}
             disabled={!isAvailable}
           >

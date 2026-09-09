@@ -162,29 +162,29 @@ export function ProductEditModal() {
   };
 
   return (
-    <div className="bhole-edit-modal-backdrop" onClick={handleClose}>
+    <div className="trinetr-edit-modal-backdrop" onClick={handleClose}>
       <div 
-        className="bhole-edit-modal-content" 
+        className="trinetr-edit-modal-content" 
         onClick={(e) => e.stopPropagation()} 
         role="dialog" 
         aria-modal="true"
         aria-labelledby="edit-product-heading"
       >
         {/* Modal Header */}
-        <div className="bhole-edit-modal-header">
-          <div className="bhole-edit-header-left">
-            <div className="bhole-edit-header-badge">
+        <div className="trinetr-edit-modal-header">
+          <div className="trinetr-edit-header-left">
+            <div className="trinetr-edit-header-badge">
               <Sparkles size={16} />
               <span>Owner Product Editor</span>
             </div>
-            <h3 id="edit-product-heading" className="bhole-edit-title">Edit Product & Pack Sizes</h3>
-            <p className="bhole-edit-subtitle">
+            <h3 id="edit-product-heading" className="trinetr-edit-title">Edit Product & Pack Sizes</h3>
+            <p className="trinetr-edit-subtitle">
               Modify image, title, gram/kilogram weights, and retail prices in real time.
             </p>
           </div>
           <button 
             type="button" 
-            className="bhole-edit-modal-close" 
+            className="trinetr-edit-modal-close" 
             onClick={handleClose} 
             aria-label="Close modal"
           >
@@ -193,40 +193,40 @@ export function ProductEditModal() {
         </div>
 
         {errorMessage && (
-          <div className="bhole-edit-alert error">
+          <div className="trinetr-edit-alert error">
             <AlertCircle size={16} />
             <span>{errorMessage}</span>
           </div>
         )}
 
         {saveSuccess && (
-          <div className="bhole-edit-alert success">
+          <div className="trinetr-edit-alert success">
             <Check size={16} />
             <span>Product saved and synced with store catalog and ERP!</span>
           </div>
         )}
 
         {/* Modal Form */}
-        <form onSubmit={handleSave} className="bhole-edit-modal-form">
-          <div className="bhole-edit-grid">
+        <form onSubmit={handleSave} className="trinetr-edit-modal-form">
+          <div className="trinetr-edit-grid">
             
             {/* Column 1: Image Management */}
-            <div className="bhole-edit-col image-col">
-              <label className="bhole-edit-label">Product Image Preview</label>
+            <div className="trinetr-edit-col image-col">
+              <label className="trinetr-edit-label">Product Image Preview</label>
               
-              <div className="bhole-edit-img-preview-box">
+              <div className="trinetr-edit-img-preview-box">
                 {formData.image ? (
                   <img 
                     src={formData.image} 
                     alt={formData.name} 
-                    className="bhole-edit-preview-img"
+                    className="trinetr-edit-preview-img"
                     onError={(e) => {
                       e.target.onerror = null;
                       e.target.src = 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=500&auto=format&fit=crop&q=80';
                     }}
                   />
                 ) : (
-                  <div className="bhole-edit-no-img">
+                  <div className="trinetr-edit-no-img">
                     <ImageIcon size={48} />
                     <span>No Image Selected</span>
                   </div>
@@ -234,8 +234,8 @@ export function ProductEditModal() {
               </div>
 
               {/* Upload file button */}
-              <div className="bhole-edit-upload-box">
-                <label className="bhole-file-upload-btn">
+              <div className="trinetr-edit-upload-box">
+                <label className="trinetr-file-upload-btn">
                   <Upload size={16} />
                   <span>Upload Image From Device</span>
                   <input 
@@ -245,18 +245,18 @@ export function ProductEditModal() {
                     style={{ display: 'none' }} 
                   />
                 </label>
-                <span className="bhole-upload-tip">Supports JPG, PNG, WEBP from phone or PC</span>
+                <span className="trinetr-upload-tip">Supports JPG, PNG, WEBP from phone or PC</span>
               </div>
 
               {/* URL input */}
-              <div className="bhole-edit-field">
-                <label className="bhole-field-sublabel">
+              <div className="trinetr-edit-field">
+                <label className="trinetr-field-sublabel">
                   <Link size={14} />
                   <span>Or Enter Image URL:</span>
                 </label>
                 <input 
                   type="text" 
-                  className="bhole-edit-input" 
+                  className="trinetr-edit-input" 
                   value={formData.image} 
                   onChange={(e) => setFormData(prev => ({ ...prev, image: e.target.value }))}
                   placeholder="https://example.com/product-image.jpg"
@@ -264,14 +264,14 @@ export function ProductEditModal() {
               </div>
 
               {/* Sample presets */}
-              <div className="bhole-sample-images">
-                <span className="bhole-sample-label">Quick Samples:</span>
-                <div className="bhole-sample-pills">
+              <div className="trinetr-sample-images">
+                <span className="trinetr-sample-label">Quick Samples:</span>
+                <div className="trinetr-sample-pills">
                   {sampleImages.map((s, idx) => (
                     <button
                       key={idx}
                       type="button"
-                      className="bhole-sample-pill"
+                      className="trinetr-sample-pill"
                       onClick={() => setFormData(prev => ({ ...prev, image: s.url }))}
                     >
                       {s.label}
@@ -282,13 +282,13 @@ export function ProductEditModal() {
             </div>
 
             {/* Column 2: Product Text & Metadata */}
-            <div className="bhole-edit-col details-col">
+            <div className="trinetr-edit-col details-col">
               {/* Product Name */}
-              <div className="bhole-edit-field">
-                <label className="bhole-edit-label">Product Name / Title *</label>
+              <div className="trinetr-edit-field">
+                <label className="trinetr-edit-label">Product Name / Title *</label>
                 <input 
                   type="text" 
-                  className="bhole-edit-input" 
+                  className="trinetr-edit-input" 
                   value={formData.name} 
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                   placeholder="e.g. Bhavnagari Gathiya"
@@ -297,11 +297,11 @@ export function ProductEditModal() {
               </div>
 
               {/* Category & Category Label */}
-              <div className="bhole-edit-row-two">
-                <div className="bhole-edit-field">
-                  <label className="bhole-edit-label">Category</label>
+              <div className="trinetr-edit-row-two">
+                <div className="trinetr-edit-field">
+                  <label className="trinetr-edit-label">Category</label>
                   <select 
-                    className="bhole-edit-select"
+                    className="trinetr-edit-select"
                     value={formData.category}
                     onChange={(e) => {
                       const found = CATEGORIES.find(c => c.id === e.target.value);
@@ -318,11 +318,11 @@ export function ProductEditModal() {
                   </select>
                 </div>
 
-                <div className="bhole-edit-field">
-                  <label className="bhole-edit-label">Category Badge Label</label>
+                <div className="trinetr-edit-field">
+                  <label className="trinetr-edit-label">Category Badge Label</label>
                   <input 
                     type="text" 
-                    className="bhole-edit-input" 
+                    className="trinetr-edit-input" 
                     value={formData.categoryLabel} 
                     onChange={(e) => setFormData(prev => ({ ...prev, categoryLabel: e.target.value }))}
                     placeholder="e.g. Gathiya Special"
@@ -331,10 +331,10 @@ export function ProductEditModal() {
               </div>
 
               {/* Description */}
-              <div className="bhole-edit-field">
-                <label className="bhole-edit-label">Description / Taste Notes</label>
+              <div className="trinetr-edit-field">
+                <label className="trinetr-edit-label">Description / Taste Notes</label>
                 <textarea 
-                  className="bhole-edit-textarea" 
+                  className="trinetr-edit-textarea" 
                   rows={3}
                   value={formData.description}
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
@@ -343,10 +343,10 @@ export function ProductEditModal() {
               </div>
 
               {/* Product Badges & Flags */}
-              <div className="bhole-edit-flags-section">
-                <label className="bhole-edit-label">Badges & Inventory Status</label>
-                <div className="bhole-flags-row">
-                  <label className="bhole-checkbox-card">
+              <div className="trinetr-edit-flags-section">
+                <label className="trinetr-edit-label">Badges & Inventory Status</label>
+                <div className="trinetr-flags-row">
+                  <label className="trinetr-checkbox-card">
                     <input 
                       type="checkbox" 
                       checked={formData.isTopSeller} 
@@ -355,7 +355,7 @@ export function ProductEditModal() {
                     <span className="checkbox-title">🔥 Top Seller</span>
                   </label>
 
-                  <label className="bhole-checkbox-card">
+                  <label className="trinetr-checkbox-card">
                     <input 
                       type="checkbox" 
                       checked={formData.isNotForJain} 
@@ -364,7 +364,7 @@ export function ProductEditModal() {
                     <span className="checkbox-title">🧅 Not For Jain (NJ)</span>
                   </label>
 
-                  <label className="bhole-checkbox-card danger">
+                  <label className="trinetr-checkbox-card danger">
                     <input 
                       type="checkbox" 
                       checked={formData.isOutOfStock} 
@@ -378,29 +378,29 @@ export function ProductEditModal() {
           </div>
 
           {/* Section: Gram / Kilogram Variants & Pricing */}
-          <div className="bhole-edit-variants-section">
-            <div className="bhole-variants-header">
+          <div className="trinetr-edit-variants-section">
+            <div className="trinetr-variants-header">
               <div>
-                <h4 className="bhole-variants-title">Gram / Kilogram Pack Sizes & Pricing</h4>
-                <p className="bhole-variants-subtitle">
+                <h4 className="trinetr-variants-title">Gram / Kilogram Pack Sizes & Pricing</h4>
+                <p className="trinetr-variants-subtitle">
                   Configure multiple pack sizes (e.g. 250 GM, 500 GM, 1 KG) and their individual retail selling prices.
                 </p>
               </div>
 
               {/* Quick Size Adders */}
-              <div className="bhole-quick-size-buttons">
+              <div className="trinetr-quick-size-buttons">
                 <span className="quick-label">Quick Add:</span>
-                <button type="button" className="bhole-quick-btn" onClick={() => handleAddVariant('100 GM')}>+ 100 GM</button>
-                <button type="button" className="bhole-quick-btn" onClick={() => handleAddVariant('250 GM')}>+ 250 GM</button>
-                <button type="button" className="bhole-quick-btn" onClick={() => handleAddVariant('500 GM')}>+ 500 GM</button>
-                <button type="button" className="bhole-quick-btn" onClick={() => handleAddVariant('1 KG')}>+ 1 KG</button>
-                <button type="button" className="bhole-quick-btn" onClick={() => handleAddVariant('2 KG')}>+ 2 KG</button>
+                <button type="button" className="trinetr-quick-btn" onClick={() => handleAddVariant('100 GM')}>+ 100 GM</button>
+                <button type="button" className="trinetr-quick-btn" onClick={() => handleAddVariant('250 GM')}>+ 250 GM</button>
+                <button type="button" className="trinetr-quick-btn" onClick={() => handleAddVariant('500 GM')}>+ 500 GM</button>
+                <button type="button" className="trinetr-quick-btn" onClick={() => handleAddVariant('1 KG')}>+ 1 KG</button>
+                <button type="button" className="trinetr-quick-btn" onClick={() => handleAddVariant('2 KG')}>+ 2 KG</button>
               </div>
             </div>
 
             {/* Variants Table */}
-            <div className="bhole-variants-table-wrap">
-              <table className="bhole-variants-table">
+            <div className="trinetr-variants-table-wrap">
+              <table className="trinetr-variants-table">
                 <thead>
                   <tr>
                     <th>Pack Size / Weight (Grams / KG)</th>
@@ -415,7 +415,7 @@ export function ProductEditModal() {
                       <td>
                         <input 
                           type="text" 
-                          className="bhole-table-input weight-input"
+                          className="trinetr-table-input weight-input"
                           value={variant.weight} 
                           onChange={(e) => handleVariantChange(idx, 'weight', e.target.value)}
                           placeholder="e.g. 250 GM, 500 GM, 1 KG"
@@ -423,13 +423,13 @@ export function ProductEditModal() {
                         />
                       </td>
                       <td>
-                        <div className="bhole-table-price-wrap">
+                        <div className="trinetr-table-price-wrap">
                           <span className="currency-symbol">₹</span>
                           <input 
                             type="number" 
                             step="0.5" 
                             min="0" 
-                            className="bhole-table-input price-input"
+                            className="trinetr-table-input price-input"
                             value={variant.price} 
                             onChange={(e) => handleVariantChange(idx, 'price', e.target.value)}
                             required
@@ -437,7 +437,7 @@ export function ProductEditModal() {
                         </div>
                       </td>
                       <td>
-                        <label className="bhole-stock-switch">
+                        <label className="trinetr-stock-switch">
                           <input 
                             type="checkbox" 
                             checked={Boolean(variant.inStock)} 
@@ -449,7 +449,7 @@ export function ProductEditModal() {
                       <td>
                         <button
                           type="button"
-                          className="bhole-var-delete-btn"
+                          className="trinetr-var-delete-btn"
                           onClick={() => handleRemoveVariant(idx)}
                           disabled={formData.variants.length <= 1}
                           title={formData.variants.length <= 1 ? 'At least one variant required' : 'Remove this pack size'}
@@ -465,7 +465,7 @@ export function ProductEditModal() {
 
             <button
               type="button"
-              className="bhole-add-variant-row-btn"
+              className="trinetr-add-variant-row-btn"
               onClick={() => handleAddVariant('500 GM', 150)}
             >
               <Plus size={16} />
@@ -474,10 +474,10 @@ export function ProductEditModal() {
           </div>
 
           {/* Modal Footer Actions */}
-          <div className="bhole-edit-modal-footer">
+          <div className="trinetr-edit-modal-footer">
             <button
               type="button"
-              className="bhole-reset-btn"
+              className="trinetr-reset-btn"
               onClick={handleReset}
               title="Revert this product to default factory settings"
             >
@@ -485,10 +485,10 @@ export function ProductEditModal() {
               <span>Reset to Default</span>
             </button>
 
-            <div className="bhole-footer-right-actions">
+            <div className="trinetr-footer-right-actions">
               <button
                 type="button"
-                className="bhole-cancel-btn"
+                className="trinetr-cancel-btn"
                 onClick={handleClose}
               >
                 Cancel
@@ -496,7 +496,7 @@ export function ProductEditModal() {
 
               <button
                 type="submit"
-                className="bhole-save-btn"
+                className="trinetr-save-btn"
               >
                 <Check size={18} />
                 <span>Save Changes & Sync</span>

@@ -64,9 +64,9 @@ export function BannerEditModal({ isOpen, onClose, onUpdateProfile }) {
   };
 
   return (
-    <div className="bhole-edit-modal-backdrop" onClick={onClose}>
+    <div className="trinetr-edit-modal-backdrop" onClick={onClose}>
       <div 
-        className="bhole-edit-modal-content" 
+        className="trinetr-edit-modal-content" 
         onClick={(e) => e.stopPropagation()} 
         role="dialog" 
         aria-modal="true"
@@ -74,20 +74,20 @@ export function BannerEditModal({ isOpen, onClose, onUpdateProfile }) {
         style={{ maxWidth: 500 }}
       >
         {/* Modal Header */}
-        <div className="bhole-edit-modal-header">
-          <div className="bhole-edit-header-left">
-            <div className="bhole-edit-header-badge">
+        <div className="trinetr-edit-modal-header">
+          <div className="trinetr-edit-header-left">
+            <div className="trinetr-edit-header-badge">
               <Sparkles size={16} />
               <span>Owner Storefront Editor</span>
             </div>
-            <h3 id="edit-banner-heading" className="bhole-edit-title">Edit Promotional Hero Banner</h3>
-            <p className="bhole-edit-subtitle">
+            <h3 id="edit-banner-heading" className="trinetr-edit-title">Edit Promotional Hero Banner</h3>
+            <p className="trinetr-edit-subtitle">
               Changes save instantly to your store and persist across page refreshes.
             </p>
           </div>
           <button 
             type="button" 
-            className="bhole-edit-modal-close" 
+            className="trinetr-edit-modal-close" 
             onClick={onClose} 
             aria-label="Close modal"
           >
@@ -96,51 +96,51 @@ export function BannerEditModal({ isOpen, onClose, onUpdateProfile }) {
         </div>
 
         {/* Modal Form */}
-        <form onSubmit={handleSave} className="bhole-edit-modal-body">
-          <div className="bhole-edit-field-group">
-            <label className="bhole-edit-label" htmlFor="banner-headline-input">
+        <form onSubmit={handleSave} className="trinetr-edit-modal-body">
+          <div className="trinetr-edit-field-group">
+            <label className="trinetr-edit-label" htmlFor="banner-headline-input">
               Banner Headline / Discount Offer *
             </label>
             <input 
               id="banner-headline-input"
               type="text" 
-              className="bhole-edit-input"
+              className="trinetr-edit-input"
               value={headline} 
               onChange={(e) => setHeadline(e.target.value)}
               placeholder="e.g. FLAT 40% OFF or FESTIVE 30% OFF" 
               required 
               style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}
             />
-            <span className="bhole-edit-help">
+            <span className="trinetr-edit-help">
               This is the bold offer shown at the center of your store home page.
             </span>
           </div>
 
-          <div className="bhole-edit-field-group">
-            <label className="bhole-edit-label" htmlFor="banner-region-input">
+          <div className="trinetr-edit-field-group">
+            <label className="trinetr-edit-label" htmlFor="banner-region-input">
               Target Delivery Region / Offer Subtitle
             </label>
             <input 
               id="banner-region-input"
               type="text" 
-              className="bhole-edit-input"
+              className="trinetr-edit-input"
               value={region} 
               onChange={(e) => setRegion(e.target.value)}
               placeholder="e.g. For All Gujarat and Mumbai City's Customers" 
             />
-            <span className="bhole-edit-help">
+            <span className="trinetr-edit-help">
               Subtitle text displayed directly below the discount headline.
             </span>
           </div>
 
-          <div className="bhole-edit-field-group">
-            <label className="bhole-edit-label" htmlFor="banner-tagline-input">
+          <div className="trinetr-edit-field-group">
+            <label className="trinetr-edit-label" htmlFor="banner-tagline-input">
               Top Stamp / Accent Tagline
             </label>
             <input 
               id="banner-tagline-input"
               type="text" 
-              className="bhole-edit-input"
+              className="trinetr-edit-input"
               value={tagline} 
               onChange={(e) => setTagline(e.target.value)}
               placeholder="e.g. FRESH & AUTHENTIC HOMEMADE SNACKS & DELICACIES" 
@@ -148,10 +148,10 @@ export function BannerEditModal({ isOpen, onClose, onUpdateProfile }) {
           </div>
 
           {/* Modal Footer Actions */}
-          <div className="bhole-edit-modal-footer">
+          <div className="trinetr-edit-modal-footer">
             <button
               type="button"
-              className="bhole-reset-btn"
+              className="trinetr-reset-btn"
               onClick={handleReset}
               title="Reset banner to standard 20% default"
             >
@@ -159,10 +159,10 @@ export function BannerEditModal({ isOpen, onClose, onUpdateProfile }) {
               <span>Reset Default</span>
             </button>
 
-            <div className="bhole-footer-right-actions">
+            <div className="trinetr-footer-right-actions">
               <button
                 type="button"
-                className="bhole-cancel-btn"
+                className="trinetr-cancel-btn"
                 onClick={onClose}
               >
                 Cancel
@@ -170,7 +170,7 @@ export function BannerEditModal({ isOpen, onClose, onUpdateProfile }) {
 
               <button
                 type="submit"
-                className="bhole-save-btn"
+                className="trinetr-save-btn"
               >
                 <Check size={18} />
                 <span>{saveSuccess ? 'Saved!' : 'Save Banner Offer'}</span>

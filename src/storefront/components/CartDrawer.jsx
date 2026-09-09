@@ -140,19 +140,19 @@ export function CartDrawer() {
   };
 
   return (
-    <div className="bhole-drawer-overlay">
-      <div className="bhole-drawer-backdrop" onClick={() => setCartDrawerOpen(false)} />
+    <div className="trinetr-drawer-overlay">
+      <div className="trinetr-drawer-backdrop" onClick={() => setCartDrawerOpen(false)} />
 
-      <div className="bhole-cart-drawer">
+      <div className="trinetr-cart-drawer">
         {/* Header */}
-        <div className="bhole-drawer-header">
-          <div className="bhole-drawer-title-box">
+        <div className="trinetr-drawer-header">
+          <div className="trinetr-drawer-title-box">
             <ShoppingBag size={20} className="text-amber" />
             <h3>Your Shopping Cart ({cart.length})</h3>
           </div>
           <button
             type="button"
-            className="bhole-drawer-close"
+            className="trinetr-drawer-close"
             onClick={() => setCartDrawerOpen(false)}
             aria-label="Close cart"
           >
@@ -162,7 +162,7 @@ export function CartDrawer() {
 
         {/* Mode: Success View */}
         {checkoutMode === 'success' ? (
-          <div className="bhole-order-success-view">
+          <div className="trinetr-order-success-view">
             <div className="success-icon-wrap">
               <CheckCircle size={56} className="text-success" />
             </div>
@@ -210,8 +210,8 @@ export function CartDrawer() {
           </div>
         ) : checkoutMode === 'guest-form' ? (
           /* Mode: Fast Guest Checkout Form */
-          <form onSubmit={handleGuestSubmit} className="bhole-guest-form">
-            <div className="bhole-guest-header">
+          <form onSubmit={handleGuestSubmit} className="trinetr-guest-form">
+            <div className="trinetr-guest-header">
               <h4>Guest Delivery Details</h4>
               <p>No password needed! Enter your delivery address below.</p>
             </div>
@@ -303,27 +303,27 @@ export function CartDrawer() {
         ) : (
           /* Mode: Cart Items List */
           <>
-            <div className="bhole-cart-items-scroll">
+            <div className="trinetr-cart-items-scroll">
               {cart.length === 0 ? (
-                <div className="bhole-cart-empty">
+                <div className="trinetr-cart-empty">
                   <ShoppingBag size={48} className="empty-icon" />
                   <h4>Your cart is currently empty</h4>
                   <p>Browse our best seller gathiya, wafers, and namkeens to add items.</p>
                 </div>
               ) : (
                 cart.map(item => (
-                  <div key={item.cartItemId} className="bhole-cart-item-row">
+                  <div key={item.cartItemId} className="trinetr-cart-item-row">
                     <img
                       src={item.image}
                       alt={item.name}
-                      className="bhole-cart-item-img"
+                      className="trinetr-cart-item-img"
                       onError={(e) => {
                         e.target.onerror = null;
                         e.target.src = 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=120&auto=format&fit=crop&q=80';
                       }}
                     />
 
-                    <div className="bhole-cart-item-info">
+                    <div className="trinetr-cart-item-info">
                       <div className="cart-title-row">
                         <h5 className="cart-item-name">{item.name}</h5>
                         <button
@@ -374,8 +374,8 @@ export function CartDrawer() {
 
             {/* Cart Summary & Action Buttons */}
             {cart.length > 0 && (
-              <div className="bhole-cart-footer">
-                <div className="bhole-cart-summary">
+              <div className="trinetr-cart-footer">
+                <div className="trinetr-cart-summary">
                   <div className="summary-row">
                     <span>Items Subtotal:</span>
                     <span>₹{cartSubtotal.toFixed(2)}</span>
@@ -396,11 +396,11 @@ export function CartDrawer() {
                   </div>
                 </div>
 
-                <div className="bhole-checkout-actions">
+                <div className="trinetr-checkout-actions">
                   {/* WhatsApp Direct Order Button */}
                   <button
                     type="button"
-                    className="bhole-btn-whatsapp"
+                    className="trinetr-btn-whatsapp"
                     onClick={handleWhatsAppOrder}
                     title="Instant order via WhatsApp directly with store owner"
                   >
@@ -411,7 +411,7 @@ export function CartDrawer() {
                   {/* Fast Guest Checkout Button */}
                   <button
                     type="button"
-                    className="bhole-btn-guest-checkout"
+                    className="trinetr-btn-guest-checkout"
                     onClick={() => setCheckoutMode('guest-form')}
                   >
                     <span>Continue to Guest Checkout</span>

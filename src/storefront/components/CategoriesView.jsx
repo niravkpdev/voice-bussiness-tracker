@@ -13,23 +13,23 @@ export function CategoriesView({ onSelectCategory }) {
   };
 
   return (
-    <div className="bhole-categories-page-wrapper">
-      <div className="bhole-categories-header-banner">
-        <h2 className="bhole-categories-title">All Product Categories</h2>
-        <div className="bhole-breadcrumbs">
+    <div className="trinetr-categories-page-wrapper">
+      <div className="trinetr-categories-header-banner">
+        <h2 className="trinetr-categories-title">All Product Categories</h2>
+        <div className="trinetr-breadcrumbs">
           <span>Home</span> &gt; <span>Only Categories</span>
         </div>
       </div>
 
-      <div className="bhole-categories-grid-container">
+      <div className="trinetr-categories-grid-container">
         {CATEGORIES.filter(c => c.id !== 'all').map((cat) => (
           <button
             key={cat.id}
             type="button"
-            className="bhole-category-full-card"
+            className="trinetr-category-full-card"
             onClick={() => handleCategoryClick(cat.id)}
           >
-            <div className="bhole-category-img-box">
+            <div className="trinetr-category-img-box">
               <img
                 src={cat.image}
                 alt={cat.name}
@@ -40,7 +40,7 @@ export function CategoriesView({ onSelectCategory }) {
                 }}
               />
             </div>
-            <div className="bhole-category-card-meta">
+            <div className="trinetr-category-card-meta">
               <h4 className="category-title">{cat.name}</h4>
               <span className="category-item-count">{cat.count} Products</span>
             </div>

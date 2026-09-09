@@ -20,17 +20,17 @@ export function ContactView() {
   };
 
   return (
-    <div className="bhole-contact-page-wrapper">
-      <div className="bhole-contact-header-banner">
-        <h2 className="bhole-contact-title">Keep In Touch With Us</h2>
-        <div className="bhole-breadcrumbs">
+    <div className="trinetr-contact-page-wrapper">
+      <div className="trinetr-contact-header-banner">
+        <h2 className="trinetr-contact-title">Keep In Touch With Us</h2>
+        <div className="trinetr-breadcrumbs">
           <span>Home</span> &gt; <span>Contact Us</span>
         </div>
       </div>
 
-      <div className="bhole-contact-content-grid">
+      <div className="trinetr-contact-content-grid">
         {/* Contact Form */}
-        <div className="bhole-contact-form-box">
+        <div className="trinetr-contact-form-box">
           <h3 className="form-title">Send A Message</h3>
           <p className="form-sub">Have questions regarding wholesale bulk orders, wedding packages, or custom gift hampers? Let us know!</p>
 
@@ -93,7 +93,7 @@ export function ContactView() {
                 />
               </div>
 
-              <button type="submit" className="bhole-contact-submit-btn">
+              <button type="submit" className="trinetr-contact-submit-btn">
                 <Send size={16} />
                 <span>Send Message</span>
               </button>
@@ -102,7 +102,7 @@ export function ContactView() {
         </div>
 
         {/* Store Information Sidebar */}
-        <div className="bhole-contact-info-card">
+        <div className="trinetr-contact-info-card">
           <h3 className="info-card-title">Our Shop Location</h3>
           <p className="info-card-desc">
             Visit our physical location or order directly via WhatsApp for freshly prepared orders delivered to your doorstep!

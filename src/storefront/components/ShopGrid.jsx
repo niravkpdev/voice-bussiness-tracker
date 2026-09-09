@@ -69,46 +69,46 @@ export function ShopGrid() {
   }, [products, activeCategory, searchQuery, inStockOnly, dietaryFilter, maxPrice, sortBy, wishlist]);
 
   return (
-    <div className="bhole-shop-page-wrapper">
+    <div className="trinetr-shop-page-wrapper">
       {/* Breadcrumb / Title Bar */}
-      <div className="bhole-shop-header-banner">
-        <h2 className="bhole-shop-title">Shop Grid</h2>
-        <div className="bhole-breadcrumbs">
+      <div className="trinetr-shop-header-banner">
+        <h2 className="trinetr-shop-title">Shop Grid</h2>
+        <div className="trinetr-breadcrumbs">
           <span>Home</span> &gt; <span>Shop Grid</span>
         </div>
       </div>
 
-      <div className="bhole-shop-layout">
+      <div className="trinetr-shop-layout">
         {/* Mobile Filter Trigger Button */}
-        <div className="bhole-mobile-filter-bar hide-on-desktop">
+        <div className="trinetr-mobile-filter-bar hide-on-desktop">
           <button
             type="button"
-            className="bhole-mobile-filter-btn"
+            className="trinetr-mobile-filter-btn"
             onClick={() => setMobileFilterOpen(!mobileFilterOpen)}
           >
             <SlidersHorizontal size={16} />
             <span>Filter Products</span>
           </button>
-          <span className="bhole-results-count-mobile">{filteredProducts.length} items</span>
+          <span className="trinetr-results-count-mobile">{filteredProducts.length} items</span>
         </div>
 
         {/* Sidebar Filters */}
-        <aside className={`bhole-shop-sidebar ${mobileFilterOpen ? 'mobile-open' : ''}`}>
-          <div className="bhole-sidebar-header hide-on-desktop">
+        <aside className={`trinetr-shop-sidebar ${mobileFilterOpen ? 'mobile-open' : ''}`}>
+          <div className="trinetr-sidebar-header hide-on-desktop">
             <h3>Filters</h3>
             <button 
               type="button" 
               onClick={() => setMobileFilterOpen(false)}
-              className="bhole-close-filter-btn"
+              className="trinetr-close-filter-btn"
             >
               <X size={20} />
             </button>
           </div>
 
           {/* Price Filter Widget */}
-          <div className="bhole-filter-widget">
-            <h4 className="bhole-filter-widget-title">Price Filter</h4>
-            <div className="bhole-price-slider-wrap">
+          <div className="trinetr-filter-widget">
+            <h4 className="trinetr-filter-widget-title">Price Filter</h4>
+            <div className="trinetr-price-slider-wrap">
               <input
                 type="range"
                 min="50"
@@ -116,18 +116,18 @@ export function ShopGrid() {
                 step="10"
                 value={maxPrice}
                 onChange={(e) => setMaxPrice(Number(e.target.value))}
-                className="bhole-range-slider"
+                className="trinetr-range-slider"
               />
-              <div className="bhole-slider-values">
+              <div className="trinetr-slider-values">
                 <span>Range: ₹50 - ₹{maxPrice}</span>
               </div>
             </div>
           </div>
 
           {/* Product Availability Status */}
-          <div className="bhole-filter-widget">
-            <h4 className="bhole-filter-widget-title">Product Status</h4>
-            <label className="bhole-filter-checkbox-label">
+          <div className="trinetr-filter-widget">
+            <h4 className="trinetr-filter-widget-title">Product Status</h4>
+            <label className="trinetr-filter-checkbox-label">
               <input
                 type="checkbox"
                 checked={inStockOnly}
@@ -138,10 +138,10 @@ export function ShopGrid() {
           </div>
 
           {/* Dietary Segregation Filter ("Not For Jain") */}
-          <div className="bhole-filter-widget">
-            <h4 className="bhole-filter-widget-title">Dietary Filter</h4>
-            <div className="bhole-radio-group">
-              <label className="bhole-filter-radio-label">
+          <div className="trinetr-filter-widget">
+            <h4 className="trinetr-filter-widget-title">Dietary Filter</h4>
+            <div className="trinetr-radio-group">
+              <label className="trinetr-filter-radio-label">
                 <input
                   type="radio"
                   name="dietary"
@@ -151,7 +151,7 @@ export function ShopGrid() {
                 />
                 <span>All Products</span>
               </label>
-              <label className="bhole-filter-radio-label">
+              <label className="trinetr-filter-radio-label">
                 <input
                   type="radio"
                   name="dietary"
@@ -161,7 +161,7 @@ export function ShopGrid() {
                 />
                 <span>Jain Friendly Only</span>
               </label>
-              <label className="bhole-filter-radio-label highlight-nj">
+              <label className="trinetr-filter-radio-label highlight-nj">
                 <input
                   type="radio"
                   name="dietary"
@@ -175,16 +175,16 @@ export function ShopGrid() {
           </div>
 
           {/* Categories List with live counts */}
-          <div className="bhole-filter-widget">
-            <h4 className="bhole-filter-widget-title">Categories</h4>
-            <div className="bhole-category-filter-list">
+          <div className="trinetr-filter-widget">
+            <h4 className="trinetr-filter-widget-title">Categories</h4>
+            <div className="trinetr-category-filter-list">
               <button
                 type="button"
-                className={`bhole-cat-filter-btn ${activeCategory === 'all' ? 'active' : ''}`}
+                className={`trinetr-cat-filter-btn ${activeCategory === 'all' ? 'active' : ''}`}
                 onClick={() => { setActiveCategory('all'); setMobileFilterOpen(false); }}
               >
                 <span>All Categories</span>
-                <span className="bhole-count">{products.length}</span>
+                <span className="trinetr-count">{products.length}</span>
               </button>
               {CATEGORIES.filter(c => c.id !== 'all').map(cat => {
                 const count = products.filter(p => p.category === cat.id).length;
@@ -192,11 +192,11 @@ export function ShopGrid() {
                   <button
                     key={cat.id}
                     type="button"
-                    className={`bhole-cat-filter-btn ${activeCategory === cat.id ? 'active' : ''}`}
+                    className={`trinetr-cat-filter-btn ${activeCategory === cat.id ? 'active' : ''}`}
                     onClick={() => { setActiveCategory(cat.id); setMobileFilterOpen(false); }}
                   >
                     <span>{cat.name}</span>
-                    <span className="bhole-count">{count}</span>
+                    <span className="trinetr-count">{count}</span>
                   </button>
                 );
               })}
@@ -205,21 +205,21 @@ export function ShopGrid() {
         </aside>
 
         {/* Product Grid Area */}
-        <main className="bhole-shop-main">
+        <main className="trinetr-shop-main">
           {/* Top Bar with count, layout switch, and sort */}
-          <div className="bhole-shop-toolbar">
-            <div className="bhole-toolbar-left">
-              <span className="bhole-results-text">
+          <div className="trinetr-shop-toolbar">
+            <div className="trinetr-toolbar-left">
+              <span className="trinetr-results-text">
                 Showing 1-{filteredProducts.length} of {products.length} results
               </span>
             </div>
 
-            <div className="bhole-toolbar-right">
+            <div className="trinetr-toolbar-right">
               {/* Layout Switcher */}
-              <div className="bhole-view-switcher">
+              <div className="trinetr-view-switcher">
                 <button
                   type="button"
-                  className={`bhole-view-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                  className={`trinetr-view-btn ${viewMode === 'grid' ? 'active' : ''}`}
                   onClick={() => setViewMode('grid')}
                   aria-label="Grid View"
                 >
@@ -227,7 +227,7 @@ export function ShopGrid() {
                 </button>
                 <button
                   type="button"
-                  className={`bhole-view-btn ${viewMode === 'list' ? 'active' : ''}`}
+                  className={`trinetr-view-btn ${viewMode === 'list' ? 'active' : ''}`}
                   onClick={() => setViewMode('list')}
                   aria-label="List View"
                 >
@@ -236,11 +236,11 @@ export function ShopGrid() {
               </div>
 
               {/* Sort Dropdown */}
-              <div className="bhole-sort-wrapper">
+              <div className="trinetr-sort-wrapper">
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="bhole-sort-select"
+                  className="trinetr-sort-select"
                 >
                   <option value="default">Default Sorting</option>
                   <option value="top">Best Sellers</option>
@@ -254,12 +254,12 @@ export function ShopGrid() {
 
           {/* Active Filter Badges */}
           {(activeCategory !== 'all' || dietaryFilter !== 'all' || searchQuery) && (
-            <div className="bhole-active-filters-row">
+            <div className="trinetr-active-filters-row">
               <span className="label">Active Filters:</span>
               {activeCategory !== 'all' && (
                 <button 
                   type="button" 
-                  className="bhole-active-filter-chip"
+                  className="trinetr-active-filter-chip"
                   onClick={() => setActiveCategory('all')}
                 >
                   <span>Category: {activeCategory}</span>
@@ -269,7 +269,7 @@ export function ShopGrid() {
               {dietaryFilter !== 'all' && (
                 <button 
                   type="button" 
-                  className="bhole-active-filter-chip"
+                  className="trinetr-active-filter-chip"
                   onClick={() => setDietaryFilter('all')}
                 >
                   <span>{dietaryFilter === 'wishlist' ? '❤️ Wishlist Only' : dietaryFilter === 'nj' ? 'Not For Jain (NJ)' : 'Jain Friendly'}</span>
@@ -279,7 +279,7 @@ export function ShopGrid() {
               {searchQuery && (
                 <button 
                   type="button" 
-                  className="bhole-active-filter-chip"
+                  className="trinetr-active-filter-chip"
                   onClick={() => setSearchQuery('')}
                 >
                   <span>Query: "{searchQuery}"</span>
@@ -291,7 +291,7 @@ export function ShopGrid() {
 
           {/* Products Grid / List */}
           {filteredProducts.length === 0 ? (
-            <div className="bhole-no-results-box">
+            <div className="trinetr-no-results-box">
               <h3>{dietaryFilter === 'wishlist' ? 'Your Wishlist is Empty' : 'No products found'}</h3>
               <p>{dietaryFilter === 'wishlist' ? 'Explore our fresh snacks and click the heart icon on any product to save it here.' : 'Try resetting the price filter or selecting another category.'}</p>
               <button
@@ -309,7 +309,7 @@ export function ShopGrid() {
               </button>
             </div>
           ) : (
-            <div className={`bhole-products-grid ${viewMode === 'list' ? 'list-mode' : ''}`}>
+            <div className={`trinetr-products-grid ${viewMode === 'list' ? 'list-mode' : ''}`}>
               {filteredProducts.map(product => (
                 <ProductCard key={product.id} product={product} />
               ))}

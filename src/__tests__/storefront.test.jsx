@@ -4,6 +4,8 @@ import { render, screen } from '@testing-library/react';
 import { PRODUCTS, CATEGORIES, STORE_INFO } from '../storefront/data/namkeenData';
 import { StoreCartProvider, useStoreCart } from '../storefront/context/StoreCartContext';
 import { ProductCard } from '../storefront/components/ProductCard';
+import { QualityTrustStrip } from '../storefront/components/QualityTrustStrip';
+import { CustomerReviewsSection } from '../storefront/components/CustomerReviewsSection';
 
 describe('Online Storefront Catalog, Brand Dynamic Profile & Variants', () => {
   it('loads valid categories with positive counts', () => {
@@ -293,7 +295,7 @@ describe('Online Storefront Catalog, Brand Dynamic Profile & Variants', () => {
     );
 
     expect(screen.queryByText(/Edit Product/i)).toBeNull();
-    expect(document.querySelector('.bhole-product-img-edit-btn')).toBeNull();
+    expect(document.querySelector('.trinetr-product-img-edit-btn')).toBeNull();
 
     customerRender.unmount();
 
@@ -305,7 +307,7 @@ describe('Online Storefront Catalog, Brand Dynamic Profile & Variants', () => {
     );
 
     expect(screen.getByText(/Edit Product/i)).toBeDefined();
-    expect(document.querySelector('.bhole-product-img-edit-btn')).not.toBeNull();
+    expect(document.querySelector('.trinetr-product-img-edit-btn')).not.toBeNull();
   });
 
   it('validates 15-character Indian GSTIN format for retailer login', () => {
@@ -396,6 +398,58 @@ describe('Online Storefront Catalog, Brand Dynamic Profile & Variants', () => {
     );
 
     expect(getByTestIdAfterRefresh('banner-offer').textContent).toBe('FLAT 40% OFF');
+  });
+
+  it('renders QualityTrustStrip with all 4 authentic brand pillars', () => {
+    const { container } = render(<QualityTrustStrip />);
+    expect(container.querySelector('.trinetr-trust-strip-section')).not.toBeNull();
+    expect(container.textContent).toContain('100% Pure Groundnut Oil');
+    expect(container.textContent).toContain('Nitrogen Sealed Crunch');
+    expect(container.textContent).toContain('Express Regional Dispatch');
+    expect(container.textContent).toContain('Direct WhatsApp Support');
+  });
+
+  it('renders CustomerReviewsSection with verified regional reviews', () => {
+    const { container } = render(<CustomerReviewsSection />);
+    expect(container.querySelector('.trinetr-reviews-section')).not.toBeNull();
+    expect(container.textContent).toContain('Loved by Thousands of Families');
+    expect(container.textContent).toContain('Pooja Shah');
+    expect(container.textContent).toContain('Kiritbhai Patel');
+    expect(container.textContent).toContain('Mehul Mehta');
+    expect(container.textContent).toContain('Surat');
+    expect(container.textContent).toContain('Mumbai');
+    expect(container.textContent).toContain('Ahmedabad');
+  });
+
+  it('renders ProductCard with dynamic MRP calculation, savings badge, and Jain badge without bhole- classes', () => {
+    const testProduct = PRODUCTS[0]; // e.g. Bhavnagari Gathiya
+    const { container } = render(
+      <StoreCartProvider storeProfile={STORE_INFO} isOwner={false}>
+        <ProductCard product={testProduct} />
+      </StoreCartProvider>
+    );
+
+    // Verify trinetr classes
+    expect(container.querySelector('.trinetr-product-card')).not.toBeNull();
+    expect(container.querySelector('.trinetr-product-title').textContent).toBe(testProduct.name);
+
+    // Verify MRP strike and savings pill
+    const currentPrice = testProduct.variants[0].price;
+    const expectedMrp = Math.round(currentPrice * 1.25);
+    const expectedSavings = expectedMrp - currentPrice;
+
+    expect(container.textContent).toContain(`MRP ₹${expectedMrp}`);
+    expect(container.textContent).toContain(`Save ₹${expectedSavings}`);
+
+    // Verify dietary badge
+    if (!testProduct.isNotForJain) {
+      expect(container.querySelector('.badge-jain')).not.toBeNull();
+      expect(container.textContent).toContain('Jain');
+    }
+
+    // Verify ZERO bhole- classes in the rendered product card
+    const bholeElements = container.querySelectorAll('[class*="bhole-"]');
+    expect(bholeElements.length).toBe(0);
   });
 });
 

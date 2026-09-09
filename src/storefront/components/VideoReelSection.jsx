@@ -31,21 +31,21 @@ export function VideoReelSection({ onExploreMenu, onWatchVideos, storeName }) {
   };
 
   return (
-    <section className="bhole-reel-section">
-      <div className="bhole-reel-header">
-        <h3 className="bhole-section-title-underline">Our Most Popular Videos</h3>
-        <p className="bhole-section-subtitle">
+    <section className="trinetr-reel-section">
+      <div className="trinetr-reel-header">
+        <h3 className="trinetr-section-title-underline">Our Most Popular Videos</h3>
+        <p className="trinetr-section-subtitle">
           See how our traditional Surat namkeens and wafers are freshly prepared every morning!
         </p>
       </div>
 
-      <div className="bhole-reel-container">
+      <div className="trinetr-reel-container">
         {/* Vertical Reel Card */}
-        <div className="bhole-reel-card">
-          <div className="bhole-video-wrapper">
+        <div className="trinetr-reel-card">
+          <div className="trinetr-video-wrapper">
             <video
               ref={videoRef}
-              className="bhole-reel-video"
+              className="trinetr-reel-video"
               loop
               playsInline
               muted={isMuted}
@@ -55,20 +55,20 @@ export function VideoReelSection({ onExploreMenu, onWatchVideos, storeName }) {
             />
 
             {/* Custom Overlay Controls */}
-            <div className="bhole-video-overlay-controls">
+            <div className="trinetr-video-overlay-controls">
               <button
                 type="button"
-                className="bhole-vid-btn play-btn"
+                className="trinetr-vid-btn play-btn"
                 onClick={togglePlay}
                 aria-label={isPlaying ? 'Pause video' : 'Play video'}
               >
                 {isPlaying ? <Pause size={20} /> : <Play size={20} fill="#fff" />}
               </button>
 
-              <div className="bhole-vid-sub-controls">
+              <div className="trinetr-vid-sub-controls">
                 <button
                   type="button"
-                  className="bhole-vid-btn"
+                  className="trinetr-vid-btn"
                   onClick={toggleMute}
                   aria-label={isMuted ? 'Unmute' : 'Mute'}
                 >
@@ -76,7 +76,7 @@ export function VideoReelSection({ onExploreMenu, onWatchVideos, storeName }) {
                 </button>
                 <button
                   type="button"
-                  className="bhole-vid-btn"
+                  className="trinetr-vid-btn"
                   onClick={handleFullscreen}
                   aria-label="Fullscreen"
                 >
@@ -86,17 +86,17 @@ export function VideoReelSection({ onExploreMenu, onWatchVideos, storeName }) {
             </div>
 
             {/* Reel Badge */}
-            <div className="bhole-reel-shop-tag">
+            <div className="trinetr-reel-shop-tag">
               <span>{storeName ? `${storeName} Fresh Farsan Daily` : 'Fresh Farsan Daily'}</span>
             </div>
           </div>
         </div>
 
         {/* Action Buttons as seen in the video */}
-        <div className="bhole-reel-action-bar">
+        <div className="trinetr-reel-action-bar">
           <button
             type="button"
-            className="bhole-reel-btn highlight"
+            className="trinetr-reel-btn highlight"
             onClick={onExploreMenu}
           >
             <Utensils size={18} />
@@ -104,7 +104,7 @@ export function VideoReelSection({ onExploreMenu, onWatchVideos, storeName }) {
           </button>
           <button
             type="button"
-            className="bhole-reel-btn outline"
+            className="trinetr-reel-btn outline"
             onClick={onWatchVideos || togglePlay}
           >
             <Video size={18} />

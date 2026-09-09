@@ -16,12 +16,12 @@ export function StoreFooter({ onNavigate }) {
   const mapQuery = encodeURIComponent(`${activeStore.name} ${activeStore.address}`);
 
   return (
-    <footer className="bhole-store-footer">
+    <footer className="trinetr-store-footer">
       {/* Animated Delivery Truck Road Strip */}
-      <div className="bhole-delivery-road-strip">
-        <div className="bhole-road-line">
-          <div className="bhole-truck-animation">
-            <div className="bhole-truck-icon">
+      <div className="trinetr-delivery-road-strip">
+        <div className="trinetr-road-line">
+          <div className="trinetr-truck-animation">
+            <div className="trinetr-truck-icon">
               <Truck size={24} />
               <span className="truck-tag">Fast Delivery</span>
             </div>
@@ -30,10 +30,10 @@ export function StoreFooter({ onNavigate }) {
       </div>
 
       {/* Trust, FSSAI & Google Review Showcase */}
-      <div className="bhole-trust-section">
-        <div className="bhole-trust-container">
+      <div className="trinetr-trust-section">
+        <div className="trinetr-trust-container">
           {/* FSSAI Certification */}
-          <div className="bhole-trust-card fssai-card">
+          <div className="trinetr-trust-card fssai-card">
             <div className="trust-icon-box">
               <ShieldCheck size={28} className="text-emerald" />
             </div>
@@ -44,7 +44,7 @@ export function StoreFooter({ onNavigate }) {
           </div>
 
           {/* Google Reviews */}
-          <div className="bhole-trust-card review-card">
+          <div className="trinetr-trust-card review-card">
             <div className="trust-icon-box">
               <Star size={28} fill="#f59e0b" color="#f59e0b" />
             </div>
@@ -65,11 +65,11 @@ export function StoreFooter({ onNavigate }) {
       </div>
 
       {/* Main Footer Links */}
-      <div className="bhole-footer-main">
-        <div className="bhole-footer-container">
+      <div className="trinetr-footer-main">
+        <div className="trinetr-footer-container">
           {/* Brand Info */}
-          <div className="bhole-footer-col brand-col">
-            <div className="bhole-footer-logo">
+          <div className="trinetr-footer-col brand-col">
+            <div className="trinetr-footer-logo">
               <span className="logo-text">{activeStore.name}</span>
               <span className="tagline">{activeStore.tagline}</span>
             </div>
@@ -77,14 +77,14 @@ export function StoreFooter({ onNavigate }) {
               Handcrafted with pure quality and authentic recipes. 
               Offering {activeStore.varietiesCount || '100+'} varieties of fresh delicacies, snacks, and foods.
             </p>
-            <div className="bhole-social-links">
+            <div className="trinetr-social-links">
               <span className="social-pill">{activeStore.facebook || 'Facebook'}</span>
               <span className="social-pill">{activeStore.instagram || 'Instagram'}</span>
             </div>
           </div>
 
           {/* Quick Links */}
-          <div className="bhole-footer-col">
+          <div className="trinetr-footer-col">
             <h4 className="footer-col-title">Quick Explore</h4>
             <ul className="footer-links-list">
               <li><button type="button" onClick={() => onNavigate('store')}>Home</button></li>
@@ -96,7 +96,7 @@ export function StoreFooter({ onNavigate }) {
           </div>
 
           {/* Customer Care */}
-          <div className="bhole-footer-col">
+          <div className="trinetr-footer-col">
             <h4 className="footer-col-title">Customer Care</h4>
             <ul className="footer-links-list">
               <li><span>Shipping: Express Delivery</span></li>
@@ -107,7 +107,7 @@ export function StoreFooter({ onNavigate }) {
           </div>
 
           {/* Contact Details */}
-          <div className="bhole-footer-col">
+          <div className="trinetr-footer-col">
             <h4 className="footer-col-title">Talk To Us</h4>
             <div className="footer-contact-info">
               <div className="contact-item">
@@ -128,8 +128,8 @@ export function StoreFooter({ onNavigate }) {
       </div>
 
       {/* Copyright Bar */}
-      <div className="bhole-footer-bottom">
-        <div className="bhole-footer-bottom-inner">
+      <div className="trinetr-footer-bottom">
+        <div className="trinetr-footer-bottom-inner">
           <p>© {new Date().getFullYear()} {activeStore.name}. All Rights Reserved.</p>
           <p className="developed-by">Online E-Commerce Storefront Architecture.</p>
         </div>
@@ -138,7 +138,7 @@ export function StoreFooter({ onNavigate }) {
       {/* Persistent Floating WhatsApp Action Button */}
       <button
         type="button"
-        className="bhole-floating-whatsapp-btn"
+        className="trinetr-floating-whatsapp-btn"
         onClick={handleFloatingWhatsApp}
         title={`Chat with ${activeStore.name} on WhatsApp`}
         aria-label={`Chat with ${activeStore.name} on WhatsApp`}
