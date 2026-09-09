@@ -26,68 +26,6 @@ export function StoreHeader({
 
   return (
     <header className="trinetr-store-header">
-      {/* Top Announcement Bar */}
-      <div className="trinetr-top-bar">
-        <div className="trinetr-top-bar-inner">
-          <div className="trinetr-announcement">
-            <span className="badge-promo-pill">Notice</span>
-            <span>⚡ Express Shipping On All Orders Across Gujarat & India!</span>
-          </div>
-
-          <div className="trinetr-top-bar-actions">
-            {/* Owner Controls: Only shown to registered business owners */}
-            {actualIsOwner && (
-              <>
-                <span className={`trinetr-owner-mode-badge ${customerPreview ? 'preview-mode' : 'active-mode'}`}>
-                  {customerPreview ? '👁️ Customer Preview Mode' : '👑 Owner Mode (Edit Enabled)'}
-                </span>
-                {onToggleCustomerPreview && (
-                  <button
-                    type="button"
-                    onClick={onToggleCustomerPreview}
-                    className="trinetr-preview-toggle-btn"
-                    title={customerPreview ? "Exit preview and enable editing" : "Preview store exactly as customers see it"}
-                  >
-                    {customerPreview ? 'Exit Preview' : 'Preview as Customer'}
-                  </button>
-                )}
-                {onSwitchToErp && (
-                  <button 
-                    type="button" 
-                    onClick={onSwitchToErp} 
-                    className="trinetr-erp-switch-btn"
-                    title="Switch to Internal ERP & Business Manager"
-                  >
-                    <SlidersHorizontal size={13} />
-                    <span>Switch to Business ERP</span>
-                  </button>
-                )}
-                <span className="trinetr-top-divider">|</span>
-              </>
-            )}
-
-            {/* Customer Side: Retailer Login link for store owners wanting to log in */}
-            {!actualIsOwner && onSwitchToLogin && (
-              <>
-                <button
-                  type="button"
-                  onClick={onSwitchToLogin}
-                  className="trinetr-retailer-login-link"
-                  title="Retailer or Business Owner? Login with GSTIN"
-                >
-                  Retailer Login (GST)
-                </button>
-                <span className="trinetr-top-divider">|</span>
-              </>
-            )}
-
-            <a href={`tel:${storeInfo?.phone || ''}`} className="trinetr-top-link">
-              <Phone size={12} />
-              <span>{storeInfo?.phone || ''}</span>
-            </a>
-          </div>
-        </div>
-      </div>
 
       {/* Main Header with Logo, Search, and Cart */}
       <div className="trinetr-main-nav">
@@ -254,12 +192,41 @@ export function StoreHeader({
             </button>
           </div>
 
-          {/* Hotline */}
-          <div className="trinetr-hotline hide-on-tablet">
-            <span className="trinetr-hotline-label">Hotline:</span>
-            <a href={`tel:${storeInfo.phone}`} className="trinetr-hotline-number">
-              {storeInfo.phone}
-            </a>
+          {/* Hotline & Business Switch Actions */}
+          <div className="trinetr-sub-nav-actions">
+            {/* Switch to Business ERP (Owner) */}
+            {actualIsOwner && onSwitchToErp && (
+              <button 
+                type="button" 
+                onClick={onSwitchToErp} 
+                className="trinetr-erp-switch-btn-nav"
+                title="Switch to Internal ERP & Business Manager"
+              >
+                <SlidersHorizontal size={14} />
+                <span>Switch to Business ERP</span>
+              </button>
+            )}
+
+            {/* Retailer Login Link (Customer) */}
+            {!actualIsOwner && onSwitchToLogin && (
+              <button
+                type="button"
+                onClick={onSwitchToLogin}
+                className="trinetr-retailer-login-btn-nav"
+                title="Retailer or Business Owner? Login with GSTIN"
+              >
+                <span>Retailer Login (GST)</span>
+              </button>
+            )}
+
+            {/* Hotline */}
+            <div className="trinetr-hotline hide-on-tablet">
+              <Phone size={14} className="trinetr-hotline-icon" />
+              <span className="trinetr-hotline-label">Hotline:</span>
+              <a href={`tel:${storeInfo.phone}`} className="trinetr-hotline-number">
+                {storeInfo.phone}
+              </a>
+            </div>
           </div>
         </div>
       </nav>

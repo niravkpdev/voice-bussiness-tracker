@@ -277,16 +277,17 @@
   position: absolute;
   top: -6px;
   right: -8px;
-  background: var(--trinetr-primary);
-  color: #fff;
-  font-size: 10px;
-  font-weight: 800;
+  background: #1e3a8a !important;
+  color: #ffffff !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
   width: 18px;
   height: 18px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 2px 6px rgba(30, 58, 138, 0.4) !important;
 }
 
 .trinetr-cart-action-btn {
@@ -360,21 +361,41 @@
 }
 
 .trinetr-dept-button {
-  background: var(--trinetr-primary);
-  color: #fff;
-  border: none;
-  padding: 12px 18px;
-  font-weight: 700;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  transition: background 0.2s;
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+  padding: 11px 20px !important;
+  font-weight: 800 !important;
+  font-size: 14px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  cursor: pointer !important;
+  border-radius: 10px 10px 0 0 !important;
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.25) !important;
+  width: auto !important;
+  min-height: unset !important;
+  margin: 0 !important;
+  transition: all 0.2s ease !important;
+}
+
+.trinetr-dept-button span {
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.3px !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4) !important;
+}
+
+.trinetr-dept-button svg {
+  color: #fde68a !important;
+  stroke: #fde68a !important;
+  stroke-width: 2.3px !important;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3)) !important;
 }
 
 .trinetr-dept-button:hover {
-  background: var(--trinetr-primary-hover);
+  background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%) !important;
+  box-shadow: 0 6px 16px rgba(30, 58, 138, 0.35) !important;
 }
 
 .trinetr-dept-dropdown {
@@ -466,21 +487,114 @@
   padding: 8px 14px;
 }
 
+.trinetr-sub-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: auto;
+}
+
+.trinetr-erp-switch-btn-nav {
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%) !important;
+  color: #fde68a !important;
+  border: 1.5px solid #f59e0b !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  padding: 7px 16px !important;
+  border-radius: 20px !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.25) !important;
+  width: auto !important;
+  min-height: unset !important;
+  margin: 0 !important;
+  transition: all 0.2s ease !important;
+  white-space: nowrap;
+}
+
+.trinetr-erp-switch-btn-nav span {
+  color: #fde68a !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.3px !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4) !important;
+}
+
+.trinetr-erp-switch-btn-nav svg {
+  color: #fde68a !important;
+  stroke: #fde68a !important;
+  stroke-width: 2.2px !important;
+}
+
+.trinetr-erp-switch-btn-nav:hover {
+  background: #f59e0b !important;
+  color: #78350f !important;
+  border-color: #d97706 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(245, 158, 11, 0.4) !important;
+}
+
+.trinetr-erp-switch-btn-nav:hover span,
+.trinetr-erp-switch-btn-nav:hover svg {
+  color: #78350f !important;
+  stroke: #78350f !important;
+}
+
+.trinetr-retailer-login-btn-nav {
+  background: #fef3c7 !important;
+  color: #92400e !important;
+  border: 1.5px solid #fde68a !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  padding: 7px 14px !important;
+  border-radius: 20px !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15) !important;
+  width: auto !important;
+  min-height: unset !important;
+  margin: 0 !important;
+  transition: all 0.2s ease !important;
+  white-space: nowrap;
+}
+
+.trinetr-retailer-login-btn-nav span {
+  color: #92400e !important;
+  font-weight: 800 !important;
+}
+
+.trinetr-retailer-login-btn-nav:hover {
+  background: #fde68a !important;
+  border-color: #f59e0b !important;
+  transform: translateY(-1px);
+}
+
 .trinetr-hotline {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 13px;
+  white-space: nowrap;
+}
+
+.trinetr-hotline-icon {
+  color: #f59e0b;
+  flex-shrink: 0;
 }
 
 .trinetr-hotline-label {
-  color: #78716c;
+  color: #64748b;
+  font-weight: 700;
 }
 
 .trinetr-hotline-number {
   color: var(--trinetr-primary);
-  font-weight: 800;
+  font-weight: 900;
   text-decoration: none;
+  font-size: 13.5px;
 }
 
 /* --------------------------------------------------------------------------
@@ -1219,22 +1333,39 @@
 }
 
 .trinetr-add-cart-btn {
-  background: var(--trinetr-primary);
-  color: #fff;
-  border: none;
-  border-radius: 20px;
-  padding: 8px 16px;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.2s;
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 20px !important;
+  padding: 8px 18px !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  box-shadow: 0 2px 8px rgba(30, 58, 138, 0.25) !important;
+  width: auto !important;
+  min-height: unset !important;
+  margin: 0 !important;
+  transition: all 0.2s ease !important;
+}
+
+.trinetr-add-cart-btn span {
+  color: #ffffff !important;
+  font-weight: 800 !important;
+}
+
+.trinetr-add-cart-btn svg {
+  color: #fde68a !important;
+  stroke: #fde68a !important;
+  stroke-width: 2.3px !important;
 }
 
 .trinetr-add-cart-btn:hover {
-  background: var(--trinetr-primary-hover);
+  background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%) !important;
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.35) !important;
+  transform: translateY(-1px);
 }
 
 .trinetr-add-cart-btn.added {
@@ -1307,47 +1438,50 @@
 }
 
 .trinetr-mandala-box {
-  background: linear-gradient(135deg, #0b1329 0%, #1e3a8a 50%, #172554 100%);
-  border: 2px dashed #f59e0b;
-  border-radius: 20px;
-  padding: 36px 24px;
-  color: #ffffff;
-  text-align: center;
-  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.45);
+  background: linear-gradient(135deg, #0b1329 0%, #1e3a8a 50%, #172554 100%) !important;
+  border: 2px dashed #f59e0b !important;
+  border-radius: 20px !important;
+  padding: 38px 24px !important;
+  color: #ffffff !important;
+  text-align: center !important;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.45) !important;
 }
 
 .trinetr-mandala-emblem h3 {
-  font-size: 28px;
-  font-weight: 900;
-  letter-spacing: 2px;
+  font-size: 28px !important;
+  font-weight: 900 !important;
+  letter-spacing: 2px !important;
   color: #fde68a !important;
-  margin: 0 0 10px 0;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  margin: 0 0 10px 0 !important;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6) !important;
 }
 
 .timing-notice {
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 14px !important;
+  font-weight: 800 !important;
   color: #ffffff !important;
-  margin: 0 0 8px 0;
-  letter-spacing: 1px;
+  margin: 0 0 8px 0 !important;
+  letter-spacing: 1px !important;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5) !important;
 }
 
 .address-line {
-  font-size: 14px;
+  font-size: 14px !important;
+  font-weight: 600 !important;
   color: #fef3c7 !important;
-  margin: 0 0 16px 0;
-  opacity: 0.95;
+  margin: 0 0 16px 0 !important;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4) !important;
 }
 
 .brand-social-handles {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  font-size: 13px;
-  font-weight: 700;
+  display: flex !important;
+  justify-content: center !important;
+  gap: 18px !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
   color: #fde68a !important;
-  flex-wrap: wrap;
+  flex-wrap: wrap !important;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5) !important;
 }
 
 /* --------------------------------------------------------------------------
@@ -1431,24 +1565,31 @@
 }
 
 .story-stat-card {
-  background: var(--trinetr-primary);
-  color: #fff;
-  border-radius: 14px;
-  padding: 20px 16px;
-  text-align: center;
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%) !important;
+  color: #ffffff !important;
+  border-radius: 16px !important;
+  padding: 22px 16px !important;
+  text-align: center !important;
+  border: 1.5px solid rgba(245, 158, 11, 0.4) !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.25) !important;
 }
 
 .stat-num {
-  display: block;
-  font-size: 32px;
-  font-weight: 900;
-  color: #fde68a;
+  display: block !important;
+  font-size: 34px !important;
+  font-weight: 900 !important;
+  color: #fde68a !important;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5) !important;
+  margin-bottom: 4px !important;
 }
 
 .stat-lbl {
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  color: #ffffff !important;
+  letter-spacing: 0.8px !important;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4) !important;
 }
 
 .story-badge {
@@ -1730,22 +1871,39 @@
 }
 
 .trinetr-menu-add-btn {
-  background: var(--trinetr-primary);
-  color: #fff;
-  border: none;
-  border-radius: 20px;
-  padding: 8px 16px;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  transition: background 0.2s;
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 20px !important;
+  padding: 8px 18px !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  box-shadow: 0 2px 8px rgba(30, 58, 138, 0.25) !important;
+  width: auto !important;
+  min-height: unset !important;
+  margin: 0 !important;
+  transition: all 0.2s ease !important;
+}
+
+.trinetr-menu-add-btn span {
+  color: #ffffff !important;
+  font-weight: 800 !important;
+}
+
+.trinetr-menu-add-btn svg {
+  color: #fde68a !important;
+  stroke: #fde68a !important;
+  stroke-width: 2.3px !important;
 }
 
 .trinetr-menu-add-btn:hover {
-  background: var(--trinetr-primary-hover);
+  background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%) !important;
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.35) !important;
+  transform: translateY(-1px);
 }
 
 .trinetr-menu-out-btn {
@@ -2142,23 +2300,37 @@
 }
 
 .trinetr-contact-submit-btn {
-  background: var(--trinetr-primary);
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  padding: 12px 24px;
-  font-size: 14px;
-  font-weight: 800;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: background 0.2s;
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 12px !important;
+  padding: 13px 28px !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  box-shadow: 0 4px 14px rgba(30, 58, 138, 0.25) !important;
+  transition: all 0.2s ease !important;
+}
+
+.trinetr-contact-submit-btn span {
+  color: #ffffff !important;
+  font-weight: 800 !important;
+}
+
+.trinetr-contact-submit-btn svg {
+  color: #fde68a !important;
+  stroke: #fde68a !important;
+  stroke-width: 2.3px !important;
 }
 
 .trinetr-contact-submit-btn:hover {
-  background: var(--trinetr-primary-hover);
+  background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%) !important;
+  box-shadow: 0 6px 18px rgba(30, 58, 138, 0.35) !important;
+  transform: translateY(-1px);
 }
 
 .info-list {
@@ -2438,19 +2610,24 @@
 }
 
 .trinetr-btn-guest-checkout {
-  background: var(--trinetr-primary);
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  padding: 12px;
-  font-size: 14px;
-  font-weight: 800;
-  cursor: pointer;
-  text-align: center;
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%) !important;
+  color: #ffffff !important;
+  border: 1.5px solid #3b82f6 !important;
+  border-radius: 14px !important;
+  padding: 13px 18px !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+  text-align: center !important;
+  letter-spacing: 0.3px !important;
+  box-shadow: 0 4px 14px rgba(30, 58, 138, 0.3) !important;
+  transition: all 0.2s ease !important;
 }
 
 .trinetr-btn-guest-checkout:hover {
-  background: var(--trinetr-primary-hover);
+  background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%) !important;
+  box-shadow: 0 6px 18px rgba(30, 58, 138, 0.4) !important;
+  transform: translateY(-1px);
 }
 
 /* Guest Form in Drawer */
@@ -2490,14 +2667,22 @@
 }
 
 .guest-form-footer .btn-primary {
-  flex: 1;
-  background: var(--trinetr-primary);
-  color: #fff;
-  border: none;
-  border-radius: 10px;
-  padding: 12px;
-  font-weight: 800;
-  cursor: pointer;
+  flex: 1 !important;
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 12px !important;
+  padding: 13px !important;
+  font-weight: 800 !important;
+  font-size: 14px !important;
+  cursor: pointer !important;
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.25) !important;
+  transition: all 0.2s ease !important;
+}
+
+.guest-form-footer .btn-primary:hover {
+  background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%) !important;
+  box-shadow: 0 6px 16px rgba(30, 58, 138, 0.35) !important;
 }
 
 .guest-form-footer .btn-secondary {
@@ -2591,18 +2776,23 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #1e3a8a;
-  color: #fff;
-  padding: 4px 12px;
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%) !important;
+  color: #ffffff !important;
+  padding: 5px 14px;
   border-radius: 20px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
-  border: 1px solid #f59e0b;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  border: 1.5px solid #f59e0b !important;
+}
+
+.trinetr-truck-icon svg {
+  color: #fde68a !important;
 }
 
 .truck-tag {
-  font-size: 11px;
-  font-weight: 800;
+  font-size: 11px !important;
+  font-weight: 800 !important;
   letter-spacing: 0.5px;
+  color: #ffffff !important;
 }
 
 /* Trust Section */
@@ -2900,6 +3090,27 @@
 
   .trinetr-main-nav-inner {
     flex-wrap: wrap;
+  }
+
+  .trinetr-sub-nav-inner {
+    padding: 8px 12px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .trinetr-dept-button {
+    padding: 9px 14px !important;
+    font-size: 13px !important;
+    border-radius: 8px !important;
+  }
+
+  .trinetr-sub-nav-actions {
+    gap: 8px;
+  }
+
+  .trinetr-erp-switch-btn-nav {
+    font-size: 11px !important;
+    padding: 6px 12px !important;
   }
 
   .trinetr-nav-links {
@@ -4037,10 +4248,12 @@
 }
 
 .trinetr-filter-pill.active {
-  background: var(--trinetr-primary) !important;
-  border-color: var(--trinetr-primary) !important;
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%) !important;
+  border-color: #1e3a8a !important;
   color: #ffffff !important;
-  box-shadow: 0 4px 10px rgba(114, 15, 30, 0.25);
+  font-weight: 800 !important;
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
 }
 
 /* --------------------------------------------------------------------------
