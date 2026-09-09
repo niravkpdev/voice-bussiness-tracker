@@ -204,13 +204,13 @@ export default function ProfitNxProduction({
       <div className="profitnx-header-card" style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '14px 18px', marginBottom: '14px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ background: '#059669', color: '#ffffff', fontWeight: 700, padding: '3px 8px', borderRadius: '4px', fontSize: '12px' }}>TRINETR ERP</span>
-            <h1 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#0f172a' }}>
+            <span style={{ background: '#059669', color: '#ffffff', fontWeight: 800, padding: '3px 8px', borderRadius: '4px', fontSize: '12px' }}>TRINETR ERP</span>
+            <h1 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
               5. Production &gt; Namkeen Recipe BOM &amp; Batch Entry
             </h1>
           </div>
-          <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#64748b' }}>
-            Company: <strong>{profile.name || 'JAY AMBE NAMKEEN'}</strong> &nbsp;|&nbsp; Manufacturing &amp; Processing Unit &nbsp;|&nbsp; FY: <strong>[2026 - 2027]</strong>
+          <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#334155' }}>
+            Company: <strong style={{ color: '#0f172a' }}>{profile.name || 'JAY AMBE NAMKEEN'}</strong> &nbsp;|&nbsp; Manufacturing &amp; Processing Unit &nbsp;|&nbsp; FY: <strong style={{ color: '#0f172a' }}>[2026 - 2027]</strong>
           </p>
         </div>
 
@@ -219,7 +219,7 @@ export default function ProfitNxProduction({
             type="button"
             className="btn btn-secondary"
             onClick={() => onNavigate?.('sales-entry')}
-            style={{ fontSize: '12px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', background: '#e0f2fe', color: '#0369a1', borderColor: '#bae6fd', fontWeight: 600 }}
+            style={{ fontSize: '13px', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: '6px', background: '#e0f2fe', color: '#0369a1', borderColor: '#bae6fd', fontWeight: 700 }}
           >
             <FileText size={14} /> 1. Sales Register (F2)
           </button>
@@ -227,7 +227,7 @@ export default function ProfitNxProduction({
             type="button"
             className="btn btn-secondary"
             onClick={() => onNavigate?.('inventory')}
-            style={{ fontSize: '12px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+            style={{ fontSize: '13px', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}
           >
             <Package size={14} /> Raw &amp; Finished Stock
           </button>
@@ -240,13 +240,13 @@ export default function ProfitNxProduction({
           type="button"
           onClick={() => setActiveSubTab('entry')}
           style={{
-            padding: '8px 16px',
-            fontSize: '13px',
-            fontWeight: 600,
+            padding: '9px 18px',
+            fontSize: '13.5px',
+            fontWeight: 750,
             border: 'none',
             borderBottom: activeSubTab === 'entry' ? '3px solid #059669' : '3px solid transparent',
             background: activeSubTab === 'entry' ? '#ffffff' : 'transparent',
-            color: activeSubTab === 'entry' ? '#059669' : '#64748b',
+            color: activeSubTab === 'entry' ? '#047857' : '#334155',
             cursor: 'pointer',
             borderRadius: '6px 6px 0 0'
           }}
@@ -258,13 +258,13 @@ export default function ProfitNxProduction({
           type="button"
           onClick={() => setActiveSubTab('recipes')}
           style={{
-            padding: '8px 16px',
-            fontSize: '13px',
-            fontWeight: 600,
+            padding: '9px 18px',
+            fontSize: '13.5px',
+            fontWeight: 750,
             border: 'none',
             borderBottom: activeSubTab === 'recipes' ? '3px solid #059669' : '3px solid transparent',
             background: activeSubTab === 'recipes' ? '#ffffff' : 'transparent',
-            color: activeSubTab === 'recipes' ? '#059669' : '#64748b',
+            color: activeSubTab === 'recipes' ? '#047857' : '#334155',
             cursor: 'pointer',
             borderRadius: '6px 6px 0 0'
           }}
@@ -276,13 +276,13 @@ export default function ProfitNxProduction({
           type="button"
           onClick={() => setActiveSubTab('history')}
           style={{
-            padding: '8px 16px',
-            fontSize: '13px',
-            fontWeight: 600,
+            padding: '9px 18px',
+            fontSize: '13.5px',
+            fontWeight: 750,
             border: 'none',
             borderBottom: activeSubTab === 'history' ? '3px solid #059669' : '3px solid transparent',
             background: activeSubTab === 'history' ? '#ffffff' : 'transparent',
-            color: activeSubTab === 'history' ? '#059669' : '#64748b',
+            color: activeSubTab === 'history' ? '#047857' : '#334155',
             cursor: 'pointer',
             borderRadius: '6px 6px 0 0'
           }}
@@ -297,7 +297,7 @@ export default function ProfitNxProduction({
           
           {/* Left Column: Batch Config Form */}
           <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '18px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-            <h2 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 16px 0', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h2 style={{ fontSize: '16px', fontWeight: 800, margin: '0 0 16px 0', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Play size={16} color="#059669" /> Batch Setup &amp; Parameters
             </h2>
 
@@ -305,14 +305,14 @@ export default function ProfitNxProduction({
               
               {/* Select Recipe */}
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 750, color: '#0f172a', marginBottom: '5px' }}>
                   Select Namkeen Recipe (BOM) *
                 </label>
                 <select
                   className="form-control"
                   value={selectedRecipeId}
                   onChange={(e) => setSelectedRecipeId(e.target.value)}
-                  style={{ width: '100%', padding: '8px 10px', fontSize: '13px', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: 600 }}
+                  style={{ width: '100%', padding: '9px 12px', fontSize: '13.5px', border: '1.5px solid #cbd5e1', borderRadius: '6px', fontWeight: 650, color: '#0f172a' }}
                 >
                   {recipes.map(r => (
                     <option key={r.id} value={r.id}>
@@ -325,7 +325,7 @@ export default function ProfitNxProduction({
               {/* Batch No & Date */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 750, color: '#0f172a', marginBottom: '5px' }}>
                     Batch Number *
                   </label>
                   <input
@@ -333,11 +333,11 @@ export default function ProfitNxProduction({
                     value={batchNo}
                     onChange={(e) => setBatchNo(e.target.value)}
                     required
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontFamily: 'monospace', fontWeight: 600 }}
+                    style={{ width: '100%', padding: '8px 12px', fontSize: '13.5px', border: '1.5px solid #cbd5e1', borderRadius: '6px', fontFamily: 'monospace', fontWeight: 700, color: '#0f172a' }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 750, color: '#0f172a', marginBottom: '5px' }}>
                     Production Date *
                   </label>
                   <input
@@ -345,18 +345,18 @@ export default function ProfitNxProduction({
                     value={batchDate}
                     onChange={(e) => setBatchDate(e.target.value)}
                     required
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '12px', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                    style={{ width: '100%', padding: '8px 12px', fontSize: '13.5px', border: '1.5px solid #cbd5e1', borderRadius: '6px', fontWeight: 600, color: '#0f172a' }}
                   />
                 </div>
               </div>
 
               {/* Batch Scale / Multiplier */}
-              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '12px' }}>
+              <div style={{ background: '#f0fdf4', border: '1.5px solid #bbf7d0', borderRadius: '6px', padding: '12px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: 700, color: '#166534' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 750, color: '#166534' }}>
                     Production Scale Multiplier
                   </label>
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#15803d' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 800, color: '#15803d' }}>
                     {batchMultiplier}x Batch
                   </span>
                 </div>
@@ -376,37 +376,37 @@ export default function ProfitNxProduction({
                     step="0.1"
                     value={batchMultiplier}
                     onChange={(e) => setBatchMultiplier(Number(e.target.value))}
-                    style={{ width: '65px', padding: '4px 6px', fontSize: '12px', border: '1px solid #cbd5e1', borderRadius: '4px', textAlign: 'center' }}
+                    style={{ width: '70px', padding: '6px 8px', fontSize: '13px', border: '1.5px solid #86efac', borderRadius: '4px', textAlign: 'center', fontWeight: 700, color: '#0f172a' }}
                   />
                 </div>
-                <div style={{ fontSize: '12px', color: '#15803d', marginTop: '6px', fontWeight: 600 }}>
-                  ➔ Yield: <strong>{plannedOutputQty} {currentRecipe.outputUnit}</strong> of <strong>{currentRecipe.outputProduct}</strong>
+                <div style={{ fontSize: '13px', color: '#15803d', marginTop: '6px', fontWeight: 650 }}>
+                  ➔ Yield: <strong style={{ color: '#14532d' }}>{plannedOutputQty} {currentRecipe.outputUnit}</strong> of <strong style={{ color: '#14532d' }}>{currentRecipe.outputProduct}</strong>
                 </div>
               </div>
 
               {/* Supervisor & Shift */}
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 750, color: '#0f172a', marginBottom: '5px' }}>
                   Master Baker / Production Supervisor
                 </label>
                 <input
                   type="text"
                   value={supervisor}
                   onChange={(e) => setSupervisor(e.target.value)}
-                  style={{ width: '100%', padding: '6px 10px', fontSize: '12px', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                  style={{ width: '100%', padding: '8px 12px', fontSize: '13.5px', border: '1.5px solid #cbd5e1', borderRadius: '6px', fontWeight: 600, color: '#0f172a' }}
                 />
               </div>
 
               {/* Notes */}
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 750, color: '#0f172a', marginBottom: '5px' }}>
                   Batch Notes / Quality Control
                 </label>
                 <textarea
                   rows={2}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  style={{ width: '100%', padding: '6px 10px', fontSize: '12px', border: '1px solid #cbd5e1', borderRadius: '6px', resize: 'vertical' }}
+                  style={{ width: '100%', padding: '8px 12px', fontSize: '13.5px', border: '1.5px solid #cbd5e1', borderRadius: '6px', resize: 'vertical', color: '#0f172a' }}
                 />
               </div>
 
@@ -418,13 +418,14 @@ export default function ProfitNxProduction({
                   marginTop: '10px',
                   background: '#059669',
                   borderColor: '#047857',
-                  padding: '10px 18px',
-                  fontSize: '14px',
-                  fontWeight: 700,
+                  padding: '11px 20px',
+                  fontSize: '14.5px',
+                  fontWeight: 800,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '8px'
+                  gap: '8px',
+                  cursor: 'pointer'
                 }}
               >
                 <CheckCircle2 size={18} /> Execute &amp; Record Batch Run
@@ -435,44 +436,44 @@ export default function ProfitNxProduction({
 
           {/* Right Column: Bill of Materials Raw Material Requirements */}
           <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '18px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
               <div>
-                <h2 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: '#0f172a' }}>
+                <h2 style={{ fontSize: '16px', fontWeight: 800, margin: 0, color: '#0f172a' }}>
                   Raw Materials To Deduct From Stock
                 </h2>
-                <span style={{ fontSize: '11px', color: '#64748b' }}>
+                <span style={{ fontSize: '12.5px', color: '#334155', fontWeight: 500 }}>
                   Auto-calculated from recipe formula for {batchMultiplier}x batch
                 </span>
               </div>
-              <div style={{ background: '#ecfdf5', color: '#047857', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 700 }}>
+              <div style={{ background: '#dcfce7', color: '#166534', padding: '5px 12px', borderRadius: '6px', fontSize: '13px', fontWeight: 800 }}>
                 Est. Cost: ₹{totalBatchCost.toLocaleString('en-IN')}
               </div>
             </div>
 
             {/* Ingredients Table */}
-            <div style={{ overflowX: 'auto', flex: 1, border: '1px solid #e2e8f0', borderRadius: '6px', marginBottom: '14px' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-                <thead style={{ background: '#f1f5f9' }}>
+            <div style={{ overflowX: 'auto', flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', marginBottom: '14px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                <thead style={{ background: '#0f172a', color: '#ffffff' }}>
                   <tr>
-                    <th style={{ padding: '7px 10px', textAlign: 'left', borderBottom: '1px solid #cbd5e1' }}>Ingredient / Raw Material</th>
-                    <th style={{ padding: '7px 10px', textAlign: 'right', borderBottom: '1px solid #cbd5e1' }}>Required Qty</th>
-                    <th style={{ padding: '7px 10px', textAlign: 'right', borderBottom: '1px solid #cbd5e1' }}>Est. Rate (₹)</th>
-                    <th style={{ padding: '7px 10px', textAlign: 'right', borderBottom: '1px solid #cbd5e1' }}>Amount (₹)</th>
+                    <th style={{ padding: '9px 12px', textAlign: 'left', fontWeight: 750, color: '#ffffff' }}>Ingredient / Raw Material</th>
+                    <th style={{ padding: '9px 12px', textAlign: 'right', fontWeight: 750, color: '#ffffff' }}>Required Qty</th>
+                    <th style={{ padding: '9px 12px', textAlign: 'right', fontWeight: 750, color: '#ffffff' }}>Est. Rate (₹)</th>
+                    <th style={{ padding: '9px 12px', textAlign: 'right', fontWeight: 750, color: '#ffffff' }}>Amount (₹)</th>
                   </tr>
                 </thead>
                 <tbody>
                   {calculatedRequirements.map((ing, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '7px 10px', fontWeight: 600, color: '#334155' }}>
+                    <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0', background: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
+                      <td style={{ padding: '9px 12px', fontWeight: 700, color: '#0f172a' }}>
                         {ing.name}
                       </td>
-                      <td style={{ padding: '7px 10px', textAlign: 'right', fontWeight: 700, color: '#0f172a' }}>
+                      <td style={{ padding: '9px 12px', textAlign: 'right', fontWeight: 800, color: '#0f172a' }}>
                         {ing.requiredQty} {ing.unit}
                       </td>
-                      <td style={{ padding: '7px 10px', textAlign: 'right', fontFamily: 'monospace', color: '#64748b' }}>
+                      <td style={{ padding: '9px 12px', textAlign: 'right', fontFamily: 'monospace', color: '#334155', fontWeight: 600 }}>
                         ₹{ing.estRate}/{ing.unit}
                       </td>
-                      <td style={{ padding: '7px 10px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 600 }}>
+                      <td style={{ padding: '9px 12px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 750, color: '#0f172a' }}>
                         ₹{ing.estCost.toLocaleString('en-IN')}
                       </td>
                     </tr>
@@ -482,20 +483,20 @@ export default function ProfitNxProduction({
             </div>
 
             {/* Production Outcome Summary Card */}
-            <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '12px', fontSize: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                <span style={{ color: '#475569' }}>Finished Good Output:</span>
-                <strong style={{ color: '#1e3a8a' }}>{plannedOutputQty} {currentRecipe.outputUnit} of {currentRecipe.outputProduct}</strong>
+            <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '14px', fontSize: '13px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <span style={{ color: '#334155', fontWeight: 600 }}>Finished Good Output:</span>
+                <strong style={{ color: '#1e3a8a', fontWeight: 800 }}>{plannedOutputQty} {currentRecipe.outputUnit} of {currentRecipe.outputProduct}</strong>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                <span style={{ color: '#475569' }}>Calculated Unit Cost:</span>
-                <strong style={{ fontFamily: 'monospace' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <span style={{ color: '#334155', fontWeight: 600 }}>Calculated Unit Cost:</span>
+                <strong style={{ fontFamily: 'monospace', color: '#0f172a', fontWeight: 800 }}>
                   ₹{(totalBatchCost / (plannedOutputQty || 1)).toFixed(2)} / {currentRecipe.outputUnit}
                 </strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#475569' }}>Stock Update Action:</span>
-                <span style={{ color: '#059669', fontWeight: 600 }}>Auto-deduct raw materials &amp; increment finished goods</span>
+                <span style={{ color: '#334155', fontWeight: 600 }}>Stock Update Action:</span>
+                <span style={{ color: '#059669', fontWeight: 750 }}>Auto-deduct raw materials &amp; increment finished goods</span>
               </div>
             </div>
 
@@ -507,12 +508,12 @@ export default function ProfitNxProduction({
       {/* TAB 2: RECIPE / BOM MASTER */}
       {activeSubTab === 'recipes' && (
         <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '18px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
             <div>
-              <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#0f172a' }}>
+              <h2 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#0f172a' }}>
                 Namkeen Recipe (Bill of Materials) Master
               </h2>
-              <span style={{ fontSize: '12px', color: '#64748b' }}>
+              <span style={{ fontSize: '13px', color: '#334155', fontWeight: 500 }}>
                 Standard formulations and ingredient ratios for Jay Ambe Namkeen products
               </span>
             </div>
@@ -539,7 +540,7 @@ export default function ProfitNxProduction({
                 setRecipes(prev => [...prev, newRecipe]);
                 alert('Recipe created successfully!');
               }}
-              style={{ fontSize: '12px', padding: '6px 14px', background: '#059669', borderColor: '#047857' }}
+              style={{ fontSize: '13px', padding: '7px 16px', background: '#059669', borderColor: '#047857', fontWeight: 750 }}
             >
               <Plus size={14} /> + New Recipe (BOM)
             </button>
@@ -550,9 +551,9 @@ export default function ProfitNxProduction({
               <div
                 key={recipe.id}
                 style={{
-                  border: '1px solid #cbd5e1',
+                  border: '1.5px solid #cbd5e1',
                   borderRadius: '8px',
-                  padding: '14px',
+                  padding: '16px',
                   background: '#f8fafc',
                   display: 'flex',
                   flexDirection: 'column',
@@ -560,27 +561,27 @@ export default function ProfitNxProduction({
                 }}
               >
                 <div>
-                  <h3 style={{ margin: '0 0 6px 0', fontSize: '14px', fontWeight: 700, color: '#1e3a8a' }}>
+                  <h3 style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: 800, color: '#1e3a8a' }}>
                     {recipe.name}
                   </h3>
-                  <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#475569' }}>
-                    Output: <strong>{recipe.outputQtyPerBatch} {recipe.outputUnit}</strong> of <strong>{recipe.outputProduct}</strong>
+                  <p style={{ margin: '0 0 10px 0', fontSize: '13px', color: '#334155' }}>
+                    Output: <strong style={{ color: '#0f172a' }}>{recipe.outputQtyPerBatch} {recipe.outputUnit}</strong> of <strong style={{ color: '#0f172a' }}>{recipe.outputProduct}</strong>
                   </p>
 
-                  <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '8px' }}>
-                    <strong>Ingredients ({recipe.ingredients.length}):</strong>
+                  <div style={{ fontSize: '12.5px', color: '#334155', fontWeight: 750, marginBottom: '8px' }}>
+                    Ingredients ({recipe.ingredients.length}):
                   </div>
-                  <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: '#334155' }}>
+                  <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', color: '#1e293b' }}>
                     {recipe.ingredients.map((ing, i) => (
-                      <li key={i} style={{ marginBottom: '2px' }}>
-                        {ing.name}: <strong>{ing.requiredQty} {ing.unit}</strong> (@ ₹{ing.estRate})
+                      <li key={i} style={{ marginBottom: '3px' }}>
+                        {ing.name}: <strong style={{ color: '#0f172a' }}>{ing.requiredQty} {ing.unit}</strong> (@ ₹{ing.estRate})
                       </li>
                     ))}
                   </ul>
                 </div>
 
-                <div style={{ marginTop: '14px', paddingTop: '10px', borderTop: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#047857' }}>
+                <div style={{ marginTop: '14px', paddingTop: '10px', borderTop: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 750, color: '#047857' }}>
                     Est. Cost: ₹{recipe.standardCost.toLocaleString('en-IN')}
                   </span>
                   <button
@@ -590,7 +591,7 @@ export default function ProfitNxProduction({
                       setSelectedRecipeId(recipe.id);
                       setActiveSubTab('entry');
                     }}
-                    style={{ fontSize: '11px', padding: '4px 10px' }}
+                    style={{ fontSize: '12px', padding: '6px 12px', fontWeight: 750 }}
                   >
                     Use in Batch ➔
                   </button>
@@ -604,12 +605,12 @@ export default function ProfitNxProduction({
       {/* TAB 3: PRODUCTION BATCH HISTORY */}
       {activeSubTab === 'history' && (
         <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '18px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
             <div>
-              <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#0f172a' }}>
+              <h2 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#0f172a' }}>
                 Production Batch Log &amp; Manufacturing History
               </h2>
-              <span style={{ fontSize: '12px', color: '#64748b' }}>
+              <span style={{ fontSize: '13px', color: '#334155', fontWeight: 500 }}>
                 Complete track record of manufacturing batches, supervisors, and output quantities
               </span>
             </div>
@@ -617,46 +618,46 @@ export default function ProfitNxProduction({
               type="button"
               className="btn btn-secondary"
               onClick={handleExportHistory}
-              style={{ fontSize: '12px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+              style={{ fontSize: '13px', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}
             >
               <Download size={14} /> Export Batch History
             </button>
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-              <thead style={{ background: '#1e293b', color: '#ffffff' }}>
+          <div style={{ overflowX: 'auto', border: '1px solid #cbd5e1', borderRadius: '6px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+              <thead style={{ background: '#0f172a', color: '#ffffff' }}>
                 <tr>
-                  <th style={{ padding: '8px 10px', textAlign: 'center', width: '35px' }}>#</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'left', width: '130px' }}>Batch No</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'left', width: '95px' }}>Date</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'left' }}>Product Produced</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'right', width: '100px' }}>Output Qty</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'right', width: '110px' }}>Batch Cost (₹)</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'left', width: '150px' }}>Supervisor</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'center', width: '100px' }}>Status</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'center', width: '40px', fontWeight: 750, color: '#ffffff' }}>#</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'left', width: '130px', fontWeight: 750, color: '#ffffff' }}>Batch No</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'left', width: '100px', fontWeight: 750, color: '#ffffff' }}>Date</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 750, color: '#ffffff' }}>Product Produced</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'right', width: '100px', fontWeight: 750, color: '#ffffff' }}>Output Qty</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'right', width: '120px', fontWeight: 750, color: '#ffffff' }}>Batch Cost (₹)</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'left', width: '150px', fontWeight: 750, color: '#ffffff' }}>Supervisor</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'center', width: '100px', fontWeight: 750, color: '#ffffff' }}>Status</th>
                 </tr>
               </thead>
               <tbody>
                 {batchHistory.map((batch, index) => (
                   <tr key={batch.id} style={{ borderBottom: '1px solid #e2e8f0', background: index % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
-                    <td style={{ padding: '8px 10px', textAlign: 'center', color: '#64748b' }}>{index + 1}</td>
-                    <td style={{ padding: '8px 10px', fontFamily: 'monospace', fontWeight: 700, color: '#059669' }}>
+                    <td style={{ padding: '9px 12px', textAlign: 'center', color: '#475569', fontWeight: 600 }}>{index + 1}</td>
+                    <td style={{ padding: '9px 12px', fontFamily: 'monospace', fontWeight: 800, color: '#047857' }}>
                       {batch.batchNo}
                     </td>
-                    <td style={{ padding: '8px 10px', color: '#475569' }}>{batch.date}</td>
-                    <td style={{ padding: '8px 10px', fontWeight: 600, color: '#0f172a' }}>
+                    <td style={{ padding: '9px 12px', color: '#334155', fontWeight: 600 }}>{batch.date}</td>
+                    <td style={{ padding: '9px 12px', fontWeight: 750, color: '#0f172a' }}>
                       {batch.outputProduct}
                     </td>
-                    <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700 }}>
+                    <td style={{ padding: '9px 12px', textAlign: 'right', fontWeight: 800, color: '#0f172a' }}>
                       {batch.outputQty} {batch.unit}
                     </td>
-                    <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 600 }}>
+                    <td style={{ padding: '9px 12px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: '#0f172a' }}>
                       ₹{batch.cost.toLocaleString('en-IN')}
                     </td>
-                    <td style={{ padding: '8px 10px', color: '#334155' }}>{batch.supervisor}</td>
-                    <td style={{ padding: '8px 10px', textAlign: 'center' }}>
-                      <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, background: '#dcfce7', color: '#166534' }}>
+                    <td style={{ padding: '9px 12px', color: '#1e293b', fontWeight: 650 }}>{batch.supervisor}</td>
+                    <td style={{ padding: '9px 12px', textAlign: 'center' }}>
+                      <span style={{ padding: '3px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 750, background: '#dcfce7', color: '#166534' }}>
                         {batch.status}
                       </span>
                     </td>

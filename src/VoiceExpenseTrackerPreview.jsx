@@ -5392,7 +5392,7 @@ export default function VoiceExpenseTrackerPreview() {
                 <button
                   type="button"
                   onClick={() => toggleSidebarSection(section.id)}
-                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 12px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 12px', background: 'transparent', border: 'none', cursor: 'pointer', color: '#1e293b', fontSize: '13px', fontWeight: '750', textTransform: 'uppercase', letterSpacing: '0.05em' }}
                 >
                   <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     {section.label}
@@ -5408,14 +5408,14 @@ export default function VoiceExpenseTrackerPreview() {
                         onClick={() => setMobileNavOpen(false)}
                         style={{
                           display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', borderRadius: '6px', fontSize: '14px', textDecoration: 'none',
-                          background: activeTab === child.tab ? 'var(--bg-primary)' : 'transparent',
-                          color: activeTab === child.tab ? 'var(--brand-primary)' : 'var(--text-primary)',
-                          fontWeight: activeTab === child.tab ? '500' : '400',
-                          border: activeTab === child.tab ? '1px solid var(--border-subtle)' : '1px solid transparent',
+                          background: activeTab === child.tab ? '#eff6ff' : 'transparent',
+                          color: activeTab === child.tab ? '#1d4ed8' : '#0f172a',
+                          fontWeight: activeTab === child.tab ? '700' : '550',
+                          border: activeTab === child.tab ? '1px solid #bfdbfe' : '1px solid transparent',
                           boxShadow: activeTab === child.tab ? 'var(--shadow-sm)' : 'none'
                         }}
                       >
-                        <span style={{ opacity: activeTab === child.tab ? 1 : 0.7, fontSize: '16px' }}>{child.icon || '•'}</span>
+                        <span style={{ opacity: activeTab === child.tab ? 1 : 0.85, fontSize: '16px' }}>{child.icon || '•'}</span>
                         <span>{child.label}</span>
                       </a>
                     ))}
@@ -5469,33 +5469,33 @@ export default function VoiceExpenseTrackerPreview() {
           <div className="profitnx-top-titlebar" style={{
             background: 'linear-gradient(90deg, #1e3a8a 0%, #1e293b 100%)',
             color: '#ffffff',
-            padding: '6px 16px',
+            padding: '7px 16px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             borderBottom: '1px solid #0f172a',
-            fontSize: '12px'
+            fontSize: '13px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <span style={{ background: '#2563eb', color: '#ffffff', fontWeight: 800, padding: '2px 8px', borderRadius: '3px', fontSize: '11px', letterSpacing: '0.05em' }}>TRINETR ERP</span>
-              <span style={{ fontWeight: 800, fontSize: '13px', letterSpacing: '0.03em' }}>{profile.name || 'JAY AMBE NAMKEEN'}</span>
-              <span style={{ opacity: 0.85, fontSize: '11px' }}>[2026 - 2027]</span>
+              <span style={{ background: '#2563eb', color: '#ffffff', fontWeight: 800, padding: '3px 8px', borderRadius: '3px', fontSize: '11.5px', letterSpacing: '0.05em' }}>TRINETR ERP</span>
+              <span style={{ fontWeight: 800, fontSize: '14.5px', letterSpacing: '0.03em' }}>{profile.name || 'JAY AMBE NAMKEEN'}</span>
+              <span style={{ opacity: 0.9, fontSize: '12px' }}>[2026 - 2027]</span>
               <span style={{ opacity: 0.5 }}>|</span>
-              <span style={{ fontSize: '11px' }}>GSTIN: <strong style={{ color: '#fde047', fontFamily: 'monospace' }}>{profile.gstin || '24CPVPC7753J1Z8'}</strong></span>
+              <span style={{ fontSize: '12px' }}>GSTIN: <strong style={{ color: '#fde047', fontFamily: 'monospace', fontSize: '13px' }}>{profile.gstin || '24CPVPC7753J1Z8'}</strong></span>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '11px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12px' }}>
               <button
                 type="button"
                 onClick={() => { setActiveTab('sales-entry'); window.location.hash = 'sales-entry'; }}
                 style={{
                   background: activeTab === 'sales-entry' ? '#ffffff' : 'rgba(255,255,255,0.15)',
                   color: activeTab === 'sales-entry' ? '#1e3a8a' : '#ffffff',
-                  border: '1px solid rgba(255,255,255,0.3)',
+                  border: '1px solid rgba(255,255,255,0.35)',
                   borderRadius: '4px',
-                  padding: '3px 10px',
-                  fontSize: '11px',
-                  fontWeight: 700,
+                  padding: '4px 12px',
+                  fontSize: '12px',
+                  fontWeight: 750,
                   cursor: 'pointer'
                 }}
               >
@@ -5508,11 +5508,11 @@ export default function VoiceExpenseTrackerPreview() {
                 style={{
                   background: activeTab === 'production' ? '#ffffff' : 'rgba(255,255,255,0.15)',
                   color: activeTab === 'production' ? '#059669' : '#ffffff',
-                  border: '1px solid rgba(255,255,255,0.3)',
+                  border: '1px solid rgba(255,255,255,0.35)',
                   borderRadius: '4px',
-                  padding: '3px 10px',
-                  fontSize: '11px',
-                  fontWeight: 700,
+                  padding: '4px 12px',
+                  fontSize: '12px',
+                  fontWeight: 750,
                   cursor: 'pointer'
                 }}
               >
@@ -5527,9 +5527,9 @@ export default function VoiceExpenseTrackerPreview() {
                   color: '#92400e',
                   border: '1px solid #fde68a',
                   borderRadius: '4px',
-                  padding: '3px 10px',
-                  fontSize: '11px',
-                  fontWeight: 700,
+                  padding: '4px 12px',
+                  fontSize: '12px',
+                  fontWeight: 750,
                   cursor: 'pointer'
                 }}
               >
@@ -5541,13 +5541,13 @@ export default function VoiceExpenseTrackerPreview() {
           {/* Trinetr Numbered Menu Bar */}
           <nav className="profitnx-menubar hide-on-mobile" style={{
             background: '#0f172a',
-            color: '#e2e8f0',
+            color: '#f1f5f9',
             padding: '0 8px',
             display: 'flex',
             alignItems: 'center',
             gap: '2px',
             borderBottom: '2px solid #2563eb',
-            fontSize: '12px',
+            fontSize: '13px',
             position: 'relative'
           }}>
             {/* 1. Transaction */}
@@ -5559,9 +5559,9 @@ export default function VoiceExpenseTrackerPreview() {
                   background: openNxMenu === 'trans' ? '#1e293b' : 'transparent',
                   color: '#ffffff',
                   border: 'none',
-                  padding: '8px 12px',
-                  fontSize: '12px',
-                  fontWeight: 600,
+                  padding: '9px 14px',
+                  fontSize: '13px',
+                  fontWeight: 700,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
@@ -5607,9 +5607,9 @@ export default function VoiceExpenseTrackerPreview() {
                   background: openNxMenu === 'reports' ? '#1e293b' : 'transparent',
                   color: '#ffffff',
                   border: 'none',
-                  padding: '8px 12px',
-                  fontSize: '12px',
-                  fontWeight: 600,
+                  padding: '9px 14px',
+                  fontSize: '13px',
+                  fontWeight: 700,
                   cursor: 'pointer'
                 }}
               >
@@ -5655,9 +5655,9 @@ export default function VoiceExpenseTrackerPreview() {
                   background: openNxMenu === 'analytics' ? '#1e293b' : 'transparent',
                   color: '#ffffff',
                   border: 'none',
-                  padding: '8px 12px',
-                  fontSize: '12px',
-                  fontWeight: 600,
+                  padding: '9px 14px',
+                  fontSize: '13px',
+                  fontWeight: 700,
                   cursor: 'pointer'
                 }}
               >
@@ -5691,9 +5691,9 @@ export default function VoiceExpenseTrackerPreview() {
                   background: openNxMenu === 'process' ? '#1e293b' : 'transparent',
                   color: '#ffffff',
                   border: 'none',
-                  padding: '8px 12px',
-                  fontSize: '12px',
-                  fontWeight: 600,
+                  padding: '9px 14px',
+                  fontSize: '13px',
+                  fontWeight: 700,
                   cursor: 'pointer'
                 }}
               >
@@ -5736,9 +5736,9 @@ export default function VoiceExpenseTrackerPreview() {
                   background: openNxMenu === 'production' ? '#1e293b' : 'transparent',
                   color: '#4ade80',
                   border: 'none',
-                  padding: '8px 12px',
-                  fontSize: '12px',
-                  fontWeight: 700,
+                  padding: '9px 14px',
+                  fontSize: '13px',
+                  fontWeight: 750,
                   cursor: 'pointer'
                 }}
               >
@@ -5769,9 +5769,9 @@ export default function VoiceExpenseTrackerPreview() {
                   background: openNxMenu === 'payroll' ? '#1e293b' : 'transparent',
                   color: '#ffffff',
                   border: 'none',
-                  padding: '8px 12px',
-                  fontSize: '12px',
-                  fontWeight: 600,
+                  padding: '9px 14px',
+                  fontSize: '13px',
+                  fontWeight: 700,
                   cursor: 'pointer'
                 }}
               >
@@ -5802,9 +5802,9 @@ export default function VoiceExpenseTrackerPreview() {
                   background: openNxMenu === 'master' ? '#1e293b' : 'transparent',
                   color: '#ffffff',
                   border: 'none',
-                  padding: '8px 12px',
-                  fontSize: '12px',
-                  fontWeight: 600,
+                  padding: '9px 14px',
+                  fontSize: '13px',
+                  fontWeight: 700,
                   cursor: 'pointer'
                 }}
               >
@@ -5844,9 +5844,9 @@ export default function VoiceExpenseTrackerPreview() {
                   background: activeTab === 'dashboard' ? '#1e293b' : 'transparent',
                   color: '#93c5fd',
                   border: 'none',
-                  padding: '8px 12px',
-                  fontSize: '12px',
-                  fontWeight: 700,
+                  padding: '9px 14px',
+                  fontSize: '13px',
+                  fontWeight: 750,
                   cursor: 'pointer'
                 }}
               >
@@ -5872,10 +5872,10 @@ export default function VoiceExpenseTrackerPreview() {
             >
               ☰
             </button>
-            <div className="topbar-breadcrumbs hide-on-mobile" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '500' }}>
-              <span style={{ color: 'var(--text-muted)' }}>{activeSidebarSection?.label || 'Overview'}</span>
-              <span style={{ color: 'var(--text-muted)' }}>/</span>
-              <strong style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{activePageTitle}</strong>
+            <div className="topbar-breadcrumbs hide-on-mobile" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '600' }}>
+              <span style={{ color: '#334155' }}>{activeSidebarSection?.label || 'Overview'}</span>
+              <span style={{ color: '#64748b' }}>/</span>
+              <strong style={{ color: '#0f172a', fontWeight: '750' }}>{activePageTitle}</strong>
             </div>
           </div>
           <GlobalSearch onNavigate={(route) => {

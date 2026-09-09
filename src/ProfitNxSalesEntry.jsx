@@ -318,13 +318,13 @@ export default function ProfitNxSalesEntry({
       <div className="profitnx-header-card" style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '12px 18px', marginBottom: '14px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ background: '#1e3a8a', color: '#ffffff', fontWeight: 700, padding: '3px 8px', borderRadius: '4px', fontSize: '12px' }}>TRINETR ERP</span>
-            <h1 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#0f172a' }}>
+            <span style={{ background: '#1e3a8a', color: '#ffffff', fontWeight: 800, padding: '4px 10px', borderRadius: '4px', fontSize: '12px', letterSpacing: '0.04em' }}>TRINETR ERP</span>
+            <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: '#0f172a' }}>
               1. Transaction &gt; Sales Register / Entry
             </h1>
           </div>
-          <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#64748b' }}>
-            Company: <strong>{profile.name || 'JAY AMBE NAMKEEN'}</strong> &nbsp;|&nbsp; GSTIN: <strong>{profile.gstin || '24CPVPC7753J1Z8'}</strong> &nbsp;|&nbsp; FY: <strong>[2026 - 2027]</strong>
+          <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#334155' }}>
+            Company: <strong style={{ color: '#0f172a' }}>{profile.name || 'JAY AMBE NAMKEEN'}</strong> &nbsp;|&nbsp; GSTIN: <strong style={{ color: '#0f172a', fontFamily: 'monospace' }}>{profile.gstin || '24CPVPC7753J1Z8'}</strong> &nbsp;|&nbsp; FY: <strong style={{ color: '#0f172a' }}>[2026 - 2027]</strong>
           </p>
         </div>
 
@@ -333,57 +333,57 @@ export default function ProfitNxSalesEntry({
             type="button"
             className="btn btn-secondary"
             onClick={() => onNavigate?.('orders')}
-            style={{ fontSize: '12px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', background: '#fef3c7', color: '#92400e', borderColor: '#fde68a', fontWeight: 600 }}
+            style={{ fontSize: '13px', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: '6px', background: '#fef3c7', color: '#92400e', borderColor: '#fde68a', fontWeight: 700 }}
             title="View incoming storefront customer orders"
           >
-            <ShoppingBag size={14} /> Storefront Orders ({orders.length})
+            <ShoppingBag size={15} /> Storefront Orders ({orders.length})
           </button>
           <button
             type="button"
             className="btn btn-secondary"
             onClick={() => onNavigate?.('production')}
-            style={{ fontSize: '12px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', background: '#ecfdf5', color: '#065f46', borderColor: '#a7f3d0', fontWeight: 600 }}
+            style={{ fontSize: '13px', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: '6px', background: '#ecfdf5', color: '#065f46', borderColor: '#a7f3d0', fontWeight: 700 }}
           >
-            <Layers size={14} /> 5. Production Entry
+            <Layers size={15} /> 5. Production Entry
           </button>
         </div>
       </div>
 
       {/* 2. Top Filter Bar (From Date, To Date, Prefix, Bill Type, Party Search) */}
-      <div className="profitnx-filter-bar" style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '12px 16px', marginBottom: '14px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '12px', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
+      <div className="profitnx-filter-bar" style={{ background: '#ffffff', border: '1.5px solid #cbd5e1', borderRadius: '10px', padding: '12px 18px', marginBottom: '14px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '14px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
         
         {/* From Date */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <label style={{ fontSize: '12px', fontWeight: 600, color: '#334155' }}>From:</label>
+          <label style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>From:</label>
           <input
             type="date"
             className="form-control"
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
-            style={{ fontSize: '12px', padding: '5px 8px', border: '1px solid #cbd5e1', borderRadius: '4px', width: '135px' }}
+            style={{ fontSize: '13px', padding: '6px 10px', border: '1.5px solid #cbd5e1', borderRadius: '6px', width: '140px', fontWeight: 600, color: '#0f172a' }}
           />
         </div>
 
         {/* To Date */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <label style={{ fontSize: '12px', fontWeight: 600, color: '#334155' }}>To:</label>
+          <label style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>To:</label>
           <input
             type="date"
             className="form-control"
             value={toDate}
             onChange={(e) => setToDate(e.target.value)}
-            style={{ fontSize: '12px', padding: '5px 8px', border: '1px solid #cbd5e1', borderRadius: '4px', width: '135px' }}
+            style={{ fontSize: '13px', padding: '6px 10px', border: '1.5px solid #cbd5e1', borderRadius: '6px', width: '140px', fontWeight: 600, color: '#0f172a' }}
           />
         </div>
 
         {/* Series / Prefix */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <label style={{ fontSize: '12px', fontWeight: 600, color: '#334155' }}>Prefix:</label>
+          <label style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>Prefix:</label>
           <select
             className="form-control"
             value={prefixFilter}
             onChange={(e) => setPrefixFilter(e.target.value)}
-            style={{ fontSize: '12px', padding: '5px 8px', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+            style={{ fontSize: '13px', padding: '6px 10px', border: '1.5px solid #cbd5e1', borderRadius: '6px', fontWeight: 600, color: '#0f172a' }}
           >
             <option value="ALL">ALL (All Series)</option>
             <option value="GST">GST- (Tax Invoices)</option>
@@ -394,12 +394,12 @@ export default function ProfitNxSalesEntry({
 
         {/* Bill Type */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <label style={{ fontSize: '12px', fontWeight: 600, color: '#334155' }}>Type:</label>
+          <label style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>Type:</label>
           <select
             className="form-control"
             value={billTypeFilter}
             onChange={(e) => setBillTypeFilter(e.target.value)}
-            style={{ fontSize: '12px', padding: '5px 8px', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+            style={{ fontSize: '13px', padding: '6px 10px', border: '1.5px solid #cbd5e1', borderRadius: '6px', fontWeight: 600, color: '#0f172a' }}
           >
             <option value="ALL">All Invoices</option>
             <option value="B2B">B2B (Registered with GSTIN)</option>
@@ -409,21 +409,21 @@ export default function ProfitNxSalesEntry({
         </div>
 
         {/* Search party / bill */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, minWidth: '220px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, minWidth: '240px' }}>
           <div style={{ position: 'relative', width: '100%' }}>
-            <Search size={14} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+            <Search size={15} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#475569' }} />
             <input
               type="text"
               placeholder="Search Party, GSTIN, Bill No or Product..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ width: '100%', padding: '5px 8px 5px 28px', fontSize: '12px', border: '1px solid #cbd5e1', borderRadius: '4px', outline: 'none' }}
+              style={{ width: '100%', padding: '6px 10px 6px 32px', fontSize: '13px', border: '1.5px solid #cbd5e1', borderRadius: '6px', outline: 'none', fontWeight: 600, color: '#0f172a' }}
             />
             {searchTerm && (
               <button
                 type="button"
                 onClick={() => setSearchTerm('')}
-                style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '12px' }}
+                style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#475569', fontSize: '14px', fontWeight: 700 }}
               >
                 ×
               </button>
@@ -442,14 +442,14 @@ export default function ProfitNxSalesEntry({
             setSearchTerm('');
           }}
           title="Reset Filters"
-          style={{ fontSize: '12px', padding: '5px 10px', display: 'flex', alignItems: 'center', gap: '4px' }}
+          style={{ fontSize: '13px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700 }}
         >
-          <RefreshCw size={13} /> Reset
+          <RefreshCw size={14} /> Reset
         </button>
       </div>
 
       {/* 3. Action Toolbar (Add F2, Modify F3, Delete F4, Export, Import, Print, WhatsApp, Close) */}
-      <div className="profitnx-action-toolbar" style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '8px 14px', marginBottom: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+      <div className="profitnx-action-toolbar" style={{ background: '#f1f5f9', border: '1.5px solid #cbd5e1', borderRadius: '10px', padding: '10px 16px', marginBottom: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           {/* Add (F2) */}
           <button
@@ -459,9 +459,9 @@ export default function ProfitNxSalesEntry({
               setEditingInvoice(null);
               setShowAddModal(true);
             }}
-            style={{ background: '#15803d', borderColor: '#166534', color: '#ffffff', fontSize: '12px', fontWeight: 600, padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+            style={{ background: '#15803d', borderColor: '#166534', color: '#ffffff', fontSize: '13px', fontWeight: 750, padding: '7px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}
           >
-            <Plus size={14} /> Add <span style={{ background: 'rgba(255,255,255,0.25)', padding: '1px 4px', borderRadius: '3px', fontSize: '10px' }}>F2</span>
+            <Plus size={15} /> Add <span style={{ background: 'rgba(255,255,255,0.25)', padding: '1px 5px', borderRadius: '3px', fontSize: '11px', fontWeight: 800 }}>F2</span>
           </button>
 
           {/* Modify (F3) */}
@@ -473,9 +473,9 @@ export default function ProfitNxSalesEntry({
               if (item) handleModify(item);
               else alert('Please select an invoice to modify.');
             }}
-            style={{ background: '#0284c7', borderColor: '#0369a1', color: '#ffffff', fontSize: '12px', fontWeight: 600, padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+            style={{ background: '#0284c7', borderColor: '#0369a1', color: '#ffffff', fontSize: '13px', fontWeight: 750, padding: '7px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}
           >
-            <Edit2 size={14} /> Modify <span style={{ background: 'rgba(255,255,255,0.25)', padding: '1px 4px', borderRadius: '3px', fontSize: '10px' }}>F3</span>
+            <Edit2 size={15} /> Modify <span style={{ background: 'rgba(255,255,255,0.25)', padding: '1px 5px', borderRadius: '3px', fontSize: '11px', fontWeight: 800 }}>F3</span>
           </button>
 
           {/* Delete (F4) */}
@@ -486,21 +486,21 @@ export default function ProfitNxSalesEntry({
               if (selectedInvoiceId) handleDelete(selectedInvoiceId);
               else alert('Please select an invoice to delete.');
             }}
-            style={{ background: '#dc2626', borderColor: '#b91c1c', color: '#ffffff', fontSize: '12px', fontWeight: 600, padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+            style={{ background: '#dc2626', borderColor: '#b91c1c', color: '#ffffff', fontSize: '13px', fontWeight: 750, padding: '7px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}
           >
-            <Trash2 size={14} /> Delete <span style={{ background: 'rgba(255,255,255,0.25)', padding: '1px 4px', borderRadius: '3px', fontSize: '10px' }}>F4</span>
+            <Trash2 size={15} /> Delete <span style={{ background: 'rgba(255,255,255,0.25)', padding: '1px 5px', borderRadius: '3px', fontSize: '11px', fontWeight: 800 }}>F4</span>
           </button>
 
-          <div style={{ width: '1px', height: '24px', background: '#cbd5e1', margin: '0 4px' }} />
+          <div style={{ width: '1px', height: '26px', background: '#cbd5e1', margin: '0 4px' }} />
 
           {/* Export CSV */}
           <button
             type="button"
             className="btn btn-secondary"
             onClick={handleExportCSV}
-            style={{ fontSize: '12px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', background: '#ffffff' }}
+            style={{ fontSize: '13px', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: '6px', background: '#ffffff', fontWeight: 700, color: '#0f172a' }}
           >
-            <Download size={14} /> Export CSV
+            <Download size={15} /> Export CSV
           </button>
 
           {/* Direct Print */}
@@ -512,9 +512,9 @@ export default function ProfitNxSalesEntry({
               if (item) handlePrint(item);
               else alert('Please select an invoice to print.');
             }}
-            style={{ fontSize: '12px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', background: '#ffffff' }}
+            style={{ fontSize: '13px', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: '6px', background: '#ffffff', fontWeight: 700, color: '#0f172a' }}
           >
-            <Printer size={14} /> Direct Print
+            <Printer size={15} /> Direct Print
           </button>
 
           {/* WhatsApp */}
@@ -526,21 +526,21 @@ export default function ProfitNxSalesEntry({
               if (item) handleWhatsApp(item);
               else alert('Please select an invoice to share.');
             }}
-            style={{ fontSize: '12px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', background: '#ffffff', color: '#15803d' }}
+            style={{ fontSize: '13px', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: '6px', background: '#ffffff', color: '#15803d', fontWeight: 700 }}
           >
-            <MessageSquare size={14} /> WhatsApp
+            <MessageSquare size={15} /> WhatsApp
           </button>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ fontSize: '12px', color: '#64748b' }}>
-            Showing <strong>{filteredSales.length}</strong> of <strong>{unifiedSalesList.length}</strong> sales
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '13px', color: '#334155', fontWeight: 600 }}>
+            Showing <strong style={{ color: '#0f172a' }}>{filteredSales.length}</strong> of <strong style={{ color: '#0f172a' }}>{unifiedSalesList.length}</strong> sales
           </span>
           {selectedInvoiceId && (
             <button
               type="button"
               onClick={() => setSelectedInvoiceId(null)}
-              style={{ border: 'none', background: 'none', color: '#64748b', fontSize: '12px', cursor: 'pointer', textDecoration: 'underline' }}
+              style={{ border: 'none', background: 'none', color: '#1e3a8a', fontSize: '13px', cursor: 'pointer', textDecoration: 'underline', fontWeight: 700 }}
             >
               Clear selection
             </button>
@@ -549,34 +549,34 @@ export default function ProfitNxSalesEntry({
       </div>
 
       {/* 4. High-Density Sales Register Data Grid (Matching Profit Nx Desktop Table) */}
-      <div className="profitnx-table-card" style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', marginBottom: '14px' }}>
+      <div className="profitnx-table-card" style={{ background: '#ffffff', border: '1.5px solid #cbd5e1', borderRadius: '10px', overflow: 'hidden', boxShadow: '0 2px 6px rgba(0,0,0,0.05)', marginBottom: '14px' }}>
         <div style={{ overflowX: 'auto', maxHeight: '58vh' }}>
-          <table className="profitnx-grid-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left', minWidth: '1050px' }}>
-            <thead style={{ position: 'sticky', top: 0, background: '#1e293b', color: '#f8fafc', zIndex: 10 }}>
+          <table className="profitnx-grid-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px', textAlign: 'left', minWidth: '1080px' }}>
+            <thead style={{ position: 'sticky', top: 0, background: '#0f172a', color: '#ffffff', zIndex: 10 }}>
               <tr>
-                <th style={{ padding: '8px 10px', borderRight: '1px solid #334155', width: '40px', textAlign: 'center' }}>#</th>
-                <th style={{ padding: '8px 10px', borderRight: '1px solid #334155', width: '100px' }}>Bill No</th>
-                <th style={{ padding: '8px 10px', borderRight: '1px solid #334155', width: '95px' }}>Date</th>
-                <th style={{ padding: '8px 10px', borderRight: '1px solid #334155', minWidth: '160px' }}>Party Name</th>
-                <th style={{ padding: '8px 10px', borderRight: '1px solid #334155', width: '135px' }}>GSTIN</th>
-                <th style={{ padding: '8px 10px', borderRight: '1px solid #334155', width: '85px' }}>Bill Type</th>
-                <th style={{ padding: '8px 10px', borderRight: '1px solid #334155', width: '140px' }}>Tax Type</th>
-                <th style={{ padding: '8px 10px', borderRight: '1px solid #334155', minWidth: '160px' }}>Items Summary</th>
-                <th style={{ padding: '8px 10px', borderRight: '1px solid #334155', width: '70px', textAlign: 'right' }}>Qty</th>
-                <th style={{ padding: '8px 10px', borderRight: '1px solid #334155', width: '105px', textAlign: 'right' }}>Taxable (₹)</th>
-                <th style={{ padding: '8px 10px', borderRight: '1px solid #334155', width: '95px', textAlign: 'right' }}>GST (₹)</th>
-                <th style={{ padding: '8px 10px', borderRight: '1px solid #334155', width: '110px', textAlign: 'right' }}>Net Amt (₹)</th>
-                <th style={{ padding: '8px 10px', borderRight: '1px solid #334155', width: '95px', textAlign: 'center' }}>Status</th>
-                <th style={{ padding: '8px 10px', width: '90px', textAlign: 'center' }}>Actions</th>
+                <th style={{ padding: '10px 12px', borderRight: '1px solid #334155', width: '40px', textAlign: 'center', fontSize: '13px', fontWeight: 750, color: '#ffffff' }}>#</th>
+                <th style={{ padding: '10px 12px', borderRight: '1px solid #334155', width: '110px', fontSize: '13px', fontWeight: 750, color: '#ffffff' }}>Bill No</th>
+                <th style={{ padding: '10px 12px', borderRight: '1px solid #334155', width: '100px', fontSize: '13px', fontWeight: 750, color: '#ffffff' }}>Date</th>
+                <th style={{ padding: '10px 12px', borderRight: '1px solid #334155', minWidth: '170px', fontSize: '13px', fontWeight: 750, color: '#ffffff' }}>Party Name</th>
+                <th style={{ padding: '10px 12px', borderRight: '1px solid #334155', width: '140px', fontSize: '13px', fontWeight: 750, color: '#ffffff' }}>GSTIN</th>
+                <th style={{ padding: '10px 12px', borderRight: '1px solid #334155', width: '90px', fontSize: '13px', fontWeight: 750, color: '#ffffff' }}>Bill Type</th>
+                <th style={{ padding: '10px 12px', borderRight: '1px solid #334155', width: '140px', fontSize: '13px', fontWeight: 750, color: '#ffffff' }}>Tax Type</th>
+                <th style={{ padding: '10px 12px', borderRight: '1px solid #334155', minWidth: '170px', fontSize: '13px', fontWeight: 750, color: '#ffffff' }}>Items Summary</th>
+                <th style={{ padding: '10px 12px', borderRight: '1px solid #334155', width: '75px', textAlign: 'right', fontSize: '13px', fontWeight: 750, color: '#ffffff' }}>Qty</th>
+                <th style={{ padding: '10px 12px', borderRight: '1px solid #334155', width: '115px', textAlign: 'right', fontSize: '13px', fontWeight: 750, color: '#ffffff' }}>Taxable (₹)</th>
+                <th style={{ padding: '10px 12px', borderRight: '1px solid #334155', width: '105px', textAlign: 'right', fontSize: '13px', fontWeight: 750, color: '#ffffff' }}>GST (₹)</th>
+                <th style={{ padding: '10px 12px', borderRight: '1px solid #334155', width: '120px', textAlign: 'right', fontSize: '13px', fontWeight: 750, color: '#ffffff' }}>Net Amt (₹)</th>
+                <th style={{ padding: '10px 12px', borderRight: '1px solid #334155', width: '95px', textAlign: 'center', fontSize: '13px', fontWeight: 750, color: '#ffffff' }}>Status</th>
+                <th style={{ padding: '10px 12px', width: '90px', textAlign: 'center', fontSize: '13px', fontWeight: 750, color: '#ffffff' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredSales.length === 0 ? (
                 <tr>
-                  <td colSpan={14} style={{ padding: '40px 20px', textAlign: 'center', color: '#64748b' }}>
+                  <td colSpan={14} style={{ padding: '40px 20px', textAlign: 'center', color: '#475569' }}>
                     <AlertCircle size={32} style={{ margin: '0 auto 8px auto', display: 'block', opacity: 0.5 }} />
-                    <strong>No sales records found matching your filters.</strong>
-                    <div style={{ marginTop: '8px' }}>
+                    <strong style={{ fontSize: '14px', color: '#0f172a' }}>No sales records found matching your filters.</strong>
+                    <div style={{ marginTop: '10px' }}>
                       <button
                         type="button"
                         className="btn btn-primary"
@@ -584,9 +584,9 @@ export default function ProfitNxSalesEntry({
                           setEditingInvoice(null);
                           setShowAddModal(true);
                         }}
-                        style={{ fontSize: '12px', padding: '6px 14px' }}
+                        style={{ fontSize: '13px', padding: '7px 16px', fontWeight: 750 }}
                       >
-                        <Plus size={14} /> Add First Sale (F2)
+                        <Plus size={15} /> Add First Sale (F2)
                       </button>
                     </div>
                   </td>
@@ -602,68 +602,68 @@ export default function ProfitNxSalesEntry({
                       onContextMenu={(e) => handleContextMenu(e, item)}
                       style={{
                         background: isSelected ? '#e0f2fe' : index % 2 === 0 ? '#ffffff' : '#f8fafc',
-                        borderBottom: '1px solid #e2e8f0',
+                        borderBottom: '1px solid #cbd5e1',
                         cursor: 'pointer',
                         transition: 'background 0.15s ease'
                       }}
                       className="profitnx-grid-row"
                     >
-                      <td style={{ padding: '7px 10px', borderRight: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 600, color: '#64748b' }}>
+                      <td style={{ padding: '9px 12px', borderRight: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 700, color: '#334155', fontSize: '13px' }}>
                         {index + 1}
                       </td>
-                      <td style={{ padding: '7px 10px', borderRight: '1px solid #e2e8f0', fontWeight: 700, color: '#1e3a8a' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <td style={{ padding: '9px 12px', borderRight: '1px solid #e2e8f0', fontWeight: 800, color: '#1e3a8a', fontSize: '13.5px' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                           {item.billNo}
                           {item.source === '🛍️ Online Store' && (
-                            <span title="Online Store Order" style={{ fontSize: '10px' }}>🛒</span>
+                            <span title="Online Store Order" style={{ fontSize: '12px' }}>🛒</span>
                           )}
                         </span>
                       </td>
-                      <td style={{ padding: '7px 10px', borderRight: '1px solid #e2e8f0', color: '#334155' }}>
+                      <td style={{ padding: '9px 12px', borderRight: '1px solid #e2e8f0', color: '#1e293b', fontWeight: 600, fontSize: '13px' }}>
                         {item.date}
                       </td>
-                      <td style={{ padding: '7px 10px', borderRight: '1px solid #e2e8f0', fontWeight: 600, color: '#0f172a' }}>
+                      <td style={{ padding: '9px 12px', borderRight: '1px solid #e2e8f0', fontWeight: 750, color: '#0f172a', fontSize: '13.5px' }}>
                         {item.partyName}
                       </td>
-                      <td style={{ padding: '7px 10px', borderRight: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '11px', color: item.gstin !== '-' ? '#047857' : '#94a3b8' }}>
+                      <td style={{ padding: '9px 12px', borderRight: '1px solid #e2e8f0', fontFamily: 'monospace', fontSize: '12px', fontWeight: 700, color: item.gstin !== '-' ? '#047857' : '#64748b' }}>
                         {item.gstin}
                       </td>
-                      <td style={{ padding: '7px 10px', borderRight: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '9px 12px', borderRight: '1px solid #e2e8f0' }}>
                         <span style={{
-                          padding: '2px 6px',
+                          padding: '3px 8px',
                           borderRadius: '4px',
-                          fontSize: '10px',
-                          fontWeight: 700,
+                          fontSize: '11px',
+                          fontWeight: 800,
                           background: item.billType === 'B2B' ? '#dbeafe' : item.billType.includes('Store') ? '#fef3c7' : '#f1f5f9',
-                          color: item.billType === 'B2B' ? '#1e40af' : item.billType.includes('Store') ? '#92400e' : '#475569'
+                          color: item.billType === 'B2B' ? '#1e40af' : item.billType.includes('Store') ? '#92400e' : '#1e293b'
                         }}>
                           {item.billType}
                         </span>
                       </td>
-                      <td style={{ padding: '7px 10px', borderRight: '1px solid #e2e8f0', color: '#475569', fontSize: '11px' }}>
+                      <td style={{ padding: '9px 12px', borderRight: '1px solid #e2e8f0', color: '#334155', fontSize: '12px', fontWeight: 600 }}>
                         {item.taxType}
                       </td>
-                      <td style={{ padding: '7px 10px', borderRight: '1px solid #e2e8f0', color: '#334155', maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.itemsDesc}>
+                      <td style={{ padding: '9px 12px', borderRight: '1px solid #e2e8f0', color: '#0f172a', fontSize: '13px', fontWeight: 500, maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.itemsDesc}>
                         {item.itemsDesc}
                       </td>
-                      <td style={{ padding: '7px 10px', borderRight: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 600 }}>
+                      <td style={{ padding: '9px 12px', borderRight: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 750, color: '#0f172a', fontSize: '13.5px' }}>
                         {item.totalQty}
                       </td>
-                      <td style={{ padding: '7px 10px', borderRight: '1px solid #e2e8f0', textAlign: 'right', fontFamily: 'monospace' }}>
+                      <td style={{ padding: '9px 12px', borderRight: '1px solid #e2e8f0', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: '#0f172a', fontSize: '13.5px' }}>
                         ₹{item.taxableAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
-                      <td style={{ padding: '7px 10px', borderRight: '1px solid #e2e8f0', textAlign: 'right', fontFamily: 'monospace', color: '#b45309' }}>
+                      <td style={{ padding: '9px 12px', borderRight: '1px solid #e2e8f0', textAlign: 'right', fontFamily: 'monospace', fontWeight: 750, color: '#b45309', fontSize: '13.5px' }}>
                         ₹{item.gstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
-                      <td style={{ padding: '7px 10px', borderRight: '1px solid #e2e8f0', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: '#1e3a8a' }}>
+                      <td style={{ padding: '9px 12px', borderRight: '1px solid #e2e8f0', textAlign: 'right', fontFamily: 'monospace', fontWeight: 900, color: '#1e3a8a', fontSize: '14px' }}>
                         ₹{item.netTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
-                      <td style={{ padding: '7px 10px', borderRight: '1px solid #e2e8f0', textAlign: 'center' }}>
+                      <td style={{ padding: '9px 12px', borderRight: '1px solid #e2e8f0', textAlign: 'center' }}>
                         <span style={{
-                          padding: '2px 8px',
+                          padding: '3px 10px',
                           borderRadius: '12px',
-                          fontSize: '11px',
-                          fontWeight: 600,
+                          fontSize: '11.5px',
+                          fontWeight: 750,
                           background: item.status === 'Paid' ? '#dcfce7' : item.status === 'Received' ? '#e0e7ff' : '#fee2e2',
                           color: item.status === 'Paid' ? '#166534' : item.status === 'Received' ? '#3730a3' : '#991b1b'
                         }}>
