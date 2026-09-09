@@ -5463,81 +5463,8 @@ export default function VoiceExpenseTrackerPreview() {
         )}
         {showTour && <GuidedTour onFinish={() => setShowTour(false)} />}
         
-        {/* PROFIT NX ERP TOP TITLE BAR & NUMBERED MENUBAR (Matching FR.mp4) */}
+        {/* PROFIT NX ERP TOP NUMBERED MENUBAR (Matching FR.mp4) */}
         <div className="profitnx-erp-top-wrapper" style={{ position: 'relative', zIndex: 110 }}>
-          {/* Top title banner */}
-          <div className="profitnx-top-titlebar" style={{
-            background: 'linear-gradient(90deg, #1e3a8a 0%, #1e293b 100%)',
-            color: '#ffffff',
-            padding: '7px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            borderBottom: '1px solid #0f172a',
-            fontSize: '13px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <span style={{ background: '#2563eb', color: '#ffffff', fontWeight: 800, padding: '3px 8px', borderRadius: '3px', fontSize: '11.5px', letterSpacing: '0.05em' }}>TRINETR ERP</span>
-              <span style={{ fontWeight: 800, fontSize: '14.5px', letterSpacing: '0.03em' }}>{profile.name || 'JAY AMBE NAMKEEN'}</span>
-              <span style={{ opacity: 0.9, fontSize: '12px' }}>[2026 - 2027]</span>
-              <span style={{ opacity: 0.5 }}>|</span>
-              <span style={{ fontSize: '12px' }}>GSTIN: <strong style={{ color: '#fde047', fontFamily: 'monospace', fontSize: '13px' }}>{profile.gstin || '24CPVPC7753J1Z8'}</strong></span>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12px' }}>
-              <button
-                type="button"
-                onClick={() => { setActiveTab('sales-entry'); window.location.hash = 'sales-entry'; }}
-                style={{
-                  background: activeTab === 'sales-entry' ? '#ffffff' : 'rgba(255,255,255,0.15)',
-                  color: activeTab === 'sales-entry' ? '#1e3a8a' : '#ffffff',
-                  border: '1px solid rgba(255,255,255,0.35)',
-                  borderRadius: '4px',
-                  padding: '4px 12px',
-                  fontSize: '12px',
-                  fontWeight: 750,
-                  cursor: 'pointer'
-                }}
-              >
-                ⚡ 1. Sales Register (F2)
-              </button>
-
-              <button
-                type="button"
-                onClick={() => { setActiveTab('production'); window.location.hash = 'production'; }}
-                style={{
-                  background: activeTab === 'production' ? '#ffffff' : 'rgba(255,255,255,0.15)',
-                  color: activeTab === 'production' ? '#059669' : '#ffffff',
-                  border: '1px solid rgba(255,255,255,0.35)',
-                  borderRadius: '4px',
-                  padding: '4px 12px',
-                  fontSize: '12px',
-                  fontWeight: 750,
-                  cursor: 'pointer'
-                }}
-              >
-                ⚙ 5. Production
-              </button>
-
-              <button
-                type="button"
-                onClick={() => { setActiveTab('store'); window.location.hash = 'store'; }}
-                style={{
-                  background: '#fef3c7',
-                  color: '#92400e',
-                  border: '1px solid #fde68a',
-                  borderRadius: '4px',
-                  padding: '4px 12px',
-                  fontSize: '12px',
-                  fontWeight: 750,
-                  cursor: 'pointer'
-                }}
-              >
-                🛍️ Storefront
-              </button>
-            </div>
-          </div>
-
           {/* Trinetr Numbered Menu Bar */}
           <nav className="profitnx-menubar hide-on-mobile" style={{
             background: '#0f172a',
@@ -5856,40 +5783,104 @@ export default function VoiceExpenseTrackerPreview() {
           </nav>
         </div>
 
-        <header className="topbar" style={{ padding: '12px 24px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px' }}>
+        <header className="topbar" style={{ padding: '10px 20px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
           {authUser?.mode === 'demo' && (
             <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', background: 'var(--brand-primary)', color: 'white', padding: '4px 16px', fontSize: '12px', fontWeight: 600, borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px', zIndex: 100 }}>
               Demo Mode
             </div>
           )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexShrink: 0 }}>
             <button
               className="topbar-menu-button"
               type="button"
               aria-label="Open navigation"
               onClick={() => setMobileNavOpen(true)}
-              style={{ padding: '8px', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '20px' }}
+              style={{ padding: '8px', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#0f172a' }}
             >
               ☰
             </button>
-            <div className="topbar-breadcrumbs hide-on-mobile" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '600' }}>
-              <span style={{ color: '#334155' }}>{activeSidebarSection?.label || 'Overview'}</span>
-              <span style={{ color: '#64748b' }}>/</span>
-              <strong style={{ color: '#0f172a', fontWeight: '750' }}>{activePageTitle}</strong>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span style={{ background: '#1e3a8a', color: '#ffffff', fontWeight: 800, padding: '3px 8px', borderRadius: '4px', fontSize: '11px', letterSpacing: '0.05em' }}>TRINETR ERP</span>
+              <strong style={{ fontWeight: 800, fontSize: '14.5px', color: '#0f172a', letterSpacing: '0.01em' }}>{profile.name || 'JAY AMBE NAMKEEN'}</strong>
+              <span style={{ fontSize: '12px', color: '#475569', fontWeight: 600 }}>[2026 - 2027]</span>
+              <span className="hide-on-mobile" style={{ color: '#cbd5e1' }}>|</span>
+              <span className="hide-on-mobile" style={{ fontSize: '12px', color: '#334155', fontWeight: 600 }}>
+                GSTIN: <strong style={{ color: '#0f172a', fontFamily: 'monospace', fontSize: '12.5px', fontWeight: 750 }}>{profile.gstin || '24CPVPC7753J1Z8'}</strong>
+              </span>
             </div>
           </div>
           <GlobalSearch onNavigate={(route) => {
             setActiveTab(route);
             window.location.hash = route;
           }} />
-          <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            {/* 1. Sales Register (F2) Quick Access */}
+            <button
+              type="button"
+              className="btn btn-secondary hover-scale"
+              onClick={() => { setActiveTab('sales-entry'); window.location.hash = 'sales-entry'; }}
+              title="Open Sales Register & Quick Bill (Shortcut F2)"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '12.5px',
+                background: activeTab === 'sales-entry' ? '#1e3a8a' : '#eff6ff',
+                color: activeTab === 'sales-entry' ? '#ffffff' : '#1e3a8a',
+                border: '1px solid #bfdbfe',
+                fontWeight: '750',
+                padding: '7px 12px',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+            >
+              <FileText size={15} />
+              <span>1. Sales Register (F2)</span>
+            </button>
+
+            {/* 5. Production Quick Access */}
+            <button
+              type="button"
+              className="btn btn-secondary hover-scale"
+              onClick={() => { setActiveTab('production'); window.location.hash = 'production'; }}
+              title="Open Production Run Entry & Recipes BOM"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '12.5px',
+                background: activeTab === 'production' ? '#059669' : '#ecfdf5',
+                color: activeTab === 'production' ? '#ffffff' : '#047857',
+                border: '1px solid #a7f3d0',
+                fontWeight: '750',
+                padding: '7px 12px',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+            >
+              <Package size={15} />
+              <span>5. Production</span>
+            </button>
+
             {/* Online Storefront Switcher */}
             <button
               type="button"
               className="btn btn-secondary hover-scale"
               onClick={() => { setActiveTab('store'); window.location.hash = 'store'; }}
               title={`View Customer Online Storefront (${profile.storeName || profile.name || 'Store'})`}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', background: '#fef3c7', color: '#92400e', borderColor: '#fde68a', fontWeight: '700' }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '12.5px',
+                background: activeTab === 'store' ? '#92400e' : '#fef3c7',
+                color: activeTab === 'store' ? '#ffffff' : '#92400e',
+                border: '1px solid #fde68a',
+                fontWeight: '750',
+                padding: '7px 12px',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
             >
               <ShoppingBag size={15} />
               <span className="hide-on-mobile">Online Storefront</span>
@@ -6087,65 +6078,6 @@ export default function VoiceExpenseTrackerPreview() {
                 <button type="button" className="btn btn-primary" aria-label="New Entry" title="New Entry" onClick={() => navigateToTab('voucher-entry')}>
                   <Plus size={20} />
                 </button>
-              </div>
-
-              {/* Online Storefront Sharing & WhatsApp Orders Hub */}
-              <div className="glass-panel" style={{ padding: '20px 24px', background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)', border: '1px solid #fde68a', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#d97706', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>
-                    🛍️
-                  </div>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '700', color: '#78350f' }}>
-                        Customer Online Storefront & WhatsApp Orders
-                      </h3>
-                      <span className="badge badge-success" style={{ background: '#25d366', color: '#fff', fontSize: '11px', fontWeight: '700' }}>Live & Active</span>
-                    </div>
-                    <p style={{ margin: '4px 0 0 0', color: '#92400e', fontSize: '13px' }}>
-                      Share this store link with your customers to take orders directly via WhatsApp!
-                    </p>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    className="btn hover-scale"
-                    onClick={() => {
-                      const url = `${window.location.origin}/#store`;
-                      navigator.clipboard.writeText(url);
-                      setStoreLinkCopied(true);
-                      setTimeout(() => setStoreLinkCopied(false), 2500);
-                    }}
-                    style={{ background: '#fff', border: '1px solid #fde68a', color: '#78350f', fontWeight: '600', padding: '8px 14px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}
-                  >
-                    {storeLinkCopied ? '✓ Link Copied!' : '📋 Copy Store Link'}
-                  </button>
-
-                  <button
-                    type="button"
-                    className="btn hover-scale"
-                    onClick={() => {
-                      const url = `${window.location.origin}/#store`;
-                      const storeTitle = profile.storeName || profile.name || 'Our Online Store';
-                      const msg = `Hello! Check out ${storeTitle} online: ${url}\nOrder fresh namkeens & snacks directly with 1-click home delivery!`;
-                      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-                    }}
-                    style={{ background: '#25d366', border: 'none', color: '#fff', fontWeight: '700', padding: '8px 14px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}
-                  >
-                    <MessageCircle size={16} /> Share on WhatsApp
-                  </button>
-
-                  <button
-                    type="button"
-                    className="btn hover-scale"
-                    onClick={() => navigateToTab('store')}
-                    style={{ background: '#881337', border: 'none', color: '#fff', fontWeight: '700', padding: '8px 14px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}
-                  >
-                    Preview Store ↗
-                  </button>
-                </div>
               </div>
 
               {!browserSupported && (
