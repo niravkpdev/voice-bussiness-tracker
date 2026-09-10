@@ -5645,9 +5645,10 @@ export default function VoiceExpenseTrackerPreview() {
   }
 
   if (authView !== 'app') {
+    const isNeonAuthActive = authView === 'login' || authView === 'register' || authView === 'reset-password';
     return (
-      <main className="saas-public-shell">
-        <header className="saas-nav">
+      <main className={`saas-public-shell ${isNeonAuthActive ? 'dark-neon-auth' : ''}`}>
+        <header className={`saas-nav ${isNeonAuthActive ? 'neon-topbar-merged' : ''}`}>
           <a className="saas-logo" href="#home" onClick={() => setAuthView('landing')}>
             <img src={profile.logo} alt="" />
             <span>Trinetr Business Suite</span>
@@ -5656,7 +5657,8 @@ export default function VoiceExpenseTrackerPreview() {
             <a 
               href="#store" 
               onClick={() => { setActiveTab('store'); window.location.hash = 'store'; }} 
-              style={{ color: '#d97706', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+              className={isNeonAuthActive ? 'neon-store-link' : ''}
+              style={{ color: isNeonAuthActive ? '#fbbf24' : '#d97706', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
             >
               🛍️ Online Store
             </a>
@@ -5907,24 +5909,6 @@ export default function VoiceExpenseTrackerPreview() {
         ) : authView === 'reset-password' ? (
           <section className="neon-auth-page">
             <div className="neon-auth-backdrop" />
-            <div className="neon-auth-topbar">
-              <a href="#home" onClick={() => setAuthView('landing')} className="neon-brand-logo">
-                <img src={profile.logo} alt="" />
-                <span>Trinetr Business Suite</span>
-              </a>
-              <div className="neon-top-actions">
-                <button
-                  type="button"
-                  className="neon-store-chip"
-                  onClick={() => {
-                    setActiveTab('store');
-                    window.location.hash = 'store';
-                  }}
-                >
-                  🛍️ Customer Direct Store →
-                </button>
-              </div>
-            </div>
 
             <div className="neon-auth-shell">
               <div className="neon-auth-card" style={{ maxWidth: '440px', height: 'auto', minHeight: '380px', padding: '40px 36px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
@@ -5961,35 +5945,6 @@ export default function VoiceExpenseTrackerPreview() {
         ) : (
           <section className="neon-auth-page">
             <div className="neon-auth-backdrop" />
-
-            {/* Top Bar with Brand & Direct Customer Access */}
-            <div className="neon-auth-topbar">
-              <a href="#home" onClick={() => setAuthView('landing')} className="neon-brand-logo">
-                <img src={profile.logo} alt="" />
-                <span>Trinetr Business Suite</span>
-              </a>
-              <div className="neon-top-actions">
-                <button
-                  type="button"
-                  className="neon-store-chip"
-                  onClick={() => {
-                    setActiveTab('store');
-                    window.location.hash = 'store';
-                  }}
-                  title="Directly purchase snacks & namkeen without business login"
-                >
-                  🛍️ Customer Direct Store (No Login) →
-                </button>
-                <button
-                  type="button"
-                  className="neon-demo-chip"
-                  onClick={startDemoMode}
-                  title="Quick 1-click test drive"
-                >
-                  ⚡ Instant Demo
-                </button>
-              </div>
-            </div>
 
             <div className="neon-auth-shell">
               <div className={`neon-auth-card ${isRegisterMode ? 'active' : ''}`}>

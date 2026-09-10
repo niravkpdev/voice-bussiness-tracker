@@ -7376,115 +7376,87 @@ input, textarea, [contenteditable="true"] {
    FUTURISTIC NEON LOGIN & REGISTER VIEW (MATCHING LOGIN VIEW.MP4)
    ========================================================================== */
 
+/* Unified Dark Theme for the merged navbar & shell */
+.saas-public-shell.dark-neon-auth {
+  background: #050811 !important;
+  color: #ffffff !important;
+}
+
+.saas-nav.neon-topbar-merged {
+  background: #050811 !important;
+  border-bottom: 1px solid rgba(0, 223, 196, 0.2) !important;
+  backdrop-filter: blur(16px) !important;
+}
+
+.saas-nav.neon-topbar-merged .saas-logo {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+.saas-nav.neon-topbar-merged nav a {
+  color: rgba(255, 255, 255, 0.85) !important;
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.85) !important;
+  transition: color 0.2s ease;
+}
+
+.saas-nav.neon-topbar-merged nav a:hover {
+  color: #00dfc4 !important;
+  -webkit-text-fill-color: #00dfc4 !important;
+}
+
+.saas-nav.neon-topbar-merged nav a.neon-store-link {
+  color: #fbbf24 !important;
+  -webkit-text-fill-color: #fbbf24 !important;
+  font-weight: 800 !important;
+}
+
+.saas-nav.neon-topbar-merged nav button {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+.saas-nav.neon-topbar-merged nav button:hover {
+  background: rgba(255, 255, 255, 0.16) !important;
+  border-color: #00dfc4 !important;
+}
+
+.saas-nav.neon-topbar-merged .saas-primary-button {
+  background: #00dfc4 !important;
+  color: #081624 !important;
+  -webkit-text-fill-color: #081624 !important;
+  border: none !important;
+  box-shadow: 0 0 15px rgba(0, 223, 196, 0.4) !important;
+}
+
 .neon-auth-page {
-  min-height: 100vh;
-  min-height: 100dvh;
+  min-height: calc(100vh - 76px);
+  min-height: calc(100dvh - 76px);
   width: 100%;
-  background: #050811;
-  background: radial-gradient(circle at 50% 35%, #0a192f 0%, #050811 100%);
+  background: #050811 !important;
+  background: radial-gradient(circle at 50% 35%, #0a192f 0%, #050811 100%) !important;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   position: relative;
   overflow-x: hidden;
-  padding: 40px 16px;
+  padding: 36px 16px;
   box-sizing: border-box;
-  font-family: inherit;
 }
 
 .neon-auth-backdrop {
   position: absolute;
-  top: 20%;
+  top: 15%;
   left: 50%;
   transform: translateX(-50%);
-  width: 760px;
-  height: 480px;
-  background: radial-gradient(circle, rgba(0, 223, 196, 0.18) 0%, rgba(2, 132, 199, 0.08) 50%, transparent 75%);
-  filter: blur(70px);
+  width: 800px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(0, 223, 196, 0.22) 0%, rgba(2, 132, 199, 0.1) 50%, transparent 75%);
+  filter: blur(80px);
   pointer-events: none;
   z-index: 1;
-}
-
-.neon-auth-topbar {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  padding: 16px 28px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  z-index: 20;
-  background: rgba(5, 8, 17, 0.7);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(0, 223, 196, 0.15);
-}
-
-.neon-brand-logo {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  text-decoration: none;
-  color: #ffffff;
-  font-weight: 700;
-  font-size: 15px;
-  letter-spacing: 0.2px;
-}
-
-.neon-brand-logo img {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-}
-
-.neon-top-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.neon-store-chip {
-  background: rgba(217, 119, 6, 0.16);
-  border: 1px solid rgba(245, 158, 11, 0.4);
-  color: #fbbf24;
-  padding: 6px 14px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  backdrop-filter: blur(8px);
-}
-
-.neon-store-chip:hover {
-  background: rgba(217, 119, 6, 0.3);
-  color: #ffffff;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);
-}
-
-.neon-demo-chip {
-  background: rgba(0, 223, 196, 0.12);
-  border: 1px solid rgba(0, 223, 196, 0.4);
-  color: #00dfc4;
-  padding: 6px 14px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  backdrop-filter: blur(8px);
-}
-
-.neon-demo-chip:hover {
-  background: rgba(0, 223, 196, 0.25);
-  color: #ffffff;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 223, 196, 0.3);
 }
 
 .neon-auth-shell {
@@ -7494,26 +7466,25 @@ input, textarea, [contenteditable="true"] {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: 30px;
 }
 
 /* Neon Card Frame */
 .neon-auth-card {
   position: relative;
-  width: 820px;
-  max-width: 95%;
-  height: 500px;
-  background: #081624;
-  border: 2px solid #00dfc4;
-  box-shadow: 0 0 35px rgba(0, 223, 196, 0.42), inset 0 0 15px rgba(0, 223, 196, 0.15);
-  border-radius: 24px;
-  overflow: hidden;
-  display: flex;
+  width: 840px;
+  max-width: 96%;
+  height: 510px;
+  background: #081624 !important;
+  border: 2px solid #00dfc4 !important;
+  box-shadow: 0 0 35px rgba(0, 223, 196, 0.45), inset 0 0 15px rgba(0, 223, 196, 0.15) !important;
+  border-radius: 24px !important;
+  overflow: hidden !important;
+  display: flex !important;
   transition: box-shadow 0.3s ease;
 }
 
 .neon-auth-card:hover {
-  box-shadow: 0 0 45px rgba(0, 223, 196, 0.55), inset 0 0 20px rgba(0, 223, 196, 0.22);
+  box-shadow: 0 0 45px rgba(0, 223, 196, 0.58), inset 0 0 20px rgba(0, 223, 196, 0.22) !important;
 }
 
 /* Forms: Each takes 50% width */
@@ -7557,313 +7528,353 @@ input, textarea, [contenteditable="true"] {
   pointer-events: auto;
 }
 
+/* Form Headings: Crystal Clear High Contrast White */
 .neon-form-box h2 {
-  font-size: 32px;
-  color: #ffffff;
-  text-align: center;
-  font-weight: 700;
-  margin: 0 0 22px 0;
-  letter-spacing: 0.5px;
+  font-size: 34px !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  text-align: center !important;
+  font-weight: 800 !important;
+  margin: 0 0 24px 0 !important;
+  letter-spacing: 0.8px !important;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6) !important;
 }
 
 /* Input Fields with glowing underline & right icon */
 .neon-input-box {
-  position: relative;
-  width: 100%;
-  height: 46px;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.85);
-  margin: 16px 0;
-  display: flex;
-  align-items: center;
-  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  position: relative !important;
+  width: 100% !important;
+  height: 50px !important;
+  border: none !important;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.85) !important;
+  margin: 18px 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease !important;
 }
 
 .neon-input-box:focus-within {
-  border-bottom-color: #00dfc4;
-  box-shadow: 0 1px 0 #00dfc4;
+  border-bottom-color: #00dfc4 !important;
+  box-shadow: 0 1px 0 #00dfc4 !important;
 }
 
 .neon-input-box input {
   width: 100% !important;
   height: 100% !important;
   background: transparent !important;
+  background-color: transparent !important;
   border: none !important;
   outline: none !important;
-  font-size: 15px !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
   color: #ffffff !important;
-  padding: 0 36px 0 6px !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #00dfc4 !important;
+  padding: 0 38px 0 6px !important;
   box-shadow: none !important;
   border-radius: 0 !important;
 }
 
 .neon-input-box input::placeholder {
-  color: rgba(255, 255, 255, 0.65);
-  font-weight: 400;
+  color: rgba(255, 255, 255, 0.65) !important;
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.65) !important;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+}
+
+.neon-input-box input:-webkit-autofill,
+.neon-input-box input:-webkit-autofill:hover,
+.neon-input-box input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #ffffff !important;
+  -webkit-box-shadow: 0 0 0px 1000px #081624 inset !important;
+  box-shadow: 0 0 0px 1000px #081624 inset !important;
+  caret-color: #ffffff !important;
+  transition: background-color 5000s ease-in-out 0s !important;
 }
 
 .neon-input-icon {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #ffffff;
-  pointer-events: none;
-  display: flex;
-  align-items: center;
-  opacity: 0.85;
-  transition: color 0.2s ease, opacity 0.2s ease;
-}
-
-.neon-input-box:focus-within .neon-input-icon {
-  color: #00dfc4;
-  opacity: 1;
+  position: absolute !important;
+  right: 8px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  color: #00dfc4 !important;
+  pointer-events: none !important;
+  display: flex !important;
+  align-items: center !important;
+  opacity: 1 !important;
 }
 
 .neon-eye-icon {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  color: #ffffff;
-  cursor: pointer;
-  padding: 4px;
-  display: flex;
-  align-items: center;
-  opacity: 0.85;
-  transition: color 0.2s ease, opacity 0.2s ease;
+  position: absolute !important;
+  right: 8px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  background: none !important;
+  border: none !important;
+  color: #00dfc4 !important;
+  cursor: pointer !important;
+  padding: 4px !important;
+  display: flex !important;
+  align-items: center !important;
+  opacity: 0.9 !important;
+  transition: color 0.2s ease, transform 0.15s ease !important;
 }
 
 .neon-eye-icon:hover {
-  color: #00dfc4;
-  opacity: 1;
+  color: #38bdf8 !important;
+  transform: translateY(-50%) scale(1.1) !important;
 }
 
 .neon-options-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 12.5px;
-  color: rgba(255, 255, 255, 0.75);
-  margin: 6px 0 14px 0;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  font-size: 13.5px !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  margin: 8px 0 16px 0 !important;
 }
 
-.neon-remember-me {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  user-select: none;
+.neon-remember-me,
+.neon-remember-me span {
+  display: flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  font-weight: 600 !important;
 }
 
 .neon-remember-me input {
-  cursor: pointer;
-  accent-color: #00dfc4;
-  width: auto !important;
+  cursor: pointer !important;
+  accent-color: #00dfc4 !important;
+  width: 16px !important;
+  height: 16px !important;
   margin: 0 !important;
 }
 
 .neon-link-btn {
-  background: none;
-  border: none;
-  color: #00dfc4;
-  font-size: 12.5px;
-  font-weight: 500;
-  cursor: pointer;
-  padding: 0;
-  text-decoration: none;
+  background: none !important;
+  border: none !important;
+  color: #00dfc4 !important;
+  -webkit-text-fill-color: #00dfc4 !important;
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  text-decoration: none !important;
 }
 
 .neon-link-btn:hover {
-  text-decoration: underline;
+  text-decoration: underline !important;
+  color: #38bdf8 !important;
+  -webkit-text-fill-color: #38bdf8 !important;
 }
 
-/* Submit Button: Pill-shaped cyan button */
-.neon-btn-submit {
-  width: 100%;
-  height: 44px;
-  background: #00dfc4;
-  border: none;
-  outline: none;
-  border-radius: 40px;
-  cursor: pointer;
-  font-size: 16px;
-  color: #081624;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  box-shadow: 0 0 15px rgba(0, 223, 196, 0.45);
-  transition: all 0.25s ease;
-  margin-top: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* Glowing Neon Pill Button */
+.neon-btn-submit,
+button[type="submit"].neon-btn-submit {
+  width: 100% !important;
+  height: 48px !important;
+  min-height: 48px !important;
+  background: #00dfc4 !important;
+  background-color: #00dfc4 !important;
+  color: #05131d !important;
+  -webkit-text-fill-color: #05131d !important;
+  font-size: 17px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.5px !important;
+  border-radius: 40px !important;
+  border: none !important;
+  cursor: pointer !important;
+  box-shadow: 0 0 20px rgba(0, 223, 196, 0.6) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-top: 14px !important;
+  transition: all 0.25s ease !important;
 }
 
-.neon-btn-submit:hover:not(:disabled) {
-  background: #00b4d8;
-  color: #ffffff;
-  box-shadow: 0 0 24px rgba(0, 223, 196, 0.75);
-  transform: translateY(-1px);
+.neon-btn-submit:hover:not(:disabled),
+button[type="submit"].neon-btn-submit:hover:not(:disabled) {
+  background: #00b4d8 !important;
+  background-color: #00b4d8 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  box-shadow: 0 0 30px rgba(0, 223, 196, 0.9) !important;
+  transform: translateY(-2px) !important;
 }
 
 .neon-btn-submit:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+  opacity: 0.6 !important;
+  cursor: not-allowed !important;
 }
 
 .neon-switch-text {
-  font-size: 13.5px;
-  text-align: center;
-  margin-top: 18px;
-  color: rgba(255, 255, 255, 0.85);
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  text-align: center !important;
+  margin-top: 22px !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.9) !important;
 }
 
 .neon-toggle-link {
-  color: #00dfc4;
-  text-decoration: none;
-  font-weight: 700;
-  cursor: pointer;
-  margin-left: 5px;
-  background: none;
-  border: none;
-  font-size: 13.5px;
-  padding: 0;
-  transition: color 0.2s ease;
+  color: #00dfc4 !important;
+  -webkit-text-fill-color: #00dfc4 !important;
+  font-size: 14px !important;
+  font-weight: 800 !important;
+  text-decoration: underline !important;
+  cursor: pointer !important;
+  margin-left: 6px !important;
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  transition: color 0.2s ease !important;
 }
 
 .neon-toggle-link:hover {
-  text-decoration: underline;
-  color: #38bdf8;
+  color: #38bdf8 !important;
+  -webkit-text-fill-color: #38bdf8 !important;
 }
 
 /* Slanted Diagonal Teal Panel */
 .neon-diagonal-panel {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 1;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  pointer-events: none !important;
+  z-index: 1 !important;
 }
 
 .neon-diagonal-bg {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, #053b47 0%, #076d79 40%, #00dfc4 100%);
-  clip-path: polygon(56% 0%, 100% 0%, 100% 100%, 38% 100%);
-  transition: clip-path 0.65s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  position: absolute !important;
+  top: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: linear-gradient(135deg, #053b47 0%, #076d79 40%, #00dfc4 100%) !important;
+  clip-path: polygon(56% 0%, 100% 0%, 100% 100%, 38% 100%) !important;
+  transition: clip-path 0.65s cubic-bezier(0.68, -0.55, 0.265, 1.55) !important;
 }
 
 .neon-auth-card.active .neon-diagonal-bg {
-  clip-path: polygon(0% 0%, 62% 0%, 44% 100%, 0% 100%);
+  clip-path: polygon(0% 0%, 62% 0%, 44% 100%, 0% 100%) !important;
 }
 
 .neon-info-content {
-  position: absolute;
-  top: 0;
-  height: 100%;
-  width: 50%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  color: #ffffff;
-  transition: transform 0.65s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.4s ease;
-  z-index: 3;
-  pointer-events: none;
-  box-sizing: border-box;
+  position: absolute !important;
+  top: 0 !important;
+  height: 100% !important;
+  width: 50% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  text-align: center !important;
+  color: #ffffff !important;
+  transition: transform 0.65s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.4s ease !important;
+  z-index: 3 !important;
+  pointer-events: none !important;
+  box-sizing: border-box !important;
 }
 
 .neon-info-content h2 {
-  font-size: 38px;
-  font-weight: 800;
-  line-height: 1.15;
-  letter-spacing: 0.05em;
-  color: #ffffff;
-  text-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
-  margin: 0;
-  text-transform: uppercase;
+  font-size: 40px !important;
+  font-weight: 900 !important;
+  line-height: 1.15 !important;
+  letter-spacing: 0.05em !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.6) !important;
+  margin: 0 !important;
+  text-transform: uppercase !important;
+  text-align: center !important;
 }
 
 .neon-info-content.login-info {
-  right: 0;
-  padding-left: 30px;
-  transform: translateX(0);
-  opacity: 1;
+  right: 0 !important;
+  padding-left: 30px !important;
+  transform: translateX(0) !important;
+  opacity: 1 !important;
 }
 
 .neon-auth-card.active .neon-info-content.login-info {
-  transform: translateX(120%);
-  opacity: 0;
+  transform: translateX(120%) !important;
+  opacity: 0 !important;
 }
 
 .neon-info-content.register-info {
-  left: 0;
-  padding-right: 30px;
-  transform: translateX(-120%);
-  opacity: 0;
+  left: 0 !important;
+  padding-right: 30px !important;
+  transform: translateX(-120%) !important;
+  opacity: 0 !important;
 }
 
 .neon-auth-card.active .neon-info-content.register-info {
-  transform: translateX(0);
-  opacity: 1;
+  transform: translateX(0) !important;
+  opacity: 1 !important;
 }
 
 .neon-alert {
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 12px;
-  margin-bottom: 12px;
-  text-align: center;
+  padding: 10px 14px !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  margin-bottom: 14px !important;
+  text-align: center !important;
+  font-weight: 600 !important;
 }
 
 .neon-alert.error {
-  background: rgba(239, 68, 68, 0.2);
-  border: 1px solid rgba(239, 68, 68, 0.5);
-  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.25) !important;
+  border: 1px solid rgba(239, 68, 68, 0.6) !important;
+  color: #fca5a5 !important;
+  -webkit-text-fill-color: #fca5a5 !important;
 }
 
 .neon-alert.notice {
-  background: rgba(59, 130, 246, 0.2);
-  border: 1px solid rgba(59, 130, 246, 0.5);
-  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.25) !important;
+  border: 1px solid rgba(59, 130, 246, 0.6) !important;
+  color: #93c5fd !important;
+  -webkit-text-fill-color: #93c5fd !important;
 }
 
 /* Responsive Breakpoints */
 @media (max-width: 768px) {
   .neon-auth-card {
-    width: 92%;
-    max-width: 420px;
-    height: auto;
-    min-height: 520px;
-    flex-direction: column;
+    width: 92% !important;
+    max-width: 420px !important;
+    height: auto !important;
+    min-height: 520px !important;
+    flex-direction: column !important;
   }
   .neon-diagonal-panel {
-    display: none;
+    display: none !important;
   }
   .neon-form-box {
-    width: 100%;
-    position: relative;
-    padding: 36px 24px;
+    width: 100% !important;
+    position: relative !important;
+    padding: 36px 24px !important;
   }
   .neon-form-box.login-box,
   .neon-form-box.register-box {
-    display: none;
-    transform: none;
-    opacity: 1;
-    pointer-events: auto;
+    display: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
   }
   .neon-auth-card:not(.active) .neon-form-box.login-box {
-    display: flex;
+    display: flex !important;
   }
   .neon-auth-card.active .neon-form-box.register-box {
-    display: flex;
+    display: flex !important;
   }
 }
 
