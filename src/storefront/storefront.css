@@ -2740,17 +2740,17 @@
    STORE FOOTER & ANIMATED TRUCK
    -------------------------------------------------------------------------- */
 .trinetr-store-footer {
-  background: #1c1917;
-  color: #e7e5e4;
+  background: #0f172a !important;
+  color: #f8fafc !important;
   margin-top: auto;
 }
 
 /* Animated Road */
 .trinetr-delivery-road-strip {
-  background: #292524;
+  background: #1e293b !important;
   padding: 16px 0;
   overflow: hidden;
-  border-bottom: 2px dashed #78716c;
+  border-bottom: 1px solid #334155 !important;
 }
 
 .trinetr-road-line {
@@ -2776,20 +2776,20 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%) !important;
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
   color: #ffffff !important;
   padding: 5px 14px;
   border-radius: 20px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-  border: 1.5px solid #f59e0b !important;
+  border: 1.5px solid #38bdf8 !important;
 }
 
 .trinetr-truck-icon svg {
-  color: #fde68a !important;
+  color: #ffffff !important;
 }
 
 .truck-tag {
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 800 !important;
   letter-spacing: 0.5px;
   color: #ffffff !important;
@@ -2797,9 +2797,9 @@
 
 /* Trust Section */
 .trinetr-trust-section {
-  background: #292524;
+  background: #1e293b !important;
   padding: 28px 16px;
-  border-bottom: 1px solid #44403c;
+  border-bottom: 1px solid #334155 !important;
 }
 
 .trinetr-trust-container {
@@ -2811,56 +2811,62 @@
 }
 
 .trinetr-trust-card {
-  background: #1c1917;
-  border: 1px solid #44403c;
+  background: #0f172a !important;
+  border: 1px solid #334155 !important;
   border-radius: 14px;
   padding: 18px 20px;
   display: flex;
   gap: 16px;
   align-items: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
 }
 
 .trust-icon-box {
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  background: #292524;
+  background: rgba(255, 255, 255, 0.08) !important;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
+.trinetr-store-footer .trust-text h4,
 .trust-text h4 {
-  margin: 0 0 4px 0;
-  font-size: 15px;
-  font-weight: 800;
-  color: #fff;
+  margin: 0 0 4px 0 !important;
+  font-size: 15.5px !important;
+  font-weight: 800 !important;
+  color: #ffffff !important;
 }
 
+.trinetr-store-footer .trust-text p,
 .trust-text p {
-  margin: 0 0 6px 0;
-  font-size: 12px;
-  color: #a8a29e;
+  margin: 0 0 6px 0 !important;
+  font-size: 12.5px !important;
+  line-height: 1.5 !important;
+  color: #cbd5e1 !important;
 }
 
 .fssai-license {
-  font-size: 11px;
-  font-weight: 800;
-  color: #34d399;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  color: #34d399 !important;
 }
 
+.trinetr-store-footer .google-review-link,
 .google-review-link {
-  font-size: 12px;
-  font-weight: 800;
-  color: #f59e0b;
-  text-decoration: none;
+  font-size: 12.5px !important;
+  font-weight: 750 !important;
+  color: #fbbf24 !important;
+  text-decoration: underline !important;
 }
 
 .trinetr-footer-main {
   max-width: 1280px;
   margin: 0 auto;
   padding: 48px 16px 36px 16px;
+  background: #0f172a !important;
 }
 
 .trinetr-footer-container {
@@ -2869,26 +2875,29 @@
   gap: 32px;
 }
 
+.trinetr-store-footer .trinetr-footer-logo .logo-text,
 .trinetr-footer-logo .logo-text {
   display: block;
-  font-size: 22px;
-  font-weight: 900;
-  color: #fde68a;
+  font-size: 22px !important;
+  font-weight: 900 !important;
+  color: #ffffff !important;
 }
 
+.trinetr-store-footer .trinetr-footer-logo .tagline,
 .trinetr-footer-logo .tagline {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  color: #a8a29e;
-  text-transform: uppercase;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 1.5px !important;
+  color: #94a3b8 !important;
+  text-transform: uppercase !important;
 }
 
+.trinetr-store-footer .brand-description,
 .brand-description {
-  font-size: 13px;
-  line-height: 1.6;
-  color: #a8a29e;
-  margin: 12px 0 16px 0;
+  font-size: 13px !important;
+  line-height: 1.6 !important;
+  color: #cbd5e1 !important;
+  margin: 12px 0 16px 0 !important;
 }
 
 .trinetr-social-links {
@@ -2896,20 +2905,23 @@
   gap: 8px;
 }
 
+.trinetr-store-footer .social-pill,
 .social-pill {
-  background: #292524;
-  color: #fde68a;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 4px 10px;
-  border-radius: 12px;
+  background: #1e293b !important;
+  color: #38bdf8 !important;
+  border: 1px solid #334155 !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  padding: 5px 12px !important;
+  border-radius: 12px !important;
 }
 
+.trinetr-store-footer .footer-col-title,
 .footer-col-title {
-  font-size: 15px;
-  font-weight: 800;
-  color: #fff;
-  margin: 0 0 16px 0;
+  font-size: 15.5px !important;
+  font-weight: 800 !important;
+  color: #ffffff !important;
+  margin: 0 0 16px 0 !important;
 }
 
 .footer-links-list {
@@ -2921,24 +2933,27 @@
   gap: 10px;
 }
 
+.trinetr-store-footer .footer-links-list button,
 .footer-links-list button {
-  background: none;
-  border: none;
-  padding: 0;
-  color: #a8a29e;
-  font-size: 13px;
-  cursor: pointer;
-  text-align: left;
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  color: #cbd5e1 !important;
+  font-size: 13.5px !important;
+  cursor: pointer !important;
+  text-align: left !important;
   transition: color 0.15s;
 }
 
+.trinetr-store-footer .footer-links-list button:hover,
 .footer-links-list button:hover {
-  color: #fde68a;
+  color: #38bdf8 !important;
 }
 
+.trinetr-store-footer .footer-links-list span,
 .footer-links-list span {
-  font-size: 13px;
-  color: #a8a29e;
+  font-size: 13.5px !important;
+  color: #cbd5e1 !important;
 }
 
 .footer-contact-info {
@@ -2947,23 +2962,42 @@
   gap: 12px;
 }
 
+.trinetr-store-footer .contact-item,
 .contact-item {
   display: flex;
   gap: 10px;
-  font-size: 13px;
-  color: #a8a29e;
+  font-size: 13.5px !important;
+  color: #cbd5e1 !important;
 }
 
+.trinetr-store-footer .contact-item svg,
+.contact-item svg {
+  color: #38bdf8 !important;
+}
+
+.trinetr-store-footer .contact-item a,
 .contact-item a {
-  color: #fde68a;
-  text-decoration: none;
+  color: #38bdf8 !important;
+  font-weight: 700 !important;
+  text-decoration: none !important;
 }
 
+.trinetr-store-footer .contact-item a:hover,
+.contact-item a:hover {
+  color: #7dd3fc !important;
+}
+
+.trinetr-store-footer .contact-item span,
+.contact-item span {
+  color: #cbd5e1 !important;
+}
+
+.trinetr-store-footer .trinetr-footer-bottom,
 .trinetr-footer-bottom {
-  border-top: 1px solid #292524;
-  padding: 20px 16px;
-  font-size: 12px;
-  color: #78716c;
+  background: #090d16 !important;
+  border-top: 1px solid #1e293b !important;
+  padding: 20px 16px !important;
+  font-size: 12px !important;
 }
 
 .trinetr-footer-bottom-inner {

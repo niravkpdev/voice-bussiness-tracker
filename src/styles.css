@@ -5440,6 +5440,15 @@ th,
   color: var(--app-text) !important;
 }
 
+/* Exempt Storefront dark footer and elements from being forced to dark app-text */
+.trinetr-storefront-root .trinetr-store-footer,
+.trinetr-storefront-root .trinetr-store-footer *,
+.trinetr-store-footer,
+.trinetr-store-footer * {
+  color: inherit;
+}
+
+
 .eyebrow,
 .sidebar-status-kicker,
 .panel-hint,
