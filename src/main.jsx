@@ -31,7 +31,20 @@ class ErrorBoundary extends React.Component {
             <br />
             {this.state.errorInfo && this.state.errorInfo.componentStack}
           </pre>
-          <button onClick={() => window.location.reload()} style={{ padding: '10px 20px', marginTop: '20px', cursor: 'pointer' }}>Refresh</button>
+          <button 
+            onClick={() => {
+              if ('caches' in window) {
+                caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).finally(() => {
+                  window.location.reload();
+                });
+              } else {
+                window.location.reload();
+              }
+            }} 
+            style={{ padding: '10px 20px', marginTop: '20px', cursor: 'pointer', borderRadius: '8px', background: '#0284c7', color: '#ffffff', border: 'none', fontWeight: 'bold' }}
+          >
+            Clear Cache &amp; Refresh
+          </button>
         </div>
       );
     }
