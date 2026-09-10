@@ -1207,9 +1207,9 @@ export default function VoiceExpenseTrackerPreview() {
   const [cloudCustomers, setCloudCustomers] = useState(() => {
     try {
       const raw = readScopedString('erpCustomers');
-      if (raw) {
+      if (raw !== null && raw !== undefined) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch {}
     const local = readSavedArray('erpCustomers');
@@ -1219,9 +1219,9 @@ export default function VoiceExpenseTrackerPreview() {
   const [cloudSuppliers, setCloudSuppliers] = useState(() => {
     try {
       const raw = readScopedString('erpSuppliers');
-      if (raw) {
+      if (raw !== null && raw !== undefined) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch {}
     const local = readSavedArray('erpSuppliers');
@@ -1231,19 +1231,13 @@ export default function VoiceExpenseTrackerPreview() {
   const [cloudInventory, setCloudInventory] = useState(() => {
     try {
       const raw = readScopedString('erpProducts');
-      if (raw) {
+      if (raw !== null && raw !== undefined) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch {}
     const local = readSavedArray('erpProducts');
-    return Array.isArray(local) && local.length > 0 ? local : [
-      { id: 'prod-ratlami-500', name: 'Ratlami Sev (500g)', sku: 'RAT-500', category: 'Namkeen', sellingPrice: 250, purchasePrice: 180, currentStock: 100, minStock: 20, unit: 'pkts', businessId: 'default' },
-      { id: 'prod-bhavnagri-500', name: 'Bhavnagri Gathiya (500g)', sku: 'BHV-500', category: 'Namkeen', sellingPrice: 240, purchasePrice: 170, currentStock: 80, minStock: 15, unit: 'pkts', businessId: 'default' },
-      { id: 'prod-sing-200', name: 'Sing Bhujia (200g)', sku: 'SNG-200', category: 'Namkeen', sellingPrice: 110, purchasePrice: 75, currentStock: 150, minStock: 25, unit: 'pkts', businessId: 'default' },
-      { id: 'prod-sev-mamra-250', name: 'Sev Mamra (250g)', sku: 'SVM-250', category: 'Namkeen', sellingPrice: 90, purchasePrice: 60, currentStock: 120, minStock: 20, unit: 'pkts', businessId: 'default' },
-      { id: 'prod-chana-dal-250', name: 'Chana Dal Masala (250g)', sku: 'CHN-250', category: 'Namkeen', sellingPrice: 130, purchasePrice: 90, currentStock: 90, minStock: 15, unit: 'pkts', businessId: 'default' },
-    ];
+    return Array.isArray(local) ? local : [];
   });
 
   const [cloudInvoices, setCloudInvoices] = useState(() => {
@@ -1277,6 +1271,12 @@ export default function VoiceExpenseTrackerPreview() {
   }, [cloudInvoices]);
 
   useEffect(() => {
+    if (Array.isArray(cloudInventory)) {
+      writeScopedString('erpProducts', JSON.stringify(cloudInventory));
+    }
+  }, [cloudInventory]);
+
+  useEffect(() => {
     const handlePartyUpdate = (event) => {
       const { person, kind } = event.detail || {};
       if (person?.name) {
@@ -1291,8 +1291,31 @@ export default function VoiceExpenseTrackerPreview() {
         } catch (e) {}
       }
     };
+    const handlePartyDeleted = (event) => {
+      const { id, kind } = event.detail || {};
+      if (!id) return;
+      if (kind === 'supplier') {
+        setCloudSuppliers((prev) => (Array.isArray(prev) ? prev.filter((s) => s.id !== id) : []));
+      } else {
+        setCloudCustomers((prev) => (Array.isArray(prev) ? prev.filter((c) => c.id !== id) : []));
+      }
+    };
+    const handleInventoryChange = (event) => {
+      const { id, product } = event.detail || {};
+      if (product) {
+        setCloudInventory((prev) => [product, ...(Array.isArray(prev) ? prev.filter((p) => p.id !== product.id) : [])]);
+      } else if (id) {
+        setCloudInventory((prev) => (Array.isArray(prev) ? prev.filter((p) => p.id !== id) : []));
+      }
+    };
     window.addEventListener('trinetr-party-updated', handlePartyUpdate);
-    return () => window.removeEventListener('trinetr-party-updated', handlePartyUpdate);
+    window.addEventListener('trinetr-party-deleted', handlePartyDeleted);
+    window.addEventListener('trinetr-inventory-updated', handleInventoryChange);
+    return () => {
+      window.removeEventListener('trinetr-party-updated', handlePartyUpdate);
+      window.removeEventListener('trinetr-party-deleted', handlePartyDeleted);
+      window.removeEventListener('trinetr-inventory-updated', handleInventoryChange);
+    };
   }, []);
   const [cloudStockTransactions, setCloudStockTransactions] = useState([]);
   const [cloudOrders, setCloudOrders] = useState(() => {
@@ -1346,7 +1369,7 @@ export default function VoiceExpenseTrackerPreview() {
       setCloudOrders((prev) => [newOrder, ...(Array.isArray(prev) ? prev.filter(o => o.id !== newOrder.id) : [])]);
       setStatus(`New Online Store Order: ${newOrder.orderNo} from ${newOrder.customer} (₹${newOrder.amount})`);
       if (supabaseEnabled && saveAuthenticatedCloudRecord) {
-        saveAuthenticatedCloudRecord('orders', newOrder.id, newOrder).catch(console.error);
+        saveAuthenticatedCloudRecord('orders', newOrder.id, newOrder);
       }
     };
     window.addEventListener('trinetr-new-order', handleNewStoreOrder);
@@ -2363,22 +2386,23 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const saveAuthenticatedCloudRecord = async (collectionName, id, data) => {
+    const activeUid = authUser?.ownerUid || authUser?.uid;
     const payload = {
       ...data,
-      userId: authUser?.uid || 'local-user',
+      userId: activeUid || 'local-user',
     };
     updateCloudRecordCache(collectionName, id, payload);
 
-    if (!supabaseEnabled || !authUser?.uid) {
+    if (!supabaseEnabled || !activeUid) {
       return true;
     }
 
     try {
-      const saved = await saveCloudRecord(authUser.uid, collectionName, id, payload);
+      const saved = await saveCloudRecord(activeUid, collectionName, id, payload);
       return saved;
     } catch (error) {
       console.warn('Cloud data save failed, kept in local cache:', error);
-      return true;
+      throw error;
     }
   };
 
@@ -2537,18 +2561,19 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const deleteAuthenticatedCloudRecord = async (collectionName, id) => {
+    const activeUid = authUser?.ownerUid || authUser?.uid;
     removeCloudRecordCache(collectionName, id);
 
-    if (!supabaseEnabled || !authUser?.uid) {
+    if (!supabaseEnabled || !activeUid) {
       return true;
     }
 
     try {
-      const deleted = await deleteCloudRecord(authUser.uid, collectionName, id);
+      const deleted = await deleteCloudRecord(activeUid, collectionName, id);
       return deleted;
     } catch (error) {
       console.warn('Cloud data delete failed, removed from local cache:', error);
-      return true;
+      throw error;
     }
   };
 
@@ -3889,9 +3914,7 @@ export default function VoiceExpenseTrackerPreview() {
 
       try {
         if (saveAuthenticatedCloudRecord) {
-          await saveAuthenticatedCloudRecord('transactions', voucher.id, transactionPayload).catch((err) => {
-            console.warn('Cloud save error in persistVoucher:', err);
-          });
+          await saveAuthenticatedCloudRecord('transactions', voucher.id, transactionPayload);
         }
       } catch (error) {
         console.warn('Supabase cloud transaction save failed; continuing with local storage:', error);
@@ -4105,9 +4128,7 @@ export default function VoiceExpenseTrackerPreview() {
     // Resilient cloud sync (never crashes local state)
     try {
       if (authUser?.uid && saveAuthenticatedCloudRecord) {
-        await saveAuthenticatedCloudRecord('transactions', voucherId, newVoucherData).catch((err) => {
-          console.warn('Cloud sync error for voucher:', err);
-        });
+        await saveAuthenticatedCloudRecord('transactions', voucherId, newVoucherData);
       }
     } catch (cloudErr) {
       console.warn('Supabase cloud transaction save caught error; proceeding locally:', cloudErr);
@@ -4402,9 +4423,7 @@ export default function VoiceExpenseTrackerPreview() {
 
     try {
       if (authUser?.uid && deleteAuthenticatedCloudRecord) {
-        await deleteAuthenticatedCloudRecord('transactions', voucherId).catch((err) => {
-          console.warn('Cloud delete error for voucher:', err);
-        });
+        await deleteAuthenticatedCloudRecord('transactions', voucherId);
       }
     } catch (error) {
       console.warn('Cloud delete error:', error);
@@ -4532,9 +4551,7 @@ export default function VoiceExpenseTrackerPreview() {
       let savedToCloud = false;
       try {
         if (authUser?.uid) {
-          savedToCloud = await saveAuthenticatedCloudRecord(collectionName, ledger.id, payload).catch((err) => {
-            console.warn(`Party cloud save warning for ${collectionName}:`, err);
-          });
+          savedToCloud = await saveAuthenticatedCloudRecord(collectionName, ledger.id, payload);
         }
       } catch (cloudErr) {
         console.warn(`Party Supabase error [${collectionName}]:`, cloudErr);
@@ -7218,8 +7235,11 @@ export default function VoiceExpenseTrackerPreview() {
                 cashBalance={cashInHand}
                 netProfit={monthlyNetProfit}
                 cloudCustomers={cloudCustomers}
+                onCustomersChange={(nextCustomers) => setCloudCustomers(nextCustomers)}
                 cloudSuppliers={cloudSuppliers}
+                onSuppliersChange={(nextSuppliers) => setCloudSuppliers(nextSuppliers)}
                 cloudInventory={cloudInventory}
+                onProductsChange={(nextInventory) => setCloudInventory(nextInventory)}
                 cloudStockTransactions={cloudStockTransactions}
                 cloudInvoices={cloudInvoices}
                 onInvoicesChange={(nextInvoices) => setCloudInvoices(nextInvoices)}
@@ -9533,7 +9553,7 @@ export default function VoiceExpenseTrackerPreview() {
       </div>
       
       {/* Unified Professional Floating Voice Assistant (Pinned to corner across all pages) */}
-      {userPreferences.enableVoiceShortcut && (
+      {import.meta.env.VITE_ENABLE_VOICE_ASSISTANT === 'true' && userPreferences.enableVoiceShortcut && (
         <VoiceCommandButton 
           onCommandRecognized={(data) => {
             handleVoiceCommandRecognized(data);

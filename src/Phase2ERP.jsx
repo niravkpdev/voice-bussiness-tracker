@@ -145,8 +145,11 @@ export default function Phase2ERP({
   cashBalance,
   netProfit,
   cloudCustomers,
+  onCustomersChange,
   cloudSuppliers,
+  onSuppliersChange,
   cloudInventory,
+  onProductsChange,
   cloudStockTransactions,
   cloudInvoices,
   cloudBusinesses,
@@ -161,16 +164,40 @@ export default function Phase2ERP({
   onInvoicesChange,
 }) {
   const [products, setProducts] = useState(() => {
-    const saved = readArray(PRODUCT_KEY);
-    return Array.isArray(saved) && saved.length > 0 ? saved : DEFAULT_ERP_PRODUCTS;
+    if (Array.isArray(cloudInventory)) return cloudInventory;
+    const raw = readScopedString(PRODUCT_KEY);
+    if (raw !== null && raw !== undefined) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {}
+    }
+    return [];
   });
   const [stockTxns, setStockTxns] = useState(() => readArray(STOCK_TXN_KEY));
   const [invoices, setInvoices] = useState(() => readArray(INVOICE_KEY));
   const [customers, setCustomers] = useState(() => {
-    const saved = readArray(CUSTOMER_KEY);
-    return Array.isArray(saved) && saved.length > 0 ? saved : DEFAULT_CUSTOMERS;
+    if (Array.isArray(cloudCustomers)) return cloudCustomers;
+    const raw = readScopedString(CUSTOMER_KEY);
+    if (raw !== null && raw !== undefined) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {}
+    }
+    return [];
   });
-  const [suppliers, setSuppliers] = useState(() => readArray(SUPPLIER_KEY));
+  const [suppliers, setSuppliers] = useState(() => {
+    if (Array.isArray(cloudSuppliers)) return cloudSuppliers;
+    const raw = readScopedString(SUPPLIER_KEY);
+    if (raw !== null && raw !== undefined) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {}
+    }
+    return [];
+  });
   const [businesses, setBusinesses] = useState(() => readArray(BUSINESS_KEY));
   const [editingBusiness, setEditingBusiness] = useState(null);
   const [notifications, setNotifications] = useState(() => readArray(NOTIFICATION_KEY));
@@ -247,33 +274,18 @@ export default function Phase2ERP({
     }
   }, [cloudStockTransactions]);
   useEffect(() => {
-    if (Array.isArray(cloudInvoices) && cloudInvoices.length > 0) {
-      setInvoices((prev) => {
-        const map = new Map();
-        (prev || []).forEach((i) => map.set(i.id, i));
-        cloudInvoices.forEach((i) => map.set(i.id, i));
-        return Array.from(map.values());
-      });
+    if (Array.isArray(cloudInvoices)) {
+      setInvoices(cloudInvoices);
     }
   }, [cloudInvoices]);
   useEffect(() => {
-    if (Array.isArray(cloudCustomers) && cloudCustomers.length > 0) {
-      setCustomers((prev) => {
-        const map = new Map();
-        (prev || []).forEach((c) => map.set(c.id, c));
-        cloudCustomers.forEach((c) => map.set(c.id, c));
-        return Array.from(map.values());
-      });
+    if (Array.isArray(cloudCustomers)) {
+      setCustomers(cloudCustomers);
     }
   }, [cloudCustomers]);
   useEffect(() => {
-    if (Array.isArray(cloudSuppliers) && cloudSuppliers.length > 0) {
-      setSuppliers((prev) => {
-        const map = new Map();
-        (prev || []).forEach((s) => map.set(s.id, s));
-        cloudSuppliers.forEach((s) => map.set(s.id, s));
-        return Array.from(map.values());
-      });
+    if (Array.isArray(cloudSuppliers)) {
+      setSuppliers(cloudSuppliers);
     }
   }, [cloudSuppliers]);
   useEffect(() => {
@@ -321,7 +333,7 @@ export default function Phase2ERP({
   }, [products, stockTxns, invoices, customers, suppliers, businesses, notifications, cloudSettings]);
 
   const scopedProducts = useMemo(() => {
-    const list = products && products.length > 0 ? products : DEFAULT_ERP_PRODUCTS;
+    const list = products || [];
     return list.filter((product) => {
       const prodBiz = product.businessId || product.business_id || 'default';
       const activeBiz = activeBusinessId || 'default';
@@ -338,7 +350,7 @@ export default function Phase2ERP({
   }, [activeBusinessId, invoices]);
   const scopedCustomers = useMemo(() => {
     const activeScope = activeBusinessId || 'default';
-    const list = customers && customers.length > 0 ? customers : DEFAULT_CUSTOMERS;
+    const list = customers || [];
     return list.filter((customer) => {
       const isOwner =
         !cloudUserId ||
@@ -691,7 +703,7 @@ export default function Phase2ERP({
         }
 
         for (let prod of newProducts) {
-          if (onCloudRecord) await onCloudRecord('inventory', prod.id, { ...prod, itemId: prod.id }).catch(console.error);
+          if (onCloudRecord) await onCloudRecord('inventory', prod.id, { ...prod, itemId: prod.id });
         }
 
         setProducts(items => [...newProducts, ...items]);
@@ -708,7 +720,7 @@ export default function Phase2ERP({
   const addNotification = async (title, body, type = 'System') => {
     const notification = { id: createId('ntf'), title, body, type, date: new Date().toISOString(), read: false };
     try {
-      if (onCloudRecord) await onCloudRecord('notifications', notification.id, notification).catch(console.error);
+      if (onCloudRecord) await onCloudRecord('notifications', notification.id, notification);
       setNotifications((items) => [notification, ...items.filter((item) => item.id !== notification.id)].slice(0, 50));
     } catch (error) {
       onStatus(error?.message || 'Notification save failed');
@@ -751,10 +763,13 @@ export default function Phase2ERP({
       if (onCloudRecord) await onCloudRecord('inventory', product.id, {
         ...product,
         itemId: product.id,
-      }).catch(console.error);
-      setProducts((items) => [product, ...items.filter((item) => item.id !== product.id)]);
+      });
+      const nextProducts = [product, ...products.filter((item) => item.id !== product.id)];
+      setProducts(nextProducts);
+      writeArray(PRODUCT_KEY, nextProducts);
+      onProductsChange?.(nextProducts);
       try {
-        window.dispatchEvent(new CustomEvent('trinetr-inventory-updated', { detail: product }));
+        window.dispatchEvent(new CustomEvent('trinetr-inventory-updated', { detail: { product } }));
       } catch (e) {}
       await addNotification(current ? 'Product updated' : 'Product added', `${product.name} saved with stock ${product.currentStock}.`, 'Inventory');
       setEditingProduct(null);
@@ -776,10 +791,13 @@ export default function Phase2ERP({
     }
 
     try {
-      if (onCloudDelete) await onCloudDelete('inventory', product.id).catch(console.error);
-      setProducts((items) => items.filter((item) => item.id !== product.id));
+      if (onCloudDelete) await onCloudDelete('inventory', product.id);
+      const nextProducts = products.filter((item) => item.id !== product.id);
+      setProducts(nextProducts);
+      writeArray(PRODUCT_KEY, nextProducts);
+      onProductsChange?.(nextProducts);
       try {
-        window.dispatchEvent(new CustomEvent('trinetr-inventory-updated'));
+        window.dispatchEvent(new CustomEvent('trinetr-inventory-updated', { detail: { id: product.id } }));
       } catch (e) {}
       if (editingProduct?.id === product.id) {
         setEditingProduct(null);
@@ -835,8 +853,8 @@ export default function Phase2ERP({
         if (onCloudRecord) await onCloudRecord('inventory', updatedProduct.id, {
           ...updatedProduct,
           itemId: updatedProduct.id,
-        }).catch(console.error);
-        if (onCloudRecord) await onCloudRecord('stock_transactions', stockEntry.id, stockEntry).catch(console.error);
+        });
+        if (onCloudRecord) await onCloudRecord('stock_transactions', stockEntry.id, stockEntry);
       } catch (error) {
         onStatus(error?.message || 'Stock update failed');
         return;
@@ -916,13 +934,19 @@ export default function Phase2ERP({
     }
 
     try {
-      if (onCloudRecord) await onCloudRecord(collectionName, id, person).catch(console.error);
+      if (onCloudRecord) await onCloudRecord(collectionName, id, person);
 
       if (isCustomer) {
-        setCustomers((items) => [person, ...items.filter((item) => item.id !== id)]);
+        const nextCustomers = [person, ...customers.filter((item) => item.id !== id)];
+        setCustomers(nextCustomers);
+        writeArray(CUSTOMER_KEY, nextCustomers);
+        onCustomersChange?.(nextCustomers);
         debugDatabase(current ? 'CUSTOMER_UPDATE_SUCCESS' : 'CUSTOMER_SAVE_SUCCESS', { path, customerId: id });
       } else {
-        setSuppliers((items) => [person, ...items.filter((item) => item.id !== id)]);
+        const nextSuppliers = [person, ...suppliers.filter((item) => item.id !== id)];
+        setSuppliers(nextSuppliers);
+        writeArray(SUPPLIER_KEY, nextSuppliers);
+        onSuppliersChange?.(nextSuppliers);
         debugDatabase(current ? 'SUPPLIER_UPDATE_SUCCESS' : 'SUPPLIER_SAVE_SUCCESS', { path, supplierId: id });
       }
       setEditingPerson(null);
@@ -949,12 +973,24 @@ export default function Phase2ERP({
     debugDatabase('SUPABASE_PATH_USED', { feature: `${kind}_delete`, path });
 
     try {
-      if (onCloudDelete) await onCloudDelete(collectionName, person.id).catch(console.error);
+      if (onCloudDelete) await onCloudDelete(collectionName, person.id);
       if (isCustomer) {
-        setCustomers((items) => items.filter((item) => item.id !== person.id));
+        const nextCustomers = customers.filter((item) => item.id !== person.id);
+        setCustomers(nextCustomers);
+        writeArray(CUSTOMER_KEY, nextCustomers);
+        onCustomersChange?.(nextCustomers);
+        try {
+          window.dispatchEvent(new CustomEvent('trinetr-party-deleted', { detail: { id: person.id, kind: 'customer' } }));
+        } catch (e) {}
         debugDatabase('CUSTOMER_DELETE_SUCCESS', { path, customerId: person.id });
       } else {
-        setSuppliers((items) => items.filter((item) => item.id !== person.id));
+        const nextSuppliers = suppliers.filter((item) => item.id !== person.id);
+        setSuppliers(nextSuppliers);
+        writeArray(SUPPLIER_KEY, nextSuppliers);
+        onSuppliersChange?.(nextSuppliers);
+        try {
+          window.dispatchEvent(new CustomEvent('trinetr-party-deleted', { detail: { id: person.id, kind: 'supplier' } }));
+        } catch (e) {}
         debugDatabase('SUPPLIER_DELETE_SUCCESS', { path, supplierId: person.id });
       }
       if (editingPerson?.id === person.id) {
@@ -1191,14 +1227,12 @@ export default function Phase2ERP({
       }
 
       if (!rpcSuccess && onCloudRecord) {
-        await onCloudRecord('invoices', invoice.id, invoice).catch((err) => {
-          console.warn('Cloud record save failed for invoice:', err);
-        });
+        await onCloudRecord('invoices', invoice.id, invoice);
         await Promise.all(affectedProducts.map(async (product) => {
           await onCloudRecord('inventory', product.id, {
             ...product,
             itemId: product.id,
-          }).catch(console.error);
+          });
         }));
       }
     } catch (error) {
@@ -1240,7 +1274,7 @@ export default function Phase2ERP({
 
   const deleteInvoice = async (invoiceId) => {
     try {
-      if (onCloudDelete) await onCloudDelete('invoices', invoiceId).catch(console.error);
+      if (onCloudDelete) await onCloudDelete('invoices', invoiceId);
       const nextInvoices = invoices.filter((invoice) => invoice.id !== invoiceId);
       setInvoices(nextInvoices);
       writeArray(INVOICE_KEY, nextInvoices);
@@ -1383,7 +1417,7 @@ export default function Phase2ERP({
     if (!business.name) return;
     try {
       if (onCloudRecord) {
-        await onCloudRecord('businesses', business.id, business).catch(console.error);
+        await onCloudRecord('businesses', business.id, business);
       }
       setBusinesses([business, ...businesses.filter((item) => item.id !== business.id)]);
       
@@ -1405,7 +1439,7 @@ export default function Phase2ERP({
   const deleteBusiness = async (businessId) => {
     try {
       if (onCloudDelete) {
-        await onCloudDelete('businesses', businessId).catch(console.error);
+        await onCloudDelete('businesses', businessId);
       }
       setBusinesses((items) => items.filter((item) => item.id !== businessId));
       if (editingBusiness?.id === businessId) {
@@ -2329,10 +2363,10 @@ export default function Phase2ERP({
       setSelectedCrmPerson(updated);
       if (isCustomer) {
         setCustomers(prev => prev.map(c => c.id === person.id ? updated : c));
-        if (onCloudRecord) onCloudRecord('customers', person.id, updated).catch(console.error);
+        if (onCloudRecord) onCloudRecord('customers', person.id, updated);
       } else {
         setSuppliers(prev => prev.map(s => s.id === person.id ? updated : s));
-        if (onCloudRecord) onCloudRecord('suppliers', person.id, updated).catch(console.error);
+        if (onCloudRecord) onCloudRecord('suppliers', person.id, updated);
       }
       onStatus(isFav ? `Marked ${person.name} as Favorite` : `Unmarked ${person.name}`);
     };

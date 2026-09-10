@@ -9,6 +9,9 @@ export default function VoiceCommandButton({
   className = '',
   containerClassName = ''
 }) {
+  if (import.meta.env.VITE_ENABLE_VOICE_ASSISTANT !== 'true') {
+    return null;
+  }
   const [isListening, setIsListening] = useState(false);
   const [liveText, setLiveText] = useState('');
   const [error, setError] = useState('');

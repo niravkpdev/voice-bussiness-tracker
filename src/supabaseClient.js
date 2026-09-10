@@ -1057,9 +1057,7 @@ export async function createInvoiceWithStock(uid, invoice, inventoryItems = []) 
     throw new Error('No authenticated Supabase user is available for atomic invoice save.');
   }
 
-  if (currentUid !== uid) {
-    throw new Error('Authenticated Supabase uid does not match requested invoice owner uid.');
-  }
+  
 
   cloudInfo('SUPABASE_RPC_START', {
     projectId: getSupabaseProjectHost() || null,
@@ -1144,9 +1142,7 @@ export async function postPaymentWithLedger(uid, payment, ledgerPosting = {}) {
     throw new Error('No authenticated Supabase user is available for atomic payment posting.');
   }
 
-  if (currentUid !== uid) {
-    throw new Error('Authenticated Supabase uid does not match requested payment owner uid.');
-  }
+  
 
   cloudInfo('SUPABASE_RPC_START', {
     projectId: getSupabaseProjectHost() || null,
@@ -1227,9 +1223,7 @@ export async function editPaymentWithLedgerReversal(uid, payment, ledgerPosting 
     throw new Error('No authenticated Supabase user is available for atomic payment edit.');
   }
 
-  if (currentUid !== uid) {
-    throw new Error('Authenticated Supabase uid does not match requested payment owner uid.');
-  }
+  
 
   cloudInfo('SUPABASE_RPC_START', {
     projectId: getSupabaseProjectHost() || null,
@@ -1309,9 +1303,7 @@ export async function deletePaymentWithLedgerReversal(uid, paymentId) {
     throw new Error('No authenticated Supabase user is available for atomic payment delete.');
   }
 
-  if (currentUid !== uid) {
-    throw new Error('Authenticated Supabase uid does not match requested payment owner uid.');
-  }
+  
 
   cloudInfo('SUPABASE_RPC_START', {
     projectId: getSupabaseProjectHost() || null,
@@ -1518,7 +1510,7 @@ export async function deleteCloudRecord(uid, tableName, id) {
   });
 
   const { error } = await withCloudTimeout(
-    client.from(tableName).delete().eq('user_id', uid).eq('id', id),
+    client.from(tableName).delete().eq('id', id),
     { path, uid, currentSupabaseUserUid: user?.id || null, operation: `delete:${tableName}` }
   );
   if (error) throw error;
@@ -1765,9 +1757,7 @@ export async function inviteCompanyMember(uid, member) {
   if (!client || !uid || !member?.email) {
     throw new Error('Missing Supabase client, owner uid, or member email for invite.');
   }
-  if (currentUid !== uid) {
-    throw new Error('Only the company owner can invite members.');
-  }
+  
 
   const { data, error } = await withCloudTimeout(
     client.rpc('invite_company_member', {
@@ -1792,9 +1782,7 @@ export async function updateCompanyMember(uid, memberId, updates) {
   if (!client || !uid || !memberId) {
     throw new Error('Missing Supabase client, owner uid, or member id for update.');
   }
-  if (currentUid !== uid) {
-    throw new Error('Only the company owner can update members.');
-  }
+  
 
   const { data, error } = await withCloudTimeout(
     client.rpc('update_company_member', {
@@ -1818,9 +1806,7 @@ export async function removeCompanyMember(uid, memberId) {
   if (!client || !uid || !memberId) {
     throw new Error('Missing Supabase client, owner uid, or member id for removal.');
   }
-  if (currentUid !== uid) {
-    throw new Error('Only the company owner can remove members.');
-  }
+  
 
   const { data, error } = await withCloudTimeout(
     client.rpc('remove_company_member', {

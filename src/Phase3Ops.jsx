@@ -743,7 +743,7 @@ export default function Phase3Ops({
     if (!window.confirm(`Delete order ${order.orderNo}?`)) return;
     try {
       if (onCloudDelete) {
-        await onCloudDelete('orders', order.id).catch(console.error);
+        await onCloudDelete('orders', order.id);
       }
       const nextOrders = orders.filter((item) => item.id !== order.id);
       setOrders(nextOrders);
@@ -763,7 +763,7 @@ export default function Phase3Ops({
     if (!window.confirm(`Delete ${recordName}?`)) return false;
     try {
       if (onCloudDelete) {
-        await onCloudDelete(tableName, recordId).catch(console.error);
+        await onCloudDelete(tableName, recordId);
       }
       setStateFn((items) => items.filter((item) => item.id !== recordId));
       if (cleanupCallback) await cleanupCallback();
