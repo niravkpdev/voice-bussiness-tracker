@@ -8,9 +8,9 @@ import React from 'react';
  * - Sweeping energy wings from the official Trinetr emblem
  * - Concentric cosmic awakening rings with subtle breathing glow
  */
-export default function ThirdEyeBackground() {
+export default function ThirdEyeBackground({ isFeatured = false }) {
   return (
-    <div className="neon-third-eye-container" aria-hidden="true">
+    <div className={`neon-third-eye-container ${isFeatured ? 'featured-pulse' : ''}`} aria-hidden="true">
       {/* Ambient Radial Nebula Glows */}
       <div className="third-eye-nebula nebula-core" />
       <div className="third-eye-nebula nebula-cyan" />

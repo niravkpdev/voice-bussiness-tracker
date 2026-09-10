@@ -1186,6 +1186,50 @@ export default function VoiceExpenseTrackerPreview() {
       setIsRegisterMode(false);
     }
   }, [authView]);
+
+  // 3D Monkey dragging entrance animation states for login page
+  const [isLoginCardVisible, setIsLoginCardVisible] = useState(false);
+  const [isDraggingInProgress, setIsDraggingInProgress] = useState(false);
+  const [monkeyState, setMonkeyState] = useState('idle'); // 'idle' | 'dragging' | 'celebrating' | 'done'
+
+  const handleTriggerLogin = (targetMode = 'login') => {
+    if (targetMode === 'register') {
+      setIsRegisterMode(true);
+      setAuthView('register');
+    } else {
+      setIsRegisterMode(false);
+      setAuthView('login');
+    }
+
+    if (isLoginCardVisible && !isDraggingInProgress) {
+      return;
+    }
+
+    setIsLoginCardVisible(true);
+    setIsDraggingInProgress(true);
+    setMonkeyState('dragging');
+
+    // Drag reaches center at ~1.8s
+    setTimeout(() => {
+      setMonkeyState('celebrating');
+    }, 1800);
+
+    // Celebration ends, monkey scampers off at ~2.9s
+    setTimeout(() => {
+      setMonkeyState('done');
+      setIsDraggingInProgress(false);
+    }, 2900);
+  };
+
+  const handleReplayMonkeyDrag = () => {
+    setIsLoginCardVisible(false);
+    setIsDraggingInProgress(false);
+    setMonkeyState('idle');
+    setTimeout(() => {
+      handleTriggerLogin(isRegisterMode ? 'register' : 'login');
+    }, 120);
+  };
+
   const [appLoading, setAppLoading] = useState(true);
   const [transactionsLoading, setTransactionsLoading] = useState(false);
   const [quickNote, setQuickNote] = useState(() => {
@@ -5667,8 +5711,8 @@ export default function VoiceExpenseTrackerPreview() {
             <button type="button" onClick={() => { trackPageView('pricing-modal'); setShowPricing(true); }}>Pricing</button>
             <button type="button" onClick={() => setAuthView('about-app')}>About</button>
             <button type="button" onClick={() => setShowContactModal(true)}>Contact</button>
-            <button type="button" onClick={() => setAuthView('login')}>Login</button>
-            <button className="saas-primary-button" type="button" onClick={() => { trackEvent('Signup started'); setAuthView('register'); }}>
+            <button type="button" onClick={() => handleTriggerLogin('login')}>Login</button>
+            <button className="saas-primary-button" type="button" onClick={() => { trackEvent('Signup started'); handleTriggerLogin('register'); }}>
               Start Free
             </button>
           </nav>
@@ -5947,13 +5991,69 @@ export default function VoiceExpenseTrackerPreview() {
             </div>
           </section>
         ) : (
-          <section className="neon-auth-page">
-            <ThirdEyeBackground />
+          <section className={`neon-auth-page ${!isLoginCardVisible ? 'hero-eye-view' : ''}`}>
+            <ThirdEyeBackground isFeatured={!isLoginCardVisible} />
             <div className="neon-auth-backdrop" />
 
-            <div className="neon-auth-shell">
-              <div className="neon-card-spring-wrapper">
-                <div className={`neon-auth-card ${isRegisterMode ? 'active' : ''}`}>
+            {/* Prominent Third Eye Portal Callout when login card is hidden off-screen */}
+            {!isLoginCardVisible && !isDraggingInProgress && (
+              <div className="third-eye-portal-callout" onClick={() => handleTriggerLogin('login')}>
+                <div className="portal-callout-glow-pill">
+                  <span className="pulse-dot" /> TRINETR CONSCIOUSNESS PORTAL
+                </div>
+                <h1 className="portal-callout-title">The All-Seeing Business Suite</h1>
+                <p className="portal-callout-desc">
+                  Voice ERP &bull; Intelligent Ledgers &bull; Storefront &bull; Cloud Sync
+                </p>
+                <div className="portal-callout-actions">
+                  <button
+                    type="button"
+                    className="portal-callout-btn"
+                    onClick={(e) => { e.stopPropagation(); handleTriggerLogin('login'); }}
+                  >
+                    <span>🔑 Click to Enter Portal</span>
+                    <span className="btn-arrow">→</span>
+                  </button>
+                </div>
+                <span className="portal-callout-tip">or click "Login" in the top bar</span>
+              </div>
+            )}
+
+            {/* The Monkey Drag Train Rig containing 3D Monkey + Login Card */}
+            <div className={`neon-drag-train ${isDraggingInProgress ? 'is-dragging' : isLoginCardVisible ? 'is-settled' : 'is-offscreen'}`}>
+              <div className="neon-auth-shell">
+                {/* 3D Monkey Character Rig dragging the card */}
+                {(isDraggingInProgress || monkeyState === 'dragging' || monkeyState === 'celebrating') && (
+                  <div className={`monkey-dragger-rig state-${monkeyState}`}>
+                    <div className="monkey-energy-rope" />
+                    <div className="monkey-avatar-container">
+                      <img
+                        src="/assets/monkey-drag.png"
+                        alt="3D Assistant Monkey"
+                        className="monkey-avatar-img"
+                      />
+                      {monkeyState === 'celebrating' && (
+                        <div className="monkey-speech-bubble">
+                          ✨ Welcome to Trinetr! 🎉
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="neon-card-spring-wrapper">
+                  <div className={`neon-auth-card ${isRegisterMode ? 'active' : ''}`}>
+                    {/* Replay Monkey Drag Button */}
+                    {isLoginCardVisible && !isDraggingInProgress && (
+                      <button
+                        type="button"
+                        className="monkey-replay-trigger"
+                        onClick={handleReplayMonkeyDrag}
+                        title="Watch 3D monkey drag login card again!"
+                      >
+                        🐒 Replay
+                      </button>
+                    )}
 
                 {/* ANIMATED SLANTED DIAGONAL TEAL OVERLAY */}
                 <div className="neon-diagonal-panel">
@@ -6122,10 +6222,11 @@ export default function VoiceExpenseTrackerPreview() {
                   </form>
                 </div>
 
-              </div>
+                </div>
               </div>
             </div>
-          </section>
+          </div>
+        </section>
         )}
       </main>
     );
