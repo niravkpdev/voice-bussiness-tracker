@@ -7372,4 +7372,500 @@ input, textarea, [contenteditable="true"] {
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18) !important;
 }
 
+/* ==========================================================================
+   FUTURISTIC NEON LOGIN & REGISTER VIEW (MATCHING LOGIN VIEW.MP4)
+   ========================================================================== */
+
+.neon-auth-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  background: #050811;
+  background: radial-gradient(circle at 50% 35%, #0a192f 0%, #050811 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow-x: hidden;
+  padding: 40px 16px;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.neon-auth-backdrop {
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 760px;
+  height: 480px;
+  background: radial-gradient(circle, rgba(0, 223, 196, 0.18) 0%, rgba(2, 132, 199, 0.08) 50%, transparent 75%);
+  filter: blur(70px);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.neon-auth-topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 16px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  z-index: 20;
+  background: rgba(5, 8, 17, 0.7);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(0, 223, 196, 0.15);
+}
+
+.neon-brand-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.2px;
+}
+
+.neon-brand-logo img {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+}
+
+.neon-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.neon-store-chip {
+  background: rgba(217, 119, 6, 0.16);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+}
+
+.neon-store-chip:hover {
+  background: rgba(217, 119, 6, 0.3);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);
+}
+
+.neon-demo-chip {
+  background: rgba(0, 223, 196, 0.12);
+  border: 1px solid rgba(0, 223, 196, 0.4);
+  color: #00dfc4;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+}
+
+.neon-demo-chip:hover {
+  background: rgba(0, 223, 196, 0.25);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 223, 196, 0.3);
+}
+
+.neon-auth-shell {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 30px;
+}
+
+/* Neon Card Frame */
+.neon-auth-card {
+  position: relative;
+  width: 820px;
+  max-width: 95%;
+  height: 500px;
+  background: #081624;
+  border: 2px solid #00dfc4;
+  box-shadow: 0 0 35px rgba(0, 223, 196, 0.42), inset 0 0 15px rgba(0, 223, 196, 0.15);
+  border-radius: 24px;
+  overflow: hidden;
+  display: flex;
+  transition: box-shadow 0.3s ease;
+}
+
+.neon-auth-card:hover {
+  box-shadow: 0 0 45px rgba(0, 223, 196, 0.55), inset 0 0 20px rgba(0, 223, 196, 0.22);
+}
+
+/* Forms: Each takes 50% width */
+.neon-form-box {
+  position: absolute;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 46px;
+  box-sizing: border-box;
+  z-index: 2;
+  transition: transform 0.65s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.45s ease;
+}
+
+.neon-form-box.login-box {
+  left: 0;
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.neon-auth-card.active .neon-form-box.login-box {
+  transform: translateX(-120%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.neon-form-box.register-box {
+  right: 0;
+  transform: translateX(120%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.neon-auth-card.active .neon-form-box.register-box {
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.neon-form-box h2 {
+  font-size: 32px;
+  color: #ffffff;
+  text-align: center;
+  font-weight: 700;
+  margin: 0 0 22px 0;
+  letter-spacing: 0.5px;
+}
+
+/* Input Fields with glowing underline & right icon */
+.neon-input-box {
+  position: relative;
+  width: 100%;
+  height: 46px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.85);
+  margin: 16px 0;
+  display: flex;
+  align-items: center;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.neon-input-box:focus-within {
+  border-bottom-color: #00dfc4;
+  box-shadow: 0 1px 0 #00dfc4;
+}
+
+.neon-input-box input {
+  width: 100% !important;
+  height: 100% !important;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  font-size: 15px !important;
+  color: #ffffff !important;
+  padding: 0 36px 0 6px !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+.neon-input-box input::placeholder {
+  color: rgba(255, 255, 255, 0.65);
+  font-weight: 400;
+}
+
+.neon-input-icon {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #ffffff;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  opacity: 0.85;
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+.neon-input-box:focus-within .neon-input-icon {
+  color: #00dfc4;
+  opacity: 1;
+}
+
+.neon-eye-icon {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  opacity: 0.85;
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+.neon-eye-icon:hover {
+  color: #00dfc4;
+  opacity: 1;
+}
+
+.neon-options-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.75);
+  margin: 6px 0 14px 0;
+}
+
+.neon-remember-me {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.neon-remember-me input {
+  cursor: pointer;
+  accent-color: #00dfc4;
+  width: auto !important;
+  margin: 0 !important;
+}
+
+.neon-link-btn {
+  background: none;
+  border: none;
+  color: #00dfc4;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: none;
+}
+
+.neon-link-btn:hover {
+  text-decoration: underline;
+}
+
+/* Submit Button: Pill-shaped cyan button */
+.neon-btn-submit {
+  width: 100%;
+  height: 44px;
+  background: #00dfc4;
+  border: none;
+  outline: none;
+  border-radius: 40px;
+  cursor: pointer;
+  font-size: 16px;
+  color: #081624;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  box-shadow: 0 0 15px rgba(0, 223, 196, 0.45);
+  transition: all 0.25s ease;
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.neon-btn-submit:hover:not(:disabled) {
+  background: #00b4d8;
+  color: #ffffff;
+  box-shadow: 0 0 24px rgba(0, 223, 196, 0.75);
+  transform: translateY(-1px);
+}
+
+.neon-btn-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.neon-switch-text {
+  font-size: 13.5px;
+  text-align: center;
+  margin-top: 18px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.neon-toggle-link {
+  color: #00dfc4;
+  text-decoration: none;
+  font-weight: 700;
+  cursor: pointer;
+  margin-left: 5px;
+  background: none;
+  border: none;
+  font-size: 13.5px;
+  padding: 0;
+  transition: color 0.2s ease;
+}
+
+.neon-toggle-link:hover {
+  text-decoration: underline;
+  color: #38bdf8;
+}
+
+/* Slanted Diagonal Teal Panel */
+.neon-diagonal-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.neon-diagonal-bg {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #053b47 0%, #076d79 40%, #00dfc4 100%);
+  clip-path: polygon(56% 0%, 100% 0%, 100% 100%, 38% 100%);
+  transition: clip-path 0.65s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.neon-auth-card.active .neon-diagonal-bg {
+  clip-path: polygon(0% 0%, 62% 0%, 44% 100%, 0% 100%);
+}
+
+.neon-info-content {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 50%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  color: #ffffff;
+  transition: transform 0.65s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.4s ease;
+  z-index: 3;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.neon-info-content h2 {
+  font-size: 38px;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: 0.05em;
+  color: #ffffff;
+  text-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.neon-info-content.login-info {
+  right: 0;
+  padding-left: 30px;
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.neon-auth-card.active .neon-info-content.login-info {
+  transform: translateX(120%);
+  opacity: 0;
+}
+
+.neon-info-content.register-info {
+  left: 0;
+  padding-right: 30px;
+  transform: translateX(-120%);
+  opacity: 0;
+}
+
+.neon-auth-card.active .neon-info-content.register-info {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.neon-alert {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.neon-alert.error {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+}
+
+.neon-alert.notice {
+  background: rgba(59, 130, 246, 0.2);
+  border: 1px solid rgba(59, 130, 246, 0.5);
+  color: #93c5fd;
+}
+
+/* Responsive Breakpoints */
+@media (max-width: 768px) {
+  .neon-auth-card {
+    width: 92%;
+    max-width: 420px;
+    height: auto;
+    min-height: 520px;
+    flex-direction: column;
+  }
+  .neon-diagonal-panel {
+    display: none;
+  }
+  .neon-form-box {
+    width: 100%;
+    position: relative;
+    padding: 36px 24px;
+  }
+  .neon-form-box.login-box,
+  .neon-form-box.register-box {
+    display: none;
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .neon-auth-card:not(.active) .neon-form-box.login-box {
+    display: flex;
+  }
+  .neon-auth-card.active .neon-form-box.register-box {
+    display: flex;
+  }
+}
+
+
 

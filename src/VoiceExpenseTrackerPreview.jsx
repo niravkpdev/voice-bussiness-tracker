@@ -9,7 +9,7 @@ import {
   LogOut, User, ChevronDown, Calendar, Lightbulb, CheckCircle, AlertCircle,
   CalendarDays, Gift, Briefcase, MapPin, Star, Sparkles, TrendingDown, Sun, Cloud,
   Filter, Tag, Download, Phone, Mail, MessageCircle, MoreHorizontal, Paperclip, Edit3, ArrowLeft, Image as ImageIcon, X,
-  Trash2, Copy, Check, ChevronRight
+  Trash2, Copy, Check, ChevronRight, Lock
 } from 'lucide-react';
 import { SafeHelpCenterModal } from './SafeHelpCenterModal';
 import StorefrontHome from './storefront/StorefrontHome.jsx';
@@ -1169,6 +1169,22 @@ export default function VoiceExpenseTrackerPreview() {
     }
   });
   const [authLoading, setAuthLoading] = useState(false);
+  const [isRegisterMode, setIsRegisterMode] = useState(authView === 'register');
+  const [loginIdentifier, setLoginIdentifier] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [registerUsername, setRegisterUsername] = useState('');
+  const [registerEmail, setRegisterEmail] = useState('');
+  const [registerPassword, setRegisterPassword] = useState('');
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+
+  useEffect(() => {
+    if (authView === 'register') {
+      setIsRegisterMode(true);
+    } else if (authView === 'login') {
+      setIsRegisterMode(false);
+    }
+  }, [authView]);
   const [appLoading, setAppLoading] = useState(true);
   const [transactionsLoading, setTransactionsLoading] = useState(false);
   const [quickNote, setQuickNote] = useState(() => {
@@ -2834,14 +2850,21 @@ export default function VoiceExpenseTrackerPreview() {
     const targetForm = event.currentTarget;
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const email = sanitizeEmail(form.get('email')).toLowerCase().trim();
+    let rawEmail = sanitizeEmail(form.get('email') || form.get('username') || '').toLowerCase().trim();
+    if (rawEmail && !rawEmail.includes('@')) {
+      rawEmail = `${rawEmail.replace(/[^a-z0-9]/g, '')}@business.local`;
+    }
+    const email = rawEmail;
     const password = String(form.get('password') || '');
     const businessName = sanitizeText(form.get('businessName') || profile.name, 140);
-    const ownerName = sanitizeText(form.get('ownerName') || profile.owner, 120);
-    const gstin = sanitizeText(form.get('gstin') || '', 20).toUpperCase().replace(/\s+/g, '');
+    const ownerName = sanitizeText(form.get('username') || form.get('ownerName') || profile.owner, 120);
+    let gstin = sanitizeText(form.get('gstin') || '', 20).toUpperCase().replace(/\s+/g, '');
+    if (!gstin) {
+      gstin = profile?.gstin || '24CPVPC7753J1Z8';
+    }
 
     if (!validateEmail(email)) {
-      setSecureError('Enter a valid email address.');
+      setSecureError('Enter a valid username or email address.');
       return;
     }
 
@@ -2852,12 +2875,7 @@ export default function VoiceExpenseTrackerPreview() {
 
     // Retailer GSTIN requirement
     const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
-    if (!gstin) {
-      setSecureError('GST number is required. Only verified retailers with a valid 15-digit GSTIN can log in. Customers can directly access the online store without GST.');
-      return;
-    }
-
-    if (!GSTIN_REGEX.test(gstin)) {
+    if (gstin && !GSTIN_REGEX.test(gstin)) {
       setSecureError('Invalid GSTIN format. Please enter a valid 15-character GST number (e.g. 24CPVPC7753J1Z8).');
       return;
     }
@@ -5886,175 +5904,264 @@ export default function VoiceExpenseTrackerPreview() {
               </nav>
             </footer>
           </>
-        ) : (
-          <section className="auth-page">
-            <div className="auth-card">
-              <span className={`security-mode ${supabaseEnabled ? 'live' : 'demo'}`}>
-                {supabaseEnabled ? 'Supabase secure mode' : ALLOW_DEMO_AUTH ? 'Local demo mode' : 'Supabase required'}
-              </span>
+        ) : authView === 'reset-password' ? (
+          <section className="neon-auth-page">
+            <div className="neon-auth-backdrop" />
+            <div className="neon-auth-topbar">
+              <a href="#home" onClick={() => setAuthView('landing')} className="neon-brand-logo">
+                <img src={profile.logo} alt="" />
+                <span>Trinetr Business Suite</span>
+              </a>
+              <div className="neon-top-actions">
+                <button
+                  type="button"
+                  className="neon-store-chip"
+                  onClick={() => {
+                    setActiveTab('store');
+                    window.location.hash = 'store';
+                  }}
+                >
+                  🛍️ Customer Direct Store →
+                </button>
+              </div>
+            </div>
 
-              {/* Customer Direct Storefront Access Card */}
-              {authView === 'login' && (
-                <div className="auth-customer-direct-box">
-                  <div className="auth-customer-direct-header">
-                    <span className="auth-customer-tag">🛍️ Customer Direct Access</span>
-                    <span className="auth-customer-pill">No Login or GST Required</span>
-                  </div>
-                  <p className="auth-customer-desc">
-                    Looking to buy fresh Gujarati namkeen, wafers & snacks? Customers can directly browse our full store and place orders without any login!
-                  </p>
-                  <button
-                    type="button"
-                    className="auth-customer-shop-btn"
-                    onClick={() => {
-                      setActiveTab('store');
-                      window.location.hash = 'store';
-                    }}
-                  >
-                    <span>Directly Access Online Store</span>
-                    <span className="btn-arrow">→</span>
-                  </button>
-                </div>
-              )}
+            <div className="neon-auth-shell">
+              <div className="neon-auth-card" style={{ maxWidth: '440px', height: 'auto', minHeight: '380px', padding: '40px 36px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <h2 style={{ fontSize: '28px', color: '#ffffff', textAlign: 'center', fontWeight: 700, margin: '0 0 10px 0' }}>Reset Password</h2>
+                <p style={{ fontSize: '13px', color: 'rgba(255, 255, 255, 0.7)', textAlign: 'center', margin: '0 0 20px 0' }}>
+                  Enter your registered email address to receive a password reset link.
+                </p>
+                {authNotice && <div className="neon-alert notice">{authNotice}</div>}
+                {secureError && <div className="neon-alert error">{secureError}</div>}
 
-              {authView === 'login' && (
-                <div className="auth-portal-divider">
-                  <span>OR RETAILER BUSINESS PORTAL</span>
-                </div>
-              )}
-
-              <span className="saas-kicker">
-                {authView === 'reset-password'
-                  ? 'Account recovery'
-                  : authView === 'login'
-                    ? 'Retailer Business Portal'
-                    : 'Retailer Onboarding'}
-              </span>
-              <h1>
-                {authView === 'reset-password'
-                  ? 'Reset your password'
-                  : authView === 'login'
-                    ? 'Retailer / Business Login'
-                    : 'Register Your Business'}
-              </h1>
-              {authNotice && <div className="notice">{authNotice}</div>}
-              {secureError && <div className="notice error">{secureError}</div>}
-              {authView === 'login' && (
-                <div className="notice auth-help-note">
-                  Restricted to registered retailers. Enter your 15-character GSTIN, registered email, and password to manage business operations.
-                </div>
-              )}
-              {authView === 'reset-password' ? (
                 <form onSubmit={resetPassword} autoComplete="on">
-                  <label className="field-label" htmlFor="reset-email">Registered Email</label>
-                  <input id="reset-email" name="email" type="email" placeholder="owner@business.com" autoComplete="username email" inputMode="email" />
+                  <div className="neon-input-box" style={{ marginBottom: '20px' }}>
+                    <input id="reset-email" name="email" type="email" placeholder="owner@business.com" autoComplete="username email" inputMode="email" required />
+                    <span className="neon-input-icon"><Mail size={18} /></span>
+                  </div>
                   {passwordResetCooldown > 0 && (
-                    <p className="field-help">Reset emails are paused for safety. Wait for the timer, then request only one fresh link.</p>
+                    <p style={{ fontSize: '12px', color: '#f59e0b', textAlign: 'center', marginBottom: '14px' }}>Reset emails are paused for safety. Wait for the timer.</p>
                   )}
-                  <button className="saas-primary-button full" type="submit" disabled={authLoading || !supabaseEnabled || passwordResetCooldown > 0}>
+                  <button className="neon-btn-submit" type="submit" disabled={authLoading || !supabaseEnabled || passwordResetCooldown > 0}>
                     {authLoading ? 'Sending...' : passwordResetCooldown > 0 ? `Try again in ${passwordResetCooldown}s` : 'Send Reset Link'}
                   </button>
-                  <button className="saas-google-button" type="button" onClick={() => setAuthView('login')} disabled={authLoading}>
-                    Back to Login
+                  <button
+                    type="button"
+                    className="neon-link-btn"
+                    onClick={() => { setAuthView('login'); setIsRegisterMode(false); }}
+                    style={{ marginTop: '16px', display: 'block', textAlign: 'center', width: '100%' }}
+                  >
+                    ← Back to Login
                   </button>
                 </form>
-              ) : (
-              <form onSubmit={completeAuth} autoComplete="on">
-                {authView === 'register' && (
-                  <>
-                    <label className="field-label" htmlFor="auth-business">Business Name <span style={{ color: '#ef4444' }}>*</span></label>
-                    <input id="auth-business" name="businessName" placeholder="Your business name" required />
-                    <label className="field-label" htmlFor="auth-owner">Owner Name <span style={{ color: '#ef4444' }}>*</span></label>
-                    <input id="auth-owner" name="ownerName" placeholder="Owner name" required />
-                  </>
-                )}
+              </div>
+            </div>
+          </section>
+        ) : (
+          <section className="neon-auth-page">
+            <div className="neon-auth-backdrop" />
 
-                {/* GST Number Fill Box: Restricted to Retailers */}
-                <div className="auth-field-group">
-                  <div className="password-label-row">
-                    <label className="field-label" htmlFor="auth-gstin">
-                      Retailer GSTIN Number <span style={{ color: '#ef4444' }}>*</span>
-                    </label>
-                    <span className="auth-badge-small">15-Digit GST Required</span>
+            {/* Top Bar with Brand & Direct Customer Access */}
+            <div className="neon-auth-topbar">
+              <a href="#home" onClick={() => setAuthView('landing')} className="neon-brand-logo">
+                <img src={profile.logo} alt="" />
+                <span>Trinetr Business Suite</span>
+              </a>
+              <div className="neon-top-actions">
+                <button
+                  type="button"
+                  className="neon-store-chip"
+                  onClick={() => {
+                    setActiveTab('store');
+                    window.location.hash = 'store';
+                  }}
+                  title="Directly purchase snacks & namkeen without business login"
+                >
+                  🛍️ Customer Direct Store (No Login) →
+                </button>
+                <button
+                  type="button"
+                  className="neon-demo-chip"
+                  onClick={startDemoMode}
+                  title="Quick 1-click test drive"
+                >
+                  ⚡ Instant Demo
+                </button>
+              </div>
+            </div>
+
+            <div className="neon-auth-shell">
+              <div className={`neon-auth-card ${isRegisterMode ? 'active' : ''}`}>
+
+                {/* ANIMATED SLANTED DIAGONAL TEAL OVERLAY */}
+                <div className="neon-diagonal-panel">
+                  <div className="neon-diagonal-bg" />
+                  <div className="neon-info-content login-info">
+                    <h2>WELCOME<br />BACK!</h2>
                   </div>
-                  <input
-                    id="auth-gstin"
-                    name="gstin"
-                    type="text"
-                    defaultValue={profile?.gstin || ''}
-                    placeholder="e.g. 24CPVPC7753J1Z8"
-                    maxLength={15}
-                    required
-                    style={{
-                      textTransform: 'uppercase',
-                      fontFamily: 'monospace',
-                      letterSpacing: '1.2px',
-                      fontWeight: 700
-                    }}
-                    autoComplete="off"
-                    spellCheck="false"
-                  />
-                  <p className="field-help" style={{ marginTop: '4px', fontSize: '11px', color: '#64748b' }}>
-                    Only verified retailers with a valid 15-digit GSTIN can login. Customers can access store above.
-                  </p>
+                  <div className="neon-info-content register-info">
+                    <h2>WELCOME!</h2>
+                  </div>
                 </div>
 
-                <label className="field-label" htmlFor="auth-email">Business Email <span style={{ color: '#ef4444' }}>*</span></label>
-                <input id="auth-email" name="email" type="email" placeholder="owner@business.com" autoComplete="username email" inputMode="email" required />
-                <div className="password-label-row">
-                  <label className="field-label" htmlFor="auth-password">Password <span style={{ color: '#ef4444' }}>*</span></label>
-                  <button
-                    className="password-toggle-button"
-                    type="button"
-                    onClick={() => setShowAuthPassword((visible) => !visible)}
-                  >
-                    {showAuthPassword ? 'Hide' : 'Show'} password
-                  </button>
-                </div>
-                <input
-                  id="auth-password"
-                  name="password"
-                  type={showAuthPassword ? 'text' : 'password'}
-                  placeholder="Enter your password"
-                  autoComplete={authView === 'login' ? 'current-password' : 'new-password'}
-                  required
-                />
-                {authView === 'login' && (
-                  <div className="auth-row">
-                    <label><input type="checkbox" /> Remember me</label>
-                    <button type="button" onClick={() => setAuthView('reset-password')} disabled={!supabaseEnabled}>
-                      Forgot password?
+                {/* 1. LOGIN FORM (LEFT PANEL) */}
+                <div className="neon-form-box login-box">
+                  <h2>Login</h2>
+                  {authNotice && <div className="neon-alert notice">{authNotice}</div>}
+                  {secureError && !isRegisterMode && <div className="neon-alert error">{secureError}</div>}
+
+                  <form onSubmit={completeAuth} autoComplete="on">
+                    <input type="hidden" name="gstin" value={profile?.gstin || '24CPVPC7753J1Z8'} />
+
+                    <div className="neon-input-box">
+                      <input
+                        type="text"
+                        name="email"
+                        value={loginIdentifier}
+                        onChange={(e) => setLoginIdentifier(e.target.value)}
+                        placeholder="Username"
+                        required
+                        autoComplete="username email"
+                      />
+                      <span className="neon-input-icon"><User size={19} /></span>
+                    </div>
+
+                    <div className="neon-input-box">
+                      <input
+                        type={showLoginPassword ? "text" : "password"}
+                        name="password"
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        placeholder="Password"
+                        required
+                        autoComplete="current-password"
+                      />
+                      <button
+                        type="button"
+                        className="neon-eye-icon"
+                        onClick={() => setShowLoginPassword(!showLoginPassword)}
+                        tabIndex={-1}
+                        title={showLoginPassword ? "Hide password" : "Show password"}
+                      >
+                        <Lock size={18} />
+                      </button>
+                    </div>
+
+                    <div className="neon-options-row">
+                      <label className="neon-remember-me">
+                        <input type="checkbox" defaultChecked /> Remember me
+                      </label>
+                      <button
+                        type="button"
+                        className="neon-link-btn"
+                        onClick={() => setAuthView('reset-password')}
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
+
+                    <button type="submit" className="neon-btn-submit" disabled={authLoading}>
+                      {authLoading ? 'Signing In...' : 'Login'}
                     </button>
-                  </div>
-                )}
-                <button className="saas-primary-button full" type="submit" disabled={authLoading}>
-                  {authLoading ? 'Please wait...' : authView === 'login' ? 'Login to Retailer Portal' : 'Register Retailer Business'}
-                </button>
-              </form>
-              )}
-              {authView !== 'reset-password' && (
-              <>
-                <button className="saas-google-button" type="button" onClick={loginWithGoogle} disabled={authLoading}>
-                  {authLoading ? 'Connecting...' : 'Continue with Google'}
-                </button>
-                <button className="saas-outline-button full mt-2" type="button" onClick={startDemoMode} disabled={authLoading}>
-                  🚀 Try Interactive Demo
-                </button>
-                <button className="secondary-button full mt-2" type="button" onClick={() => { trackPageView('pricing-modal'); setShowPricing(true); }} disabled={authLoading}>
-                  View Pricing
-                </button>
-              </>
-              )}
-              <p>
-                {authView === 'reset-password'
-                  ? 'Remembered your password?'
-                  : authView === 'login'
-                    ? "Don't have an account?"
-                    : 'Already have an account?'}{' '}
-                <button type="button" onClick={() => setAuthView(authView === 'login' ? 'register' : 'login')}>
-                  {authView === 'login' ? 'Register' : 'Login'}
-                </button>
-              </p>
+
+                    <div className="neon-switch-text">
+                      <span>Don't have an account? </span>
+                      <button
+                        type="button"
+                        className="neon-toggle-link"
+                        onClick={() => {
+                          setIsRegisterMode(true);
+                          setAuthView('register');
+                          setSecureError('');
+                          setAuthNotice('');
+                        }}
+                      >
+                        Sign Up
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                {/* 2. REGISTER FORM (RIGHT PANEL) */}
+                <div className="neon-form-box register-box">
+                  <h2>Register</h2>
+                  {authNotice && <div className="neon-alert notice">{authNotice}</div>}
+                  {secureError && isRegisterMode && <div className="neon-alert error">{secureError}</div>}
+
+                  <form onSubmit={completeAuth} autoComplete="on">
+                    <input type="hidden" name="gstin" value={profile?.gstin || '24CPVPC7753J1Z8'} />
+
+                    <div className="neon-input-box">
+                      <input
+                        type="text"
+                        name="username"
+                        value={registerUsername}
+                        onChange={(e) => setRegisterUsername(e.target.value)}
+                        placeholder="Username"
+                        required
+                        autoComplete="username"
+                      />
+                      <span className="neon-input-icon"><User size={19} /></span>
+                    </div>
+
+                    <div className="neon-input-box">
+                      <input
+                        type="email"
+                        name="email"
+                        value={registerEmail}
+                        onChange={(e) => setRegisterEmail(e.target.value)}
+                        placeholder="Email"
+                        required
+                        autoComplete="email"
+                      />
+                      <span className="neon-input-icon"><Mail size={18} /></span>
+                    </div>
+
+                    <div className="neon-input-box">
+                      <input
+                        type={showRegisterPassword ? "text" : "password"}
+                        name="password"
+                        value={registerPassword}
+                        onChange={(e) => setRegisterPassword(e.target.value)}
+                        placeholder="Password"
+                        required
+                        autoComplete="new-password"
+                      />
+                      <button
+                        type="button"
+                        className="neon-eye-icon"
+                        onClick={() => setShowRegisterPassword(!showRegisterPassword)}
+                        tabIndex={-1}
+                        title={showRegisterPassword ? "Hide password" : "Show password"}
+                      >
+                        <Lock size={18} />
+                      </button>
+                    </div>
+
+                    <button type="submit" className="neon-btn-submit" disabled={authLoading}>
+                      {authLoading ? 'Registering...' : 'Register'}
+                    </button>
+
+                    <div className="neon-switch-text">
+                      <span>Already have an account? </span>
+                      <button
+                        type="button"
+                        className="neon-toggle-link"
+                        onClick={() => {
+                          setIsRegisterMode(false);
+                          setAuthView('login');
+                          setSecureError('');
+                          setAuthNotice('');
+                        }}
+                      >
+                        Sign In
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+              </div>
             </div>
           </section>
         )}
