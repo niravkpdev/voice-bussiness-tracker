@@ -15,7 +15,7 @@ import { CustomerReviewsSection } from './components/CustomerReviewsSection';
 import { BannerEditModal } from './components/BannerEditModal';
 import { StoreFooter } from './components/StoreFooter';
 import { PRODUCTS, CATEGORIES, STORE_INFO } from './data/namkeenData';
-import { Award, Headphones, Zap, ShoppingBag, ArrowRight, Sparkles, CheckCircle2, Edit3, Star, Camera } from 'lucide-react';
+import { Truck, Award, Headphones, Zap, ShoppingBag, ArrowRight, Sparkles, CheckCircle2, Edit3, Star, Camera } from 'lucide-react';
 import './storefront.css';
 
 function StorefrontContent(props) {

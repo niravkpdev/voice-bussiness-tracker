@@ -6,6 +6,7 @@ import { StoreCartProvider, useStoreCart } from '../storefront/context/StoreCart
 import { ProductCard } from '../storefront/components/ProductCard';
 import { QualityTrustStrip } from '../storefront/components/QualityTrustStrip';
 import { CustomerReviewsSection } from '../storefront/components/CustomerReviewsSection';
+import StorefrontHome from '../storefront/StorefrontHome';
 
 describe('Online Storefront Catalog, Brand Dynamic Profile & Variants', () => {
   it('loads valid categories with positive counts', () => {
@@ -472,5 +473,23 @@ describe('Online Storefront Catalog, Brand Dynamic Profile & Variants', () => {
 
     expect(getByTestId('banner-img').getAttribute('src')).toBe(customBannerUrl);
   });
+
+  it('renders StorefrontHome without crashing in customer mode', () => {
+    const { container } = render(
+      <StorefrontHome isOwner={false} />
+    );
+    expect(container).toBeDefined();
+    expect(container.textContent).toContain('All India Home Delivery');
+    expect(container.textContent).toContain('Delivery');
+  });
+
+  it('renders StorefrontHome without crashing in owner mode', () => {
+    const { container } = render(
+      <StorefrontHome isOwner={true} />
+    );
+    expect(container).toBeDefined();
+    expect(container.textContent).toContain('Edit Offer Banner');
+  });
 });
+
 
