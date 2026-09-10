@@ -1209,16 +1209,16 @@ export default function VoiceExpenseTrackerPreview() {
     setIsDraggingInProgress(true);
     setMonkeyState('dragging');
 
-    // Drag reaches center at ~1.8s
+    // Drag slowly reaches center at 5 seconds (5000ms)
     setTimeout(() => {
       setMonkeyState('celebrating');
-    }, 1800);
+    }, 5000);
 
-    // Celebration ends, monkey scampers off at ~2.9s
+    // Celebration ends, monkey scampers off at ~6.8s
     setTimeout(() => {
       setMonkeyState('done');
       setIsDraggingInProgress(false);
-    }, 2900);
+    }, 6800);
   };
 
   const handleReplayMonkeyDrag = () => {
