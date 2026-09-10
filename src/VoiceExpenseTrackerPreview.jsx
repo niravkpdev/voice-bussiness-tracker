@@ -6446,60 +6446,6 @@ export default function VoiceExpenseTrackerPreview() {
             </div>
           </div>
           <div className="erp-top-actions-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap', flexShrink: 0, position: 'relative', overflow: 'visible' }}>
-            {/* 1. Sales Register (F2) Quick Access */}
-            <button
-              type="button"
-              className="btn btn-secondary hover-scale"
-              onClick={() => { setActiveTab('sales-entry'); window.location.hash = 'sales-entry'; }}
-              title="Open Sales Register & Quick Bill (Shortcut F2)"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '12.5px',
-                background: activeTab === 'sales-entry' ? '#1e3a8a' : '#eff6ff',
-                color: activeTab === 'sales-entry' ? '#ffffff' : '#1e3a8a',
-                border: '1px solid #bfdbfe',
-                fontWeight: '750',
-                padding: '7px 12px',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                width: 'auto',
-                flex: '0 0 auto'
-              }}
-            >
-              <FileText size={15} />
-              <span>1. Sales Register (F2)</span>
-            </button>
-
-            {/* 5. Production Quick Access */}
-            <button
-              type="button"
-              className="btn btn-secondary hover-scale"
-              onClick={() => { setActiveTab('production'); window.location.hash = 'production'; }}
-              title="Open Production Run Entry & Recipes BOM"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '12.5px',
-                background: activeTab === 'production' ? '#059669' : '#ecfdf5',
-                color: activeTab === 'production' ? '#ffffff' : '#047857',
-                border: '1px solid #a7f3d0',
-                fontWeight: '750',
-                padding: '7px 12px',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                width: 'auto',
-                flex: '0 0 auto'
-              }}
-            >
-              <Package size={15} />
-              <span>5. Production</span>
-            </button>
-
             {/* Online Storefront Switcher */}
             <button
               type="button"
