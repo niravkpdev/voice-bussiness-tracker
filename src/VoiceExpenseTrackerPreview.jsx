@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { SafeHelpCenterModal } from './SafeHelpCenterModal';
 import StorefrontHome from './storefront/StorefrontHome.jsx';
+import ThirdEyeBackground from './ThirdEyeBackground.jsx';
 import {
   LEDGERS_KEY,
   VOUCHERS_KEY,
@@ -5908,46 +5909,51 @@ export default function VoiceExpenseTrackerPreview() {
           </>
         ) : authView === 'reset-password' ? (
           <section className="neon-auth-page">
+            <ThirdEyeBackground />
             <div className="neon-auth-backdrop" />
 
             <div className="neon-auth-shell">
-              <div className="neon-auth-card" style={{ maxWidth: '440px', height: 'auto', minHeight: '380px', padding: '40px 36px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <h2 style={{ fontSize: '28px', color: '#ffffff', textAlign: 'center', fontWeight: 700, margin: '0 0 10px 0' }}>Reset Password</h2>
-                <p style={{ fontSize: '13px', color: 'rgba(255, 255, 255, 0.7)', textAlign: 'center', margin: '0 0 20px 0' }}>
-                  Enter your registered email address to receive a password reset link.
-                </p>
-                {authNotice && <div className="neon-alert notice">{authNotice}</div>}
-                {secureError && <div className="neon-alert error">{secureError}</div>}
+              <div className="neon-card-spring-wrapper">
+                <div className="neon-auth-card" style={{ maxWidth: '440px', height: 'auto', minHeight: '380px', padding: '40px 36px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <h2 style={{ fontSize: '28px', color: '#ffffff', textAlign: 'center', fontWeight: 700, margin: '0 0 10px 0' }}>Reset Password</h2>
+                  <p style={{ fontSize: '13px', color: 'rgba(255, 255, 255, 0.7)', textAlign: 'center', margin: '0 0 20px 0' }}>
+                    Enter your registered email address to receive a password reset link.
+                  </p>
+                  {authNotice && <div className="neon-alert notice">{authNotice}</div>}
+                  {secureError && <div className="neon-alert error">{secureError}</div>}
 
-                <form onSubmit={resetPassword} autoComplete="on">
-                  <div className="neon-input-box" style={{ marginBottom: '20px' }}>
-                    <input id="reset-email" name="email" type="email" placeholder="owner@business.com" autoComplete="username email" inputMode="email" required />
-                    <span className="neon-input-icon"><Mail size={18} /></span>
-                  </div>
-                  {passwordResetCooldown > 0 && (
-                    <p style={{ fontSize: '12px', color: '#f59e0b', textAlign: 'center', marginBottom: '14px' }}>Reset emails are paused for safety. Wait for the timer.</p>
-                  )}
-                  <button className="neon-btn-submit" type="submit" disabled={authLoading || !supabaseEnabled || passwordResetCooldown > 0}>
-                    {authLoading ? 'Sending...' : passwordResetCooldown > 0 ? `Try again in ${passwordResetCooldown}s` : 'Send Reset Link'}
-                  </button>
-                  <button
-                    type="button"
-                    className="neon-link-btn"
-                    onClick={() => { setAuthView('login'); setIsRegisterMode(false); }}
-                    style={{ marginTop: '16px', display: 'block', textAlign: 'center', width: '100%' }}
-                  >
-                    ← Back to Login
-                  </button>
-                </form>
+                  <form onSubmit={resetPassword} autoComplete="on">
+                    <div className="neon-input-box" style={{ marginBottom: '20px' }}>
+                      <input id="reset-email" name="email" type="email" placeholder="owner@business.com" autoComplete="username email" inputMode="email" required />
+                      <span className="neon-input-icon"><Mail size={18} /></span>
+                    </div>
+                    {passwordResetCooldown > 0 && (
+                      <p style={{ fontSize: '12px', color: '#f59e0b', textAlign: 'center', marginBottom: '14px' }}>Reset emails are paused for safety. Wait for the timer.</p>
+                    )}
+                    <button className="neon-btn-submit" type="submit" disabled={authLoading || !supabaseEnabled || passwordResetCooldown > 0}>
+                      {authLoading ? 'Sending...' : passwordResetCooldown > 0 ? `Try again in ${passwordResetCooldown}s` : 'Send Reset Link'}
+                    </button>
+                    <button
+                      type="button"
+                      className="neon-link-btn"
+                      onClick={() => { setAuthView('login'); setIsRegisterMode(false); }}
+                      style={{ marginTop: '16px', display: 'block', textAlign: 'center', width: '100%' }}
+                    >
+                      ← Back to Login
+                    </button>
+                  </form>
+                </div>
               </div>
             </div>
           </section>
         ) : (
           <section className="neon-auth-page">
+            <ThirdEyeBackground />
             <div className="neon-auth-backdrop" />
 
             <div className="neon-auth-shell">
-              <div className={`neon-auth-card ${isRegisterMode ? 'active' : ''}`}>
+              <div className="neon-card-spring-wrapper">
+                <div className={`neon-auth-card ${isRegisterMode ? 'active' : ''}`}>
 
                 {/* ANIMATED SLANTED DIAGONAL TEAL OVERLAY */}
                 <div className="neon-diagonal-panel">
@@ -6116,6 +6122,7 @@ export default function VoiceExpenseTrackerPreview() {
                   </form>
                 </div>
 
+              </div>
               </div>
             </div>
           </section>
