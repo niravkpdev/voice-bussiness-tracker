@@ -4765,12 +4765,24 @@
 
 .trinetr-delivery-modal-header {
   padding: 18px 24px;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  color: #ffffff;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+  color: #ffffff !important;
   display: flex;
   align-items: center;
   gap: 14px;
   position: relative;
+}
+
+.trinetr-delivery-modal-header,
+.trinetr-delivery-modal-header *,
+.trinetr-delivery-modal-header h3,
+.trinetr-delivery-modal-header .modal-title {
+  color: #ffffff !important;
+}
+
+.trinetr-delivery-modal-header p,
+.trinetr-delivery-modal-header .modal-subtitle {
+  color: #cbd5e1 !important;
 }
 
 .modal-header-icon-box {
@@ -4789,13 +4801,14 @@
   font-size: 18px;
   font-weight: 800;
   margin: 0;
-  color: #ffffff;
+  color: #ffffff !important;
 }
 
 .trinetr-delivery-modal-header .modal-subtitle {
-  font-size: 12px;
-  color: #94a3b8;
+  font-size: 12.5px;
+  color: #cbd5e1 !important;
   margin: 4px 0 0 0;
+  line-height: 1.4;
 }
 
 .trinetr-delivery-modal-header .trinetr-modal-close-btn {
@@ -5143,24 +5156,79 @@
   background: #f1f5f9;
 }
 
-.btn-save-delivery {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: #0284c7;
-  border: none;
-  border-radius: 8px;
-  padding: 8px 20px;
-  font-size: 13px;
-  font-weight: 800;
-  color: #ffffff;
-  cursor: pointer;
-  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35);
-  transition: all 0.15s ease;
+.btn-save-delivery,
+.btn-save-delivery *,
+.btn-save-delivery span,
+button.btn-save-delivery,
+button.btn-save-delivery span,
+button[type="submit"].btn-save-delivery,
+button[type="submit"].btn-save-delivery span {
+  background-color: #0284c7 !important;
+  background: #0284c7 !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-color: transparent !important;
+  font-weight: 800 !important;
 }
 
-.btn-save-delivery:hover {
-  background: #0369a1;
+.btn-save-delivery:hover,
+.btn-save-delivery:hover *,
+.btn-save-delivery:hover span,
+button.btn-save-delivery:hover,
+button.btn-save-delivery:hover span,
+button[type="submit"].btn-save-delivery:hover,
+button[type="submit"].btn-save-delivery:hover span {
+  background-color: #0369a1 !important;
+  background: #0369a1 !important;
+  color: #ffffff !important;
+}
+
+/* ==========================================================================
+   ENSURE HIGH-CONTRAST PURE WHITE FONTS ON ALL DARK / DEEP BLUE BACKGROUNDS
+   ========================================================================== */
+.trinetr-floating-delivery-badge,
+.trinetr-floating-delivery-badge *,
+.trinetr-floating-delivery-badge span,
+.trinetr-delivery-settings-trigger,
+.trinetr-delivery-settings-trigger *,
+.trinetr-delivery-settings-trigger span,
+.trinetr-delivery-partner-btn-nav,
+.trinetr-delivery-partner-btn-nav *,
+.trinetr-delivery-partner-btn-nav span {
+  background-color: #0284c7 !important;
+  color: #ffffff !important;
+}
+
+.trinetr-btn-guest-checkout,
+.trinetr-btn-guest-checkout *,
+.trinetr-btn-guest-checkout span,
+.guest-form-footer .btn-primary,
+.guest-form-footer .btn-primary *,
+.guest-form-footer .btn-primary span {
+  color: #ffffff !important;
+}
+
+.trinetr-save-btn,
+.trinetr-save-btn *,
+.trinetr-save-btn span {
+  color: #ffffff !important;
+}
+
+.trinetr-btn-whatsapp,
+.trinetr-btn-whatsapp *,
+.trinetr-btn-whatsapp span {
+  color: #ffffff !important;
+}
+
+.trinetr-mobile-cart-btn,
+.trinetr-mobile-cart-btn *,
+.trinetr-mobile-cart-btn span {
+  color: #ffffff !important;
+}
+
+.trinetr-currency-pill.active,
+.trinetr-currency-pill.active * {
+  color: #ffffff !important;
 }
 
 /* ==========================================================================

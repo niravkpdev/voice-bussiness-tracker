@@ -101,17 +101,19 @@ export function DeliverySettingsModal({ isOpen, onClose }) {
     <div className="trinetr-delivery-modal-backdrop" onClick={onClose}>
       <div className="trinetr-delivery-modal-dialog" onClick={(e) => e.stopPropagation()}>
         {/* Modal Header */}
-        <div className="trinetr-delivery-modal-header">
+        <div className="trinetr-delivery-modal-header" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', color: '#ffffff' }}>
           <div className="modal-header-icon-box">
-            <Truck size={24} />
+            <Truck size={24} color="#38bdf8" />
           </div>
           <div>
-            <h3 className="modal-title">Delivery Partner App Integration</h3>
-            <p className="modal-subtitle">
+            <h3 className="modal-title" style={{ color: '#ffffff', margin: 0, fontSize: '18px', fontWeight: 800 }}>
+              Delivery Partner App Integration
+            </h3>
+            <p className="modal-subtitle" style={{ color: '#cbd5e1', margin: '4px 0 0 0', fontSize: '12.5px', lineHeight: 1.4 }}>
               Connect your online store to Shiprocket, Borzo, Dunzo, or Delhivery for automated courier dispatch and tracking.
             </p>
           </div>
-          <button type="button" className="trinetr-modal-close-btn" onClick={onClose} aria-label="Close">
+          <button type="button" className="trinetr-modal-close-btn" onClick={onClose} aria-label="Close" style={{ color: '#cbd5e1' }}>
             <X size={20} />
           </button>
         </div>
@@ -333,9 +335,26 @@ export function DeliverySettingsModal({ isOpen, onClose }) {
             <button
               type="submit"
               className="btn-save-delivery"
+              style={{
+                backgroundColor: '#0284c7',
+                background: '#0284c7',
+                color: '#ffffff',
+                border: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 24px',
+                borderRadius: '8px',
+                fontWeight: 800,
+                fontSize: '14px',
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(2, 132, 199, 0.4)'
+              }}
             >
-              <Check size={18} />
-              <span>Save & Connect Delivery Partner</span>
+              <Check size={18} color="#ffffff" style={{ strokeWidth: 2.8 }} />
+              <span style={{ color: '#ffffff', fontWeight: 800, fontSize: '13.5px' }}>
+                Save & Connect Delivery Partner
+              </span>
             </button>
           </div>
         </form>
