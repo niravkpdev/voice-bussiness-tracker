@@ -3,7 +3,7 @@ import { Heart, ShoppingBag, Check, Star, Edit3 } from 'lucide-react';
 import { useStoreCart } from '../context/StoreCartContext';
 
 export function ProductCard({ product }) {
-  const { addToCart, wishlist, toggleWishlist, setEditingProduct, isOwner } = useStoreCart();
+  const { addToCart, wishlist, toggleWishlist, setEditingProduct, isOwner, currentCurrency, convertPrice } = useStoreCart();
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
   const [justAdded, setJustAdded] = useState(false);
 
@@ -14,9 +14,11 @@ export function ProductCard({ product }) {
   const currentVariant = product.variants[selectedVariantIndex] || product.variants[0];
   const isWishlisted = wishlist.includes(product.id);
   const isAvailable = !product.isOutOfStock && currentVariant.inStock;
-  const currentPrice = currentVariant.price;
-  const estimatedMrp = Math.round(currentPrice * 1.25);
-  const savingsAmount = estimatedMrp - currentPrice;
+  const basePrice = currentVariant.price;
+  const currentPrice = convertPrice(basePrice);
+  const rawMrp = Math.round(basePrice * 1.25);
+  const estimatedMrp = convertPrice(rawMrp);
+  const savingsAmount = Math.max(0, estimatedMrp - currentPrice).toFixed(2);
 
   const handleAddToCart = () => {
     if (!isAvailable) return;
@@ -129,12 +131,12 @@ export function ProductCard({ product }) {
         <div className="trinetr-price-action-footer">
           <div className="trinetr-price-box">
             <div className="trinetr-price-main-line">
-              <span className="trinetr-currency">₹</span>
+              <span className="trinetr-currency">{currentCurrency.symbol}</span>
               <span className="trinetr-price-num">{currentPrice.toFixed(2)}</span>
             </div>
             <div className="trinetr-price-sub-line">
-              <span className="trinetr-mrp-strike">MRP ₹{estimatedMrp}</span>
-              <span className="trinetr-save-pill">Save ₹{savingsAmount}</span>
+              <span className="trinetr-mrp-strike">MRP {currentCurrency.symbol}{estimatedMrp.toFixed(2)}</span>
+              <span className="trinetr-save-pill">Save {currentCurrency.symbol}{savingsAmount}</span>
             </div>
           </div>
 

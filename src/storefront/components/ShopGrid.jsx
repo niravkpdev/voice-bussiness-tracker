@@ -5,7 +5,7 @@ import { CATEGORIES } from '../data/namkeenData';
 import { ProductCard } from './ProductCard';
 
 export function ShopGrid() {
-  const { products, activeCategory, setActiveCategory, searchQuery, setSearchQuery, dietaryFilter, setDietaryFilter, wishlist } = useStoreCart();
+  const { products, activeCategory, setActiveCategory, searchQuery, setSearchQuery, dietaryFilter, setDietaryFilter, wishlist, formatPrice } = useStoreCart();
 
   // Layout state
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
@@ -119,7 +119,7 @@ export function ShopGrid() {
                 className="trinetr-range-slider"
               />
               <div className="trinetr-slider-values">
-                <span>Range: ₹50 - ₹{maxPrice}</span>
+                <span>Range: {formatPrice(50)} - {formatPrice(maxPrice)}</span>
               </div>
             </div>
           </div>

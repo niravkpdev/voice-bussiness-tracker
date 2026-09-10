@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Search, ShoppingBag, Heart, Phone, Menu, X, ChevronDown, Sparkles, SlidersHorizontal, ArrowRight } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Search, ShoppingBag, Heart, Phone, Menu, X, ChevronDown, Sparkles, SlidersHorizontal, ArrowRight, Globe } from 'lucide-react';
 import { useStoreCart } from '../context/StoreCartContext';
 import { CATEGORIES } from '../data/namkeenData';
 
@@ -13,9 +13,36 @@ export function StoreHeader({
   customerPreview = false,
   onToggleCustomerPreview
 }) {
-  const { storeInfo, cartTotalCount, cartSubtotal, setCartDrawerOpen, wishlist, searchQuery, setSearchQuery, setActiveCategory, dietaryFilter, setDietaryFilter } = useStoreCart();
+  const { 
+    storeInfo, 
+    cartTotalCount, 
+    cartSubtotal, 
+    setCartDrawerOpen, 
+    wishlist, 
+    searchQuery, 
+    setSearchQuery, 
+    setActiveCategory, 
+    dietaryFilter, 
+    setDietaryFilter,
+    currentCurrency,
+    currencies,
+    setCurrency,
+    formatPrice
+  } = useStoreCart();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [deptDropdownOpen, setDeptDropdownOpen] = useState(false);
+  const [currencyDropdownOpen, setCurrencyDropdownOpen] = useState(false);
+  const currencyRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (currencyRef.current && !currencyRef.current.contains(e.target)) {
+        setCurrencyDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleCategoryClick = (catId) => {
     setActiveCategory(catId);
@@ -83,6 +110,46 @@ export function StoreHeader({
 
           {/* Header Action Items */}
           <div className="trinetr-nav-actions">
+            {/* Currency Selector Dropdown */}
+            <div className="trinetr-currency-dropdown-wrap" ref={currencyRef}>
+              <button
+                type="button"
+                className="trinetr-currency-btn"
+                onClick={() => setCurrencyDropdownOpen(!currencyDropdownOpen)}
+                title="Change Currency (INR, USD, EUR, GBP)"
+                aria-label="Select Currency"
+              >
+                <Globe size={16} className="trinetr-globe-icon" />
+                <span className="trinetr-currency-flag">{currentCurrency.flag}</span>
+                <span className="trinetr-currency-code">{currentCurrency.code} ({currentCurrency.symbol})</span>
+                <ChevronDown size={13} className={`trinetr-currency-chevron ${currencyDropdownOpen ? 'open' : ''}`} />
+              </button>
+
+              {currencyDropdownOpen && (
+                <div className="trinetr-currency-menu">
+                  <div className="trinetr-currency-menu-title">Select Store Currency</div>
+                  {Object.values(currencies).map(cur => (
+                    <button
+                      key={cur.code}
+                      type="button"
+                      className={`trinetr-currency-option ${cur.code === currentCurrency.code ? 'active' : ''}`}
+                      onClick={() => {
+                        setCurrency(cur.code);
+                        setCurrencyDropdownOpen(false);
+                      }}
+                    >
+                      <span className="currency-flag-large">{cur.flag}</span>
+                      <div className="currency-option-info">
+                        <span className="currency-option-name">{cur.name}</span>
+                        <span className="currency-option-rate">{cur.code} • {cur.symbol}</span>
+                      </div>
+                      {cur.code === currentCurrency.code && <span className="currency-check">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Wishlist */}
             <button 
               type="button" 
@@ -113,7 +180,7 @@ export function StoreHeader({
               </div>
               <div className="trinetr-cart-details hide-on-mobile">
                 <span className="trinetr-cart-label">My Cart</span>
-                <span className="trinetr-cart-amount">₹{cartSubtotal.toFixed(2)}</span>
+                <span className="trinetr-cart-amount">{formatPrice(cartSubtotal)}</span>
               </div>
             </button>
           </div>

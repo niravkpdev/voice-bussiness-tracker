@@ -4,7 +4,7 @@ import { useStoreCart } from '../context/StoreCartContext';
 import { CATEGORIES } from '../data/namkeenData';
 
 export function ProductListMenu() {
-  const { products, addToCart, cart, updateQuantity } = useStoreCart();
+  const { products, addToCart, cart, updateQuantity, currentCurrency, convertPrice } = useStoreCart();
   const [activeCategoryFilter, setActiveCategoryFilter] = useState('all');
   const [menuSearch, setMenuSearch] = useState('');
   const [selectedVariants, setSelectedVariants] = useState({}); // { [productId]: variantIndex }
@@ -159,8 +159,8 @@ export function ProductListMenu() {
                       {/* Pricing & Add / Counter Controls */}
                       <div className="trinetr-menu-item-action-box">
                         <div className="trinetr-menu-price">
-                          <span className="cur">₹</span>
-                          <span className="num">{currentVariant.price.toFixed(2)}</span>
+                          <span className="cur">{currentCurrency.symbol}</span>
+                          <span className="num">{convertPrice(currentVariant.price).toFixed(2)}</span>
                         </div>
 
                         {!isAvailable ? (

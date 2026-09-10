@@ -1,10 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { X, Upload, Link, Plus, Trash2, Check, Sparkles, RefreshCw, AlertCircle, Image as ImageIcon } from 'lucide-react';
+import { X, Upload, Link, Plus, Trash2, Check, Sparkles, RefreshCw, AlertCircle, Image as ImageIcon, Globe } from 'lucide-react';
 import { useStoreCart } from '../context/StoreCartContext';
 import { CATEGORIES } from '../data/namkeenData';
 
 export function ProductEditModal() {
-  const { editingProduct, setEditingProduct, updateProduct, resetProductOverride, isOwner } = useStoreCart();
+  const { 
+    editingProduct, 
+    setEditingProduct, 
+    updateProduct, 
+    resetProductOverride, 
+    isOwner,
+    currentCurrency,
+    currencies,
+    setCurrency,
+    formatPrice,
+    convertPrice,
+    convertToInr
+  } = useStoreCart();
 
   const [formData, setFormData] = useState(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -75,9 +87,15 @@ export function ProductEditModal() {
   const handleVariantChange = (index, field, value) => {
     setFormData(prev => {
       const nextVariants = [...prev.variants];
+      let val = value;
+      if (field === 'price') {
+        const parsed = Math.max(0, parseFloat(value) || 0);
+        // If owner entered price in a foreign currency, convert back to canonical INR base price
+        val = currentCurrency.code === 'INR' ? parsed : convertToInr(parsed, currentCurrency.code);
+      }
       nextVariants[index] = {
         ...nextVariants[index],
-        [field]: field === 'price' ? Math.max(0, parseFloat(value) || 0) : value
+        [field]: val
       };
       return { ...prev, variants: nextVariants };
     });
@@ -383,8 +401,31 @@ export function ProductEditModal() {
               <div>
                 <h4 className="trinetr-variants-title">Gram / Kilogram Pack Sizes & Pricing</h4>
                 <p className="trinetr-variants-subtitle">
-                  Configure multiple pack sizes (e.g. 250 GM, 500 GM, 1 KG) and their individual retail selling prices.
+                  Configure multiple pack sizes (e.g. 250 GM, 500 GM, 1 KG) and individual retail selling prices in any currency.
                 </p>
+              </div>
+
+              {/* Currency Selector Toolbar for Pricing */}
+              <div className="trinetr-variants-currency-toolbar">
+                <span className="toolbar-label">
+                  <Globe size={13} />
+                  <span>Pricing In:</span>
+                </span>
+                <div className="toolbar-pills">
+                  {Object.values(currencies).map(c => (
+                    <button
+                      key={c.code}
+                      type="button"
+                      className={`trinetr-currency-pill ${c.code === currentCurrency.code ? 'active' : ''}`}
+                      onClick={() => setCurrency(c.code)}
+                      title={`Set pricing currency to ${c.name} (${c.symbol})`}
+                    >
+                      <span className="pill-flag">{c.flag}</span>
+                      <span className="pill-code">{c.code}</span>
+                      <span className="pill-symbol">({c.symbol})</span>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Quick Size Adders */}
@@ -404,7 +445,7 @@ export function ProductEditModal() {
                 <thead>
                   <tr>
                     <th>Pack Size / Weight (Grams / KG)</th>
-                    <th>Price (₹)</th>
+                    <th>Price ({currentCurrency.symbol} {currentCurrency.code})</th>
                     <th>In Stock</th>
                     <th>Action</th>
                   </tr>
@@ -424,16 +465,24 @@ export function ProductEditModal() {
                       </td>
                       <td>
                         <div className="trinetr-table-price-wrap">
-                          <span className="currency-symbol">₹</span>
+                          <span className="currency-symbol">{currentCurrency.symbol}</span>
                           <input 
                             type="number" 
-                            step="0.5" 
+                            step={currentCurrency.code === 'INR' ? '1' : '0.05'}
                             min="0" 
                             className="trinetr-table-input price-input"
-                            value={variant.price} 
+                            value={currentCurrency.code === 'INR' ? variant.price : convertPrice(variant.price)} 
                             onChange={(e) => handleVariantChange(idx, 'price', e.target.value)}
                             required
                           />
+                        </div>
+                        {/* Instant Multi-Currency Conversion Preview */}
+                        <div className="trinetr-multicurrency-preview" title="Instant equivalents in other currencies">
+                          {Object.values(currencies).filter(c => c.code !== currentCurrency.code).map(c => (
+                            <span key={c.code} className="currency-eq-tag">
+                              {c.flag} {formatPrice(variant.price, true, c.code)}
+                            </span>
+                          ))}
                         </div>
                       </td>
                       <td>

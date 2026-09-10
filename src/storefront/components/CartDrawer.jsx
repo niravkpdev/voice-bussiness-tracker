@@ -14,7 +14,11 @@ export function CartDrawer() {
     cartSubtotal,
     deliveryCharge,
     cartGrandTotal,
-    generateWhatsAppOrderUrl
+    generateWhatsAppOrderUrl,
+    currentCurrency,
+    formatPrice,
+    convertPrice,
+    deliveryConfig
   } = useStoreCart();
 
   const [checkoutMode, setCheckoutMode] = useState('cart'); // 'cart' | 'guest-form' | 'success'
@@ -296,7 +300,7 @@ export function CartDrawer() {
                 type="submit"
                 className="btn-primary"
               >
-                Confirm Order (₹{cartGrandTotal.toFixed(2)})
+                Confirm Order ({formatPrice(cartGrandTotal)})
               </button>
             </div>
           </form>
@@ -342,7 +346,7 @@ export function CartDrawer() {
                       </div>
 
                       <div className="cart-price-qty-row">
-                        <span className="cart-unit-price">₹{item.price.toFixed(2)}</span>
+                        <span className="cart-unit-price">{formatPrice(item.price)}</span>
 
                         <div className="cart-qty-pill">
                           <button
@@ -363,7 +367,7 @@ export function CartDrawer() {
                         </div>
 
                         <span className="cart-line-total">
-                          ₹{(item.price * item.quantity).toFixed(2)}
+                          {formatPrice(item.price * item.quantity)}
                         </span>
                       </div>
                     </div>
@@ -378,21 +382,21 @@ export function CartDrawer() {
                 <div className="trinetr-cart-summary">
                   <div className="summary-row">
                     <span>Items Subtotal:</span>
-                    <span>₹{cartSubtotal.toFixed(2)}</span>
+                    <span>{formatPrice(cartSubtotal)}</span>
                   </div>
                   <div className="summary-row">
                     <span>Delivery Charges:</span>
-                    <span>{deliveryCharge === 0 ? <strong className="text-free">FREE</strong> : `₹${deliveryCharge.toFixed(2)}`}</span>
+                    <span>{deliveryCharge === 0 ? <strong className="text-free">FREE</strong> : formatPrice(deliveryCharge)}</span>
                   </div>
                   {deliveryCharge > 0 && (
                     <div className="free-shipping-tip">
                       <Truck size={13} />
-                      <span>Add ₹{(500 - cartSubtotal).toFixed(2)} more for Free Shipping!</span>
+                      <span>Add {formatPrice(Math.max(0, (deliveryConfig?.freeShippingThreshold ?? 500) - cartSubtotal))} more for Free Shipping!</span>
                     </div>
                   )}
                   <div className="summary-row grand-total">
                     <span>Grand Total:</span>
-                    <span>₹{cartGrandTotal.toFixed(2)}</span>
+                    <span>{formatPrice(cartGrandTotal)}</span>
                   </div>
                 </div>
 

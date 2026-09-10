@@ -3,9 +3,31 @@ import { STORE_INFO, PRODUCTS } from '../data/namkeenData';
 
 const StoreCartContext = createContext(null);
 
+export const CURRENCIES = {
+  INR: { code: 'INR', symbol: '₹', label: 'INR (₹)', name: 'Indian Rupee', rate: 1.0, flag: '🇮🇳' },
+  USD: { code: 'USD', symbol: '$', label: 'USD ($)', name: 'US Dollar', rate: 0.012, flag: '🇺🇸' },
+  EUR: { code: 'EUR', symbol: '€', label: 'EUR (€)', name: 'Euro', rate: 0.011, flag: '🇪🇺' },
+  GBP: { code: 'GBP', symbol: '£', label: 'GBP (£)', name: 'British Pound', rate: 0.0093, flag: '🇬🇧' },
+};
+
 const CART_STORAGE_KEY = 'trinetr_store_cart_v1';
 const WISHLIST_STORAGE_KEY = 'trinetr_store_wishlist_v1';
 const PRODUCT_OVERRIDES_KEY = 'storefront_product_overrides';
+const CURRENCY_STORAGE_KEY = 'trinetr_store_currency';
+const DELIVERY_CONFIG_KEY = 'trinetr_delivery_partner_config';
+
+export const DEFAULT_DELIVERY_CONFIG = {
+  provider: 'shiprocket', // 'shiprocket' | 'delhivery' | 'borzo' | 'dunzo' | 'self'
+  apiKey: '',
+  apiSecret: '',
+  merchantId: '',
+  pickupPincode: '380001',
+  freeShippingThreshold: 500, // in INR
+  standardDeliveryFee: 50, // in INR
+  autoDispatch: false,
+  testMode: true,
+  trackingBaseUrl: 'https://shiprocket.co/tracking/'
+};
 
 function applyProductOverrides(items) {
   let overrides = {};
@@ -239,6 +261,73 @@ export function StoreCartProvider({ children, storeProfile, customInventory, isO
     }
   });
 
+  // Currency State (INR ₹, USD $, EUR €, GBP £)
+  const [selectedCurrency, setSelectedCurrency] = useState(() => {
+    try {
+      const saved = localStorage.getItem(CURRENCY_STORAGE_KEY);
+      return (saved && CURRENCIES[saved]) ? saved : 'INR';
+    } catch {
+      return 'INR';
+    }
+  });
+
+  const currentCurrency = useMemo(() => {
+    return CURRENCIES[selectedCurrency] || CURRENCIES.INR;
+  }, [selectedCurrency]);
+
+  const setCurrency = (code) => {
+    if (CURRENCIES[code]) {
+      setSelectedCurrency(code);
+      try {
+        localStorage.setItem(CURRENCY_STORAGE_KEY, code);
+      } catch {}
+    }
+  };
+
+  const convertPrice = (amountInInr, targetCurrency = selectedCurrency) => {
+    const num = Number(amountInInr) || 0;
+    const cur = CURRENCIES[targetCurrency] || CURRENCIES.INR;
+    return cur.code === 'INR' ? num : Number((num * cur.rate).toFixed(2));
+  };
+
+  const convertToInr = (foreignAmount, sourceCurrency = selectedCurrency) => {
+    const num = Number(foreignAmount) || 0;
+    const cur = CURRENCIES[sourceCurrency] || CURRENCIES.INR;
+    if (cur.code === 'INR' || !cur.rate) return num;
+    return Number((num / cur.rate).toFixed(2));
+  };
+
+  const formatPrice = (amountInInr, includeSymbol = true, targetCurrency = selectedCurrency) => {
+    const cur = CURRENCIES[targetCurrency] || CURRENCIES.INR;
+    const converted = convertPrice(amountInInr, targetCurrency);
+    const formatted = cur.code === 'INR'
+      ? (Number.isInteger(converted) ? converted.toLocaleString('en-IN') : converted.toFixed(2))
+      : converted.toFixed(2);
+    return includeSymbol ? `${cur.symbol}${formatted}` : formatted;
+  };
+
+  // Delivery Partner Configuration State (Shiprocket, Delhivery, Borzo, Dunzo, Self)
+  const [deliveryConfig, setDeliveryConfig] = useState(() => {
+    try {
+      const saved = localStorage.getItem(DELIVERY_CONFIG_KEY);
+      return saved ? { ...DEFAULT_DELIVERY_CONFIG, ...JSON.parse(saved) } : DEFAULT_DELIVERY_CONFIG;
+    } catch {
+      return DEFAULT_DELIVERY_CONFIG;
+    }
+  });
+
+  const updateDeliveryConfig = (updates) => {
+    setDeliveryConfig(prev => {
+      const next = { ...prev, ...updates };
+      try {
+        localStorage.setItem(DELIVERY_CONFIG_KEY, JSON.stringify(next));
+      } catch (e) {
+        console.error('Failed to save delivery config', e);
+      }
+      return next;
+    });
+  };
+
   // Cart Drawer open/close state
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
 
@@ -343,17 +432,22 @@ export function StoreCartProvider({ children, storeProfile, customInventory, isO
     return cart.reduce((acc, item) => acc + item.quantity, 0);
   }, [cart]);
 
-  // Shipping estimate: Free over 500, else 50
+  // Shipping estimate: Free over freeShippingThreshold, else standardDeliveryFee
   const deliveryCharge = useMemo(() => {
     if (cartSubtotal === 0) return 0;
-    return cartSubtotal >= 500 ? 0 : 50;
-  }, [cartSubtotal]);
+    const threshold = deliveryConfig?.freeShippingThreshold ?? 500;
+    const fee = deliveryConfig?.standardDeliveryFee ?? 50;
+    return cartSubtotal >= threshold ? 0 : fee;
+  }, [cartSubtotal, deliveryConfig]);
 
   const cartGrandTotal = cartSubtotal + deliveryCharge;
 
   // Generate WhatsApp Order URL
   const generateWhatsAppOrderUrl = (customerDetails = {}) => {
     if (cart.length === 0) return '';
+
+    const cur = currentCurrency;
+    const isForeign = cur.code !== 'INR';
 
     let text = `🛍️ *NEW ORDER - ${storeInfo.name.toUpperCase()}*\n`;
     text += `────────────────────\n`;
@@ -369,18 +463,33 @@ export function StoreCartProvider({ children, storeProfile, customInventory, isO
     if (customerDetails.city) {
       text += `🏙️ *City:* ${customerDetails.city}\n`;
     }
+    if (isForeign) {
+      text += `💱 *Currency:* ${cur.name} (${cur.code} ${cur.symbol})\n`;
+    }
     text += `────────────────────\n`;
     text += `*ITEMS ORDERED:*\n`;
 
     cart.forEach((item, index) => {
-      const lineTotal = item.price * item.quantity;
-      text += `${index + 1}. *${item.name}*\n   ├ Size: ${item.variantWeight}\n   ├ Qty: ${item.quantity} x ₹${item.price.toFixed(2)}\n   └ Subtotal: ₹${lineTotal.toFixed(2)}\n`;
+      const lineTotalInr = item.price * item.quantity;
+      if (isForeign) {
+        const unitForeign = formatPrice(item.price);
+        const lineForeign = formatPrice(lineTotalInr);
+        text += `${index + 1}. *${item.name}*\n   ├ Size: ${item.variantWeight}\n   ├ Qty: ${item.quantity} x ${unitForeign}\n   └ Subtotal: ${lineForeign} (₹${lineTotalInr.toFixed(2)})\n`;
+      } else {
+        text += `${index + 1}. *${item.name}*\n   ├ Size: ${item.variantWeight}\n   ├ Qty: ${item.quantity} x ₹${item.price.toFixed(2)}\n   └ Subtotal: ₹${lineTotalInr.toFixed(2)}\n`;
+      }
     });
 
     text += `────────────────────\n`;
-    text += `💰 *Items Subtotal:* ₹${cartSubtotal.toFixed(2)}\n`;
-    text += `🚚 *Delivery Fee:* ${deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge.toFixed(2)}`}\n`;
-    text += `⭐ *GRAND TOTAL: ₹${cartGrandTotal.toFixed(2)}*\n`;
+    if (isForeign) {
+      text += `💰 *Items Subtotal:* ${formatPrice(cartSubtotal)} (₹${cartSubtotal.toFixed(2)})\n`;
+      text += `🚚 *Delivery Fee:* ${deliveryCharge === 0 ? 'FREE' : `${formatPrice(deliveryCharge)} (₹${deliveryCharge.toFixed(2)})`}\n`;
+      text += `⭐ *GRAND TOTAL: ${formatPrice(cartGrandTotal)} (Approx ₹${cartGrandTotal.toFixed(2)} INR)*\n`;
+    } else {
+      text += `💰 *Items Subtotal:* ₹${cartSubtotal.toFixed(2)}\n`;
+      text += `🚚 *Delivery Fee:* ${deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge.toFixed(2)}`}\n`;
+      text += `⭐ *GRAND TOTAL: ₹${cartGrandTotal.toFixed(2)}*\n`;
+    }
     text += `────────────────────\n`;
     text += `Please confirm my order and share estimated dispatch time. Thank you!`;
 
@@ -531,6 +640,15 @@ export function StoreCartProvider({ children, storeProfile, customInventory, isO
     products,
     editingProduct,
     setEditingProduct: safeSetEditingProduct,
+    selectedCurrency,
+    currentCurrency,
+    currencies: CURRENCIES,
+    setCurrency,
+    formatPrice,
+    convertPrice,
+    convertToInr,
+    deliveryConfig,
+    updateDeliveryConfig,
     updateProduct,
     resetProductOverride,
     updateStoreProfile

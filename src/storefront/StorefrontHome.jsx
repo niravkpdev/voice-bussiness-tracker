@@ -9,6 +9,7 @@ import { CategoriesView } from './components/CategoriesView';
 import { ContactView } from './components/ContactView';
 import { CartDrawer } from './components/CartDrawer';
 import { ProductEditModal } from './components/ProductEditModal';
+import { DeliverySettingsModal } from './components/DeliverySettingsModal';
 import { QualityTrustStrip } from './components/QualityTrustStrip';
 import { CustomerReviewsSection } from './components/CustomerReviewsSection';
 import { BannerEditModal } from './components/BannerEditModal';
@@ -30,6 +31,7 @@ function StorefrontContent(props) {
   } = props;
   const [currentTab, setCurrentTab] = useState(initialTab);
   const [isEditingBanner, setIsEditingBanner] = useState(false);
+  const [isEditingDelivery, setIsEditingDelivery] = useState(false);
   const [homeDietaryFilter, setHomeDietaryFilter] = useState('all');
   const { 
     setActiveCategory, 
@@ -38,7 +40,8 @@ function StorefrontContent(props) {
     products, 
     cartTotalCount, 
     cartGrandTotal, 
-    setCartDrawerOpen 
+    setCartDrawerOpen,
+    formatPrice
   } = useStoreCart();
   const activeStore = storeInfo || STORE_INFO;
   const catalog = products && products.length > 0 ? products : PRODUCTS;
@@ -102,6 +105,14 @@ function StorefrontContent(props) {
         />
       )}
 
+      {/* Owner Delivery Partner Integration Modal */}
+      {isOwner && (
+        <DeliverySettingsModal
+          isOpen={isEditingDelivery}
+          onClose={() => setIsEditingDelivery(false)}
+        />
+      )}
+
       {/* Render Current Tab Page */}
       {currentTab === 'shop' && (
         <ShopGrid />
@@ -132,15 +143,26 @@ function StorefrontContent(props) {
           <section className="trinetr-hero-promo-banner">
             <div className="trinetr-hero-promo-card">
               {isOwner && (
-                <button
-                  type="button"
-                  className="trinetr-banner-edit-trigger"
-                  onClick={() => setIsEditingBanner(true)}
-                  title="Owner: Edit Hero Banner Headline & Offer"
-                >
-                  <Edit3 size={14} />
-                  <span>Edit Offer Banner</span>
-                </button>
+                <div className="trinetr-owner-hero-actions">
+                  <button
+                    type="button"
+                    className="trinetr-banner-edit-trigger"
+                    onClick={() => setIsEditingBanner(true)}
+                    title="Owner: Edit Hero Banner Headline & Offer"
+                  >
+                    <Edit3 size={14} />
+                    <span>Edit Offer Banner</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="trinetr-delivery-settings-trigger"
+                    onClick={() => setIsEditingDelivery(true)}
+                    title="Owner: Connect Delivery Partner (Shiprocket, Borzo, Dunzo)"
+                  >
+                    <Truck size={14} />
+                    <span>Delivery App Connect</span>
+                  </button>
+                </div>
               )}
               
               <div className="trinetr-hero-split-grid">
@@ -492,7 +514,7 @@ function StorefrontContent(props) {
         <aside className="trinetr-mobile-cart-float" aria-label="Mobile Cart Quick Checkout">
           <div className="trinetr-mobile-cart-info">
             <span className="trinetr-mobile-cart-count">{cartTotalCount} {cartTotalCount === 1 ? 'Item' : 'Items'} in Cart</span>
-            <span className="trinetr-mobile-cart-total">₹{cartGrandTotal.toFixed(2)}</span>
+            <span className="trinetr-mobile-cart-total">{formatPrice(cartGrandTotal)}</span>
           </div>
           <button 
             type="button" 
