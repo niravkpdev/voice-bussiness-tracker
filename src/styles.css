@@ -480,7 +480,7 @@ button:hover {
   margin-bottom: 0;
 }
 
-.section-header span {
+.section-header .section-badge {
   flex: 0 0 auto;
   border-radius: 12px;
   padding: 8px 14px;
@@ -5671,7 +5671,6 @@ fieldset {
 }
 
 /* Button/badge contrast guard: keep text readable on colored action surfaces. */
-.section-header > span,
 .topbar-link.primary,
 .topbar-link.primary:visited,
 .sidebar-support-button,
@@ -5685,7 +5684,6 @@ fieldset {
   -webkit-text-fill-color: #ffffff !important;
 }
 
-.section-header > span *,
 .topbar-link.primary *,
 .sidebar-support-button *,
 .saas-primary-button *,
@@ -5695,11 +5693,6 @@ fieldset {
 .mobile-bottom-nav a.active * {
   color: #ffffff !important;
   -webkit-text-fill-color: #ffffff !important;
-}
-
-.section-header > span {
-  background: var(--app-card-bg) !important;
-  border: 1px solid #374151 !important;
 }
 
 .section-header .eyebrow,

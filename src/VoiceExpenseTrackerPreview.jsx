@@ -272,7 +272,6 @@ const navigationConfig = [
       { id: 'voucher-entry', path: '#voucher-entry', tab: 'voucher-entry', label: 'Voucher Entry (Purchase, Cash & Bank)', icon: '▣' },
       { id: 'invoices', path: '#invoices', tab: 'invoices', label: 'Tax Invoices Register', icon: '▧' },
       { id: 'payments', path: '#upi-payments', tab: 'upi-payments', label: 'Payments & UPI', icon: '▥' },
-      { id: 'day-book', path: '#day-book', tab: 'day-book', label: 'Day Book (Daily Log)', icon: '☷' },
       { id: 'inventory-inward', path: '#inventory', tab: 'inventory', label: 'Stock & Inventory Management', icon: '⬢' },
       { id: 'orders', path: '#orders', tab: 'orders', label: 'Storefront Orders', icon: '🛒' },
     ],
@@ -5939,9 +5938,6 @@ export default function VoiceExpenseTrackerPreview() {
                   <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('voucher-entry'); setOpenNxMenu(null); }}>
                     ▣ Voucher Entry (Purchase, Expense, Cash &amp; Bank)
                   </button>
-                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('day-book'); setOpenNxMenu(null); }}>
-                    ☷ Daily Day Book &amp; Passbook
-                  </button>
                   <div className="trinetr-dropdown-divider" />
                   <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('upi-payments'); setOpenNxMenu(null); }}>
                     💳 Payments &amp; UPI Receipts
@@ -8248,7 +8244,6 @@ export default function VoiceExpenseTrackerPreview() {
             <section className="panel fade-in" id="day-book">
               <div className="section-header">
                 <h2>Day Book Overview</h2>
-                <span>{filteredVouchers.length} Vouchers</span>
               </div>
               <label className="field-label" htmlFor="daybook-filter">
                 Filter Day Book by Date
@@ -8522,7 +8517,6 @@ export default function VoiceExpenseTrackerPreview() {
                   <h2>Business Profile</h2>
                   <p className="panel-hint">Configure your company identity, logo, and GST number for invoice printing.</p>
                 </div>
-                <span>Profile</span>
               </div>
               <form onSubmit={saveBusinessProfile}>
                 <div className="profile-editor-grid">
@@ -8766,10 +8760,9 @@ export default function VoiceExpenseTrackerPreview() {
             <section className="panel members-panel fade-in" id="user-management">
               <div className="section-header">
                 <div>
-                  <h2>Users & Roles</h2>
+                  <h2>Users &amp; Roles</h2>
                   <p className="panel-hint">Invite team members and control access with Owner, Manager, Accountant, and Staff roles.</p>
                 </div>
-                <span>{isCompanyOwner ? 'Owner Access' : 'Owner Only'}</span>
               </div>
 
               {!isCompanyOwner ? (
@@ -9012,7 +9005,6 @@ export default function VoiceExpenseTrackerPreview() {
                   <h2>Application Configurations</h2>
                   <p className="panel-hint">Configure system backups, restoration endpoints, and database cleanups.</p>
                 </div>
-                <span>Admin Settings</span>
               </div>
               <div className="settings-grid">
                 <article className="settings-card">
