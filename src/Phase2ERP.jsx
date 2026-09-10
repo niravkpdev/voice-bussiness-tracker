@@ -2869,7 +2869,17 @@ export default function Phase2ERP({
 
   if (activeTab === 'notifications') {
     const openAlertAction = (item) => {
+      if (item.targetTab) {
+        window.location.hash = item.targetTab;
+        onStatus(`Opening ${item.title}`);
+        return;
+      }
       const title = String(item.title || '').toLowerCase();
+      if (title.includes('order')) {
+        window.location.hash = 'orders';
+        onStatus('Opening Orders');
+        return;
+      }
       if (title.includes('gst')) {
         window.location.hash = 'gst';
         onStatus('Opening GST Center');
@@ -2890,30 +2900,66 @@ export default function Phase2ERP({
         onStatus('Opening Invoices');
         return;
       }
-      onStatus(`${item.title}: ${item.body || 'No extra details available.'}`);
+      if (title.includes('payment') || title.includes('receipt')) {
+        window.location.hash = 'day-book';
+        onStatus('Opening Day Book');
+        return;
+      }
+      if (title.includes('receivable') || title.includes('pending')) {
+        window.location.hash = 'party-statement';
+        onStatus('Opening Party Statement');
+        return;
+      }
+      onStatus(`${item.title}: ${item.desc || item.body || 'No extra details available.'}`);
     };
     const derivedAlerts = [
-      ...erpAI.lowStock.slice(0, 5).map((product) => ({ title: 'Low Stock Alert', body: `${product.name}: ${product.currentStock} ${product.unit}` })),
-      ...erpAI.overdue.slice(0, 5).map((invoice) => ({ title: 'Overdue Invoice Alert', body: `${invoice.invoiceNo}: ${formatCurrency(invoice.balance || invoice.total)}` })),
-      { title: 'GST Reminder', body: `Selected period GST reserve: ${formatCurrency(gstSummary.cgst + gstSummary.sgst)}` },
-      { title: 'Backup Reminder', body: cloudSettings.lastBackup ? `Last backup: ${cloudSettings.lastBackup}` : 'No backup created yet.' },
+      ...erpAI.lowStock.slice(0, 5).map((product) => ({ title: 'Low Stock Alert', body: `${product.name}: ${product.currentStock} ${product.unit}`, targetTab: 'inventory' })),
+      ...erpAI.overdue.slice(0, 5).map((invoice) => ({ title: 'Overdue Invoice Alert', body: `${invoice.invoiceNo}: ${formatCurrency(invoice.balance || invoice.total)}`, targetTab: 'invoices' })),
+      { title: 'GST Reminder', body: `Selected period GST reserve: ${formatCurrency(gstSummary.cgst + gstSummary.sgst)}`, targetTab: 'gst' },
+      { title: 'Backup Reminder', body: cloudSettings.lastBackup ? `Last backup: ${cloudSettings.lastBackup}` : 'No backup created yet.', targetTab: 'cloud-backup' },
     ];
+    const displayAlerts = Array.isArray(cloudNotifications) && cloudNotifications.length > 0
+      ? cloudNotifications
+      : [...derivedAlerts, ...notifications];
+
     return (
       <section className="phase2-stack fade-in" id="notifications">
-        <div className="erp-hero"><div><span className="eyebrow">Notification Center</span><h2>Business alerts and reminders</h2></div><div className="erp-hero-actions"><strong>{derivedAlerts.length + notifications.length}</strong><span>alerts</span></div></div>
+        <div className="erp-hero">
+          <div>
+            <span className="eyebrow">Notification Center</span>
+            <h2>Business alerts and reminders</h2>
+          </div>
+          <div className="erp-hero-actions">
+            <strong>{displayAlerts.length}</strong>
+            <span>alerts</span>
+          </div>
+        </div>
         <section className="panel">
           <div className="compact-list">
-            {[...derivedAlerts, ...notifications].map((item, index) => (
+            {displayAlerts.map((item, index) => (
               <button
                 className="compact-item clickable-alert"
-                key={`${item.title}-${index}`}
+                key={`${item.id || item.title}-${index}`}
                 type="button"
                 onClick={() => openAlertAction(item)}
                 aria-label={`Open ${item.title}`}
+                style={{ textAlign: 'left', width: '100%', cursor: 'pointer' }}
               >
-                <div><strong>{item.title}</strong><p>{item.body}</p></div><span className="status-pill draft">{item.type || 'Auto'}</span>
+                <div>
+                  <strong style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {item.dot && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: item.dot, display: 'inline-block' }} />}
+                    {item.title}
+                  </strong>
+                  <p style={{ marginTop: '4px', color: '#475569' }}>{item.desc || item.body}</p>
+                </div>
+                <span className="status-pill draft">{item.time || item.type || 'Open'}</span>
               </button>
             ))}
+            {displayAlerts.length === 0 && (
+              <div style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>
+                <p>No active business alerts or reminders right now. All clear!</p>
+              </div>
+            )}
           </div>
         </section>
       </section>

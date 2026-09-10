@@ -520,6 +520,28 @@ function getBusinessHealthLabel(score) {
   return 'Risk';
 }
 
+function formatRelativeTime(dateInput) {
+  if (!dateInput) return 'Recently';
+  try {
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return 'Recently';
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    if (diffMs < 0) return 'Just now';
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  } catch {
+    return 'Recently';
+  }
+}
+
 function safeMathAnswer(input) {
   const expression = input.replace(/,/g, '').replace(/\s+/g, '');
   if (!/^[\d+\-*/().\s]+$/.test(expression)) {
@@ -1515,6 +1537,14 @@ export default function VoiceExpenseTrackerPreview() {
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [readNotifIds, setReadNotifIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem('trinetr_read_notifications');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const quickAddRef = useRef(null);
   const profileDropdownRef = useRef(null);
   const notificationsRef = useRef(null);
@@ -3798,6 +3828,174 @@ export default function VoiceExpenseTrackerPreview() {
       suggestions: dynamicSuggestions
     };
   }, [stats, cashInHand, partySummary, vouchers, netProfitGrowth]);
+
+  const liveNotifications = useMemo(() => {
+    const list = [];
+
+    // 1. Real Customer / Storefront Orders (from activeOrders)
+    const ordersList = Array.isArray(activeOrders) ? activeOrders : [];
+    const recentOrders = ordersList.slice(0, 3);
+    recentOrders.forEach((ord) => {
+      const orderNum = ord.orderNo || `ORD-${ord.id ? String(ord.id).slice(-4) : '1001'}`;
+      const customerName = ord.customer || ord.customerName || ord.shippingAddress?.name || 'Customer';
+      const totalAmt = Number(ord.total || ord.amount || 0);
+      const statusText = ord.status || 'Pending';
+      const timeStr = formatRelativeTime(ord.createdAt || ord.date);
+
+      list.push({
+        id: `ord-${ord.id || ord.orderNo}`,
+        title: `Online Order ${orderNum}`,
+        desc: `${customerName} • ${formatCurrency(totalAmt)} (${statusText})`,
+        time: timeStr,
+        dot: statusText.toLowerCase() === 'delivered' ? '#10b981' : '#2563eb',
+        targetTab: 'orders',
+        category: 'orders',
+      });
+    });
+
+    // 2. Real Low Stock & Out-of-Stock Alerts (from cloudInventory)
+    const invItems = Array.isArray(cloudInventory) ? cloudInventory : [];
+    const outOfStock = invItems.filter((p) => Number(p.currentStock || 0) <= 0);
+    outOfStock.slice(0, 2).forEach((p) => {
+      list.push({
+        id: `stock-out-${p.id || p.name}`,
+        title: `Out of Stock: ${p.name}`,
+        desc: `0 ${p.unit || 'units'} left. Immediate replenishment needed.`,
+        time: 'Action required',
+        dot: '#ef4444',
+        targetTab: 'inventory',
+        category: 'inventory',
+      });
+    });
+
+    const lowStock = invItems.filter((p) => {
+      const cur = Number(p.currentStock || 0);
+      const min = Number(p.minStock || 15);
+      return cur > 0 && cur <= min;
+    });
+    lowStock.slice(0, 2).forEach((p) => {
+      list.push({
+        id: `stock-low-${p.id || p.name}`,
+        title: `Low Stock: ${p.name}`,
+        desc: `Only ${p.currentStock} ${p.unit || 'units'} left (Min: ${p.minStock || 15})`,
+        time: 'Stock alert',
+        dot: '#f59e0b',
+        targetTab: 'inventory',
+        category: 'inventory',
+      });
+    });
+
+    // 3. Real Payments Received / Receipts (from activeVouchers)
+    const vchList = Array.isArray(activeVouchers) ? activeVouchers : [];
+    const receipts = vchList
+      .filter((v) => v && (v.type === 'Receipt' || v.type === 'Sales'))
+      .slice(-2)
+      .reverse();
+    receipts.forEach((v) => {
+      const partyLedger = (Array.isArray(ledgers) ? ledgers : []).find((l) => l.id === v.partyId);
+      const partyName = v.partyName || partyLedger?.name || v.narration || 'Customer';
+      list.push({
+        id: `vch-${v.id}`,
+        title: 'Payment Received',
+        desc: `${formatCurrency(Number(v.amount || 0))} from ${partyName}`,
+        time: formatRelativeTime(v.date),
+        dot: '#10b981',
+        targetTab: 'day-book',
+        category: 'payments',
+      });
+    });
+
+    // 4. Real Pending Customer Receivables (from partySummary)
+    const debtorList = (Array.isArray(partySummary) ? partySummary : [])
+      .filter((p) => p && p.group === 'Sundry Debtors' && Number(p.outstandingAmount || 0) > 0)
+      .sort((a, b) => Number(b.outstandingAmount || 0) - Number(a.outstandingAmount || 0))
+      .slice(0, 2);
+    debtorList.forEach((d) => {
+      list.push({
+        id: `debtor-${d.id || d.name}`,
+        title: `Payment Pending: ${d.name}`,
+        desc: `${formatCurrency(Number(d.outstandingAmount || 0))} outstanding balance`,
+        time: 'Receivable',
+        dot: '#8b5cf6',
+        targetTab: 'party-statement',
+        category: 'receivables',
+      });
+    });
+
+    // 5. Dynamic GST Statutory Filing Schedule
+    const now = new Date();
+    const curDay = now.getDate();
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const curMonth = monthNames[now.getMonth()];
+    let gstNoticeText = '';
+    let daysRemaining = 0;
+    if (curDay <= 11) {
+      gstNoticeText = `GSTR-1 outward return due by 11th ${curMonth}`;
+      daysRemaining = 11 - curDay;
+    } else if (curDay <= 20) {
+      gstNoticeText = `GSTR-3B monthly tax return due by 20th ${curMonth}`;
+      daysRemaining = 20 - curDay;
+    } else {
+      const nextMonth = monthNames[(now.getMonth() + 1) % 12];
+      gstNoticeText = `Next GSTR-1 return scheduled by 11th ${nextMonth}`;
+      daysRemaining = 30 - curDay + 11;
+    }
+    list.push({
+      id: `gst-deadline-${now.getMonth()}-${curDay <= 20 ? '3b' : 'g1'}`,
+      title: 'GST Compliance Schedule',
+      desc: gstNoticeText,
+      time: `${daysRemaining}d left`,
+      dot: '#6366f1',
+      targetTab: 'gst',
+      category: 'gst',
+    });
+
+    // 6. Cloud Database Connection Status
+    if (supabaseEnabled) {
+      list.push({
+        id: 'cloud-db-synced',
+        title: 'Cloud Database Synced',
+        desc: 'Real-time database sync is active and healthy.',
+        time: 'Live',
+        dot: '#10b981',
+        targetTab: 'cloud-backup',
+        category: 'cloud',
+      });
+    }
+
+    return list;
+  }, [activeOrders, cloudInventory, activeVouchers, ledgers, partySummary, supabaseEnabled]);
+
+  const unreadNotificationCount = useMemo(() => {
+    return liveNotifications.filter((item) => !readNotifIds.includes(item.id)).length;
+  }, [liveNotifications, readNotifIds]);
+
+  const handleMarkAllNotificationsRead = () => {
+    const allIds = liveNotifications.map((n) => n.id);
+    const nextIds = Array.from(new Set([...readNotifIds, ...allIds]));
+    setReadNotifIds(nextIds);
+    try {
+      localStorage.setItem('trinetr_read_notifications', JSON.stringify(nextIds));
+    } catch {}
+    setStatus('All notifications marked as read');
+  };
+
+  const handleNotificationClick = (item) => {
+    setReadNotifIds((prev) => {
+      const next = Array.from(new Set([...prev, item.id]));
+      try {
+        localStorage.setItem('trinetr_read_notifications', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+    setNotificationsOpen(false);
+    if (item.targetTab) {
+      navigateToTab(item.targetTab);
+      setStatus(`Opening ${item.title}...`);
+    } else {
+      navigateToTab('notifications');
+    }
+  };
 
   const pnlData = useMemo(() => {
     const sales = computeLedgerBalance('ledger-sales', ledgers, vouchers);
@@ -6418,16 +6616,18 @@ export default function VoiceExpenseTrackerPreview() {
                 }}
               >
                 <Bell size={18} />
-                <span style={{
-                  position: 'absolute',
-                  top: '4px',
-                  right: '4px',
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  background: '#ef4444',
-                  border: '2px solid #ffffff'
-                }} />
+                {unreadNotificationCount > 0 && (
+                  <span style={{
+                    position: 'absolute',
+                    top: '4px',
+                    right: '4px',
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    background: '#ef4444',
+                    border: '2px solid #ffffff'
+                  }} />
+                )}
               </button>
               {notificationsOpen && (
                 <div
@@ -6436,8 +6636,8 @@ export default function VoiceExpenseTrackerPreview() {
                     position: 'absolute',
                     top: 'calc(100% + 8px)',
                     right: 0,
-                    width: '320px',
-                    maxWidth: '90vw',
+                    width: '340px',
+                    maxWidth: '92vw',
                     background: '#ffffff',
                     borderRadius: '10px',
                     boxShadow: '0 12px 32px rgba(15, 23, 42, 0.18)',
@@ -6453,50 +6653,76 @@ export default function VoiceExpenseTrackerPreview() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <Bell size={16} color="#1e3a8a" />
                       <strong style={{ fontSize: '13.5px', color: '#0f172a' }}>Notifications</strong>
-                      <span style={{ background: '#eff6ff', color: '#1e3a8a', fontSize: '11px', fontWeight: 750, padding: '2px 6px', borderRadius: '12px', border: '1px solid #bfdbfe' }}>2 New</span>
+                      <span style={{
+                        background: unreadNotificationCount > 0 ? '#eff6ff' : '#f1f5f9',
+                        color: unreadNotificationCount > 0 ? '#1e3a8a' : '#64748b',
+                        fontSize: '11px',
+                        fontWeight: 750,
+                        padding: '2px 6px',
+                        borderRadius: '12px',
+                        border: unreadNotificationCount > 0 ? '1px solid #bfdbfe' : '1px solid #e2e8f0'
+                      }}>
+                        {unreadNotificationCount > 0 ? `${unreadNotificationCount} New` : 'All read'}
+                      </span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setStatus('All notifications marked as read')}
-                      style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '11.5px', fontWeight: 600, cursor: 'pointer', padding: 0 }}
-                    >
-                      Mark all read
-                    </button>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '240px', overflowY: 'auto' }}>
-                    {[
-                      { id: '1', title: 'Payment Received', desc: '₹4,500 via UPI from Globex Inc', time: 'Just now', unread: true, dot: '#2563eb' },
-                      { id: '2', title: 'Low Stock Alert', desc: 'Soya Sticks & Nylon Sev below minimum', time: '1h ago', unread: true, dot: '#f59e0b' },
-                      { id: '3', title: 'GST Reminder', desc: 'GSTR-3B return period ends this week', time: 'Today', unread: false, dot: '#94a3b8' },
-                      { id: '4', title: 'Cloud Backup Synced', desc: 'Daily database snapshot verified', time: 'Yesterday', unread: false, dot: '#10b981' }
-                    ].map((item) => (
-                      <div
-                        key={item.id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'flex-start',
-                          gap: '10px',
-                          padding: '8px 10px',
-                          borderRadius: '6px',
-                          background: item.unread ? '#f8fafc' : 'transparent',
-                          border: item.unread ? '1px solid #e2e8f0' : '1px solid transparent',
-                          cursor: 'pointer'
-                        }}
-                        onClick={() => {
-                          setNotificationsOpen(false);
-                          navigateToTab('notifications');
-                        }}
+                    {unreadNotificationCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleMarkAllNotificationsRead}
+                        style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '11.5px', fontWeight: 600, cursor: 'pointer', padding: 0 }}
                       >
-                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: item.dot, marginTop: '5px', flexShrink: 0 }} />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                            <strong style={{ fontSize: '12.5px', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</strong>
-                            <span style={{ fontSize: '10.5px', color: '#64748b', flexShrink: 0, marginLeft: '6px' }}>{item.time}</span>
-                          </div>
-                          <div style={{ fontSize: '11.5px', color: '#475569', marginTop: '2px', lineHeight: 1.3 }}>{item.desc}</div>
-                        </div>
+                        Mark all read
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '280px', overflowY: 'auto' }}>
+                    {liveNotifications.length === 0 ? (
+                      <div style={{ padding: '24px 12px', textAlign: 'center', color: '#64748b' }}>
+                        <CheckCircle size={26} color="#10b981" style={{ margin: '0 auto 8px', display: 'block' }} />
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>All caught up!</div>
+                        <div style={{ fontSize: '11.5px', marginTop: '3px', color: '#64748b' }}>No pending alerts or low-stock notices right now.</div>
                       </div>
-                    ))}
+                    ) : (
+                      liveNotifications.map((item) => {
+                        const isUnread = !readNotifIds.includes(item.id);
+                        return (
+                          <div
+                            key={item.id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: '10px',
+                              padding: '8px 10px',
+                              borderRadius: '6px',
+                              background: isUnread ? '#f8fafc' : 'transparent',
+                              border: isUnread ? '1px solid #e2e8f0' : '1px solid transparent',
+                              cursor: 'pointer',
+                              transition: 'background 0.15s ease'
+                            }}
+                            onClick={() => handleNotificationClick(item)}
+                            title={`Click to open ${item.title}`}
+                          >
+                            <span style={{
+                              width: '8px',
+                              height: '8px',
+                              borderRadius: '50%',
+                              background: item.dot || (isUnread ? '#2563eb' : '#94a3b8'),
+                              marginTop: '5px',
+                              flexShrink: 0
+                            }} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                                <strong style={{ fontSize: '12.5px', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {item.title}
+                                </strong>
+                                <span style={{ fontSize: '10.5px', color: '#64748b', flexShrink: 0, marginLeft: '6px' }}>{item.time}</span>
+                              </div>
+                              <div style={{ fontSize: '11.5px', color: '#475569', marginTop: '2px', lineHeight: 1.3 }}>{item.desc}</div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
                   <div style={{ paddingTop: '8px', borderTop: '1px solid #e2e8f0', textAlign: 'center' }}>
                     <button
@@ -7070,24 +7296,65 @@ export default function VoiceExpenseTrackerPreview() {
                       <div className="panel-header">
                         <h2 className="panel-title">
                           <Bell size={18} color="var(--brand-primary)" /> Notifications 
-                          <span className="badge badge-danger" style={{ fontSize: '10px', padding: '2px 6px' }}>2 New</span>
+                          {unreadNotificationCount > 0 && (
+                            <span className="badge badge-danger" style={{ fontSize: '10px', padding: '2px 6px' }}>
+                              {unreadNotificationCount} New
+                            </span>
+                          )}
                         </h2>
-                        <button type="button" className="btn btn-ghost" style={{ padding: '4px', fontSize: '11px' }} onClick={() => setStatus('Notifications marked as read')}>Mark all read</button>
+                        {unreadNotificationCount > 0 && (
+                          <button
+                            type="button"
+                            className="btn btn-ghost"
+                            style={{ padding: '4px 8px', fontSize: '11px', cursor: 'pointer' }}
+                            onClick={handleMarkAllNotificationsRead}
+                          >
+                            Mark all read
+                          </button>
+                        )}
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        {[
-                          { title: 'Payment Received', desc: '₹4,500 from Globex Inc', unread: true },
-                          { title: 'Inventory Alert', desc: 'Black Ink is running low', unread: true },
-                          { title: 'System Update', desc: 'v2.4.1 has been deployed', unread: false }
-                        ].map((notif, i) => (
-                          <div key={i} className="hover-scale" style={{ display: 'flex', gap: '12px', padding: '12px', borderRadius: '8px', background: notif.unread ? 'var(--brand-secondary)' : 'var(--bg-secondary)', border: `1px solid ${notif.unread ? 'rgba(59, 130, 246, 0.2)' : 'var(--border-subtle)'}` }}>
-                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: notif.unread ? 'var(--brand-primary)' : 'transparent', marginTop: '6px', flexShrink: 0 }}></div>
-                            <div>
-                              <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{notif.title}</div>
-                              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{notif.desc}</div>
-                            </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {liveNotifications.length === 0 ? (
+                          <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
+                            All caught up! No active alerts.
                           </div>
-                        ))}
+                        ) : (
+                          liveNotifications.slice(0, 5).map((notif) => {
+                            const isUnread = !readNotifIds.includes(notif.id);
+                            return (
+                              <div
+                                key={notif.id}
+                                className="hover-scale"
+                                onClick={() => handleNotificationClick(notif)}
+                                style={{
+                                  display: 'flex',
+                                  gap: '12px',
+                                  padding: '12px',
+                                  borderRadius: '8px',
+                                  background: isUnread ? 'rgba(59, 130, 246, 0.05)' : 'var(--bg-secondary)',
+                                  border: `1px solid ${isUnread ? 'rgba(59, 130, 246, 0.25)' : 'var(--border-subtle)'}`,
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                <div style={{
+                                  width: '8px',
+                                  height: '8px',
+                                  borderRadius: '50%',
+                                  background: notif.dot || (isUnread ? 'var(--brand-primary)' : '#94a3b8'),
+                                  marginTop: '6px',
+                                  flexShrink: 0
+                                }} />
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                                    <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{notif.title}</div>
+                                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', flexShrink: 0, marginLeft: '6px' }}>{notif.time}</span>
+                                  </div>
+                                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>{notif.desc}</div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
                       </div>
                     </div>
 
@@ -7240,7 +7507,7 @@ export default function VoiceExpenseTrackerPreview() {
                 cloudInvoices={cloudInvoices}
                 onInvoicesChange={(nextInvoices) => setCloudInvoices(nextInvoices)}
                 cloudBusinesses={cloudBusinesses}
-                cloudNotifications={cloudNotifications}
+                cloudNotifications={liveNotifications}
                 cloudUserId={authUser?.uid}
                 peopleLoading={peopleLoading}
                 onStatus={setStatus}
