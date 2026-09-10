@@ -7384,8 +7384,16 @@ input, textarea, [contenteditable="true"] {
 
 .saas-nav.neon-topbar-merged {
   background: #050811 !important;
-  border-bottom: 1px solid rgba(0, 223, 196, 0.2) !important;
-  backdrop-filter: blur(16px) !important;
+  border: none !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.saas-public-shell.dark-neon-auth header {
+  border: none !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
 }
 
 .saas-nav.neon-topbar-merged .saas-logo {
@@ -7597,37 +7605,49 @@ input, textarea, [contenteditable="true"] {
   transition: background-color 5000s ease-in-out 0s !important;
 }
 
-.neon-input-icon {
+.neon-input-icon,
+.neon-eye-icon {
   position: absolute !important;
   right: 8px !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
-  color: #00dfc4 !important;
-  pointer-events: none !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  height: 100% !important;
+  width: 32px !important;
+  margin: 0 !important;
+  padding: 0 !important;
   display: flex !important;
   align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+  color: #00dfc4 !important;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  line-height: 1 !important;
+}
+
+.neon-input-icon {
+  pointer-events: none !important;
   opacity: 1 !important;
 }
 
 .neon-eye-icon {
-  position: absolute !important;
-  right: 8px !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
-  background: none !important;
-  border: none !important;
-  color: #00dfc4 !important;
   cursor: pointer !important;
-  padding: 4px !important;
-  display: flex !important;
-  align-items: center !important;
   opacity: 0.9 !important;
   transition: color 0.2s ease, transform 0.15s ease !important;
 }
 
 .neon-eye-icon:hover {
   color: #38bdf8 !important;
-  transform: translateY(-50%) scale(1.1) !important;
+  transform: scale(1.1) !important;
+}
+
+.neon-input-icon svg,
+.neon-eye-icon svg {
+  display: block !important;
+  width: 19px !important;
+  height: 19px !important;
+  margin: auto !important;
 }
 
 .neon-options-row {
@@ -8220,7 +8240,7 @@ button[type="submit"].neon-btn-submit:hover:not(:disabled) {
 }
 
 .neon-drag-train.is-dragging {
-  animation: monkeyTrainDragIn 5s cubic-bezier(0.18, 0.9, 0.32, 1) forwards;
+  animation: monkeyTrainStepPull 5s cubic-bezier(0.2, 0.8, 0.25, 1) forwards;
 }
 
 .neon-drag-train.is-settled {
@@ -8228,29 +8248,44 @@ button[type="submit"].neon-btn-submit:hover:not(:disabled) {
   opacity: 1;
 }
 
-@keyframes monkeyTrainDragIn {
+@keyframes monkeyTrainStepPull {
   0% {
     transform: translateX(115vw) rotate(3deg);
-    opacity: 0.75;
+    opacity: 0.8;
+  }
+  10% {
+    transform: translateX(100vw) rotate(2.8deg);
   }
   20% {
-    transform: translateX(85vw) rotate(3deg);
+    transform: translateX(85vw) rotate(2.5deg);
+  }
+  30% {
+    transform: translateX(70vw) rotate(2.2deg);
   }
   40% {
-    transform: translateX(55vw) rotate(2.5deg);
+    transform: translateX(55vw) rotate(1.9deg);
   }
-  60% {
-    transform: translateX(28vw) rotate(2deg);
+  50% {
+    transform: translateX(41vw) rotate(1.6deg);
     opacity: 1;
   }
+  60% {
+    transform: translateX(28vw) rotate(1.3deg);
+  }
+  70% {
+    transform: translateX(16vw) rotate(1.0deg);
+  }
   80% {
-    transform: translateX(8vw) rotate(1.2deg);
+    transform: translateX(7vw) rotate(0.6deg);
   }
-  92% {
-    transform: translateX(-18px) rotate(-0.8deg);
+  90% {
+    transform: translateX(0.5vw) rotate(0.2deg);
   }
-  96% {
-    transform: translateX(6px) rotate(0.3deg);
+  94% {
+    transform: translateX(-16px) rotate(-0.6deg);
+  }
+  97% {
+    transform: translateX(5px) rotate(0.2deg);
   }
   100% {
     transform: translateX(0) rotate(0deg);
@@ -8279,7 +8314,24 @@ button[type="submit"].neon-btn-submit:hover:not(:disabled) {
   justify-content: center;
 }
 
+/* Dynamic contact footstep shadow */
+.monkey-footstep-shadow {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 140px;
+  height: 18px;
+  background: radial-gradient(ellipse at center, rgba(0, 223, 196, 0.45) 0%, rgba(0, 0, 0, 0.7) 50%, transparent 80%);
+  border-radius: 50%;
+  filter: blur(4px);
+  z-index: 1;
+  pointer-events: none;
+}
+
 .monkey-avatar-img {
+  position: relative;
+  z-index: 2;
   width: 100%;
   height: 100%;
   object-fit: contain;
@@ -8288,17 +8340,47 @@ button[type="submit"].neon-btn-submit:hover:not(:disabled) {
   -webkit-user-drag: none;
 }
 
-/* Straining exertion while dragging */
+/* Step-by-step walking gait on feet with smiling monkey */
 .monkey-dragger-rig.state-dragging .monkey-avatar-img {
-  animation: monkeyPullStraining 0.3s infinite alternate ease-in-out;
+  animation: monkeyStepWalkGait 0.5s infinite ease-in-out;
+  transform-origin: bottom center;
 }
 
-@keyframes monkeyPullStraining {
+.monkey-dragger-rig.state-dragging .monkey-footstep-shadow {
+  animation: monkeyFootstepShadowPulse 0.5s infinite alternate ease-in-out;
+}
+
+@keyframes monkeyStepWalkGait {
   0% {
-    transform: translateY(0) rotate(-3deg) scale(0.98);
+    /* Left foot down / plant & pull */
+    transform: translateY(2px) rotate(-3.5deg) scaleY(0.97) scaleX(1.02);
+  }
+  25% {
+    /* Lifting foot & stepping forward */
+    transform: translateY(-14px) rotate(2.5deg) scaleY(1.03) scaleX(0.98);
+  }
+  50% {
+    /* Right foot down / plant & pull */
+    transform: translateY(2px) rotate(3deg) scaleY(0.97) scaleX(1.02);
+  }
+  75% {
+    /* Lifting other foot & stepping forward */
+    transform: translateY(-14px) rotate(-2deg) scaleY(1.03) scaleX(0.98);
   }
   100% {
-    transform: translateY(-9px) rotate(2deg) scale(1.02);
+    /* Left foot down again */
+    transform: translateY(2px) rotate(-3.5deg) scaleY(0.97) scaleX(1.02);
+  }
+}
+
+@keyframes monkeyFootstepShadowPulse {
+  0% {
+    transform: translateX(-50%) scale(0.7);
+    opacity: 0.35;
+  }
+  100% {
+    transform: translateX(-50%) scale(1.15);
+    opacity: 0.85;
   }
 }
 
@@ -8313,15 +8395,39 @@ button[type="submit"].neon-btn-submit:hover:not(:disabled) {
   transform: translateY(-8px);
   z-index: 2;
   transition: opacity 0.4s ease;
+  transform-origin: right center;
 }
 
 .monkey-dragger-rig.state-dragging .monkey-energy-rope {
-  animation: ropeTension 0.25s infinite alternate;
+  animation: monkeyRopeStepTension 0.5s infinite ease-in-out;
 }
 
-@keyframes ropeTension {
-  0% { transform: translateY(-8px) scaleY(0.9); opacity: 0.9; }
-  100% { transform: translateY(-11px) scaleY(1.15); opacity: 1; }
+@keyframes monkeyRopeStepTension {
+  0% {
+    transform: translateY(-8px) scaleX(1.06) scaleY(1.2);
+    filter: drop-shadow(0 0 14px #00dfc4);
+    opacity: 1;
+  }
+  25% {
+    transform: translateY(-12px) scaleX(0.95) scaleY(0.85);
+    filter: drop-shadow(0 0 8px rgba(0, 223, 196, 0.7));
+    opacity: 0.85;
+  }
+  50% {
+    transform: translateY(-8px) scaleX(1.06) scaleY(1.2);
+    filter: drop-shadow(0 0 14px #00dfc4);
+    opacity: 1;
+  }
+  75% {
+    transform: translateY(-12px) scaleX(0.95) scaleY(0.85);
+    filter: drop-shadow(0 0 8px rgba(0, 223, 196, 0.7));
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateY(-8px) scaleX(1.06) scaleY(1.2);
+    filter: drop-shadow(0 0 14px #00dfc4);
+    opacity: 1;
+  }
 }
 
 /* Celebrating state */
@@ -8394,38 +8500,110 @@ button[type="submit"].neon-btn-submit:hover:not(:disabled) {
   100% { transform: translateX(-50%) scale(1); opacity: 1; }
 }
 
-/* Replay Mascot Button */
-.monkey-replay-trigger {
-  position: absolute;
-  top: 14px;
-  right: 18px;
-  z-index: 30;
-  background: rgba(0, 223, 196, 0.12) !important;
-  border: 1px solid rgba(0, 223, 196, 0.4) !important;
+/* Top Neon Website Brand Banner & Vibrant Neon Font */
+.neon-auth-brand-banner {
+  position: relative;
+  z-index: 20;
+  text-align: center;
+  margin-top: 8px;
+  margin-bottom: 24px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+}
+
+.neon-auth-brand-heading {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: 6px;
+  text-transform: uppercase;
   color: #00dfc4 !important;
   -webkit-text-fill-color: #00dfc4 !important;
-  border-radius: 20px !important;
-  padding: 4px 12px !important;
-  font-size: 12px !important;
+  text-shadow:
+    0 0 10px rgba(0, 223, 196, 0.8),
+    0 0 22px rgba(0, 223, 196, 0.6),
+    0 0 45px rgba(14, 165, 233, 0.55),
+    0 0 75px rgba(14, 165, 233, 0.35);
+  animation: neonHeadingPulse 3s ease-in-out infinite alternate;
+}
+
+@keyframes neonHeadingPulse {
+  0% {
+    text-shadow:
+      0 0 8px rgba(0, 223, 196, 0.7),
+      0 0 18px rgba(0, 223, 196, 0.5),
+      0 0 35px rgba(14, 165, 233, 0.4);
+    transform: scale(0.995);
+  }
+  100% {
+    text-shadow:
+      0 0 14px rgba(0, 223, 196, 0.95),
+      0 0 28px rgba(0, 223, 196, 0.8),
+      0 0 55px rgba(56, 189, 248, 0.7),
+      0 0 95px rgba(14, 165, 233, 0.45);
+    transform: scale(1.005);
+  }
+}
+
+/* Relocated Bottom-Right Corner Replay Button Outside Login Card */
+.monkey-replay-corner-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 28px;
+  z-index: 60;
+  background: rgba(5, 8, 17, 0.88) !important;
+  border: 1.5px solid rgba(0, 223, 196, 0.6) !important;
+  color: #00dfc4 !important;
+  -webkit-text-fill-color: #00dfc4 !important;
+  border-radius: 30px !important;
+  padding: 8px 18px !important;
+  font-size: 13px !important;
   font-weight: 700 !important;
+  letter-spacing: 0.5px !important;
   cursor: pointer !important;
   display: flex !important;
   align-items: center !important;
-  gap: 5px !important;
-  box-shadow: none !important;
-  transition: all 0.2s ease !important;
+  gap: 8px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.65), 0 0 18px rgba(0, 223, 196, 0.35) !important;
+  backdrop-filter: blur(12px) !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  animation: cornerBtnFadeIn 0.4s ease-out forwards;
 }
 
-.monkey-replay-trigger:hover {
+.monkey-replay-corner-btn:hover {
   background: #00dfc4 !important;
-  color: #05131d !important;
-  -webkit-text-fill-color: #05131d !important;
-  box-shadow: 0 0 15px rgba(0, 223, 196, 0.6) !important;
-  transform: scale(1.05) !important;
+  border-color: #00dfc4 !important;
+  color: #050811 !important;
+  -webkit-text-fill-color: #050811 !important;
+  box-shadow: 0 6px 25px rgba(0, 223, 196, 0.7), 0 0 35px rgba(0, 223, 196, 0.45) !important;
+  transform: translateY(-2px) scale(1.04) !important;
 }
 
-/* Responsive adjustments for monkey on small mobile screens */
+.monkey-replay-corner-btn:active {
+  transform: translateY(0) scale(0.97) !important;
+}
+
+@keyframes cornerBtnFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Responsive adjustments for monkey and heading on small mobile screens */
 @media (max-width: 768px) {
+  .neon-auth-brand-heading {
+    font-size: 20px;
+    letter-spacing: 3px;
+  }
   .monkey-dragger-rig {
     right: calc(100% - 30px);
   }
@@ -8439,6 +8617,12 @@ button[type="submit"].neon-btn-submit:hover:not(:disabled) {
   }
   .portal-callout-title {
     font-size: 24px;
+  }
+  .monkey-replay-corner-btn {
+    bottom: 16px;
+    right: 16px;
+    padding: 6px 14px !important;
+    font-size: 12px !important;
   }
 }
 

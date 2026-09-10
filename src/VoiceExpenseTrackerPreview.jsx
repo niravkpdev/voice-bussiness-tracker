@@ -5992,6 +5992,11 @@ export default function VoiceExpenseTrackerPreview() {
           </section>
         ) : (
           <section className={`neon-auth-page ${!isLoginCardVisible ? 'hero-eye-view' : ''}`}>
+            {/* Website name placed top-center directly above glowing background graphics in vibrant neon font */}
+            <div className="neon-auth-brand-banner">
+              <h1 className="neon-auth-brand-heading">TRINETR BUSINESS SUITE</h1>
+            </div>
+
             <ThirdEyeBackground isFeatured={!isLoginCardVisible} />
             <div className="neon-auth-backdrop" />
 
@@ -6027,6 +6032,7 @@ export default function VoiceExpenseTrackerPreview() {
                   <div className={`monkey-dragger-rig state-${monkeyState}`}>
                     <div className="monkey-energy-rope" />
                     <div className="monkey-avatar-container">
+                      <div className="monkey-footstep-shadow" />
                       <img
                         src="/assets/monkey-drag.png"
                         alt="3D Assistant Monkey"
@@ -6043,17 +6049,6 @@ export default function VoiceExpenseTrackerPreview() {
 
                 <div className="neon-card-spring-wrapper">
                   <div className={`neon-auth-card ${isRegisterMode ? 'active' : ''}`}>
-                    {/* Replay Monkey Drag Button */}
-                    {isLoginCardVisible && !isDraggingInProgress && (
-                      <button
-                        type="button"
-                        className="monkey-replay-trigger"
-                        onClick={handleReplayMonkeyDrag}
-                        title="Watch 3D monkey drag login card again!"
-                      >
-                        🐒 Replay
-                      </button>
-                    )}
 
                 {/* ANIMATED SLANTED DIAGONAL TEAL OVERLAY */}
                 <div className="neon-diagonal-panel">
@@ -6105,7 +6100,7 @@ export default function VoiceExpenseTrackerPreview() {
                         tabIndex={-1}
                         title={showLoginPassword ? "Hide password" : "Show password"}
                       >
-                        <Lock size={18} />
+                        <Lock size={19} />
                       </button>
                     </div>
 
@@ -6196,7 +6191,7 @@ export default function VoiceExpenseTrackerPreview() {
                         tabIndex={-1}
                         title={showRegisterPassword ? "Hide password" : "Show password"}
                       >
-                        <Lock size={18} />
+                        <Lock size={19} />
                       </button>
                     </div>
 
@@ -6226,6 +6221,19 @@ export default function VoiceExpenseTrackerPreview() {
               </div>
             </div>
           </div>
+
+          {/* Replay Button: Relocated to bottom-right corner outside login card */}
+          {isLoginCardVisible && !isDraggingInProgress && (
+            <button
+              type="button"
+              className="monkey-replay-corner-btn"
+              onClick={handleReplayMonkeyDrag}
+              title="Watch 3D monkey drag login card again!"
+            >
+              <span className="replay-icon">🐒</span>
+              <span>Replay Animation</span>
+            </button>
+          )}
         </section>
         )}
       </main>
