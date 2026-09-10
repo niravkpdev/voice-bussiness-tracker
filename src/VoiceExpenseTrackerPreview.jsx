@@ -1576,6 +1576,7 @@ export default function VoiceExpenseTrackerPreview() {
     if (target === 'storefront') target = 'store';
     if (target === 'help-center') target = 'help';
     if (target === 'party-management' || target === 'parties') target = 'crm';
+    if (target === 'profile') target = 'app-settings';
     setActiveTab(target);
     window.location.hash = target;
     setOpenNxMenu(null);
@@ -1796,6 +1797,7 @@ export default function VoiceExpenseTrackerPreview() {
       if (hash === 'storefront') hash = 'store';
       if (hash === 'help-center') hash = 'help';
       if (hash === 'party-management' || hash === 'parties') hash = 'crm';
+      if (hash === 'profile') hash = 'app-settings';
       if (hash && APP_TABS.includes(hash)) {
         setActiveTab(hash);
         const section = SIDEBAR_SECTIONS.find((group) => group.children.some((child) => child.tab === hash));
@@ -6806,7 +6808,6 @@ export default function VoiceExpenseTrackerPreview() {
                     <div style={{ fontWeight: 750, fontSize: '13.5px', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{profile.name || 'JAY AMBE NAMKEEN'}</div>
                     <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{authUser?.email || profile.owner || 'Owner / Administrator'}</div>
                   </div>
-                  <button type="button" onClick={() => { navigateToTab('profile'); setProfileDropdownOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: '#0f172a', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><User size={15} /> My Profile</button>
                   <button type="button" onClick={() => { navigateToTab('app-settings'); setProfileDropdownOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: '#0f172a', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><Settings size={15} /> Company Settings</button>
                   <button type="button" onClick={() => { navigateToTab('billing'); setProfileDropdownOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: '#0f172a', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><CreditCard size={15} /> Billing & Plans</button>
                   <button type="button" onClick={() => { navigateToTab('analytics'); setProfileDropdownOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: '#0f172a', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><Activity size={15} /> Analytics</button>
