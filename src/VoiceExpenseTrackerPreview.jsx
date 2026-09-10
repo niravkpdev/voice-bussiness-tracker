@@ -8,7 +8,8 @@ import {
   Clock, Plus, Minus, ShoppingBag, Truck, Search, Settings, HelpCircle, 
   LogOut, User, ChevronDown, Calendar, Lightbulb, CheckCircle, AlertCircle,
   CalendarDays, Gift, Briefcase, MapPin, Star, Sparkles, TrendingDown, Sun, Cloud,
-  Filter, Tag, Download, Phone, Mail, MessageCircle, MoreHorizontal, Paperclip, Edit3, ArrowLeft, Image as ImageIcon, X
+  Filter, Tag, Download, Phone, Mail, MessageCircle, MoreHorizontal, Paperclip, Edit3, ArrowLeft, Image as ImageIcon, X,
+  Trash2, Copy, Check, ChevronRight
 } from 'lucide-react';
 import { SafeHelpCenterModal } from './SafeHelpCenterModal';
 import StorefrontHome from './storefront/StorefrontHome.jsx';
@@ -1177,6 +1178,59 @@ export default function VoiceExpenseTrackerPreview() {
       return '';
     }
   });
+  const [savedNotes, setSavedNotes] = useState(() => {
+    try {
+      const raw = localStorage.getItem('trinetr_saved_notes_list');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+      const legacy = localStorage.getItem('trinetr-quick-notes');
+      if (legacy && legacy.trim()) {
+        return [{
+          id: 'note-init',
+          text: legacy.trim(),
+          date: new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+          time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+        }];
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  });
+  const [copiedNoteId, setCopiedNoteId] = useState(null);
+
+  const [weatherCity, setWeatherCity] = useState(() => {
+    try {
+      return localStorage.getItem('trinetr_weather_city') || 'Ahmedabad, Gujarat';
+    } catch {
+      return 'Ahmedabad, Gujarat';
+    }
+  });
+  const [weatherData, setWeatherData] = useState(() => {
+    try {
+      const cached = localStorage.getItem('trinetr_weather_cache');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && parsed.temp) return parsed;
+      }
+    } catch {}
+    return { city: 'Ahmedabad, Gujarat', temp: '32°C', condition: 'Sunny / Clear', icon: 'sun' };
+  });
+  const [isEditingCity, setIsEditingCity] = useState(false);
+  const [cityInput, setCityInput] = useState('');
+
+  const [customAgendaTasks, setCustomAgendaTasks] = useState(() => {
+    try {
+      const saved = localStorage.getItem('trinetr_custom_agenda');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [newAgendaTitle, setNewAgendaTitle] = useState('');
+  const [showAddAgenda, setShowAddAgenda] = useState(false);
 
   
   // CRM Module State
@@ -3998,6 +4052,244 @@ export default function VoiceExpenseTrackerPreview() {
       navigateToTab('notifications');
     }
   };
+
+  const handleSaveNote = () => {
+    if (!quickNote || !quickNote.trim()) {
+      setStatus('Please enter some text in the note.');
+      return;
+    }
+    const newEntry = {
+      id: `note-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      text: quickNote.trim(),
+      date: new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+      time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+    };
+    const nextList = [newEntry, ...savedNotes];
+    setSavedNotes(nextList);
+    try {
+      localStorage.setItem('trinetr_saved_notes_list', JSON.stringify(nextList));
+      localStorage.removeItem('trinetr-quick-notes');
+    } catch {}
+    setQuickNote('');
+    setStatus('Note saved to your notes list!');
+  };
+
+  const handleDeleteNote = (noteId) => {
+    const nextList = savedNotes.filter((n) => n.id !== noteId);
+    setSavedNotes(nextList);
+    try {
+      localStorage.setItem('trinetr_saved_notes_list', JSON.stringify(nextList));
+    } catch {}
+    setStatus('Note removed');
+  };
+
+  const handleCopyNote = (note) => {
+    try {
+      navigator.clipboard.writeText(note.text);
+      setCopiedNoteId(note.id);
+      setTimeout(() => setCopiedNoteId(null), 2000);
+      setStatus('Note copied to clipboard');
+    } catch {
+      setStatus('Could not copy note');
+    }
+  };
+
+  const handleSaveCity = (newCity) => {
+    const target = (newCity || cityInput).trim();
+    if (!target) return;
+    setWeatherCity(target);
+    try {
+      localStorage.setItem('trinetr_weather_city', target);
+    } catch {}
+    setIsEditingCity(false);
+    setStatus(`Updating weather for ${target}...`);
+  };
+
+  const handleToggleAgendaTask = (taskId) => {
+    const updated = customAgendaTasks.map((t) =>
+      t.id === taskId ? { ...t, completed: !t.completed } : t
+    );
+    setCustomAgendaTasks(updated);
+    try {
+      localStorage.setItem('trinetr_custom_agenda', JSON.stringify(updated));
+    } catch {}
+  };
+
+  const handleDeleteAgendaTask = (taskId) => {
+    const updated = customAgendaTasks.filter((t) => t.id !== taskId);
+    setCustomAgendaTasks(updated);
+    try {
+      localStorage.setItem('trinetr_custom_agenda', JSON.stringify(updated));
+    } catch {}
+  };
+
+  const todayAgendaItems = useMemo(() => {
+    const items = [];
+
+    // 1. Pending Store Orders to dispatch
+    const pendingOrders = (Array.isArray(activeOrders) ? activeOrders : []).filter(
+      (o) => o && o.status && o.status.toLowerCase() !== 'delivered' && o.status.toLowerCase() !== 'cancelled'
+    );
+    if (pendingOrders.length > 0) {
+      items.push({
+        id: 'agenda-orders',
+        time: 'Today',
+        title: `Dispatch ${pendingOrders.length} Pending Order(s)`,
+        desc: `Latest order ${pendingOrders[0].orderNo || '#' + pendingOrders[0].id} for ${pendingOrders[0].customer || 'Customer'}`,
+        targetTab: 'orders',
+        type: 'order',
+        badge: 'Orders',
+        color: '#2563eb',
+        bg: '#eff6ff',
+      });
+    }
+
+    // 2. Low Stock / Raw Material Replenishment
+    if (dashboardMetrics.outOfStockItems.length > 0) {
+      const p = dashboardMetrics.outOfStockItems[0];
+      items.push({
+        id: 'agenda-stock-out',
+        time: 'Urgent',
+        title: `Production needed: ${p.name} (0 stock)`,
+        desc: 'Inventory depleted, create batch production run',
+        targetTab: 'production',
+        type: 'stock',
+        badge: 'Production',
+        color: '#dc2626',
+        bg: '#fef2f2',
+      });
+    } else if (dashboardMetrics.lowStockItems.length > 0) {
+      const p = dashboardMetrics.lowStockItems[0];
+      items.push({
+        id: 'agenda-stock-low',
+        time: 'Action',
+        title: `Restock ${p.name} (${p.currentStock} ${p.unit || 'units'} left)`,
+        desc: `Below minimum threshold of ${p.minStock || 15} units`,
+        targetTab: 'inventory',
+        type: 'stock',
+        badge: 'Inventory',
+        color: '#d97706',
+        bg: '#fffbeb',
+      });
+    }
+
+    // 3. Customer Overdue Payment Collection
+    const topDebtors = (Array.isArray(partySummary) ? partySummary : []).filter(
+      (p) => p && p.group === 'Sundry Debtors' && Number(p.outstandingAmount || 0) > 0
+    ).sort((a, b) => Number(b.outstandingAmount || 0) - Number(a.outstandingAmount || 0));
+    if (topDebtors.length > 0) {
+      const debtor = topDebtors[0];
+      items.push({
+        id: 'agenda-collection',
+        time: 'Follow-up',
+        title: `Collect ${formatCurrency(debtor.outstandingAmount)} from ${debtor.name}`,
+        desc: 'Outstanding receivable awaiting payment collection',
+        targetTab: 'party-statement',
+        type: 'collection',
+        badge: 'Receivable',
+        color: '#7c3aed',
+        bg: '#f5f3ff',
+      });
+    }
+
+    // 4. Daily Attendance Check
+    if (dashboardMetrics.totalStaffCount > 0) {
+      items.push({
+        id: 'agenda-attendance',
+        time: 'Daily',
+        title: `Log Staff Attendance (${dashboardMetrics.presentStaffCount}/${dashboardMetrics.totalStaffCount} recorded)`,
+        desc: 'Review daily check-ins in HRMS portal',
+        targetTab: 'employees',
+        type: 'hrms',
+        badge: 'HRMS',
+        color: '#0891b2',
+        bg: '#ecfeff',
+      });
+    }
+
+    // 5. GST Return Filing schedule
+    const now = new Date();
+    const curDay = now.getDate();
+    if (curDay <= 20) {
+      items.push({
+        id: 'agenda-gst',
+        time: 'Monthly',
+        title: `GSTR-3B Monthly Return Filing due on 20th`,
+        desc: `${20 - curDay} days remaining in current return cycle`,
+        targetTab: 'gst',
+        type: 'tax',
+        badge: 'GST',
+        color: '#4f46e5',
+        bg: '#eef2ff',
+      });
+    }
+
+    // 6. User Custom Tasks
+    customAgendaTasks.forEach((t) => {
+      items.push({
+        id: t.id,
+        time: t.time || 'Task',
+        title: t.title,
+        desc: t.completed ? 'Completed' : 'Pending custom task',
+        completed: Boolean(t.completed),
+        isCustom: true,
+        badge: 'Custom',
+        color: t.completed ? '#10b981' : '#0f172a',
+        bg: t.completed ? '#ecfdf5' : '#f8fafc',
+      });
+    });
+
+    return items;
+  }, [activeOrders, dashboardMetrics, partySummary, customAgendaTasks]);
+
+  useEffect(() => {
+    let isCancelled = false;
+    async function fetchLiveWeather() {
+      if (!weatherCity) return;
+      try {
+        const queryCity = weatherCity.split(',')[0].trim();
+        const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(queryCity)}&count=1`);
+        if (!geoRes.ok) return;
+        const geoData = await geoRes.json();
+        if (!geoData.results || geoData.results.length === 0) return;
+        const { latitude, longitude, name, admin1, country } = geoData.results[0];
+
+        const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code`);
+        if (!weatherRes.ok) return;
+        const wData = await weatherRes.json();
+        if (isCancelled || !wData?.current) return;
+
+        const tempVal = Math.round(wData.current.temperature_2m);
+        const code = wData.current.weather_code;
+        let cond = 'Clear Sky';
+        let iconType = 'sun';
+        if (code === 0) { cond = 'Clear Sky'; iconType = 'sun'; }
+        else if (code <= 3) { cond = 'Partly Cloudy'; iconType = 'cloud'; }
+        else if (code >= 45 && code <= 48) { cond = 'Foggy / Haze'; iconType = 'cloud'; }
+        else if (code >= 51 && code <= 67) { cond = 'Rainy'; iconType = 'rain'; }
+        else if (code >= 80 && code <= 82) { cond = 'Rain Showers'; iconType = 'rain'; }
+        else if (code >= 95) { cond = 'Thunderstorm'; iconType = 'storm'; }
+        else { cond = 'Partly Cloudy'; iconType = 'cloud'; }
+
+        const result = {
+          city: `${name}${admin1 ? ', ' + admin1 : country ? ', ' + country : ''}`,
+          temp: `${tempVal}°C`,
+          condition: cond,
+          icon: iconType,
+          updatedAt: Date.now()
+        };
+        setWeatherData(result);
+        try {
+          localStorage.setItem('trinetr_weather_cache', JSON.stringify(result));
+        } catch {}
+      } catch (err) {
+        console.warn('Weather fetch skipped or offline:', err);
+      }
+    }
+
+    fetchLiveWeather();
+    return () => { isCancelled = true; };
+  }, [weatherCity]);
 
   const pnlData = useMemo(() => {
     const sales = computeLedgerBalance('ledger-sales', ledgers, vouchers);
@@ -6909,7 +7201,9 @@ export default function VoiceExpenseTrackerPreview() {
                           color: 'var(--brand-primary)',
                           bg: 'var(--brand-secondary)',
                           trend: dashboardMetrics.dynamicHealth >= 80 ? 'Excellent' : dashboardMetrics.dynamicHealth >= 60 ? 'Good' : dashboardMetrics.dynamicHealth >= 40 ? 'Fair' : 'Needs Attention',
-                          up: dashboardMetrics.dynamicHealth >= 50
+                          up: dashboardMetrics.dynamicHealth >= 50,
+                          targetTab: 'ai-assistant',
+                          hint: 'AI Health Diagnostics & Recommendations'
                         },
                         {
                           title: 'Monthly Revenue',
@@ -6920,7 +7214,9 @@ export default function VoiceExpenseTrackerPreview() {
                           trend: dashboardMetrics.prevMonthlyRevenue > 0
                             ? `${dashboardMetrics.salesGrowth >= 0 ? '+' : ''}${dashboardMetrics.salesGrowth}% MoM`
                             : (dashboardMetrics.totalMonthlyRevenue > 0 ? '+100% (New)' : 'No Sales Yet'),
-                          up: dashboardMetrics.salesGrowth >= 0
+                          up: dashboardMetrics.salesGrowth >= 0,
+                          targetTab: 'sales-entry',
+                          hint: 'Sales Register & Billing Entries'
                         },
                         {
                           title: 'Total Expenses',
@@ -6931,7 +7227,9 @@ export default function VoiceExpenseTrackerPreview() {
                           trend: dashboardMetrics.prevExpenses > 0
                             ? `${dashboardMetrics.expenseGrowth >= 0 ? '+' : ''}${dashboardMetrics.expenseGrowth}% MoM`
                             : (dashboardMetrics.currentExpenses > 0 ? 'Recorded' : 'Zero Expense'),
-                          up: dashboardMetrics.expenseGrowth <= 0
+                          up: dashboardMetrics.expenseGrowth <= 0,
+                          targetTab: 'voucher-entry',
+                          hint: 'Expense & Payment Vouchers'
                         },
                         {
                           title: 'Cash Flow',
@@ -6940,7 +7238,9 @@ export default function VoiceExpenseTrackerPreview() {
                           color: 'var(--brand-primary)',
                           bg: 'var(--brand-secondary)',
                           trend: (cashInHand >= 0 && dashboardMetrics.monthlyProfit >= 0) ? 'Healthy' : cashInHand < 0 ? 'Deficit' : 'Strained',
-                          up: cashInHand >= 0
+                          up: cashInHand >= 0,
+                          targetTab: 'day-book',
+                          hint: 'Day Book Cash & Bank Flow'
                         },
                         {
                           title: 'Outstanding',
@@ -6949,7 +7249,9 @@ export default function VoiceExpenseTrackerPreview() {
                           color: 'var(--warning)',
                           bg: 'var(--warning-bg)',
                           trend: dashboardMetrics.combinedOutstanding > 0 ? `${dashboardMetrics.pendingCount} Pending` : 'All Cleared',
-                          up: dashboardMetrics.combinedOutstanding === 0
+                          up: dashboardMetrics.combinedOutstanding === 0,
+                          targetTab: 'party-statement',
+                          hint: 'Customer & Vendor Outstanding Ledger'
                         },
                         {
                           title: 'Monthly Profit',
@@ -6960,7 +7262,9 @@ export default function VoiceExpenseTrackerPreview() {
                           trend: dashboardMetrics.totalMonthlyRevenue > 0
                             ? `${dashboardMetrics.profitMargin >= 0 ? '+' : ''}${dashboardMetrics.profitMargin}% Margin`
                             : '0% Margin',
-                          up: dashboardMetrics.monthlyProfit >= 0
+                          up: dashboardMetrics.monthlyProfit >= 0,
+                          targetTab: 'reports',
+                          hint: 'P&L Statement & Financial Reports'
                         },
                         {
                           title: 'Inventory Value',
@@ -6973,7 +7277,9 @@ export default function VoiceExpenseTrackerPreview() {
                             : (dashboardMetrics.lowStockItems.length > 0
                               ? `${dashboardMetrics.lowStockItems.length} Low Stock`
                               : `${(cloudInventory || []).length} Products`),
-                          up: dashboardMetrics.outOfStockItems.length === 0
+                          up: dashboardMetrics.outOfStockItems.length === 0,
+                          targetTab: 'inventory',
+                          hint: 'Inventory & Stock Management'
                         },
                         {
                           title: 'Attendance',
@@ -6984,14 +7290,49 @@ export default function VoiceExpenseTrackerPreview() {
                           trend: dashboardMetrics.totalStaffCount > 0
                             ? `${dashboardMetrics.presentStaffCount}/${dashboardMetrics.totalStaffCount} Present`
                             : 'Owner / Self-run',
-                          up: dashboardMetrics.attendancePct >= 75
+                          up: dashboardMetrics.attendancePct >= 75,
+                          targetTab: 'employees',
+                          hint: 'HRMS Staff & Attendance'
                         },
                       ].map((kpi, i) => (
-                        <div key={i} className="glass-panel hover-scale" style={{ padding: '20px', margin: 0, position: 'relative', overflow: 'hidden' }}>
+                        <div
+                          key={i}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => {
+                            if (kpi.targetTab) {
+                              navigateToTab(kpi.targetTab);
+                              setStatus(`Navigated to ${kpi.title} (${kpi.hint})`);
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              if (kpi.targetTab) {
+                                navigateToTab(kpi.targetTab);
+                                setStatus(`Navigated to ${kpi.title}`);
+                              }
+                            }
+                          }}
+                          className="glass-panel hover-scale"
+                          style={{
+                            padding: '20px',
+                            margin: 0,
+                            position: 'relative',
+                            overflow: 'hidden',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                            border: '1px solid var(--border-subtle)'
+                          }}
+                          title={`Click to open ${kpi.title} — ${kpi.hint}`}
+                        >
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                             <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-secondary)' }}>{kpi.title}</span>
-                            <div style={{ padding: '6px', background: kpi.bg, color: kpi.color, borderRadius: '8px' }}>
-                              <kpi.icon size={16} />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <div style={{ padding: '6px', background: kpi.bg, color: kpi.color, borderRadius: '8px' }}>
+                                <kpi.icon size={16} />
+                              </div>
+                              <ChevronRight size={14} style={{ color: 'var(--text-muted)', opacity: 0.6 }} />
                             </div>
                           </div>
                           <div style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '8px' }}>{kpi.val}</div>
@@ -7186,56 +7527,369 @@ export default function VoiceExpenseTrackerPreview() {
                     {/* SECTION 10: TODAY'S AGENDA / CALENDAR */}
                     {userPreferences.showAgendaCard && (
                       <article className="glass-card" style={{ padding: '24px', margin: 0 }}>
-                        <div className="panel-header">
+                        <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                           <h2 className="panel-title"><Calendar size={18} color="var(--brand-primary)" /> Today's Agenda</h2>
+                          <button
+                            type="button"
+                            className="btn btn-ghost"
+                            onClick={() => setShowAddAgenda(!showAddAgenda)}
+                            style={{ padding: '4px 8px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                            title="Add a custom task to today's agenda"
+                          >
+                            <Plus size={14} /> Task
+                          </button>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', padding: '12px', background: 'var(--brand-secondary)', borderRadius: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', padding: '12px', background: 'var(--brand-secondary)', borderRadius: '8px' }}>
                           <div style={{ textAlign: 'center', minWidth: '45px' }}>
                             <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--brand-primary)', textTransform: 'uppercase' }}>{new Date().toLocaleString('default', { month: 'short' })}</div>
                             <div style={{ fontSize: '24px', fontWeight: '800', color: 'var(--brand-primary)', lineHeight: '1' }}>{new Date().getDate()}</div>
                           </div>
                           <div style={{ height: '30px', width: '2px', background: 'rgba(59, 130, 246, 0.2)' }}></div>
-                          <div>
+                          <div style={{ flex: 1 }}>
                             <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>{new Date().toLocaleString('default', { weekday: 'long' })}</div>
-                            <div style={{ fontSize: '12px', color: 'var(--brand-primary)' }}>3 Events scheduled</div>
+                            <div style={{ fontSize: '12px', color: 'var(--brand-primary)', fontWeight: '500' }}>
+                              {todayAgendaItems.length} {todayAgendaItems.length === 1 ? 'task' : 'tasks'} scheduled
+                            </div>
                           </div>
                         </div>
-                        <div className="timeline">
-                          {[
-                            { time: '09:00 AM', title: 'Team Standup', type: 'meeting' },
-                            { time: '11:30 AM', title: 'Client Call: Acme Corp', type: 'call' },
-                            { time: '03:00 PM', title: 'Tax Review', type: 'task' }
-                          ].map((evt, i) => (
-                            <div key={i} className="timeline-item" style={{ gap: '12px' }}>
-                              <div className="timeline-icon" style={{ left: '-20px', color: 'var(--text-muted)', padding: '2px' }}><CheckCircle size={12} /></div>
-                              <div style={{ fontSize: '11px', color: 'var(--text-muted)', width: '55px', flexShrink: 0, marginTop: '2px' }}>{evt.time}</div>
-                              <div style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-primary)' }}>{evt.title}</div>
+
+                        {showAddAgenda && (
+                          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', background: 'var(--bg-secondary)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                            <input
+                              type="text"
+                              className="input-base"
+                              placeholder="e.g. Call spice vendor at 4 PM"
+                              value={newAgendaTitle}
+                              onChange={(e) => setNewAgendaTitle(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  if (!newAgendaTitle.trim()) return;
+                                  const newTask = {
+                                    id: `agenda-${Date.now()}`,
+                                    title: newAgendaTitle.trim(),
+                                    time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+                                    completed: false
+                                  };
+                                  const updated = [newTask, ...customAgendaTasks];
+                                  setCustomAgendaTasks(updated);
+                                  try { localStorage.setItem('trinetr_custom_agenda', JSON.stringify(updated)); } catch {}
+                                  setNewAgendaTitle('');
+                                  setShowAddAgenda(false);
+                                  setStatus('Agenda task added');
+                                }
+                              }}
+                              style={{ flex: 1, padding: '6px 10px', fontSize: '12px', borderRadius: '6px' }}
+                              autoFocus
+                            />
+                            <button
+                              type="button"
+                              className="btn btn-primary"
+                              style={{ padding: '6px 12px', fontSize: '12px' }}
+                              onClick={() => {
+                                if (!newAgendaTitle.trim()) return;
+                                const newTask = {
+                                  id: `agenda-${Date.now()}`,
+                                  title: newAgendaTitle.trim(),
+                                  time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+                                  completed: false
+                                };
+                                const updated = [newTask, ...customAgendaTasks];
+                                setCustomAgendaTasks(updated);
+                                try { localStorage.setItem('trinetr_custom_agenda', JSON.stringify(updated)); } catch {}
+                                setNewAgendaTitle('');
+                                setShowAddAgenda(false);
+                                setStatus('Agenda task added');
+                              }}
+                            >
+                              Add
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-ghost"
+                              style={{ padding: '6px 8px', fontSize: '12px' }}
+                              onClick={() => { setShowAddAgenda(false); setNewAgendaTitle(''); }}
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        )}
+
+                        <div className="timeline" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          {todayAgendaItems.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '16px', color: 'var(--text-muted)', fontSize: '12px' }}>
+                              All tasks completed for today!
                             </div>
-                          ))}
+                          ) : (
+                            todayAgendaItems.map((evt) => (
+                              <div
+                                key={evt.id}
+                                className="timeline-item hover-scale"
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'flex-start',
+                                  gap: '10px',
+                                  padding: '10px 12px',
+                                  borderRadius: '8px',
+                                  background: evt.bg || 'var(--bg-secondary)',
+                                  border: `1px solid ${evt.color}30`,
+                                  cursor: evt.targetTab ? 'pointer' : 'default',
+                                  transition: 'all 0.15s ease'
+                                }}
+                                onClick={() => {
+                                  if (evt.targetTab) {
+                                    navigateToTab(evt.targetTab);
+                                    setStatus(`Opening ${evt.title}...`);
+                                  }
+                                }}
+                              >
+                                {evt.isCustom ? (
+                                  <input
+                                    type="checkbox"
+                                    checked={Boolean(evt.completed)}
+                                    onChange={(e) => {
+                                      e.stopPropagation();
+                                      handleToggleAgendaTask(evt.id);
+                                    }}
+                                    style={{ marginTop: '3px', cursor: 'pointer' }}
+                                    title="Mark complete"
+                                  />
+                                ) : (
+                                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: evt.color, marginTop: '5px', flexShrink: 0 }} />
+                                )}
+
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '4px' }}>
+                                    <span style={{
+                                      fontSize: '13px',
+                                      fontWeight: '600',
+                                      color: 'var(--text-primary)',
+                                      textDecoration: evt.completed ? 'line-through' : 'none',
+                                      opacity: evt.completed ? 0.7 : 1
+                                    }}>
+                                      {evt.title}
+                                    </span>
+                                    <span style={{ fontSize: '10px', fontWeight: '600', padding: '1px 6px', borderRadius: '4px', background: evt.color, color: 'white', flexShrink: 0 }}>
+                                      {evt.time}
+                                    </span>
+                                  </div>
+                                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                    {evt.desc}
+                                  </div>
+                                </div>
+
+                                {evt.isCustom && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-ghost"
+                                    style={{ padding: '2px', color: 'var(--text-muted)' }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteAgendaTask(evt.id);
+                                    }}
+                                    title="Delete custom task"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                )}
+                                {evt.targetTab && (
+                                  <ChevronRight size={14} style={{ color: evt.color, opacity: 0.7, flexShrink: 0, marginTop: '2px' }} />
+                                )}
+                              </div>
+                            ))
+                          )}
                         </div>
                       </article>
                     )}
 
                     {/* SECTION 10: WEATHER & NOTES */}
                     {userPreferences.showWeatherCard && (
-                      <article className="glass-card" style={{ padding: '24px', margin: 0, background: 'linear-gradient(135deg, #38bdf8 0%, #0284c7 100%)', color: 'white', border: 'none' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div>
-                            <div style={{ fontSize: '13px', opacity: 0.9 }}>Mumbai, India</div>
-                            <div style={{ fontSize: '28px', fontWeight: '700' }}>32°C</div>
-                            <div style={{ fontSize: '13px', opacity: 0.9 }}>Partly Cloudy</div>
+                      <article className="glass-card" style={{ padding: '20px 24px', margin: 0, background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: 'white', border: 'none', position: 'relative', overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', opacity: 0.95, fontWeight: '500' }}>
+                              <MapPin size={14} />
+                              <span>{weatherData.city || weatherCity}</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCityInput(weatherCity);
+                                  setIsEditingCity(!isEditingCity);
+                                }}
+                                style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '4px', color: 'white', padding: '2px 6px', fontSize: '11px', cursor: 'pointer', marginLeft: '4px' }}
+                                title="Change weather city"
+                              >
+                                {isEditingCity ? 'Close' : 'Change'}
+                              </button>
+                            </div>
+                            <div style={{ fontSize: '32px', fontWeight: '800', marginTop: '6px', letterSpacing: '-0.02em' }}>
+                              {weatherData.temp || '32°C'}
+                            </div>
+                            <div style={{ fontSize: '13px', opacity: 0.9, marginTop: '2px' }}>
+                              {weatherData.condition || 'Clear Sky'} • Live Forecast
+                            </div>
                           </div>
-                          <Cloud size={48} opacity={0.9} />
+                          <div style={{ padding: '8px', background: 'rgba(255,255,255,0.15)', borderRadius: '16px', backdropFilter: 'blur(4px)' }}>
+                            {weatherData.icon === 'sun' ? (
+                              <Sun size={44} style={{ color: '#fde047' }} />
+                            ) : (
+                              <Cloud size={44} style={{ color: '#ffffff' }} />
+                            )}
+                          </div>
                         </div>
+
+                        {isEditingCity && (
+                          <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.2)' }}>
+                            <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
+                              <input
+                                type="text"
+                                placeholder="Enter city (e.g. Surat, Gujarat)"
+                                value={cityInput}
+                                onChange={(e) => setCityInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleSaveCity();
+                                  }
+                                }}
+                                style={{ flex: 1, padding: '6px 10px', fontSize: '12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.95)', color: '#0f172a' }}
+                                autoFocus
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleSaveCity()}
+                                style={{ padding: '6px 12px', fontSize: '12px', fontWeight: '600', borderRadius: '6px', background: '#ffffff', color: '#0284c7', border: 'none', cursor: 'pointer' }}
+                              >
+                                Save
+                              </button>
+                            </div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', fontSize: '11px' }}>
+                              <span style={{ opacity: 0.8 }}>Quick select:</span>
+                              {['Ahmedabad, Gujarat', 'Surat, Gujarat', 'Rajkot, Gujarat', 'Vadodara, Gujarat', 'Mumbai, Maharashtra'].map((city) => (
+                                <button
+                                  key={city}
+                                  type="button"
+                                  onClick={() => handleSaveCity(city)}
+                                  style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '4px', color: 'white', padding: '2px 6px', cursor: 'pointer', fontSize: '10px' }}
+                                >
+                                  {city.split(',')[0]}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </article>
                     )}
 
                     <div className="glass-panel" style={{ padding: '24px', margin: 0 }}>
-                      <div className="panel-header">
-                        <h2 className="panel-title"><FileText size={18} color="var(--brand-primary)" /> Quick Notes</h2>
-                        <button type="button" className="btn btn-ghost" style={{ padding: '4px 12px', fontSize: '12px', background: 'var(--bg-secondary)' }} onClick={() => { localStorage.setItem('trinetr-quick-notes', quickNote); setStatus('Note saved securely'); }}>Save Note</button>
+                      <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <h2 className="panel-title" style={{ margin: 0 }}><FileText size={18} color="var(--brand-primary)" /> Quick Notes</h2>
+                          {savedNotes.length > 0 && (
+                            <span style={{ fontSize: '11px', fontWeight: '600', padding: '2px 7px', borderRadius: '12px', background: 'var(--brand-secondary)', color: 'var(--brand-primary)' }}>
+                              {savedNotes.length} saved
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          style={{ padding: '5px 14px', fontSize: '12px' }}
+                          onClick={handleSaveNote}
+                        >
+                          Save Note
+                        </button>
                       </div>
-                      <textarea placeholder="Jot down quick thoughts here..." value={quickNote} onChange={(e) => setQuickNote(e.target.value)} style={{ width: '100%', height: '100px', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)', fontSize: '13px', resize: 'none' }}></textarea>
+                      
+                      <textarea
+                        placeholder="Jot down quick thoughts, customer phone, dispatch reminder here..."
+                        value={quickNote}
+                        onChange={(e) => setQuickNote(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                            e.preventDefault();
+                            handleSaveNote();
+                          }
+                        }}
+                        style={{
+                          width: '100%',
+                          height: '90px',
+                          padding: '12px',
+                          borderRadius: '8px',
+                          border: '1px solid var(--border-subtle)',
+                          background: 'var(--bg-secondary)',
+                          fontSize: '13px',
+                          resize: 'vertical',
+                          marginBottom: '16px'
+                        }}
+                      />
+
+                      {/* SAVED NOTES HISTORY SECTION */}
+                      <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '14px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                          <span style={{ fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-secondary)' }}>
+                            Saved Notes History ({savedNotes.length})
+                          </span>
+                          {savedNotes.length > 0 && (
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                              Latest first
+                            </span>
+                          )}
+                        </div>
+
+                        {savedNotes.length === 0 ? (
+                          <div style={{ padding: '18px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px dashed var(--border-subtle)' }}>
+                            No saved notes yet. Type a note above and click <strong>Save Note</strong> to keep it here.
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '240px', overflowY: 'auto', paddingRight: '4px' }}>
+                            {savedNotes.map((item) => (
+                              <div
+                                key={item.id}
+                                style={{
+                                  padding: '10px 12px',
+                                  borderRadius: '8px',
+                                  background: 'var(--bg-secondary)',
+                                  border: '1px solid var(--border-subtle)',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '6px'
+                                }}
+                              >
+                                <div style={{ fontSize: '13px', color: 'var(--text-primary)', whiteSpace: 'pre-wrap', lineHeight: '1.4', wordBreak: 'break-word' }}>
+                                  {item.text}
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-subtle)', paddingTop: '6px' }}>
+                                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                    {item.date} • {item.time}
+                                  </span>
+                                  <div style={{ display: 'flex', gap: '6px' }}>
+                                    <button
+                                      type="button"
+                                      className="btn btn-ghost"
+                                      onClick={() => handleCopyNote(item)}
+                                      style={{ padding: '3px 6px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', color: copiedNoteId === item.id ? 'var(--success)' : 'var(--text-muted)' }}
+                                      title="Copy to clipboard"
+                                    >
+                                      {copiedNoteId === item.id ? <Check size={12} /> : <Copy size={12} />}
+                                      {copiedNoteId === item.id ? 'Copied' : 'Copy'}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="btn btn-ghost"
+                                      onClick={() => handleDeleteNote(item.id)}
+                                      style={{ padding: '3px 6px', fontSize: '11px', color: 'var(--danger)' }}
+                                      title="Delete note"
+                                    >
+                                      <Trash2 size={12} />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* SECTION 5: NOTIFICATION CENTER */}
