@@ -328,6 +328,11 @@ export function StoreCartProvider({ children, storeProfile, customInventory, isO
     });
   };
 
+  // Delivery Partner Modal open/close state
+  const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
+  const openDeliveryModal = () => setDeliveryModalOpen(true);
+  const closeDeliveryModal = () => setDeliveryModalOpen(false);
+
   // Cart Drawer open/close state
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
 
@@ -649,6 +654,10 @@ export function StoreCartProvider({ children, storeProfile, customInventory, isO
     convertToInr,
     deliveryConfig,
     updateDeliveryConfig,
+    deliveryModalOpen,
+    setDeliveryModalOpen,
+    openDeliveryModal,
+    closeDeliveryModal,
     updateProduct,
     resetProductOverride,
     updateStoreProfile

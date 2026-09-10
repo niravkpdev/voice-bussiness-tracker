@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, ShoppingBag, Heart, Phone, Menu, X, ChevronDown, Sparkles, SlidersHorizontal, ArrowRight, Globe } from 'lucide-react';
+import { Search, ShoppingBag, Heart, Phone, Menu, X, ChevronDown, Sparkles, SlidersHorizontal, ArrowRight, Globe, Truck } from 'lucide-react';
 import { useStoreCart } from '../context/StoreCartContext';
 import { CATEGORIES } from '../data/namkeenData';
 
@@ -27,7 +27,9 @@ export function StoreHeader({
     currentCurrency,
     currencies,
     setCurrency,
-    formatPrice
+    formatPrice,
+    openDeliveryModal,
+    deliveryConfig
   } = useStoreCart();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [deptDropdownOpen, setDeptDropdownOpen] = useState(false);
@@ -167,6 +169,20 @@ export function StoreHeader({
               <span className="trinetr-action-text hide-on-mobile">Wishlist</span>
             </button>
 
+            {/* Delivery Partner Action */}
+            <button 
+              type="button" 
+              className="trinetr-icon-action delivery-top-action"
+              onClick={openDeliveryModal}
+              title="Connect Delivery Partner App (Shiprocket, Borzo, Dunzo, Delhivery)"
+              aria-label="Delivery Partner Setup"
+            >
+              <div className="trinetr-badge-wrapper">
+                <Truck size={20} color="#0284c7" />
+              </div>
+              <span className="trinetr-action-text hide-on-mobile" style={{ color: '#0284c7', fontWeight: 700 }}>Delivery</span>
+            </button>
+
             {/* Cart Drawer Trigger */}
             <button 
               type="button" 
@@ -257,10 +273,44 @@ export function StoreHeader({
             >
               Contact
             </button>
+            <button 
+              type="button" 
+              className="trinetr-nav-link trinetr-delivery-highlight"
+              onClick={() => { openDeliveryModal(); setMobileMenuOpen(false); }}
+              title="Connect Delivery Partner (Shiprocket, Borzo, Dunzo)"
+              style={{ color: '#0284c7', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+            >
+              <Truck size={14} />
+              <span>Delivery Partner</span>
+            </button>
           </div>
 
           {/* Hotline & Business Switch Actions */}
           <div className="trinetr-sub-nav-actions">
+            {/* Delivery Partner Setup Button */}
+            <button
+              type="button"
+              onClick={openDeliveryModal}
+              className="trinetr-delivery-partner-btn-nav"
+              title="Connect Delivery Partner App (Shiprocket, Borzo, Dunzo, Delhivery)"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: '#0284c7',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '6px 12px',
+                fontSize: '12.5px',
+                fontWeight: '750',
+                cursor: 'pointer'
+              }}
+            >
+              <Truck size={14} />
+              <span>🚚 Delivery Partner Setup</span>
+            </button>
+
             {/* Switch to Business ERP (Owner) */}
             {actualIsOwner && onSwitchToErp && (
               <button 

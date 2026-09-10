@@ -5163,4 +5163,53 @@
   background: #0369a1;
 }
 
+/* ==========================================================================
+   FLOATING DELIVERY PARTNER BADGE & HEADER STYLES
+   ========================================================================== */
+.trinetr-floating-delivery-badge {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  background: #0284c7;
+  color: #ffffff;
+  border: 2px solid #ffffff;
+  border-radius: 30px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 10px 25px -5px rgba(2, 132, 199, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  z-index: 999;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.trinetr-floating-delivery-badge:hover {
+  background: #0369a1;
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 14px 28px -5px rgba(2, 132, 199, 0.6);
+}
+
+.delivery-top-action {
+  background: #f0f9ff !important;
+  border: 1px solid #bae6fd !important;
+  color: #0284c7 !important;
+}
+
+.delivery-top-action:hover {
+  background: #e0f2fe !important;
+  border-color: #7dd3fc !important;
+}
+
+@media (max-width: 768px) {
+  .trinetr-floating-delivery-badge {
+    bottom: 80px;
+    left: 16px;
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+}
+
 

@@ -4,7 +4,7 @@ import { STORE_INFO } from '../data/namkeenData';
 import { useStoreCart } from '../context/StoreCartContext';
 
 export function StoreFooter({ onNavigate }) {
-  const { generateWhatsAppOrderUrl, storeInfo } = useStoreCart();
+  const { generateWhatsAppOrderUrl, storeInfo, openDeliveryModal } = useStoreCart();
   const activeStore = storeInfo || STORE_INFO;
 
   const handleFloatingWhatsApp = () => {
@@ -18,12 +18,17 @@ export function StoreFooter({ onNavigate }) {
   return (
     <footer className="trinetr-store-footer">
       {/* Animated Delivery Truck Road Strip */}
-      <div className="trinetr-delivery-road-strip">
+      <div 
+        className="trinetr-delivery-road-strip" 
+        onClick={openDeliveryModal}
+        title="Delivery Partner Integration - Click to setup Shiprocket, Borzo, Dunzo"
+        style={{ cursor: 'pointer' }}
+      >
         <div className="trinetr-road-line">
           <div className="trinetr-truck-animation">
             <div className="trinetr-truck-icon">
               <Truck size={24} />
-              <span className="truck-tag">Fast Delivery</span>
+              <span className="truck-tag">Fast Delivery · Partner Setup</span>
             </div>
           </div>
         </div>
@@ -103,6 +108,15 @@ export function StoreFooter({ onNavigate }) {
               <li><span>Orders: 1-Click WhatsApp Checkout</span></li>
               <li><span>Timings: {activeStore.hours || '9:00 AM - 10:00 PM'}</span></li>
               <li><span>Support: Fast Order Assistance</span></li>
+              <li>
+                <button 
+                  type="button" 
+                  onClick={openDeliveryModal} 
+                  style={{ color: '#0284c7', fontWeight: 800, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', fontSize: '13px' }}
+                >
+                  🚚 Delivery Partner Setup
+                </button>
+              </li>
             </ul>
           </div>
 

@@ -18,7 +18,8 @@ export function CartDrawer() {
     currentCurrency,
     formatPrice,
     convertPrice,
-    deliveryConfig
+    deliveryConfig,
+    openDeliveryModal
   } = useStoreCart();
 
   const [checkoutMode, setCheckoutMode] = useState('cart'); // 'cart' | 'guest-form' | 'success'
@@ -385,7 +386,26 @@ export function CartDrawer() {
                     <span>{formatPrice(cartSubtotal)}</span>
                   </div>
                   <div className="summary-row">
-                    <span>Delivery Charges:</span>
+                    <span>
+                      Delivery Charges:
+                      <button
+                        type="button"
+                        onClick={openDeliveryModal}
+                        style={{
+                          fontSize: '11px',
+                          color: '#0284c7',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          textDecoration: 'underline',
+                          marginLeft: '6px',
+                          fontWeight: 700
+                        }}
+                        title="Configure Delivery Partner App (Shiprocket, Borzo, Dunzo)"
+                      >
+                        (⚙️ Partner App)
+                      </button>
+                    </span>
                     <span>{deliveryCharge === 0 ? <strong className="text-free">FREE</strong> : formatPrice(deliveryCharge)}</span>
                   </div>
                   {deliveryCharge > 0 && (

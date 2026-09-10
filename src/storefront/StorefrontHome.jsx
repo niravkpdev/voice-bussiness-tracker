@@ -41,7 +41,10 @@ function StorefrontContent(props) {
     cartTotalCount, 
     cartGrandTotal, 
     setCartDrawerOpen,
-    formatPrice
+    formatPrice,
+    deliveryModalOpen,
+    openDeliveryModal,
+    closeDeliveryModal
   } = useStoreCart();
   const activeStore = storeInfo || STORE_INFO;
   const catalog = products && products.length > 0 ? products : PRODUCTS;
@@ -105,13 +108,14 @@ function StorefrontContent(props) {
         />
       )}
 
-      {/* Owner Delivery Partner Integration Modal */}
-      {isOwner && (
-        <DeliverySettingsModal
-          isOpen={isEditingDelivery}
-          onClose={() => setIsEditingDelivery(false)}
-        />
-      )}
+      {/* Delivery Partner Integration Modal */}
+      <DeliverySettingsModal
+        isOpen={Boolean(deliveryModalOpen || isEditingDelivery)}
+        onClose={() => {
+          closeDeliveryModal();
+          setIsEditingDelivery(false);
+        }}
+      />
 
       {/* Render Current Tab Page */}
       {currentTab === 'shop' && (
@@ -525,6 +529,17 @@ function StorefrontContent(props) {
           </button>
         </aside>
       )}
+
+      {/* Floating Delivery Partner Setup Button */}
+      <button
+        type="button"
+        className="trinetr-floating-delivery-badge"
+        onClick={openDeliveryModal}
+        title="Connect Delivery Partner App (Shiprocket, Borzo, Dunzo)"
+      >
+        <Truck size={17} />
+        <span>🚚 Delivery App Setup</span>
+      </button>
 
       {/* Universal Storefront Footer */}
       <StoreFooter onNavigate={(tab) => navigateTo(tab)} />
