@@ -1175,6 +1175,7 @@ export default function VoiceExpenseTrackerPreview() {
   const [loginPassword, setLoginPassword] = useState('');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [registerUsername, setRegisterUsername] = useState('');
+  const [registerGstin, setRegisterGstin] = useState('');
   const [registerEmail, setRegisterEmail] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
@@ -2904,6 +2905,10 @@ export default function VoiceExpenseTrackerPreview() {
     const businessName = sanitizeText(form.get('businessName') || profile.name, 140);
     const ownerName = sanitizeText(form.get('username') || form.get('ownerName') || profile.owner, 120);
     let gstin = sanitizeText(form.get('gstin') || '', 20).toUpperCase().replace(/\s+/g, '');
+    if (!gstin && authView === 'register') {
+      setSecureError('Please enter a valid 15-character GST number (e.g. 24CPVPC7753J1Z8).');
+      return;
+    }
     if (!gstin) {
       gstin = profile?.gstin || '24CPVPC7753J1Z8';
     }
@@ -5694,10 +5699,12 @@ export default function VoiceExpenseTrackerPreview() {
     return (
       <main className={`saas-public-shell ${isNeonAuthActive ? 'dark-neon-auth' : ''}`}>
         <header className={`saas-nav ${isNeonAuthActive ? 'neon-topbar-merged' : ''}`}>
-          <a className="saas-logo" href="#home" onClick={() => setAuthView('landing')}>
-            <img src={profile.logo} alt="" />
-            <span>Trinetr Business Suite</span>
-          </a>
+          {!isNeonAuthActive && (
+            <a className="saas-logo" href="#home" onClick={() => setAuthView('landing')}>
+              <img src={profile.logo} alt="" />
+              <span>Trinetr Business Suite</span>
+            </a>
+          )}
           <nav>
             <a 
               href="#store" 
@@ -6146,8 +6153,6 @@ export default function VoiceExpenseTrackerPreview() {
                   {secureError && isRegisterMode && <div className="neon-alert error">{secureError}</div>}
 
                   <form onSubmit={completeAuth} autoComplete="on">
-                    <input type="hidden" name="gstin" value={profile?.gstin || '24CPVPC7753J1Z8'} />
-
                     <div className="neon-input-box">
                       <input
                         type="text"
@@ -6159,6 +6164,21 @@ export default function VoiceExpenseTrackerPreview() {
                         autoComplete="username"
                       />
                       <span className="neon-input-icon"><User size={19} /></span>
+                    </div>
+
+                    <div className="neon-input-box">
+                      <input
+                        type="text"
+                        name="gstin"
+                        value={registerGstin}
+                        onChange={(e) => setRegisterGstin(e.target.value.toUpperCase().replace(/\s+/g, ''))}
+                        placeholder="GST Number (GSTIN)"
+                        maxLength={15}
+                        required
+                        autoCapitalize="characters"
+                        autoComplete="off"
+                      />
+                      <span className="neon-input-icon"><FileText size={19} /></span>
                     </div>
 
                     <div className="neon-input-box">
