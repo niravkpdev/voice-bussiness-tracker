@@ -273,43 +273,10 @@ export function StoreHeader({
             >
               Contact
             </button>
-            <button 
-              type="button" 
-              className="trinetr-nav-link trinetr-delivery-highlight"
-              onClick={() => { openDeliveryModal(); setMobileMenuOpen(false); }}
-              title="Connect Delivery Partner (Shiprocket, Borzo, Dunzo)"
-              style={{ color: '#0284c7', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-            >
-              <Truck size={14} />
-              <span>Delivery Partner</span>
-            </button>
           </div>
 
           {/* Hotline & Business Switch Actions */}
           <div className="trinetr-sub-nav-actions">
-            {/* Delivery Partner Setup Button */}
-            <button
-              type="button"
-              onClick={openDeliveryModal}
-              className="trinetr-delivery-partner-btn-nav"
-              title="Connect Delivery Partner App (Shiprocket, Borzo, Dunzo, Delhivery)"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: '#0284c7',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '6px',
-                padding: '6px 12px',
-                fontSize: '12.5px',
-                fontWeight: '750',
-                cursor: 'pointer'
-              }}
-            >
-              <Truck size={14} />
-              <span>🚚 Delivery Partner Setup</span>
-            </button>
 
             {/* Switch to Business ERP (Owner) */}
             {actualIsOwner && onSwitchToErp && (

@@ -15,7 +15,7 @@ import { CustomerReviewsSection } from './components/CustomerReviewsSection';
 import { BannerEditModal } from './components/BannerEditModal';
 import { StoreFooter } from './components/StoreFooter';
 import { PRODUCTS, CATEGORIES, STORE_INFO } from './data/namkeenData';
-import { Truck, Award, Headphones, Zap, ShoppingBag, ArrowRight, Sparkles, CheckCircle2, Edit3, Star, Camera } from 'lucide-react';
+import { Award, Headphones, Zap, ShoppingBag, ArrowRight, Sparkles, CheckCircle2, Edit3, Star, Camera } from 'lucide-react';
 import './storefront.css';
 
 function StorefrontContent(props) {
@@ -31,7 +31,6 @@ function StorefrontContent(props) {
   } = props;
   const [currentTab, setCurrentTab] = useState(initialTab);
   const [isEditingBanner, setIsEditingBanner] = useState(false);
-  const [isEditingDelivery, setIsEditingDelivery] = useState(false);
   const [homeDietaryFilter, setHomeDietaryFilter] = useState('all');
   const { 
     setActiveCategory, 
@@ -110,11 +109,8 @@ function StorefrontContent(props) {
 
       {/* Delivery Partner Integration Modal */}
       <DeliverySettingsModal
-        isOpen={Boolean(deliveryModalOpen || isEditingDelivery)}
-        onClose={() => {
-          closeDeliveryModal();
-          setIsEditingDelivery(false);
-        }}
+        isOpen={Boolean(deliveryModalOpen)}
+        onClose={closeDeliveryModal}
       />
 
       {/* Render Current Tab Page */}
@@ -156,15 +152,6 @@ function StorefrontContent(props) {
                   >
                     <Edit3 size={14} />
                     <span>Edit Offer Banner</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="trinetr-delivery-settings-trigger"
-                    onClick={() => setIsEditingDelivery(true)}
-                    title="Owner: Connect Delivery Partner (Shiprocket, Borzo, Dunzo)"
-                  >
-                    <Truck size={14} />
-                    <span>Delivery App Connect</span>
                   </button>
                 </div>
               )}
@@ -529,17 +516,6 @@ function StorefrontContent(props) {
           </button>
         </aside>
       )}
-
-      {/* Floating Delivery Partner Setup Button */}
-      <button
-        type="button"
-        className="trinetr-floating-delivery-badge"
-        onClick={openDeliveryModal}
-        title="Connect Delivery Partner App (Shiprocket, Borzo, Dunzo)"
-      >
-        <Truck size={17} />
-        <span>🚚 Delivery App Setup</span>
-      </button>
 
       {/* Universal Storefront Footer */}
       <StoreFooter onNavigate={(tab) => navigateTo(tab)} />
