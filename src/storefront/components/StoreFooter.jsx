@@ -2,14 +2,18 @@ import React from 'react';
 import { Phone, Mail, MapPin, ShieldCheck, Star, MessageCircle, Truck } from 'lucide-react';
 import { STORE_INFO } from '../data/namkeenData';
 import { useStoreCart } from '../context/StoreCartContext';
+import { formatWhatsAppPhone } from '../../security.js';
 
 export function StoreFooter({ onNavigate }) {
   const { generateWhatsAppOrderUrl, storeInfo, openDeliveryModal } = useStoreCart();
   const activeStore = storeInfo || STORE_INFO;
 
   const handleFloatingWhatsApp = () => {
-    const cleanPhone = String(activeStore.whatsapp || '').replace(/[^0-9]/g, '');
-    const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Hello ${activeStore.name}! I would like to inquire about your products and fresh snacks.`)}`;
+    const cleanPhone = formatWhatsAppPhone(activeStore.whatsapp || '');
+    const text = `Hello ${activeStore.name}! I would like to inquire about your products and fresh snacks.`;
+    const url = cleanPhone
+      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`
+      : `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   };
 

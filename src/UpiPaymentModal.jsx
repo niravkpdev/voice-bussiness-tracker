@@ -17,6 +17,7 @@ import {
   FileText,
   AlertCircle
 } from 'lucide-react';
+import { formatWhatsAppPhone } from './security.js';
 
 export function encodeUpiUri({ pa, pn, am, tn, tr }) {
   const cleanPa = (pa || 'business@upi').trim();
@@ -176,11 +177,11 @@ export default function UpiPaymentModal({
   };
 
   const handleWhatsAppShare = () => {
-    const mobile = invoice.mobile || invoice.phone || '';
-    const cleanPhone = String(mobile).replace(/\D/g, '');
+    const mobile = invoice.customerMobile || invoice.customer_mobile || invoice.mobile || invoice.phone || '';
+    const cleanPhone = formatWhatsAppPhone(mobile);
     const text = `Namaste ${customerName}!\n\nHere is your payment request for *Invoice ${invoiceNo}*.\nAmount Due: *₹${Number(amount || payableAmount).toLocaleString('en-IN')}*\n\nPay via any UPI App (GPay, PhonePe, Paytm, BHIM):\n${upiUri}\n\nMerchant: ${businessName}\nUPI ID: ${upiId}\n\nThank you!`;
     const waUrl = cleanPhone
-      ? `https://wa.me/91${cleanPhone.slice(-10)}?text=${encodeURIComponent(text)}`
+      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`
       : `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(waUrl, '_blank');
   };

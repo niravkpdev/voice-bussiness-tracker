@@ -100,6 +100,7 @@ import {
 } from './supabaseClient.js';
 import {
   canRunRateLimitedAction,
+  formatWhatsAppPhone,
   normalizeAmount,
   publicSafeError,
   sanitizeEmail,
@@ -5421,7 +5422,10 @@ export default function VoiceExpenseTrackerPreview() {
 
   const shareVoucherToWhatsApp = (voucher) => {
     const text = encodeURIComponent(buildVoucherReceiptText(voucher));
-    window.open(`https://wa.me/?text=${text}`, '_blank', 'noopener,noreferrer');
+    const rawPhone = voucher?.customerMobile || voucher?.customer_mobile || voucher?.phone || voucher?.mobile || '';
+    const cleanPhone = formatWhatsAppPhone(rawPhone);
+    const url = cleanPhone ? `https://wa.me/${cleanPhone}?text=${text}` : `https://wa.me/?text=${text}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   const shareVoucherToFacebook = (voucher) => {

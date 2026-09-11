@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import QRCode from 'qrcode';
-import { normalizeAmount, sanitizeText, validateEmail, validatePhone } from './security.js';
+import { formatWhatsAppPhone, normalizeAmount, sanitizeText, validateEmail, validatePhone } from './security.js';
 import { readScopedString, writeScopedString } from './storageScope.js';
 import { createEmployeeLogin, resetEmployeePassword, disableEmployeeLogin, getSupabaseClient } from './supabaseClient.js';
 import VoiceCommandButton from './VoiceCommandButton.jsx';
@@ -209,9 +209,10 @@ function RealQrThumbnail({ uri, size = 64 }) {
   );
 }
 
-function whatsappUrl(phone, message) {
-  const cleanPhone = String(phone || '').replace(/\D/g, '');
-  return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+function whatsappUrl(phone, message = '') {
+  const cleanPhone = formatWhatsAppPhone(phone);
+  const textParam = message ? `?text=${encodeURIComponent(message)}` : '';
+  return cleanPhone ? `https://wa.me/${cleanPhone}${textParam}` : `https://wa.me/${textParam}`;
 }
 
 export default function Phase3Ops({
@@ -2579,7 +2580,7 @@ export default function Phase3Ops({
             <form onSubmit={saveOrder} key={editingOrder?.id || 'new-order'}>
               <div className="form-grid">
                 <input name="customer" defaultValue={editingOrder?.customer || ''} placeholder="Customer name" />
-                <input name="mobile" defaultValue={editingOrder?.mobile || ''} placeholder="Mobile" />
+                <input name="mobile" defaultValue={editingOrder?.mobile || ''} placeholder="Mobile (e.g. 9876543210)" />
                 <input name="amount" type="number" defaultValue={editingOrder?.amount ?? ''} placeholder="Order amount" />
                 <input name="deliveryDate" type="date" defaultValue={editingOrder?.deliveryDate || today()} />
                 <div className="wide-field"><textarea name="details" defaultValue={editingOrder?.details || ''} placeholder="Order details" /></div>

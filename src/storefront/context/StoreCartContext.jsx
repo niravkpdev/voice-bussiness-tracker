@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { STORE_INFO, PRODUCTS } from '../data/namkeenData';
+import { formatWhatsAppPhone } from '../../security.js';
 
 const StoreCartContext = createContext(null);
 
@@ -498,8 +499,10 @@ export function StoreCartProvider({ children, storeProfile, customInventory, isO
     text += `────────────────────\n`;
     text += `Please confirm my order and share estimated dispatch time. Thank you!`;
 
-    const cleanPhone = String(storeInfo.whatsapp || '').replace(/[^0-9]/g, '');
-    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
+    const cleanPhone = formatWhatsAppPhone(storeInfo.whatsapp || '919979668339');
+    return cleanPhone
+      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`
+      : `https://wa.me/?text=${encodeURIComponent(text)}`;
   };
 
   // Editing Product state (Strictly controlled by Registered Owner)

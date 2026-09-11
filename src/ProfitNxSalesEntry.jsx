@@ -5,6 +5,7 @@ import {
   ArrowUpDown, ExternalLink, Calendar, DollarSign, Layers, CreditCard
 } from 'lucide-react';
 import UpiPaymentModal from './UpiPaymentModal.jsx';
+import { formatWhatsAppPhone } from './security.js';
 
 export default function ProfitNxSalesEntry({
   invoices = [],
@@ -278,8 +279,8 @@ export default function ProfitNxSalesEntry({
   const handleWhatsApp = (item) => {
     const text = `Namaste ${item.partyName},\nHere is your invoice ${item.billNo} from ${profile.name || 'Jay Ambe Namkeen'}.\nDate: ${item.date}\nAmount: ₹${item.netTotal}\nItems: ${item.itemsDesc}\nThank you for your business!`;
     const phone = item.original?.customerMobile || item.original?.phone || '';
-    const cleanPhone = phone.replace(/[^0-9]/g, '');
-    const url = `https://wa.me/${cleanPhone ? (cleanPhone.length === 10 ? '91' + cleanPhone : cleanPhone) : ''}?text=${encodeURIComponent(text)}`;
+    const cleanPhone = formatWhatsAppPhone(phone);
+    const url = `https://wa.me/${cleanPhone || ''}?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   };
 

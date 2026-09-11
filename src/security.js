@@ -26,6 +26,43 @@ export function validatePhone(phone) {
   return !cleaned || /^[+0-9\s-]{8,24}$/.test(cleaned);
 }
 
+export function formatWhatsAppPhone(phone, defaultCountryCode = '91') {
+  if (!phone) return '';
+  const raw = String(phone).trim();
+  let digits = raw.replace(/\D/g, '');
+  if (!digits) return '';
+
+  // Remove international dialing prefix "00" (e.g. 0091... -> 91...)
+  if (digits.startsWith('00')) {
+    digits = digits.slice(2);
+  }
+
+  // Remove leading single 0 (domestic trunk prefix, e.g. 06355429227 -> 6355429227)
+  if (digits.length === 11 && digits.startsWith('0')) {
+    digits = digits.slice(1);
+  }
+
+  // If 10 digits (standard Indian mobile without country code, e.g. 6355429227), prepend defaultCountryCode (91)
+  if (digits.length === 10) {
+    return `${defaultCountryCode}${digits}`;
+  }
+
+  // If starts with 0 and after stripping leading zeros has 10 digits
+  if (digits.startsWith('0')) {
+    const stripped = digits.replace(/^0+/, '');
+    if (stripped.length === 10) {
+      return `${defaultCountryCode}${stripped}`;
+    }
+  }
+
+  // If 12 digits starting with 91, return as is
+  if (digits.length === 12 && digits.startsWith('91')) {
+    return digits;
+  }
+
+  return digits;
+}
+
 export function normalizeAmount(value) {
   const amount = Number(value);
   return Number.isFinite(amount) ? Math.max(0, amount) : 0;

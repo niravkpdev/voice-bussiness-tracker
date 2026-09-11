@@ -5,7 +5,7 @@ import {
   Edit3, Phone, Mail, MapPin, MessageCircle, Star, AlertCircle, CheckCircle,
   Activity, FileText, CreditCard, Image as ImageIcon, Paperclip, X
 } from 'lucide-react';
-import { normalizeAmount, sanitizeEmail, sanitizeText, validateEmail, validatePhone } from './security.js';
+import { formatWhatsAppPhone, normalizeAmount, sanitizeEmail, sanitizeText, validateEmail, validatePhone } from './security.js';
 import { readScopedString, writeScopedString } from './storageScope.js';
 
 const PRODUCT_KEY = 'erpProducts';
@@ -142,8 +142,8 @@ const DEFAULT_CUSTOMERS = [
 export default function Phase2ERP({
   activeTab,
   profile = {},
-  vouchers,
-  ledgers,
+  vouchers = [],
+  ledgers = [],
   partySummary,
   cashBalance,
   netProfit,
@@ -456,7 +456,7 @@ export default function Phase2ERP({
     const filteredInvoices = scopedInvoices.filter((invoice) => invoice.date >= dateFilter.from && invoice.date <= dateFilter.to);
     const taxableSales = filteredInvoices.reduce((sum, invoice) => sum + (invoice.taxable || 0), 0);
     const gst = filteredInvoices.reduce((sum, invoice) => sum + (invoice.gstTotal || 0), 0);
-    const taxablePurchases = vouchers
+    const taxablePurchases = (vouchers || [])
       .filter((voucher) => voucher.type === 'Purchase' && voucher.date >= dateFilter.from && voucher.date <= dateFilter.to)
       .reduce((sum, voucher) => sum + voucher.amount, 0);
     return {
@@ -1383,7 +1383,14 @@ export default function Phase2ERP({
   ].join('\n');
 
   const shareInvoiceWhatsApp = (invoice) => {
-    window.open(`https://wa.me/?text=${encodeURIComponent(invoiceText(invoice))}`, '_blank', 'noopener,noreferrer');
+    const cust = scopedCustomers.find((item) => item.id === invoice.customerId) ||
+                 customers.find((item) => item.id === invoice.customerId);
+    const rawPhone = invoice.customerMobile || invoice.customer_mobile || invoice.mobile || invoice.phone || cust?.phone || cust?.mobile || '';
+    const cleanPhone = formatWhatsAppPhone(rawPhone);
+    const url = cleanPhone
+      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(invoiceText(invoice))}`
+      : `https://wa.me/?text=${encodeURIComponent(invoiceText(invoice))}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   const emailInvoice = (invoice) => {
@@ -2632,6 +2639,19 @@ export default function Phase2ERP({
                 >
                   <Search size={16} className="text-secondary" /> View Profile
                 </button>
+                {contactPhone(partyActionMenu.item) && (
+                  <button 
+                    style={{ padding: '16px', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid var(--border-subtle)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}
+                    onClick={() => { 
+                      const p = formatWhatsAppPhone(contactPhone(partyActionMenu.item));
+                      if (p) window.open(`https://wa.me/${p}`, '_blank');
+                      else onStatus('Phone number not available');
+                      setPartyActionMenu(null); 
+                    }}
+                  >
+                    <MessageCircle size={16} className="text-secondary" /> Send WhatsApp
+                  </button>
+                )}
                 <button 
                   style={{ padding: '16px', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid var(--border-subtle)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}
                   onClick={() => { editPerson(partyActionMenu.item, partyActionMenu.formKind); setPartyActionMenu(null); }}
@@ -2682,7 +2702,7 @@ export default function Phase2ERP({
                       <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>Basic Information</label>
                       <input name="name" defaultValue={currentEdit?.name || ''} placeholder="Company or Person Name" required style={{ width: '100%', marginBottom: '12px' }} />
                       <div style={{ display: 'flex', gap: '12px' }}>
-                        <input name="phone" defaultValue={contactPhone(currentEdit || {})} placeholder="Phone Number" style={{ flex: 1 }} />
+                        <input name="phone" defaultValue={contactPhone(currentEdit || {})} placeholder="Mobile Number (e.g. 9876543210 or +91 9876543210)" style={{ flex: 1 }} />
                         <input name="email" type="email" defaultValue={currentEdit?.email || ''} placeholder="Email Address" style={{ flex: 1 }} />
                       </div>
                     </div>
@@ -2980,7 +3000,7 @@ export default function Phase2ERP({
                  
                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                    <button className="secondary-button" style={{ width: '100%', justifyContent: 'center' }} onClick={() => {
-                     const p = String(contactPhone(selectedCrmPerson) || '').replace(/\D/g, '');
+                      const p = formatWhatsAppPhone(contactPhone(selectedCrmPerson));
                      if (p) window.open(`https://wa.me/${p}`, '_blank');
                      else onStatus('Phone number not available');
                    }}><MessageCircle size={16} /> Send WhatsApp</button>
