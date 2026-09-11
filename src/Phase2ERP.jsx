@@ -1907,7 +1907,7 @@ export default function Phase2ERP({
               </div>
               <div className="hrms-drawer-body" style={{ background: 'var(--bg-secondary)' }}>
                 <div className="panel" style={{ padding: '24px' }}>
-                  <div className="hrms-kpi-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 0 }}>
+                  <div className="hrms-kpi-grid inventory-report-kpi-grid" style={{ marginBottom: 0 }}>
                     <div className="kpi-card" style={{ padding: '16px' }}>
                       <div className="kpi-content">
                         <span>Total Products</span>
