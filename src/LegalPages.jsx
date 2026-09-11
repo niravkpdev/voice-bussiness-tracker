@@ -112,7 +112,6 @@ export function LegalPage({ page = 'privacy-policy', onBack }) {
         <button className="secondary-button compact-button" type="button" onClick={onBack}>
           Back
         </button>
-        <span className="saas-kicker">{content.eyebrow}</span>
         <h1>{content.title}</h1>
         <p className="legal-updated">{content.updated}</p>
         <div className="legal-section-list">

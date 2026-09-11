@@ -9551,6 +9551,32 @@ body.theme-light .saas-nav button {
   border: 1.5px solid #cbd5e1 !important;
 }
 
+body.theme-light .saas-primary-button,
+body.theme-light .saas-hero-actions .saas-primary-button,
+body.theme-light .saas-pricing-card .saas-primary-button,
+body.theme-light .saas-nav .saas-primary-button {
+  background: #0f172a !important;
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  border: 1.5px solid #0f172a !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.15) !important;
+  font-weight: 800 !important;
+}
+
+body.theme-light .saas-primary-button:hover,
+body.theme-light .saas-hero-actions .saas-primary-button:hover,
+body.theme-light .saas-pricing-card .saas-primary-button:hover,
+body.theme-light .saas-nav .saas-primary-button:hover {
+  background: #1e293b !important;
+  background-color: #1e293b !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  border-color: #1e293b !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.25) !important;
+  transform: translateY(-1px) !important;
+}
+
 body.theme-light .saas-secondary-button,
 body.theme-light .saas-google-button,
 body.theme-light .saas-hero-actions .saas-secondary-button {
@@ -9569,6 +9595,28 @@ body.theme-light .saas-hero-actions .saas-secondary-button:hover {
   border-color: #94a3b8 !important;
   color: #0f172a !important;
   -webkit-text-fill-color: #0f172a !important;
+}
+
+/* Black and white pill badge for kickers ("FEATURES", "HOW IT WORKS", "PRICING", etc.) */
+body.theme-light .saas-kicker {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+  border: 1.5px solid #cbd5e1 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  font-weight: 800 !important;
+}
+
+/* Black and white step number badges (1, 2, 3, 4) */
+body.theme-light .saas-step-number {
+  background: #0f172a !important;
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  border: 1.5px solid #0f172a !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12) !important;
+  font-weight: 900 !important;
 }
 
 body.theme-light .saas-hero-copy p,
@@ -9594,10 +9642,17 @@ body.theme-light .saas-pricing-card {
 }
 
 body.theme-light .saas-feature-card h3,
+body.theme-light .saas-feature-card strong,
 body.theme-light .saas-testimonial-card strong,
 body.theme-light .saas-pricing-card h3 {
   color: #0f172a !important;
   -webkit-text-fill-color: #0f172a !important;
+}
+
+body.theme-light .saas-pricing-card strong {
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b !important;
+  font-weight: 700 !important;
 }
 
 body.theme-light .saas-feature-card p,
