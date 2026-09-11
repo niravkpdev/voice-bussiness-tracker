@@ -266,6 +266,7 @@ const APP_TABS = [
   'help-center',
   ...LEGAL_PAGE_IDS,
 ];
+export const STOREFRONT_TABS = ['store', 'storefront', 'shop', 'product-menu', 'categories', 'store-contact'];
 const navigationConfig = [
   {
     id: 'transaction',
@@ -1707,19 +1708,28 @@ export default function VoiceExpenseTrackerPreview() {
 
   useEffect(() => {
     const root = document.documentElement;
-    
-    // Trinetr Cosmic Suite: Unify brand theme with dark cosmic base and glowing neon mint/purple
-    root.classList.add('theme-dark', 'dark-neon-suite');
-    root.classList.remove('theme-light');
-    document.body.classList.add('dark', 'dark-neon-suite');
-    document.body.classList.remove('theme-light');
+    const isStorefront = STOREFRONT_TABS.includes(activeTab);
+
+    if (isStorefront) {
+      root.classList.remove('theme-dark', 'dark-neon-suite');
+      root.classList.add('theme-light', 'storefront-mode');
+      document.body.classList.remove('dark', 'dark-neon-suite');
+      document.body.classList.add('theme-light', 'storefront-mode');
+    } else {
+      root.classList.remove('storefront-mode');
+      document.body.classList.remove('storefront-mode');
+      root.classList.add('theme-dark', 'dark-neon-suite');
+      root.classList.remove('theme-light');
+      document.body.classList.add('dark', 'dark-neon-suite');
+      document.body.classList.remove('theme-light');
+    }
     
     if (userPreferences.compactMode) root.classList.add('compact-mode');
     else root.classList.remove('compact-mode');
 
     if (userPreferences.largeText) root.classList.add('large-text-mode');
     else root.classList.remove('large-text-mode');
-  }, [userPreferences.themeMode, userPreferences.compactMode, userPreferences.largeText]);
+  }, [activeTab, userPreferences.themeMode, userPreferences.compactMode, userPreferences.largeText]);
 
   // Listen for preference updates from other components
   useEffect(() => {
@@ -5675,7 +5685,6 @@ export default function VoiceExpenseTrackerPreview() {
     }
   };
 
-  const STOREFRONT_TABS = ['store', 'storefront', 'shop', 'product-menu', 'categories', 'store-contact'];
   if (STOREFRONT_TABS.includes(activeTab)) {
     return (
       <StorefrontHome

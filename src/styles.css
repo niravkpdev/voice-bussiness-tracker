@@ -3309,9 +3309,12 @@ body {
   background: rgba(5, 8, 17, 0.85);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  display: grid;
-  place-items: center;
-  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow-y: auto;
+  box-sizing: border-box;
 }
 
 .saas-modal-content {
@@ -3319,9 +3322,13 @@ body {
   border: 1px solid rgba(0, 223, 196, 0.35) !important;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85), 0 0 35px rgba(0, 223, 196, 0.2) !important;
   border-radius: 20px !important;
-  padding: 28px !important;
+  padding: 20px 24px !important;
   color: #ffffff !important;
   width: min(100%, 460px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  margin: auto;
+  box-sizing: border-box;
 }
 
 .app-error-banner {
@@ -5452,16 +5459,16 @@ body {
    UNIFORM TRINETR COSMIC SUITE: UNIFIED DESIGN LANGUAGE & GLOW SYSTEM
    ========================================================================== */
 
-html,
-body,
-#root {
+html:not(.storefront-mode),
+body:not(.storefront-mode),
+body:not(.storefront-mode) #root {
   background: var(--app-bg) !important;
   color: var(--app-text) !important;
   min-height: 100dvh;
 }
 
 /* Unified Cosmic Background with Subtle Ambient Aurora Glow */
-body {
+body:not(.storefront-mode) {
   background: 
     radial-gradient(circle at 50% 10%, rgba(10, 25, 47, 0.8) 0%, transparent 50%),
     radial-gradient(circle at 90% 20%, rgba(124, 58, 237, 0.12) 0%, transparent 40%),
@@ -5545,22 +5552,33 @@ body {
 .panel h3,
 .auth-card h1,
 .legal-card h1,
-.legal-card h2,
-h1,
-h2,
-h3,
-h4,
-strong {
+.app-shell h1,
+.app-shell h2,
+.app-shell h3,
+.app-shell h4,
+.app-shell strong,
+.dashboard-command-center h1,
+.dashboard-command-center h2,
+.dashboard-command-center h3,
+.dashboard-command-center strong,
+.saas-public-shell h1,
+.saas-public-shell h2,
+.saas-public-shell h3,
+.stat-card-modern strong {
   color: var(--app-heading) !important;
   -webkit-text-fill-color: var(--app-heading) !important;
 }
 
-label,
-p,
-span,
-li,
-td,
-th,
+.app-shell label,
+.app-shell p,
+.app-shell span,
+.app-shell li,
+.dashboard-command-center p,
+.dashboard-command-center span,
+.panel p,
+.panel span,
+.stat-card-modern span,
+.stat-card-modern p,
 .field-label,
 .topbar-link,
 .activity-item,
@@ -8877,6 +8895,95 @@ button[type="submit"].neon-btn-submit:hover:not(:disabled) {
     padding: 6px 14px !important;
     font-size: 12px !important;
   }
+}
+
+/* ==========================================================================
+   STOREFRONT ISOLATION & ORIGINAL PALETTE PRESERVATION
+   Preserves Jay Ambe Namkeen Storefront original colors, typography & background
+   ========================================================================== */
+.trinetr-storefront-root,
+.trinetr-storefront-root * {
+  -webkit-text-fill-color: initial;
+}
+
+html.storefront-mode,
+body.storefront-mode,
+body.storefront-mode #root,
+.trinetr-storefront-root {
+  background: #f8fafc !important;
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+.trinetr-storefront-root h1,
+.trinetr-storefront-root h2,
+.trinetr-storefront-root h3,
+.trinetr-storefront-root h4,
+.trinetr-storefront-root h5,
+.trinetr-storefront-root h6 {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
+
+.trinetr-storefront-root .trinetr-carousel-title {
+  color: #1e3a8a !important;
+  -webkit-text-fill-color: #1e3a8a !important;
+  font-weight: 800 !important;
+}
+
+.trinetr-storefront-root strong {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
+
+.trinetr-storefront-root p,
+.trinetr-storefront-root span,
+.trinetr-storefront-root label,
+.trinetr-storefront-root li {
+  color: inherit;
+}
+
+.trinetr-storefront-root .trinetr-cat-circle-name {
+  color: #1c1917 !important;
+  -webkit-text-fill-color: #1c1917 !important;
+}
+
+.trinetr-storefront-root .trinetr-cat-count-pill {
+  color: #78716c !important;
+  -webkit-text-fill-color: #78716c !important;
+}
+
+.trinetr-storefront-root .trinetr-promo-heading {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+.trinetr-storefront-root .trinetr-promo-subheading,
+.trinetr-storefront-root .trinetr-promo-detail {
+  color: rgba(255, 255, 255, 0.9) !important;
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.trinetr-storefront-root .trinetr-top-bar,
+.trinetr-storefront-root .trinetr-top-bar * {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+.trinetr-storefront-root .trinetr-store-footer,
+.trinetr-storefront-root .trinetr-store-footer * {
+  color: inherit !important;
+  -webkit-text-fill-color: inherit !important;
+}
+
+.trinetr-storefront-root .trinetr-pill-card h4 {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
+
+.trinetr-storefront-root .trinetr-pill-card p {
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b !important;
 }
 
 
