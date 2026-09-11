@@ -132,11 +132,11 @@ export function PricingPage({ onClose, onUpgrade, onSelectPlan, onContactSales, 
       {/* Pricing Cards */}
       <section style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))',
-        gap: '24px',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
+        gap: '20px',
         maxWidth: '1200px',
         margin: '0 auto',
-        padding: '0 24px 60px',
+        padding: '0 clamp(16px, 4vw, 24px) 60px',
         width: '100%',
         boxSizing: 'border-box'
       }}>
@@ -259,8 +259,8 @@ export function PricingPage({ onClose, onUpgrade, onSelectPlan, onContactSales, 
       </section>
 
       {/* Trust Elements */}
-      <section style={{ background: 'var(--bg-secondary)', padding: '50px 24px', marginTop: 'auto', borderTop: '1px solid var(--border-subtle)' }}>
-        <div style={{ maxWidth: '1000px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '36px' }}>
+      <section style={{ background: 'var(--bg-secondary)', padding: '40px clamp(16px, 4vw, 24px)', marginTop: 'auto', borderTop: '1px solid var(--border-subtle)' }}>
+        <div style={{ maxWidth: '1000px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: '28px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px', fontWeight: 700, color: 'var(--text-primary)', fontSize: '1.05rem' }}>
               <Lock size={20} color="var(--brand-primary)" /> Secure Payments

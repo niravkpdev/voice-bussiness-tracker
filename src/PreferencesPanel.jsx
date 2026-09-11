@@ -66,7 +66,7 @@ export default function PreferencesPanel({ userPreferences, setUserPreferences, 
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '20px' }}>
         
         {/* 1. Appearance */}
         <article className="glass-card" style={{ padding: '20px' }}>
@@ -98,8 +98,9 @@ export default function PreferencesPanel({ userPreferences, setUserPreferences, 
                   }
                 }} 
                 style={{ 
-                  minWidth: '240px', 
-                  padding: '8px 12px', 
+                  width: '100%',
+                  maxWidth: '280px', 
+                  padding: '10px 12px', 
                   borderRadius: '8px', 
                   fontWeight: 600,
                   fontSize: '13px',

@@ -429,3 +429,296 @@ table, .statement-table, .crm-table {
   }
 }
 
+/* ==========================================================================
+   GLOBAL MOBILE-RESPONSIVE ARCHITECTURE & TOUCH ACCESSIBILITY
+   ========================================================================== */
+
+/* 1. Global Fluid Responsive Images and Media */
+img, picture, video, canvas {
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+/* Ensure fixed logo, avatars, and icons preserve crisp proportions */
+.saas-logo img,
+.brand-title img,
+.profile-avatar,
+.avatar,
+.product-cell img,
+.invoice-head img,
+.monkey-avatar-img,
+.trinetr-cart-icon-box svg,
+.neon-input-icon svg,
+.neon-eye-icon svg {
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+/* 2. Touch-Friendly Interactive Targets & Spacing (min 44px) */
+@media (max-width: 768px) {
+  button,
+  a.btn,
+  .primary-button,
+  .secondary-button,
+  .saas-primary-button,
+  .saas-secondary-button,
+  .saas-google-button,
+  .icon-button,
+  .topbar-link,
+  .topbar-actions > button,
+  .erp-nav-trigger,
+  .erp-nav-link,
+  .mobile-bottom-nav a,
+  .saas-nav button,
+  .saas-hero-actions button,
+  .saas-pricing-card button {
+    min-height: 44px !important;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Adequate spacing between buttons and action bars to prevent misclicks */
+  .saas-hero-actions,
+  .saas-nav,
+  .topbar-actions,
+  .form-actions,
+  .modal-actions,
+  .button-group,
+  .inline-actions {
+    gap: 12px !important;
+  }
+}
+
+/* 3. Comprehensive Layout Stacking & Responsive Media Queries (@media (max-width: 768px)) */
+@media (max-width: 768px) {
+  /* Public Landing Hero */
+  .saas-hero {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 32px 16px !important;
+    gap: 28px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .saas-hero-copy {
+    width: 100% !important;
+    max-width: 100% !important;
+    text-align: left !important;
+  }
+
+  .saas-hero-copy h1 {
+    font-size: clamp(2rem, 7.5vw, 2.75rem) !important;
+    line-height: 1.12 !important;
+    max-width: 100% !important;
+    word-break: break-word !important;
+  }
+
+  .saas-hero-copy p,
+  .saas-section-heading p {
+    font-size: 1rem !important;
+    line-height: 1.6 !important;
+    max-width: 100% !important;
+  }
+
+  .saas-hero-actions {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 12px !important;
+  }
+
+  .saas-hero-actions button {
+    width: 100% !important;
+    min-height: 48px !important;
+    justify-content: center !important;
+    font-size: 15px !important;
+  }
+
+  .saas-command-strip {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    width: 100% !important;
+    margin-top: 16px !important;
+  }
+
+  .saas-command-strip span {
+    font-size: 12.5px !important;
+    padding: 6px 12px !important;
+    white-space: normal !important;
+    text-align: left !important;
+    line-height: 1.4 !important;
+  }
+
+  .saas-dashboard-preview {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    padding: 16px !important;
+    border-radius: 16px !important;
+  }
+
+  .preview-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  /* Public SaaS Top Nav */
+  .saas-nav {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 12px 16px !important;
+    gap: 12px !important;
+  }
+
+  .saas-nav-inner,
+  .saas-nav-brand-row {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+  }
+
+  .saas-nav nav {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .saas-nav nav a,
+  .saas-nav nav button {
+    flex: 1 1 auto !important;
+    text-align: center !important;
+    justify-content: center !important;
+    min-height: 42px !important;
+    padding: 8px 12px !important;
+    font-size: 13px !important;
+  }
+
+  /* SaaS Feature Grids & Steps */
+  .saas-section {
+    padding: 36px 16px !important;
+  }
+
+  .saas-section-heading h2 {
+    font-size: clamp(1.5rem, 5.5vw, 2rem) !important;
+    line-height: 1.2 !important;
+  }
+
+  .saas-feature-grid,
+  .saas-feature-grid.four,
+  .saas-feature-grid.three {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+    width: 100% !important;
+  }
+
+  .saas-feature-card,
+  .saas-testimonial-card,
+  .saas-pricing-card {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 20px 16px !important;
+  }
+
+  /* Legal Card & Pages */
+  .legal-page {
+    padding: 16px 12px !important;
+  }
+
+  .legal-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 20px 16px !important;
+    border-radius: 16px !important;
+    box-sizing: border-box !important;
+  }
+
+  .legal-card h1 {
+    font-size: 1.85rem !important;
+    line-height: 1.2 !important;
+  }
+
+  .legal-link-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Neon Auth Card on Small Screens */
+  .neon-auth-card {
+    width: calc(100% - 24px) !important;
+    max-width: 440px !important;
+    margin: 16px auto !important;
+    padding: 24px 16px !important;
+    min-height: auto !important;
+    height: auto !important;
+    border-radius: 18px !important;
+  }
+
+  .neon-form-box {
+    padding: 20px 12px !important;
+  }
+
+  .neon-form-box h2 {
+    font-size: 26px !important;
+  }
+
+  /* Storefront Responsive Tweaks */
+  .trinetr-storefront-root .trinetr-top-bar {
+    padding: 10px 12px !important;
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+  }
+
+  .trinetr-storefront-root .trinetr-search-box {
+    order: 3 !important;
+    width: 100% !important;
+    margin: 4px 0 0 0 !important;
+  }
+
+  .trinetr-storefront-root .trinetr-cart-action-btn {
+    padding: 6px 10px !important;
+  }
+}
+
+/* 4. Smartphone Preset Adjustments (@media (max-width: 480px)) */
+@media (max-width: 480px) {
+  /* Prevent horizontal scroll on small devices */
+  body, html, #root {
+    width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Single column metric grids */
+  .dashboard-summary-grid,
+  .preview-grid,
+  .summary-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Button full width in dialogs and cards */
+  .saas-pricing-card button,
+  .modal-actions button,
+  .auth-card button {
+    width: 100% !important;
+    min-height: 48px !important;
+  }
+
+  /* Pricing Billing Toggle */
+  .pricing-page-container header {
+    padding: 12px 16px !important;
+    flex-direction: row !important;
+    gap: 8px !important;
+  }
+
+  .pricing-page-container .brand-title {
+    font-size: 1rem !important;
+  }
+}
+
+
