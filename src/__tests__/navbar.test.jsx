@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
@@ -39,7 +39,7 @@ describe('Top Navbar Functions & Associated Modals', () => {
     fireEvent.click(enterpriseBtn);
     expect(handleContactSales).toHaveBeenCalled();
 
-    const closeBtn = screen.getByRole('button', { name: '' });
+    const closeBtn = screen.getByRole('button', { name: /close/i });
     fireEvent.click(closeBtn);
     expect(handleClose).toHaveBeenCalled();
   });

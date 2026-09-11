@@ -5568,6 +5568,7 @@ body.theme-light .phase3-card,
 body.theme-light .phase2-stack .panel,
 body.theme-light .phase3-stack .panel,
 body.theme-light .modal-content,
+body.theme-light .saas-modal-content,
 body.theme-light .invoice-paper,
 body.theme-light .ai-list,
 body.theme-light .empty-state,
@@ -5630,6 +5631,12 @@ body.theme-light .sidebar-section.has-active {
 .saas-public-shell h1,
 .saas-public-shell h2,
 .saas-public-shell h3,
+.pricing-page-container h1,
+.pricing-page-container h2,
+.pricing-page-container h3,
+.pricing-page-container strong,
+.pricing-page-price,
+.brand-title,
 .stat-card-modern strong {
   color: var(--app-heading) !important;
   -webkit-text-fill-color: var(--app-heading) !important;
@@ -5645,6 +5652,9 @@ body.theme-light .sidebar-section.has-active {
 .panel span,
 .stat-card-modern span,
 .stat-card-modern p,
+.pricing-page-container p,
+.pricing-page-container span,
+.pricing-page-container li,
 .field-label,
 .topbar-link,
 .activity-item,
@@ -6095,6 +6105,158 @@ svg text {
 
 body.theme-light svg text {
   fill: #334155 !important;
+}
+
+/* Pricing Page & Modal Surface Isolation */
+.pricing-page-container {
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+.pricing-page-container header {
+  background: var(--bg-primary) !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+}
+
+.pricing-page-price {
+  color: var(--text-primary) !important;
+  -webkit-text-fill-color: var(--text-primary) !important;
+}
+
+.pricing-page-period {
+  color: var(--text-secondary) !important;
+}
+
+.pricing-close-button,
+.icon-button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  transition: all 0.2s ease;
+}
+
+body.theme-light .pricing-page-container {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+body.theme-light .pricing-page-container header {
+  background: #ffffff !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+body.theme-light .pricing-page-container .brand-title,
+body.theme-light .pricing-page-container h1,
+body.theme-light .pricing-page-container h2,
+body.theme-light .pricing-page-container h3,
+body.theme-light .pricing-page-container strong,
+body.theme-light .pricing-page-price {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
+
+body.theme-light .pricing-page-container p,
+body.theme-light .pricing-page-container li,
+body.theme-light .pricing-page-period {
+  color: #475569 !important;
+}
+
+body.theme-light .pricing-close-button,
+body.theme-light .icon-button {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+body.theme-light .pricing-close-button:hover,
+body.theme-light .icon-button:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+/* Light Mode Landing Page & Public Shell */
+body.theme-light .saas-public-shell:not(.dark-neon-auth) {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .saas-nav {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .saas-logo {
+  color: #0f172a !important;
+}
+
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .saas-nav a {
+  color: #334155 !important;
+}
+
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .saas-nav a:hover {
+  color: #0284c7 !important;
+}
+
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .saas-nav button {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .saas-hero-copy h1,
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .saas-section-heading h2 {
+  color: #0f172a !important;
+  text-shadow: none !important;
+}
+
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .saas-hero-copy p,
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .saas-section-heading p {
+  color: #475569 !important;
+}
+
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .saas-feature-card,
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .saas-testimonial-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05) !important;
+}
+
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .saas-feature-card strong,
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .saas-testimonial-card strong {
+  color: #0f172a !important;
+}
+
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .saas-feature-card p,
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .saas-testimonial-card p {
+  color: #475569 !important;
+}
+
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .saas-command-strip span {
+  background: #f1f5f9 !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #334155 !important;
+}
+
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .saas-dashboard-preview {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .preview-grid article {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .preview-grid span {
+  color: #64748b !important;
+}
+
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .preview-grid strong {
+  color: #0284c7 !important;
 }
 
 * {
