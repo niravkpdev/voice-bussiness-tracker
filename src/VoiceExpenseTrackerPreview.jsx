@@ -9,10 +9,10 @@ import {
   LogOut, User, ChevronDown, Calendar, Lightbulb, CheckCircle, AlertCircle,
   CalendarDays, Gift, Briefcase, MapPin, Star, Sparkles, TrendingDown, Sun, Cloud,
   Filter, Tag, Download, Phone, Mail, MessageCircle, MoreHorizontal, Paperclip, Edit3, ArrowLeft, Image as ImageIcon, X,
-  Trash2, Copy, Check, ChevronRight, Lock
+  Trash2, Copy, Check, ChevronRight, Lock, Shield
 } from 'lucide-react';
 import { SafeHelpCenterModal } from './SafeHelpCenterModal';
-import StorefrontHome from './storefront/StorefrontHome.jsx';
+import { DemoPreviewModal } from './DemoPreviewModal.jsx';
 import ThirdEyeBackground from './ThirdEyeBackground.jsx';
 import {
   LEDGERS_KEY,
@@ -123,6 +123,7 @@ const Phase2ERP = lazy(() => import('./Phase2ERP.jsx'));
 const Phase3Ops = lazy(() => import('./Phase3Ops.jsx'));
 const ProfitNxSalesEntry = lazy(() => import('./ProfitNxSalesEntry.jsx'));
 const ProfitNxProduction = lazy(() => import('./ProfitNxProduction.jsx'));
+const StorefrontHome = lazy(() => import('./storefront/StorefrontHome.jsx'));
 
 const STORAGE_KEY = 'businessLogs';
 const PROFILE_KEY = 'businessProfile';
@@ -1605,6 +1606,8 @@ export default function VoiceExpenseTrackerPreview() {
   const [showTour, setShowTour] = useState(false);
   const [showPricing, setShowPricing] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
+  const [showDemoModal, setShowDemoModal] = useState(false);
+  const [settingsLegalPage, setSettingsLegalPage] = useState(null);
   const [isHelpCenterOpen, setIsHelpCenterOpen] = useState(false);
   const [upgradeModalFeature, setUpgradeModalFeature] = useState(null); // null means hidden, string means feature name
 
@@ -5699,22 +5702,24 @@ export default function VoiceExpenseTrackerPreview() {
 
   if (STOREFRONT_TABS.includes(activeTab)) {
     return (
-      <StorefrontHome
-        profile={profile}
-        onUpdateProfile={updateBusinessProfile}
-        customInventory={cloudInventory}
-        isOwner={Boolean(isCompanyOwner && authUser)}
-        initialTab={activeTab === 'store-contact' ? 'contact' : activeTab === 'storefront' ? 'store' : activeTab}
-        onSwitchToErp={() => {
-          setActiveTab('dashboard');
-          window.location.hash = 'dashboard';
-        }}
-        onSwitchToLogin={() => {
-          setActiveTab('dashboard');
-          setAuthView('login');
-          window.location.hash = 'login';
-        }}
-      />
+      <Suspense fallback={<div className="panel skeleton-panel" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', color: 'var(--text-secondary)' }}>Loading online storefront...</div>}>
+        <StorefrontHome
+          profile={profile}
+          onUpdateProfile={updateBusinessProfile}
+          customInventory={cloudInventory}
+          isOwner={Boolean(isCompanyOwner && authUser)}
+          initialTab={activeTab === 'store-contact' ? 'contact' : activeTab === 'storefront' ? 'store' : activeTab}
+          onSwitchToErp={() => {
+            setActiveTab('dashboard');
+            window.location.hash = 'dashboard';
+          }}
+          onSwitchToLogin={() => {
+            setActiveTab('dashboard');
+            setAuthView('login');
+            window.location.hash = 'login';
+          }}
+        />
+      </Suspense>
     );
   }
 
@@ -5945,7 +5950,7 @@ export default function VoiceExpenseTrackerPreview() {
                   <button className="saas-primary-button" type="button" onClick={() => { trackEvent('Signup started'); handleTriggerLogin('register'); }}>
                     Start Free
                   </button>
-                  <button className="saas-secondary-button" type="button" onClick={() => handleTriggerLogin('login')}>
+                  <button className="saas-secondary-button" type="button" onClick={() => setShowDemoModal(true)}>
                     Watch Demo
                   </button>
                 </div>
@@ -6371,6 +6376,22 @@ export default function VoiceExpenseTrackerPreview() {
             setStatus={setStatus}
           />
         )}
+
+        {showDemoModal && (
+          <DemoPreviewModal
+            isOpen={showDemoModal}
+            onClose={() => setShowDemoModal(false)}
+            onStartFree={() => {
+              setShowDemoModal(false);
+              trackEvent('Signup started from demo modal');
+              handleTriggerLogin('register');
+            }}
+            onTryLiveDemo={() => {
+              setShowDemoModal(false);
+              startDemoMode();
+            }}
+          />
+        )}
       </main>
     );
   }
@@ -6696,8 +6717,9 @@ export default function VoiceExpenseTrackerPreview() {
         )}
         {showTour && <GuidedTour onFinish={() => setShowTour(false)} />}
         
-        {/* PROFIT NX ERP TOP NUMBERED MENUBAR (Matching FR.mp4) */}
-        <div className="profitnx-erp-top-wrapper" ref={menubarRef} style={{ position: 'relative', zIndex: 500 }}>
+        {/* CONSOLIDATED STICKY HEADER SUITE (Branding Topbar + Profit Nx Menubar) */}
+        <div className="trinetr-sticky-header-container">
+          <div className="profitnx-erp-top-wrapper hide-on-mobile" ref={menubarRef} style={{ position: 'relative', zIndex: 500 }}>
           {/* Trinetr Numbered Menu Bar */}
           <nav className="profitnx-menubar hide-on-mobile" style={{
             background: '#0f172a',
@@ -6721,7 +6743,7 @@ export default function VoiceExpenseTrackerPreview() {
                     background: openNxMenu === 'trans' ? '#1e293b' : 'transparent',
                     color: '#ffffff',
                     border: 'none',
-                    padding: '9px 14px',
+                    padding: '5px 10px',
                     fontSize: '13px',
                     fontWeight: 700,
                     cursor: 'pointer',
@@ -6766,7 +6788,7 @@ export default function VoiceExpenseTrackerPreview() {
                   background: openNxMenu === 'reports' ? '#1e293b' : 'transparent',
                   color: '#ffffff',
                   border: 'none',
-                  padding: '9px 14px',
+                  padding: '5px 10px',
                   fontSize: '13px',
                   fontWeight: 700,
                   cursor: 'pointer'
@@ -6814,7 +6836,7 @@ export default function VoiceExpenseTrackerPreview() {
                   background: openNxMenu === 'analytics' ? '#1e293b' : 'transparent',
                   color: '#ffffff',
                   border: 'none',
-                  padding: '9px 14px',
+                  padding: '5px 10px',
                   fontSize: '13px',
                   fontWeight: 700,
                   cursor: 'pointer'
@@ -6850,7 +6872,7 @@ export default function VoiceExpenseTrackerPreview() {
                   background: openNxMenu === 'process' ? '#1e293b' : 'transparent',
                   color: '#ffffff',
                   border: 'none',
-                  padding: '9px 14px',
+                  padding: '5px 10px',
                   fontSize: '13px',
                   fontWeight: 700,
                   cursor: 'pointer'
@@ -6895,7 +6917,7 @@ export default function VoiceExpenseTrackerPreview() {
                   background: openNxMenu === 'production' ? '#1e293b' : 'transparent',
                   color: '#4ade80',
                   border: 'none',
-                  padding: '9px 14px',
+                  padding: '5px 10px',
                   fontSize: '13px',
                   fontWeight: 750,
                   cursor: 'pointer'
@@ -6928,7 +6950,7 @@ export default function VoiceExpenseTrackerPreview() {
                   background: openNxMenu === 'payroll' ? '#1e293b' : 'transparent',
                   color: '#ffffff',
                   border: 'none',
-                  padding: '9px 14px',
+                  padding: '5px 10px',
                   fontSize: '13px',
                   fontWeight: 700,
                   cursor: 'pointer'
@@ -6961,7 +6983,7 @@ export default function VoiceExpenseTrackerPreview() {
                   background: openNxMenu === 'master' ? '#1e293b' : 'transparent',
                   color: '#ffffff',
                   border: 'none',
-                  padding: '9px 14px',
+                  padding: '5px 10px',
                   fontSize: '13px',
                   fontWeight: 700,
                   cursor: 'pointer'
@@ -7003,7 +7025,7 @@ export default function VoiceExpenseTrackerPreview() {
                   background: activeTab === 'dashboard' ? '#1e293b' : 'transparent',
                   color: '#93c5fd',
                   border: 'none',
-                  padding: '9px 14px',
+                  padding: '5px 10px',
                   fontSize: '13px',
                   fontWeight: 750,
                   cursor: 'pointer'
@@ -7024,7 +7046,7 @@ export default function VoiceExpenseTrackerPreview() {
           </nav>
         </div>
 
-        <header className="topbar" style={{ padding: '8px 20px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'nowrap', overflow: 'visible', position: 'sticky', top: 0, zIndex: 100 }}>
+        <header className="topbar" style={{ padding: '6px 18px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'nowrap', overflow: 'visible', position: 'relative' }}>
           {authUser?.mode === 'demo' && (
             <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', background: 'var(--brand-primary)', color: 'white', padding: '4px 16px', fontSize: '12px', fontWeight: 600, borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px', zIndex: 100 }}>
               Demo Mode
@@ -7036,17 +7058,17 @@ export default function VoiceExpenseTrackerPreview() {
               type="button"
               aria-label="Open navigation"
               onClick={() => setMobileNavOpen(true)}
-              style={{ padding: '8px', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#0f172a' }}
+              style={{ padding: '8px', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '20px', color: 'var(--text-primary, #0f172a)' }}
             >
               ☰
             </button>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
               <span style={{ background: '#1e3a8a', color: '#ffffff', fontWeight: 800, padding: '3px 8px', borderRadius: '4px', fontSize: '11px', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>TRINETR ERP</span>
-              <strong style={{ fontWeight: 800, fontSize: '14.5px', color: '#0f172a', letterSpacing: '0.01em', whiteSpace: 'nowrap' }}>{profile.name || 'JAY AMBE NAMKEEN'}</strong>
-              <span style={{ fontSize: '12px', color: '#475569', fontWeight: 600, whiteSpace: 'nowrap' }}>[2026 - 2027]</span>
-              <span className="hide-on-mobile" style={{ color: '#cbd5e1' }}>|</span>
-              <span className="hide-on-mobile" style={{ fontSize: '12px', color: '#334155', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                GSTIN: <strong style={{ color: '#0f172a', fontFamily: 'monospace', fontSize: '12.5px', fontWeight: 750 }}>{profile.gstin || '24CPVPC7753J1Z8'}</strong>
+              <strong style={{ fontWeight: 800, fontSize: '14.5px', color: 'var(--text-primary, #0f172a)', letterSpacing: '0.01em', whiteSpace: 'nowrap' }}>{profile.name || 'JAY AMBE NAMKEEN'}</strong>
+              <span style={{ fontSize: '12px', color: 'var(--text-muted, #64748b)', fontWeight: 600, whiteSpace: 'nowrap' }}>[2026 - 2027]</span>
+              <span className="hide-on-mobile" style={{ color: 'var(--border-subtle, #cbd5e1)' }}>|</span>
+              <span className="hide-on-mobile" style={{ fontSize: '12px', color: 'var(--text-secondary, #334155)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                GSTIN: <strong style={{ color: 'var(--text-primary, #0f172a)', fontFamily: 'monospace', fontSize: '12.5px', fontWeight: 750 }}>{profile.gstin || '24CPVPC7753J1Z8'}</strong>
               </span>
             </div>
           </div>
@@ -7094,9 +7116,9 @@ export default function VoiceExpenseTrackerPreview() {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
-                  background: '#0f172a',
+                  background: 'var(--brand-primary, #0284c7)',
                   color: '#ffffff',
-                  border: '1px solid #334155',
+                  border: '1px solid var(--brand-primary, #0284c7)',
                   cursor: 'pointer'
                 }}
                 onClick={() => {
@@ -7115,10 +7137,10 @@ export default function VoiceExpenseTrackerPreview() {
                     top: 'calc(100% + 8px)',
                     right: 0,
                     width: '240px',
-                    background: '#ffffff',
+                    background: 'var(--bg-card, #ffffff)',
                     borderRadius: '10px',
-                    boxShadow: '0 12px 32px rgba(15, 23, 42, 0.18)',
-                    border: '1px solid #cbd5e1',
+                    boxShadow: '0 12px 32px rgba(0, 0, 0, 0.18)',
+                    border: '1px solid var(--border-subtle, #cbd5e1)',
                     zIndex: 99999,
                     padding: '8px',
                     display: 'flex',
@@ -7128,12 +7150,12 @@ export default function VoiceExpenseTrackerPreview() {
                 >
                   <button type="button" onClick={() => { navigateToTab('sales-entry'); setQuickAddOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', fontWeight: 700, color: '#1e3a8a', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}><FileText size={15} /> ⚡ Sales Entry (F2)</button>
                   <button type="button" onClick={() => { navigateToTab('production'); setQuickAddOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', fontWeight: 700, color: '#059669', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}><Package size={15} /> ⚙ Production Batch</button>
-                  <button type="button" onClick={() => { navigateToTab('invoices'); setQuickAddOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: '#0f172a', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><FileText size={15} /> New Invoice</button>
-                  <button type="button" onClick={() => { navigateToTab('orders'); setQuickAddOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: '#0f172a', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><Package size={15} /> New Order</button>
-                  <button type="button" onClick={() => { navigateToTab('crm'); setQuickAddOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: '#0f172a', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><Users size={15} /> New Customer</button>
-                  <button type="button" onClick={() => { navigateToTab('inventory'); setQuickAddOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: '#0f172a', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><Package size={15} /> New Product</button>
-                  <button type="button" onClick={() => { navigateToTab('employees'); setQuickAddOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: '#0f172a', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><User size={15} /> New Employee</button>
-                  <div className="saas-dropdown-divider" style={{ height: '1px', background: '#e2e8f0', margin: '4px 0' }} />
+                  <button type="button" onClick={() => { navigateToTab('invoices'); setQuickAddOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: 'var(--text-primary, #0f172a)', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><FileText size={15} /> New Invoice</button>
+                  <button type="button" onClick={() => { navigateToTab('orders'); setQuickAddOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: 'var(--text-primary, #0f172a)', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><Package size={15} /> New Order</button>
+                  <button type="button" onClick={() => { navigateToTab('crm'); setQuickAddOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: 'var(--text-primary, #0f172a)', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><Users size={15} /> New Customer</button>
+                  <button type="button" onClick={() => { navigateToTab('inventory'); setQuickAddOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: 'var(--text-primary, #0f172a)', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><Package size={15} /> New Product</button>
+                  <button type="button" onClick={() => { navigateToTab('employees'); setQuickAddOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: 'var(--text-primary, #0f172a)', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><User size={15} /> New Employee</button>
+                  <div className="saas-dropdown-divider" style={{ height: '1px', background: 'var(--border-subtle, #e2e8f0)', margin: '4px 0' }} />
                   <button type="button" onClick={() => { navigateToTab('voucher-entry'); setQuickAddOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: '#d97706', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 700 }}><DollarSign size={15} /> Record Expense</button>
                 </div>
               )}
@@ -7202,18 +7224,18 @@ export default function VoiceExpenseTrackerPreview() {
                     gap: '8px'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--border-subtle, #e2e8f0)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <Bell size={16} color="#1e3a8a" />
-                      <strong style={{ fontSize: '13.5px', color: '#0f172a' }}>Notifications</strong>
+                      <strong style={{ fontSize: '13.5px', color: 'var(--text-primary, #0f172a)' }}>Notifications</strong>
                       <span style={{
-                        background: unreadNotificationCount > 0 ? '#eff6ff' : '#f1f5f9',
-                        color: unreadNotificationCount > 0 ? '#1e3a8a' : '#64748b',
+                        background: unreadNotificationCount > 0 ? '#eff6ff' : 'var(--bg-secondary, #f1f5f9)',
+                        color: unreadNotificationCount > 0 ? '#1e3a8a' : 'var(--text-secondary, #64748b)',
                         fontSize: '11px',
                         fontWeight: 750,
                         padding: '2px 6px',
                         borderRadius: '12px',
-                        border: unreadNotificationCount > 0 ? '1px solid #bfdbfe' : '1px solid #e2e8f0'
+                        border: unreadNotificationCount > 0 ? '1px solid #bfdbfe' : '1px solid var(--border-subtle, #e2e8f0)'
                       }}>
                         {unreadNotificationCount > 0 ? `${unreadNotificationCount} New` : 'All read'}
                       </span>
@@ -7230,10 +7252,10 @@ export default function VoiceExpenseTrackerPreview() {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '280px', overflowY: 'auto' }}>
                     {liveNotifications.length === 0 ? (
-                      <div style={{ padding: '24px 12px', textAlign: 'center', color: '#64748b' }}>
+                      <div style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--text-secondary, #64748b)' }}>
                         <CheckCircle size={26} color="#10b981" style={{ margin: '0 auto 8px', display: 'block' }} />
-                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>All caught up!</div>
-                        <div style={{ fontSize: '11.5px', marginTop: '3px', color: '#64748b' }}>No pending alerts or low-stock notices right now.</div>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #1e293b)' }}>All caught up!</div>
+                        <div style={{ fontSize: '11.5px', marginTop: '3px', color: 'var(--text-secondary, #64748b)' }}>No pending alerts or low-stock notices right now.</div>
                       </div>
                     ) : (
                       liveNotifications.map((item) => {
@@ -7247,8 +7269,8 @@ export default function VoiceExpenseTrackerPreview() {
                               gap: '10px',
                               padding: '8px 10px',
                               borderRadius: '6px',
-                              background: isUnread ? '#f8fafc' : 'transparent',
-                              border: isUnread ? '1px solid #e2e8f0' : '1px solid transparent',
+                              background: isUnread ? 'var(--bg-hover, #f8fafc)' : 'transparent',
+                              border: isUnread ? '1px solid var(--border-subtle, #e2e8f0)' : '1px solid transparent',
                               cursor: 'pointer',
                               transition: 'background 0.15s ease'
                             }}
@@ -7265,35 +7287,33 @@ export default function VoiceExpenseTrackerPreview() {
                             }} />
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                                <strong style={{ fontSize: '12.5px', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                <strong style={{ fontSize: '12.5px', color: 'var(--text-primary, #0f172a)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                   {item.title}
                                 </strong>
-                                <span style={{ fontSize: '10.5px', color: '#64748b', flexShrink: 0, marginLeft: '6px' }}>{item.time}</span>
+                                <span style={{ fontSize: '10.5px', color: 'var(--text-muted, #64748b)', flexShrink: 0, marginLeft: '6px' }}>{item.time}</span>
                               </div>
-                              <div style={{ fontSize: '11.5px', color: '#475569', marginTop: '2px', lineHeight: 1.3 }}>{item.desc}</div>
+                              <div style={{ fontSize: '11.5px', color: 'var(--text-secondary, #475569)', marginTop: '2px', lineHeight: 1.3 }}>{item.desc}</div>
                             </div>
                           </div>
                         );
                       })
                     )}
                   </div>
-                  <div style={{ paddingTop: '8px', borderTop: '1px solid #e2e8f0', textAlign: 'center' }}>
+                  <div style={{ borderTop: '1px solid var(--border-subtle, #e2e8f0)', paddingTop: '8px', textAlign: 'center' }}>
                     <button
                       type="button"
                       onClick={() => {
-                        setNotificationsOpen(false);
                         navigateToTab('notifications');
+                        setNotificationsOpen(false);
                       }}
                       style={{
                         background: 'none',
                         border: 'none',
-                        color: '#1e3a8a',
+                        color: 'var(--brand-primary, #0284c7)',
                         fontSize: '12px',
-                        fontWeight: 750,
+                        fontWeight: 700,
                         cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px'
+                        padding: '4px 8px'
                       }}
                     >
                       Open Full Notification Center ➔
@@ -7314,7 +7334,7 @@ export default function VoiceExpenseTrackerPreview() {
                   maxWidth: '36px',
                   height: '36px',
                   borderRadius: '50%',
-                  background: '#0f172a',
+                  background: 'var(--brand-primary, #0284c7)',
                   color: '#ffffff',
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -7322,7 +7342,7 @@ export default function VoiceExpenseTrackerPreview() {
                   fontWeight: '800',
                   fontSize: '14.5px',
                   cursor: 'pointer',
-                  border: profileDropdownOpen ? '2px solid #2563eb' : '2px solid #cbd5e1',
+                  border: profileDropdownOpen ? '2px solid #2563eb' : '2px solid var(--border-subtle, #cbd5e1)',
                   padding: 0,
                   outline: 'none',
                   flexShrink: 0
@@ -7344,10 +7364,10 @@ export default function VoiceExpenseTrackerPreview() {
                     top: 'calc(100% + 8px)',
                     right: 0,
                     width: '250px',
-                    background: '#ffffff',
+                    background: 'var(--bg-card, #ffffff)',
                     borderRadius: '10px',
-                    boxShadow: '0 12px 32px rgba(15, 23, 42, 0.18)',
-                    border: '1px solid #cbd5e1',
+                    boxShadow: '0 12px 32px rgba(0, 0, 0, 0.18)',
+                    border: '1px solid var(--border-subtle, #cbd5e1)',
                     zIndex: 99999,
                     padding: '8px',
                     display: 'flex',
@@ -7355,16 +7375,16 @@ export default function VoiceExpenseTrackerPreview() {
                     gap: '3px'
                   }}
                 >
-                  <div style={{ padding: '8px 12px', borderBottom: '1px solid #e2e8f0', marginBottom: '4px' }}>
-                    <div style={{ fontWeight: 750, fontSize: '13.5px', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{profile.name || 'JAY AMBE NAMKEEN'}</div>
-                    <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{authUser?.email || profile.owner || 'Owner / Administrator'}</div>
+                  <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border-subtle, #e2e8f0)', marginBottom: '4px' }}>
+                    <div style={{ fontWeight: 750, fontSize: '13.5px', color: 'var(--text-primary, #0f172a)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{profile.name || 'JAY AMBE NAMKEEN'}</div>
+                    <div style={{ fontSize: '11.5px', color: 'var(--text-secondary, #64748b)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{authUser?.email || profile.owner || 'Owner / Administrator'}</div>
                   </div>
-                  <button type="button" onClick={() => { navigateToTab('app-settings'); setProfileDropdownOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: '#0f172a', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><Settings size={15} /> Company Settings</button>
-                  <button type="button" onClick={() => { navigateToTab('billing'); setProfileDropdownOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: '#0f172a', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><CreditCard size={15} /> Billing & Plans</button>
-                  <button type="button" onClick={() => { navigateToTab('analytics'); setProfileDropdownOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: '#0f172a', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><Activity size={15} /> Analytics</button>
-                  <button type="button" onClick={() => { navigateToTab('preferences'); setProfileDropdownOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: '#0f172a', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><CheckSquare size={15} /> Preferences</button>
-                  <button type="button" onClick={() => { navigateToTab('help'); setProfileDropdownOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: '#0f172a', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><HelpCircle size={15} /> Help Center</button>
-                  <div className="saas-dropdown-divider" style={{ height: '1px', background: '#e2e8f0', margin: '4px 0' }} />
+                  <button type="button" onClick={() => { navigateToTab('app-settings'); setProfileDropdownOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: 'var(--text-primary, #0f172a)', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><Settings size={15} /> Company Settings</button>
+                  <button type="button" onClick={() => { navigateToTab('billing'); setProfileDropdownOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: 'var(--text-primary, #0f172a)', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><CreditCard size={15} /> Billing & Plans</button>
+                  <button type="button" onClick={() => { navigateToTab('analytics'); setProfileDropdownOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: 'var(--text-primary, #0f172a)', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><Activity size={15} /> Analytics</button>
+                  <button type="button" onClick={() => { navigateToTab('preferences'); setProfileDropdownOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: 'var(--text-primary, #0f172a)', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><CheckSquare size={15} /> Preferences</button>
+                  <button type="button" onClick={() => { navigateToTab('help'); setProfileDropdownOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: 'var(--text-primary, #0f172a)', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><HelpCircle size={15} /> Help Center</button>
+                  <div className="saas-dropdown-divider" style={{ height: '1px', background: 'var(--border-subtle, #e2e8f0)', margin: '4px 0' }} />
                   <button type="button" onClick={() => { setProfileDropdownOpen(false); logout(); }} className="saas-dropdown-item danger" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: '#dc2626', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 700 }}><LogOut size={15} /> Logout</button>
                 </div>
               )}
@@ -7372,6 +7392,7 @@ export default function VoiceExpenseTrackerPreview() {
 
           </div>
         </header>
+        </div>
 
         <main className="page-shell">
           {cloudBusinesses.length === 0 && !['profile-settings', 'company-setup'].includes(activeTab) && (
@@ -10238,14 +10259,57 @@ export default function VoiceExpenseTrackerPreview() {
                   </div>
                 </article>
                 <article className="settings-card">
-                  <h3>Legal & Play Store</h3>
-                  <p>Review privacy, terms, contact, and account deletion pages required before public launch.</p>
-                  <div className="legal-link-grid">
-                    <a href="#privacy-policy">Privacy</a>
-                    <a href="#terms-conditions">Terms</a>
-                    <a href="#data-deletion">Data Deletion</a>
-                    <a href="#contact-us">Contact</a>
-                    <a href="#about-app">About</a>
+                  <h3>Legal &amp; Play Store</h3>
+                  <p>Review privacy, terms, contact, and account deletion policies required for compliance and store readiness.</p>
+                  <div className="settings-legal-cards">
+                    <button
+                      type="button"
+                      className="settings-nav-card"
+                      onClick={() => setSettingsLegalPage('privacy-policy')}
+                    >
+                      <div className="settings-nav-card-icon"><Shield size={16} /></div>
+                      <div className="settings-nav-card-info">
+                        <strong>Privacy Policy</strong>
+                        <span>How business, voice &amp; financial records are safeguarded</span>
+                      </div>
+                      <ChevronRight size={16} className="settings-nav-card-arrow" />
+                    </button>
+                    <button
+                      type="button"
+                      className="settings-nav-card"
+                      onClick={() => setSettingsLegalPage('terms-conditions')}
+                    >
+                      <div className="settings-nav-card-icon"><FileText size={16} /></div>
+                      <div className="settings-nav-card-info">
+                        <strong>Terms &amp; Conditions</strong>
+                        <span>Terms of service, fair use policy &amp; legal disclaimers</span>
+                      </div>
+                      <ChevronRight size={16} className="settings-nav-card-arrow" />
+                    </button>
+                    <button
+                      type="button"
+                      className="settings-nav-card"
+                      onClick={() => setSettingsLegalPage('data-deletion')}
+                    >
+                      <div className="settings-nav-card-icon"><Trash2 size={16} /></div>
+                      <div className="settings-nav-card-info">
+                        <strong>Data Deletion Request</strong>
+                        <span>Step-by-step account &amp; cloud record wipe procedure</span>
+                      </div>
+                      <ChevronRight size={16} className="settings-nav-card-arrow" />
+                    </button>
+                    <button
+                      type="button"
+                      className="settings-nav-card"
+                      onClick={() => setShowContactModal(true)}
+                    >
+                      <div className="settings-nav-card-icon"><Mail size={16} /></div>
+                      <div className="settings-nav-card-info">
+                        <strong>Contact Support</strong>
+                        <span>Reach our compliance team at trinetr1901@gmail.com</span>
+                      </div>
+                      <ChevronRight size={16} className="settings-nav-card-arrow" />
+                    </button>
                   </div>
                 </article>
               </div>
@@ -10755,6 +10819,32 @@ export default function VoiceExpenseTrackerPreview() {
         <ContactModal
           onClose={() => setShowContactModal(false)}
           setStatus={setStatus}
+        />
+      )}
+
+      {settingsLegalPage && (
+        <div className="saas-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setSettingsLegalPage(null); }}>
+          <div className="saas-modal-content fade-in" style={{ maxWidth: '800px', width: '100%', maxHeight: 'min(90vh, calc(100dvh - 32px))', overflowY: 'auto' }}>
+            <Suspense fallback={<div className="panel skeleton-panel" style={{ padding: '24px', textAlign: 'center' }}>Loading legal document...</div>}>
+              <LegalPage page={settingsLegalPage} onBack={() => setSettingsLegalPage(null)} />
+            </Suspense>
+          </div>
+        </div>
+      )}
+
+      {showDemoModal && (
+        <DemoPreviewModal
+          isOpen={showDemoModal}
+          onClose={() => setShowDemoModal(false)}
+          onStartFree={() => {
+            setShowDemoModal(false);
+            trackEvent('Signup started from demo modal');
+            handleTriggerLogin('register');
+          }}
+          onTryLiveDemo={() => {
+            setShowDemoModal(false);
+            startDemoMode();
+          }}
         />
       )}
     </div>

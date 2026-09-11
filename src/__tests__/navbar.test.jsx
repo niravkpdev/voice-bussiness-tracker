@@ -5,6 +5,7 @@ import '@testing-library/jest-dom';
 import { PricingPage } from '../PricingPage.jsx';
 import { ContactModal } from '../ContactModal.jsx';
 import { LegalPage } from '../LegalPages.jsx';
+import { DemoPreviewModal } from '../DemoPreviewModal.jsx';
 import { STOREFRONT_TABS } from '../VoiceExpenseTrackerPreview.jsx';
 
 describe('Top Navbar Functions & Associated Modals', () => {
@@ -83,4 +84,45 @@ describe('Top Navbar Functions & Associated Modals', () => {
     fireEvent.click(backBtn);
     expect(handleBack).toHaveBeenCalled();
   });
+
+  it('renders DemoPreviewModal and allows tab switching and action callbacks', () => {
+    const handleClose = vi.fn();
+    const handleStartFree = vi.fn();
+    const handleTryLiveDemo = vi.fn();
+
+    render(
+      <DemoPreviewModal
+        isOpen={true}
+        onClose={handleClose}
+        onStartFree={handleStartFree}
+        onTryLiveDemo={handleTryLiveDemo}
+      />
+    );
+
+    expect(screen.getByText('Trinetr Product Walkthrough')).toBeInTheDocument();
+    expect(screen.getByText('Voice AI Bookkeeper')).toBeInTheDocument();
+    expect(screen.getByText('GST Invoicing (F2)')).toBeInTheDocument();
+
+    // Switch tab to GST Invoicing
+    fireEvent.click(screen.getByText('GST Invoicing (F2)'));
+    expect(screen.getByText('Quick Sales Bill (F2)')).toBeInTheDocument();
+
+    // Switch tab to Recipe BOM
+    fireEvent.click(screen.getByText('Recipe BOM Master'));
+    expect(screen.getByText(/Ratlami Sev/i)).toBeInTheDocument();
+
+    // Action clicks
+    const startFreeBtn = screen.getByRole('button', { name: /Start Free Trial/i });
+    fireEvent.click(startFreeBtn);
+    expect(handleStartFree).toHaveBeenCalled();
+
+    const demoModeBtn = screen.getByRole('button', { name: /Try Instant Demo Mode/i });
+    fireEvent.click(demoModeBtn);
+    expect(handleTryLiveDemo).toHaveBeenCalled();
+
+    const closeBtn = screen.getByRole('button', { name: /close/i });
+    fireEvent.click(closeBtn);
+    expect(handleClose).toHaveBeenCalled();
+  });
 });
+

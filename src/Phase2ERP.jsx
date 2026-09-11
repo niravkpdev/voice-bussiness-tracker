@@ -68,12 +68,15 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
+const inrCurrencyFormatter = new Intl.NumberFormat('en-IN', {
+  style: 'currency',
+  currency: 'INR',
+  maximumFractionDigits: 0,
+});
+
 function formatCurrency(amount) {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(Number(amount) || 0);
+  const n = Number(amount);
+  return inrCurrencyFormatter.format(Number.isFinite(n) ? n : 0);
 }
 
 const safeMoney = (val) => {

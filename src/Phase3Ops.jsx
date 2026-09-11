@@ -137,12 +137,15 @@ function leaveDays(startDate, endDate) {
   return Math.floor((end - start) / 86_400_000) + 1;
 }
 
+const inrCurrencyFormatter = new Intl.NumberFormat('en-IN', {
+  style: 'currency',
+  currency: 'INR',
+  maximumFractionDigits: 0,
+});
+
 function formatCurrency(amount) {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(Number(amount) || 0);
+  const n = Number(amount);
+  return inrCurrencyFormatter.format(Number.isFinite(n) ? n : 0);
 }
 
 function encodeUpi({ pa, pn, am, tn }) {

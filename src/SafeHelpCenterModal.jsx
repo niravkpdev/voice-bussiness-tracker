@@ -205,14 +205,14 @@ export function SafeHelpCenterModal({ isOpen, onClose }) {
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
       backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 99999,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '16px', boxSizing: 'border-box'
+      padding: '16px 16px max(16px, env(safe-area-inset-bottom, 16px)) 16px', boxSizing: 'border-box'
     }} onClick={handleClose}>
       
       <div style={{
         background: '#fff', borderRadius: '12px', width: '100%', maxWidth: '800px',
-        maxHeight: '85vh', overflowY: 'auto', position: 'relative',
+        maxHeight: 'min(85vh, calc(100dvh - 32px))', overflowY: 'auto', position: 'relative',
         boxShadow: '0 10px 25px rgba(0,0,0,0.2)', fontFamily: 'system-ui, -apple-system, sans-serif',
-        display: 'flex', flexDirection: 'column'
+        display: 'flex', flexDirection: 'column', WebkitOverflowScrolling: 'touch'
       }} onClick={(e) => e.stopPropagation()}>
         
         <button 
@@ -244,7 +244,7 @@ export function SafeHelpCenterModal({ isOpen, onClose }) {
           {content}
         </div>
 
-        <div style={{ marginTop: 'auto', textAlign: 'center', padding: '24px', borderTop: '1px solid #eee', background: '#f8fafc', borderRadius: '0 0 12px 12px' }}>
+        <div style={{ marginTop: 'auto', textAlign: 'center', padding: '20px 24px max(20px, env(safe-area-inset-bottom, 20px)) 24px', borderTop: '1px solid #eee', background: '#f8fafc', borderRadius: '0 0 12px 12px' }}>
           <button onClick={handleContactSupport} style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '6px', fontSize: '16px', cursor: 'pointer', marginRight: '16px', marginBottom: '8px' }}>
             Contact Support
           </button>

@@ -63,18 +63,14 @@ createRoot(document.getElementById('root')).render(
   </React.StrictMode>
 );
 
-if ('serviceWorker' in navigator) {
+if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.getRegistrations()
-      .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
-      .then(() => {
-        if ('caches' in window) {
-          return caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key))));
-        }
-        return null;
-      })
-      .catch(() => {
-        // The app still works if the browser blocks service worker cleanup.
-      });
+    navigator.serviceWorker.register('/sw.js').catch((err) => {
+      // SW registration fallback
+      if (import.meta.env.DEV) {
+        console.warn('Service worker registration failed:', err);
+      }
+    });
   });
 }
+

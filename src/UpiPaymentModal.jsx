@@ -234,7 +234,7 @@ export default function UpiPaymentModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '16px',
+        padding: '16px 16px max(16px, env(safe-area-inset-bottom, 16px)) 16px',
         overflowY: 'auto',
       }}
       onClick={(e) => {
@@ -252,7 +252,7 @@ export default function UpiPaymentModal({
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          maxHeight: '92vh',
+          maxHeight: 'min(92vh, calc(100dvh - 32px))',
         }}
       >
         {/* Header */}
@@ -396,7 +396,7 @@ export default function UpiPaymentModal({
         </div>
 
         {/* Tab Content */}
-        <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1 }}>
+        <div style={{ padding: '20px 24px max(24px, env(safe-area-inset-bottom, 24px)) 24px', overflowY: 'auto', flex: 1, WebkitOverflowScrolling: 'touch' }}>
           {errorMsg && (
             <div
               style={{
