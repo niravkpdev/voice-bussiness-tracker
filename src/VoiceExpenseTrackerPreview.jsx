@@ -484,12 +484,16 @@ function detectAmount(voiceText, detectedType) {
   return Number(amountMatch[1].replaceAll(',', '')) || 0;
 }
 
+const inrCurrencyFormatter = new Intl.NumberFormat('en-IN', {
+  style: 'currency',
+  currency: 'INR',
+  maximumFractionDigits: 0,
+});
+
 function formatCurrency(amount) {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(amount);
+  const parsed = Number(amount);
+  const safe = Number.isFinite(parsed) ? parsed : 0;
+  return inrCurrencyFormatter.format(safe);
 }
 
 function formatPartyBalance(ledger, balance) {

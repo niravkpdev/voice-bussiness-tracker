@@ -64,6 +64,10 @@ describe('Top Navbar Functions & Associated Modals', () => {
     fireEvent.click(submitBtn);
 
     expect(setStatus).toHaveBeenCalledWith(expect.stringContaining('Message sending coming soon'));
+    expect(screen.getByText('Message Received!')).toBeInTheDocument();
+
+    const doneBtn = screen.getByRole('button', { name: /Done/i });
+    fireEvent.click(doneBtn);
     expect(handleClose).toHaveBeenCalled();
   });
 

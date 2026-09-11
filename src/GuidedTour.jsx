@@ -3,27 +3,27 @@ import { X, ChevronRight, ChevronLeft } from 'lucide-react';
 
 const TOUR_STEPS = [
   {
-    target: '.saas-sidebar',
+    target: '.sidebar, .side-nav, .saas-sidebar, .profitnx-menubar',
     title: 'Navigation Menu',
-    content: 'Access all your business modules from here. Customers, Inventory, Orders, and more are just a click away.',
+    content: 'Access all your business modules from here. Ledgers, Inventory, Invoices, Customers, and Reports are just a click away.',
     position: 'right'
   },
   {
-    target: '.quick-add-btn', // I will need to ensure this class exists on the + New button
+    target: '.desktop-action-strip, .primary-action-pill, #voice-control-pill, .command-bar, .erp-nav-group',
     title: 'Quick Actions',
-    content: 'Instantly create invoices, add customers, or record expenses from anywhere in the app.',
+    content: 'Instantly record sales, create invoices, add customers, or log expenses with one click.',
     position: 'bottom'
   },
   {
-    target: '.erp-dashboard',
+    target: '.stat-card-modern, .dashboard-summary-grid, .stat-grid, #dashboard, .hero-panel, .panel',
     title: 'Business Overview',
-    content: 'Your dashboard gives you a real-time snapshot of your revenue, cash flow, and recent activities.',
+    content: 'Your dashboard gives you real-time visibility into revenue, monthly sales, cash flow, and financial health.',
     position: 'top'
   },
   {
-    target: '.ai-assistant-btn', // The floating chat button
-    title: 'Trinetr AI Assistant',
-    content: 'Need help or want to quickly check data? Just ask your AI assistant anytime!',
+    target: '.floating-voice-button, .mic-button, .voice-command-floating, [aria-label*="voice" i], [aria-label*="mic" i]',
+    title: 'Voice Bookkeeper',
+    content: 'Just speak in Hindi, Gujarati, or English to record transactions hands-free with AI assistance anytime!',
     position: 'left'
   }
 ];
@@ -32,13 +32,23 @@ export function GuidedTour({ onFinish }) {
   const [currentStep, setCurrentStep] = useState(0);
   const [position, setPosition] = useState(null);
   
-  const step = TOUR_STEPS[currentStep];
+  const step = TOUR_STEPS[currentStep] || TOUR_STEPS[0];
 
   useEffect(() => {
+    let highlightedEl = null;
+
     const updatePosition = () => {
       const el = document.querySelector(step.target);
-      if (!el) return;
+      if (!el) {
+        // Graceful fallback: center tour modal on screen
+        setPosition({
+          top: Math.max(80, Math.floor((window.innerHeight - 240) / 2)),
+          left: Math.max(20, Math.floor((window.innerWidth - 340) / 2)),
+        });
+        return;
+      }
       
+      highlightedEl = el;
       const rect = el.getBoundingClientRect();
       let top = 0;
       let left = 0;
@@ -60,24 +70,25 @@ export function GuidedTour({ onFinish }) {
           top = rect.top - 200;
           left = rect.left + (rect.width / 2) - 160;
           break;
+        default:
+          top = rect.bottom + 16;
+          left = rect.left;
       }
       
-      // Keep within bounds
+      // Keep within viewport bounds
       if (top < 20) top = 20;
+      if (top + 260 > window.innerHeight) top = Math.max(20, window.innerHeight - 280);
       if (left < 20) left = 20;
-      if (left + 320 > window.innerWidth) left = window.innerWidth - 340;
+      if (left + 340 > window.innerWidth) left = Math.max(20, window.innerWidth - 350);
       
       setPosition({ top, left });
       
-      // Highlight target
-      el.style.position = 'relative';
-      el.style.zIndex = '9999';
-      el.style.boxShadow = '0 0 0 4px var(--brand-primary), 0 0 0 9999px rgba(0,0,0,0.5)';
-      
-      return () => {
-        el.style.zIndex = '';
-        el.style.boxShadow = '';
-      };
+      // Highlight target element safely
+      try {
+        el.style.position = 'relative';
+        el.style.zIndex = '9999';
+        el.style.boxShadow = '0 0 0 4px var(--brand-primary, #00dfc4), 0 0 0 9999px rgba(0,0,0,0.55)';
+      } catch {}
     };
     
     // Give DOM time to render target elements
@@ -86,10 +97,11 @@ export function GuidedTour({ onFinish }) {
     return () => {
       clearTimeout(timer);
       window.removeEventListener('resize', updatePosition);
-      const el = document.querySelector(step.target);
-      if (el) {
-        el.style.zIndex = '';
-        el.style.boxShadow = '';
+      if (highlightedEl) {
+        try {
+          highlightedEl.style.zIndex = '';
+          highlightedEl.style.boxShadow = '';
+        } catch {}
       }
     };
   }, [currentStep, step]);
@@ -132,9 +144,9 @@ export function GuidedTour({ onFinish }) {
         <button 
           onClick={() => setCurrentStep(prev => prev - 1)}
           disabled={currentStep === 0}
-          style={{ background: 'transparent', border: 'none', color: currentStep === 0 ? 'var(--text-muted)' : 'var(--text-secondary)', cursor: currentStep === 0 ? 'default' : 'pointer', fontWeight: 500, fontSize: '14px' }}
+          style={{ background: 'transparent', border: 'none', color: currentStep === 0 ? 'var(--text-muted)' : 'var(--text-secondary)', cursor: currentStep === 0 ? 'default' : 'pointer', fontWeight: 500, fontSize: '14px', display: 'inline-flex', alignItems: 'center' }}
         >
-          Back
+          <ChevronLeft size={16} style={{ marginRight: '4px' }} /> Back
         </button>
         
         {currentStep < TOUR_STEPS.length - 1 ? (
