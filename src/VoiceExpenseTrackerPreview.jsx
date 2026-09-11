@@ -5720,9 +5720,14 @@ export default function VoiceExpenseTrackerPreview() {
           <nav>
             <a 
               href="#store" 
-              onClick={() => { setActiveTab('store'); window.location.hash = 'store'; }} 
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveTab('store');
+                window.location.hash = 'store';
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }} 
               className={isNeonAuthActive ? 'neon-store-link' : ''}
-              style={{ color: isNeonAuthActive ? '#fbbf24' : '#d97706', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+              style={{ color: isNeonAuthActive ? '#fbbf24' : '#d97706', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
             >
               🛍️ Online Store
             </a>
@@ -5735,20 +5740,63 @@ export default function VoiceExpenseTrackerPreview() {
                   setTimeout(() => {
                     const el = document.getElementById('features');
                     if (el) el.scrollIntoView({ behavior: 'smooth' });
-                  }, 80);
+                  }, 120);
                 } else {
                   const el = document.getElementById('features');
                   if (el) el.scrollIntoView({ behavior: 'smooth' });
                 }
               }}
+              style={{ cursor: 'pointer' }}
             >
               Features
             </a>
-            <button type="button" onClick={() => { trackPageView('pricing-modal'); setShowPricing(true); }}>Pricing</button>
-            <button type="button" onClick={() => setAuthView('about-app')}>About</button>
-            <button type="button" onClick={() => setShowContactModal(true)}>Contact</button>
-            <button type="button" onClick={() => handleTriggerLogin('login')}>Login</button>
-            <button className="saas-primary-button" type="button" onClick={() => { trackEvent('Signup started'); handleTriggerLogin('register'); }}>
+            <button 
+              type="button" 
+              onClick={() => { 
+                trackPageView('pricing-modal'); 
+                setShowPricing(true); 
+              }}
+              style={{ cursor: 'pointer' }}
+            >
+              Pricing
+            </button>
+            <button 
+              type="button" 
+              onClick={() => {
+                setAuthView('about-app');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              style={{ cursor: 'pointer' }}
+            >
+              About
+            </button>
+            <button 
+              type="button" 
+              onClick={() => setShowContactModal(true)}
+              style={{ cursor: 'pointer' }}
+            >
+              Contact
+            </button>
+            <button 
+              type="button" 
+              onClick={() => {
+                handleTriggerLogin('login');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              style={{ cursor: 'pointer' }}
+            >
+              Login
+            </button>
+            <button 
+              className="saas-primary-button" 
+              type="button" 
+              onClick={() => { 
+                trackEvent('Signup started'); 
+                handleTriggerLogin('register');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              style={{ cursor: 'pointer' }}
+            >
               Start Free
             </button>
           </nav>
@@ -6292,6 +6340,14 @@ export default function VoiceExpenseTrackerPreview() {
             onUpgrade={(plan) => {
               setShowPricing(false);
               handleTriggerLogin('register');
+            }}
+            onSelectPlan={(plan) => {
+              setShowPricing(false);
+              handleTriggerLogin('register');
+            }}
+            onContactSales={() => {
+              setShowPricing(false);
+              setShowContactModal(true);
             }}
             isLoggedIn={Boolean(authUser && hasVerifiedAccess)}
           />

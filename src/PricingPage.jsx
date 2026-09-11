@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Check, X, Shield, Lock, LifeBuoy, ArrowRight, Zap, Crown } from 'lucide-react';
 
-export function PricingPage({ onClose, onUpgrade, isLoggedIn }) {
+export function PricingPage({ onClose, onUpgrade, onSelectPlan, onContactSales, isLoggedIn }) {
   const [billingCycle, setBillingCycle] = useState('monthly');
   const [toast, setToast] = useState('');
 
@@ -16,8 +16,9 @@ export function PricingPage({ onClose, onUpgrade, isLoggedIn }) {
       return;
     }
     
-    if (onUpgrade) {
-      onUpgrade(plan, billingCycle);
+    const callback = onSelectPlan || onUpgrade;
+    if (callback) {
+      callback(plan, billingCycle);
     } else {
       setToast('Payment checkout coming soon.');
       setTimeout(() => setToast(''), 3000);
