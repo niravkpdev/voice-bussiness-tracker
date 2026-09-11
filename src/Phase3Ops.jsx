@@ -642,12 +642,12 @@ export default function Phase3Ops({
     [documentCategoryFilter, employeeDocuments, selectedEmployee]
   );
   const pendingCollections = useMemo(
-    () => partySummary.filter((party) => party.group === 'Sundry Debtors' && party.outstandingAmount > 0),
+    () => (partySummary || []).filter((party) => party.group === 'Sundry Debtors' && party.outstandingAmount > 0),
     [partySummary]
   );
   const businessIssues = useMemo(() => [
     ...unpaidInvoices.slice(0, 3).map((invoice) => `Payment pending on ${invoice.invoiceNo || invoice.id}`),
-    ...products.filter((product) => Number(product.currentStock) <= Number(product.minStock)).slice(0, 3).map((product) => `${product.name} is low stock`),
+    ...(products || []).filter((product) => Number(product.currentStock) <= Number(product.minStock)).slice(0, 3).map((product) => `${product.name} is low stock`),
     ...pendingCollections.slice(0, 3).map((party) => `${party.name} owes ${formatCurrency(party.outstandingAmount)}`),
   ], [pendingCollections, products, unpaidInvoices]);
 
@@ -781,34 +781,142 @@ export default function Phase3Ops({
   const convertOrderToInvoice = async (order) => {
     try {
       const invoiceNo = `INV-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(4, '0')}`;
+      
+      const matchedCustomer = (customers || []).find(
+        (c) => (order.mobile && (c.phone === order.mobile || c.mobile === order.mobile)) ||
+               (order.customer && c.name && c.name.trim().toLowerCase() === order.customer.trim().toLowerCase())
+      );
+
+      const customerId = matchedCustomer ? matchedCustomer.id : '';
+      const customerName = order.customer || matchedCustomer?.name || 'Walk-in Customer';
+      const customerMobile = order.mobile || matchedCustomer?.phone || matchedCustomer?.mobile || '';
+      const customerAddress = order.address || matchedCustomer?.address || '';
+      const customerGst = order.gstin || order.gst || matchedCustomer?.gst || matchedCustomer?.gstin || '';
+
+      const invoiceDate = today();
+      const dueDate = order.deliveryDate || today();
+      const totalAmount = Number(order.amount) || 0;
+
+      const orderLines = Array.isArray(order.items) && order.items.length > 0
+        ? order.items.map((item, idx) => {
+            const name = item.name || item.productName || item.product || item.description || order.details || `Order Item ${idx + 1}`;
+            const qty = Number(item.qty || item.quantity || 1) || 1;
+            const total = Number(item.total || item.amount || 0);
+            const rate = Number(item.rate || item.price || (qty > 0 && total > 0 ? total / qty : totalAmount));
+            const gst = Number(item.gst ?? item.gstPercent ?? item.taxRate ?? 0);
+            return {
+              id: item.id || `line-${Date.now()}-${idx}`,
+              name,
+              description: item.description || name,
+              qty: qty > 0 ? qty : 1,
+              rate: rate >= 0 ? rate : (total > 0 ? total : 0),
+              gst: gst >= 0 ? gst : 0,
+              total: total > 0 ? total : (qty * rate),
+            };
+          })
+        : [
+            {
+              id: `line-${Date.now()}-1`,
+              name: order.details ? (order.details.length > 60 ? `${order.details.slice(0, 57)}...` : order.details) : `Order ${order.orderNo || ''}`.trim() || 'Order Goods / Services',
+              description: order.details || 'Order Goods / Services',
+              qty: 1,
+              rate: totalAmount,
+              gst: 0,
+              total: totalAmount,
+            },
+          ];
+
       const newInvoice = {
         id: 'inv-' + Math.random().toString(36).substring(2, 9),
         type: 'invoice',
+        businessId: activeBusinessId || 'default',
+        business_id: activeBusinessId || 'default',
+        invoiceNo,
+        invoiceNumber: invoiceNo,
         invoice_number: invoiceNo,
+        orderId: order.id,
         order_id: order.id,
-        customer_name: order.customer,
-        customer_mobile: order.mobile,
-        items: [{ description: order.details, amount: Number(order.amount) || 0 }],
-        subtotal: Number(order.amount) || 0,
+        customerId,
+        customer_id: customerId,
+        customerName,
+        customer_name: customerName,
+        customer: customerName,
+        customerMobile,
+        customer_mobile: customerMobile,
+        mobile: customerMobile,
+        customerAddress,
+        customer_address: customerAddress,
+        address: customerAddress,
+        customerGst,
+        customer_gst: customerGst,
+        gstin: customerGst,
+        lines: orderLines,
+        items: orderLines,
+        subtotal: totalAmount,
+        taxable: totalAmount,
         tax: 0,
+        gstTotal: 0,
         discount: 0,
-        total: Number(order.amount) || 0,
+        total: totalAmount,
+        paid: 0,
         paid_amount: 0,
-        balance_due: Number(order.amount) || 0,
+        balance: totalAmount,
+        balance_due: totalAmount,
         status: 'Unpaid',
-        invoice_date: new Date().toISOString().slice(0, 10),
-        due_date: new Date().toISOString().slice(0, 10),
-        created_from: 'order'
+        date: invoiceDate,
+        invoiceDate,
+        invoice_date: invoiceDate,
+        dueDate,
+        due_date: dueDate,
+        terms: 'Payment due upon receipt. Goods once sold will not be taken back.',
+        notes: 'Converted from Order ' + (order.orderNo || ''),
+        created_from: 'order',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
-      await persistRecord('invoices', newInvoice, 'Failed to convert order to invoice');
-      
+
+      try {
+        await persistRecord('invoices', newInvoice, 'Failed to convert order to invoice');
+      } catch (persistErr) {
+        console.warn('Cloud invoice persist failed, continuing with local update:', persistErr);
+      }
+
+      if (typeof onUpdateInvoice === 'function') {
+        try {
+          await onUpdateInvoice(newInvoice);
+        } catch (onUpdateErr) {
+          console.warn('onUpdateInvoice failed:', onUpdateErr);
+        }
+      }
+
+      // Sync with local erpInvoices storage
+      try {
+        const localInvoices = readArray('erpInvoices');
+        const nextLocalInvoices = [newInvoice, ...localInvoices.filter((i) => i.id !== newInvoice.id)];
+        writeArray('erpInvoices', nextLocalInvoices);
+      } catch (e) {
+        console.warn('Failed to write erpInvoices in storage:', e);
+      }
+
       const updatedOrder = {
         ...order,
         status: 'Invoiced',
         timeline: [{ status: 'Invoiced', date: new Date().toLocaleString(), note: 'Converted to Invoice ' + invoiceNo }, ...(order.timeline || [])],
         updatedAt: new Date().toISOString(),
       };
-      await persistRecord('orders', updatedOrder, 'Failed to update order status');
+
+      try {
+        await persistRecord('orders', updatedOrder, 'Failed to update order status');
+      } catch (persistErr) {
+        console.warn('Cloud order persist failed, updating local state:', persistErr);
+      }
+
+      const nextOrders = orders.map((item) => (item.id === order.id ? updatedOrder : item));
+      setOrders(nextOrders);
+      writeArray(ORDER_KEY, nextOrders);
+      onOrdersChange?.(nextOrders);
+      window.dispatchEvent(new CustomEvent('trinetr-orders-updated', { detail: nextOrders }));
+
       if (onStatus) onStatus(`Order converted to Invoice ${invoiceNo}`);
     } catch (error) {
       if (onStatus) onStatus(error?.message || 'Failed to convert order to invoice');

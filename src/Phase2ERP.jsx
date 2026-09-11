@@ -141,7 +141,7 @@ const DEFAULT_CUSTOMERS = [
 
 export default function Phase2ERP({
   activeTab,
-  profile,
+  profile = {},
   vouchers,
   ledgers,
   partySummary,
@@ -345,8 +345,55 @@ export default function Phase2ERP({
   }, [activeBusinessId, products]);
 
   const scopedInvoices = useMemo(() => {
-    return (invoices || []).filter((invoice) => {
+    return (invoices || []).map((invoice) => {
       const invBiz = invoice.businessId || invoice.business_id || 'default';
+      const invNo = invoice.invoiceNo || invoice.invoiceNumber || invoice.invoice_number || invoice.id || 'INV';
+      const invDate = invoice.date || invoice.invoice_date || invoice.invoiceDate || (invoice.createdAt ? String(invoice.createdAt).slice(0, 10) : '') || today();
+      const invDueDate = invoice.dueDate || invoice.due_date || invDate;
+      const invCustomerName = invoice.customerName || invoice.customer_name || invoice.customer || '';
+      const invCustomerMobile = invoice.customerMobile || invoice.customer_mobile || invoice.mobile || invoice.phone || '';
+      const invCustomerAddress = invoice.customerAddress || invoice.customer_address || invoice.address || '';
+      const invCustomerGst = invoice.customerGst || invoice.customer_gst || invoice.gstin || invoice.gst || '';
+      const totalAmt = Number(invoice.total !== undefined ? invoice.total : (invoice.amount || 0));
+      const paidAmt = Number(invoice.paid !== undefined ? invoice.paid : (invoice.paid_amount || 0));
+      const balanceAmt = Number(invoice.balance !== undefined ? invoice.balance : (invoice.balance_due !== undefined ? invoice.balance_due : (totalAmt - paidAmt)));
+      const rawLines = Array.isArray(invoice.lines) && invoice.lines.length > 0
+        ? invoice.lines
+        : (Array.isArray(invoice.items) && invoice.items.length > 0 ? invoice.items : []);
+      const safeLines = rawLines.map((line, idx) => {
+        const name = line.name || line.productName || line.product || line.description || invoice.details || `Item ${idx + 1}`;
+        const qty = Number(line.qty || line.quantity || 1) || 1;
+        const total = Number(line.total || line.amount || 0);
+        const rate = Number(line.rate ?? line.price ?? (qty > 0 && total > 0 ? total / qty : totalAmt));
+        const gst = Number(line.gst ?? line.gstPercent ?? line.taxRate ?? line.tax ?? 0);
+        return {
+          ...line,
+          name,
+          qty,
+          rate: rate >= 0 ? rate : 0,
+          gst: gst >= 0 ? gst : 0,
+          total: total > 0 ? total : (qty * rate),
+        };
+      });
+
+      return {
+        ...invoice,
+        businessId: invBiz,
+        invoiceNo: invNo,
+        date: invDate,
+        dueDate: invDueDate,
+        customerName: invCustomerName,
+        customerMobile: invCustomerMobile,
+        customerAddress: invCustomerAddress,
+        customerGst: invCustomerGst,
+        total: totalAmt,
+        paid: paidAmt,
+        balance: balanceAmt,
+        lines: safeLines.length > 0 ? safeLines : (totalAmt > 0 ? [{ name: invoice.details || 'Order Goods / Services', qty: 1, rate: totalAmt, gst: 0, total: totalAmt }] : []),
+        items: safeLines.length > 0 ? safeLines : (totalAmt > 0 ? [{ name: invoice.details || 'Order Goods / Services', qty: 1, rate: totalAmt, gst: 0, total: totalAmt }] : []),
+      };
+    }).filter((invoice) => {
+      const invBiz = invoice.businessId || 'default';
       const activeBiz = activeBusinessId || 'default';
       return invBiz === activeBiz || !invoice.businessId || !activeBusinessId || activeBiz === 'default';
     });
@@ -425,7 +472,7 @@ export default function Phase2ERP({
   const erpAI = useMemo(() => {
     const byProduct = {};
     scopedInvoices.forEach((invoice) => {
-      invoice.lines.forEach((line) => {
+      (invoice.lines || invoice.items || []).forEach((line) => {
         byProduct[line.productId] = (byProduct[line.productId] || 0) + Number(line.qty || 0);
       });
     });
@@ -1262,12 +1309,37 @@ export default function Phase2ERP({
   };
 
   const editInvoice = (invoice) => {
+    const rawLines = Array.isArray(invoice.lines) && invoice.lines.length > 0
+      ? invoice.lines
+      : (Array.isArray(invoice.items) && invoice.items.length > 0 ? invoice.items : []);
+    
+    const totalAmt = Number(invoice.total !== undefined ? invoice.total : (invoice.amount || 0));
+    const safeLines = rawLines.map((line, idx) => ({
+      id: line.id || `line-${Date.now()}-${idx}`,
+      productId: line.productId || line.product_id || '',
+      customName: line.customName || line.name || line.productName || line.product || line.description || '',
+      name: line.name || line.productName || line.product || line.description || '',
+      qty: Number(line.qty || line.quantity || 1) || 1,
+      rate: Number(line.rate ?? line.price ?? 0),
+      gst: Number(line.gst ?? line.gstPercent ?? line.taxRate ?? 0),
+      discount: Number(line.discount || 0),
+      total: Number(line.total || line.amount || 0),
+    }));
+
+    const matchedCustomer = scopedCustomers.find((c) => c.id === invoice.customerId) ||
+      customers.find((c) => c.id === invoice.customerId) ||
+      scopedCustomers.find((c) => invoice.customerName && c.name?.toLowerCase() === invoice.customerName.toLowerCase()) ||
+      customers.find((c) => invoice.customerName && c.name?.toLowerCase() === invoice.customerName.toLowerCase());
+
+    const hasSpecificCustomer = matchedCustomer || (invoice.customerName && invoice.customerName !== 'Walk-in Customer / Cash Sale');
+
     setInvoiceDraft({
-      customerId: invoice.customerId,
-      status: invoice.status,
-      dueDate: invoice.dueDate,
-      terms: invoice.terms || TERMS,
-      lines: invoice.lines || invoice.items || [],
+      customerId: matchedCustomer ? matchedCustomer.id : (hasSpecificCustomer ? '__new_customer__' : (invoice.customerId || '')),
+      customCustomerName: invoice.customerName || invoice.customer_name || invoice.customer || '',
+      status: invoice.status || 'Unpaid',
+      dueDate: invoice.dueDate || invoice.due_date || today(),
+      terms: invoice.terms || invoice.notes || TERMS,
+      lines: safeLines.length > 0 ? safeLines : (totalAmt > 0 ? [{ id: 'line-1', customName: invoice.details || 'Order Goods / Services', name: invoice.details || 'Order Goods / Services', qty: 1, rate: totalAmt, gst: 0, discount: 0, total: totalAmt }] : []),
     });
     setEditingInvoiceId(invoice.id);
     setInvoiceFormError('');
@@ -1289,7 +1361,9 @@ export default function Phase2ERP({
   };
 
   const customerName = (customerId, invoice = null) => {
-    if (invoice?.customerName || invoice?.customer_name) return invoice.customerName || invoice.customer_name;
+    if (invoice?.customerName || invoice?.customer_name || invoice?.customer) {
+      return invoice.customerName || invoice.customer_name || invoice.customer;
+    }
     if (!customerId || customerId === 'cash-walkin' || customerId === 'cust-walkin') return 'Walk-in Customer / Cash Sale';
     const found = scopedCustomers.find((customer) => customer.id === customerId);
     if (found?.name) return found.name;
@@ -1299,13 +1373,13 @@ export default function Phase2ERP({
   };
 
   const invoiceText = (invoice) => [
-    `${profile.name}`,
-    `Invoice: ${invoice.invoiceNo}`,
-    `Customer: ${customerName(invoice.customerId)}`,
-    `Date: ${invoice.date}`,
-    `Total: ${formatCurrency(invoice.total)}`,
-    `Status: ${invoice.status}`,
-    `Due: ${invoice.dueDate}`,
+    `${profile.name || 'Trinetr Business'}`,
+    `Invoice: ${invoice.invoiceNo || invoice.invoiceNumber || invoice.invoice_number || invoice.id || ''}`,
+    `Customer: ${invoice.customerName || invoice.customer_name || customerName(invoice.customerId, invoice)}`,
+    `Date: ${invoice.date || invoice.invoice_date || invoice.invoiceDate || today()}`,
+    `Total: ${formatCurrency(invoice.total || invoice.amount || 0)}`,
+    `Status: ${invoice.status || (Number(invoice.balance || 0) <= 0 ? 'Paid' : 'Unpaid')}`,
+    `Due: ${invoice.dueDate || invoice.due_date || invoice.date || today()}`,
   ].join('\n');
 
   const shareInvoiceWhatsApp = (invoice) => {
@@ -1313,29 +1387,84 @@ export default function Phase2ERP({
   };
 
   const emailInvoice = (invoice) => {
-    const customer = scopedCustomers.find((item) => item.id === invoice.customerId);
-    window.location.href = `mailto:${customer?.email || ''}?subject=${encodeURIComponent(invoice.invoiceNo)}&body=${encodeURIComponent(invoiceText(invoice))}`;
+    const customer = scopedCustomers.find((item) => item.id === invoice.customerId) ||
+                     customers.find((item) => item.id === invoice.customerId);
+    const targetEmail = customer?.email || invoice.customerEmail || invoice.customer_email || invoice.email || '';
+    window.location.href = `mailto:${targetEmail}?subject=${encodeURIComponent(invoice.invoiceNo || 'Invoice')}&body=${encodeURIComponent(invoiceText(invoice))}`;
   };
 
   const printInvoice = (invoice) => {
-    const customer = scopedCustomers.find((item) => item.id === invoice.customerId) || {};
+    const customer = scopedCustomers.find((item) => item.id === invoice.customerId) ||
+                     customers.find((item) => item.id === invoice.customerId) || {};
     const win = window.open('', '_blank', 'width=900,height=900');
     if (!win) {
       onStatus('Allow popups to print invoice');
       return;
     }
 
+    const resolvedCustomerName = invoice.customerName || invoice.customer_name || invoice.customer || customer.name || 'Walk-in Customer / Cash Sale';
+    const resolvedCustomerMobile = invoice.customerMobile || invoice.customer_mobile || invoice.mobile || invoice.phone || customer.mobile || customer.phone || '';
+    const resolvedCustomerAddress = invoice.customerAddress || invoice.customer_address || invoice.address || customer.address || '';
+    const resolvedCustomerGst = invoice.customerGst || invoice.customer_gst || invoice.gstin || invoice.gst || customer.gst || customer.gstin || '';
+
+    const invNo = invoice.invoiceNo || invoice.invoiceNumber || invoice.invoice_number || invoice.id || 'INV';
+    const invDate = invoice.date || invoice.invoice_date || invoice.invoiceDate || (invoice.createdAt ? String(invoice.createdAt).slice(0, 10) : '') || today();
+    const invDueDate = invoice.dueDate || invoice.due_date || invDate;
+    const invStatus = invoice.status || (Number(invoice.balance || 0) <= 0 ? 'Paid' : 'Unpaid');
+
+    const totalAmt = Number(invoice.total !== undefined ? invoice.total : (invoice.amount || 0));
+
+    const rawLines = Array.isArray(invoice.lines) && invoice.lines.length > 0
+      ? invoice.lines
+      : (Array.isArray(invoice.items) && invoice.items.length > 0
+          ? invoice.items
+          : (Array.isArray(invoice.products) && invoice.products.length > 0 ? invoice.products : []));
+
+    const safeLines = rawLines.length > 0
+      ? rawLines.map((line, idx) => {
+          const name = line.name || line.productName || line.product || line.description || invoice.details || `Item ${idx + 1}`;
+          const qty = Number(line.qty || line.quantity || 1) || 1;
+          const total = Number(line.total || line.amount || 0);
+          const rate = Number(line.rate ?? line.price ?? (qty > 0 && total > 0 ? total / qty : (totalAmt > 0 ? totalAmt : 0)));
+          const gstVal = line.gst ?? line.gstPercent ?? line.taxRate ?? line.tax ?? 0;
+          const gst = Number(gstVal) || 0;
+          const lineTotal = total > 0 ? total : (qty * rate);
+          return {
+            name,
+            qty,
+            rate: rate >= 0 ? rate : 0,
+            gst,
+            total: lineTotal >= 0 ? lineTotal : 0,
+          };
+        })
+      : [
+          {
+            name: invoice.details || invoice.description || 'Order Goods / Services',
+            qty: 1,
+            rate: totalAmt,
+            gst: 0,
+            total: totalAmt,
+          }
+        ];
+
+    const subtotalAmt = Number(invoice.taxable || invoice.subtotal || safeLines.reduce((s, l) => s + (l.rate * l.qty), 0) || totalAmt);
+    const taxAmt = Number(invoice.gstTotal || invoice.tax || 0);
+    const grandTotal = totalAmt > 0 ? totalAmt : (subtotalAmt + taxAmt);
+    const paidAmt = Number(invoice.paid !== undefined ? invoice.paid : (invoice.paid_amount !== undefined ? invoice.paid_amount : (invStatus === 'Paid' ? grandTotal : 0)));
+    const balanceAmt = Number(invoice.balance !== undefined ? invoice.balance : (invoice.balance_due !== undefined ? invoice.balance_due : (grandTotal - paidAmt)));
+
     const doc = win.document;
-    doc.title = invoice.invoiceNo;
+    doc.title = invNo;
     const style = doc.createElement('style');
     style.textContent = [
       'body { font-family: Arial, sans-serif; margin: 28px; color: #111827; }',
       '.head { display: flex; justify-content: space-between; gap: 24px; border-bottom: 2px solid #111827; padding-bottom: 16px; }',
       '.logo { width: 72px; height: 72px; object-fit: contain; }',
-      'table { width: 100%; border-collapse: collapse; margin-top: 22px; }',
-      'th, td { border: 1px solid #d1d5db; padding: 10px; text-align: left; }',
-      '.total { text-align: right; margin-top: 18px; font-size: 20px; font-weight: 700; }',
-      '.signature { margin-top: 80px; text-align: right; }',
+      '.bill-box { margin-top: 18px; padding: 12px 16px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; }',
+      'table.items-table { width: 100%; border-collapse: collapse; margin-top: 22px; }',
+      'table.items-table th, table.items-table td { border: 1px solid #d1d5db; padding: 10px; text-align: left; }',
+      'table.items-table th { background-color: #f1f5f9; font-weight: 700; }',
+      '.signature { margin-top: 50px; text-align: right; font-weight: 600; }',
     ].join('\n');
     doc.head.append(style);
 
@@ -1350,44 +1479,104 @@ export default function Phase2ERP({
       left.append(logo);
     }
     const businessName = doc.createElement('h1');
-    businessName.textContent = profile.name;
+    businessName.style.margin = '0 0 6px 0';
+    businessName.style.fontSize = '22px';
+    businessName.textContent = profile.name || 'Business Name';
     const businessAddress = doc.createElement('p');
-    businessAddress.textContent = profile.address || profile.tagline;
+    businessAddress.style.margin = '2px 0';
+    businessAddress.style.fontSize = '12px';
+    businessAddress.style.color = '#475569';
+    businessAddress.textContent = profile.address || profile.tagline || '';
     const gst = doc.createElement('p');
-    gst.textContent = `GSTIN: ${profile.gstin || ''}`;
+    gst.style.margin = '2px 0';
+    gst.style.fontSize = '12px';
+    gst.style.fontWeight = '600';
+    gst.textContent = profile.gstin ? `GSTIN: ${profile.gstin}` : '';
     left.append(businessName, businessAddress, gst);
 
     const right = doc.createElement('div');
-    [['h2', invoice.invoiceNo], ['p', `Date: ${invoice.date}`], ['p', `Status: ${invoice.status}`], ['p', `Due: ${invoice.dueDate}`]]
+    right.style.textAlign = 'right';
+    [['h2', invNo], ['p', `Date: ${invDate}`], ['p', `Status: ${invStatus}`], ['p', `Due: ${invDueDate}`]]
       .forEach(([tag, value]) => {
         const node = doc.createElement(tag);
         node.textContent = value;
+        if (tag === 'h2') {
+          node.style.margin = '0 0 8px 0';
+          node.style.fontSize = '22px';
+          node.style.fontWeight = '800';
+          node.style.color = '#0f172a';
+        } else {
+          node.style.margin = '3px 0';
+          node.style.fontSize = '13px';
+          node.style.color = '#475569';
+        }
         right.append(node);
       });
     head.append(left, right);
     doc.body.append(head);
 
-    const billTitle = doc.createElement('h3');
-    billTitle.textContent = 'Bill To';
-    const billTo = doc.createElement('p');
-    billTo.textContent = [customer.name, customer.mobile, customer.address, customer.gst ? `GST: ${customer.gst}` : ''].filter(Boolean).join('\n');
-    doc.body.append(billTitle, billTo);
+    const billBox = doc.createElement('div');
+    billBox.className = 'bill-box';
+    const billTitle = doc.createElement('div');
+    billTitle.style.fontSize = '11px';
+    billTitle.style.fontWeight = '700';
+    billTitle.style.textTransform = 'uppercase';
+    billTitle.style.color = '#64748b';
+    billTitle.style.marginBottom = '6px';
+    billTitle.textContent = 'Bill To:';
+    billBox.append(billTitle);
+
+    const custNameDiv = doc.createElement('div');
+    custNameDiv.style.fontSize = '16px';
+    custNameDiv.style.fontWeight = '700';
+    custNameDiv.style.color = '#0f172a';
+    custNameDiv.textContent = resolvedCustomerName;
+    billBox.append(custNameDiv);
+
+    if (resolvedCustomerMobile) {
+      const p = doc.createElement('div');
+      p.style.fontSize = '13px';
+      p.style.color = '#334155';
+      p.style.marginTop = '2px';
+      p.textContent = `Phone: ${resolvedCustomerMobile}`;
+      billBox.append(p);
+    }
+    if (resolvedCustomerAddress) {
+      const p = doc.createElement('div');
+      p.style.fontSize = '13px';
+      p.style.color = '#334155';
+      p.style.marginTop = '2px';
+      p.textContent = `Address: ${resolvedCustomerAddress}`;
+      billBox.append(p);
+    }
+    if (resolvedCustomerGst) {
+      const p = doc.createElement('div');
+      p.style.fontSize = '13px';
+      p.style.color = '#334155';
+      p.style.marginTop = '2px';
+      p.textContent = `GSTIN: ${resolvedCustomerGst}`;
+      billBox.append(p);
+    }
+    doc.body.append(billBox);
 
     const table = doc.createElement('table');
+    table.className = 'items-table';
     const thead = doc.createElement('thead');
     const headerRow = doc.createElement('tr');
-    ['Product', 'Qty', 'Rate', 'GST', 'Total'].forEach((label) => {
+    ['Product', 'Qty', 'Rate', 'GST', 'Total'].forEach((label, idx) => {
       const th = doc.createElement('th');
       th.textContent = label;
+      if (idx >= 1) th.style.textAlign = idx === 1 ? 'center' : 'right';
       headerRow.append(th);
     });
     thead.append(headerRow);
     const tbody = doc.createElement('tbody');
-    invoice.lines.forEach((line) => {
+    safeLines.forEach((line) => {
       const row = doc.createElement('tr');
-      [line.name, line.qty, formatCurrency(line.rate), `${line.gst}%`, formatCurrency(line.total)].forEach((value) => {
+      [line.name, line.qty, formatCurrency(line.rate), `${line.gst}%`, formatCurrency(line.total)].forEach((value, idx) => {
         const cell = doc.createElement('td');
         cell.textContent = String(value ?? '');
+        if (idx >= 1) cell.style.textAlign = idx === 1 ? 'center' : 'right';
         row.append(cell);
       });
       tbody.append(row);
@@ -1395,16 +1584,67 @@ export default function Phase2ERP({
     table.append(thead, tbody);
     doc.body.append(table);
 
-    const total = doc.createElement('p');
-    total.className = 'total';
-    total.textContent = `Grand Total: ${formatCurrency(invoice.total)}`;
+    const summaryWrapper = doc.createElement('div');
+    summaryWrapper.style.display = 'flex';
+    summaryWrapper.style.justifyContent = 'flex-end';
+    summaryWrapper.style.marginTop = '18px';
+
+    const sumTable = doc.createElement('table');
+    sumTable.style.width = 'auto';
+    sumTable.style.minWidth = '280px';
+    sumTable.style.border = 'none';
+    sumTable.style.marginTop = '0';
+
+    const addSumRow = (label, val, isBold = false, isLarge = false, color = null) => {
+      const tr = doc.createElement('tr');
+      const td1 = doc.createElement('td');
+      td1.style.border = 'none';
+      td1.style.padding = '4px 12px';
+      td1.style.textAlign = 'right';
+      td1.textContent = label;
+      if (isBold) td1.style.fontWeight = '700';
+      if (isLarge) td1.style.fontSize = '18px';
+      if (color) td1.style.color = color;
+
+      const td2 = doc.createElement('td');
+      td2.style.border = 'none';
+      td2.style.padding = '4px 12px';
+      td2.style.textAlign = 'right';
+      td2.textContent = formatCurrency(val);
+      if (isBold) td2.style.fontWeight = '700';
+      if (isLarge) td2.style.fontSize = '18px';
+      if (color) td2.style.color = color;
+
+      tr.append(td1, td2);
+      sumTable.append(tr);
+    };
+
+    if (taxAmt > 0 || (subtotalAmt > 0 && subtotalAmt !== grandTotal)) {
+      addSumRow('Subtotal:', subtotalAmt, false);
+      if (taxAmt > 0) addSumRow('GST / Tax:', taxAmt, false);
+    }
+    addSumRow('Grand Total:', grandTotal, true, true);
+    if (paidAmt > 0) {
+      addSumRow('Paid Amount:', paidAmt, true, false, '#15803d');
+    }
+    if (balanceAmt > 0) {
+      addSumRow('Balance Due:', balanceAmt, true, false, '#b91c1c');
+    }
+    summaryWrapper.append(sumTable);
+    doc.body.append(summaryWrapper);
+
     const terms = doc.createElement('p');
-    terms.textContent = `Terms: ${invoice.terms || TERMS}`;
+    terms.style.marginTop = '24px';
+    terms.style.fontSize = '12px';
+    terms.style.color = '#64748b';
+    terms.textContent = `Terms & Conditions: ${invoice.terms || TERMS}`;
+
     const signature = doc.createElement('div');
     signature.className = 'signature';
-    signature.textContent = 'Authorized Signature';
-    doc.body.append(total, terms, signature);
-    win.setTimeout(() => win.print(), 50);
+    signature.textContent = 'Authorized Signatory';
+    doc.body.append(terms, signature);
+
+    win.setTimeout(() => win.print(), 80);
   };
 
   const addBusiness = async (event) => {
@@ -2175,11 +2415,11 @@ export default function Phase2ERP({
             <h2>Invoice Design Preview</h2>
             <div className="invoice-paper">
               <div className="invoice-head">
-                {profile.logo && <img src={profile.logo} alt="" />}
+                {profile?.logo && <img src={profile.logo} alt="" />}
                 <div>
-                  <strong>{profile.name}</strong>
-                  <span>{profile.address || profile.tagline}</span>
-                  <span>GSTIN: {profile.gstin || 'Not set'}</span>
+                  <strong>{profile?.name || 'Business Name'}</strong>
+                  <span>{profile?.address || profile?.tagline || ''}</span>
+                  <span>GSTIN: {profile?.gstin || 'Not set'}</span>
                 </div>
                 <InvoiceQr value={editingInvoiceId || 'draft'} />
               </div>

@@ -400,7 +400,7 @@ export function normalizeTransaction(row) {
   };
 }
 
-function rowToAppRecord(row, tableName) {
+export function rowToAppRecord(row, tableName) {
   if (!row) {
     return null;
   }
@@ -429,20 +429,50 @@ function rowToAppRecord(row, tableName) {
         raw: data
       };
     } else if (tableName === 'invoices') {
-    normalized = {
-      ...normalized,
-      invoiceNo: normalized.invoice_number || normalized.invoiceNo,
-      customerName: normalized.customer_name || normalized.customerName,
-      customerId: normalized.customer_id || normalized.customerId,
-      taxable: Number(normalized.subtotal || normalized.taxable || 0),
-      gstTotal: Number(normalized.tax || normalized.gstTotal || 0),
-      total: normalized.total !== undefined ? Number(normalized.total) : 0,
-      paid: Number(normalized.paid_amount || normalized.paid || 0),
-      balance: normalized.balance_due !== undefined ? Number(normalized.balance_due) : Number(normalized.balance || 0),
-      dueDate: normalized.due_date || normalized.dueDate || '',
-      lines: Array.isArray(normalized.items) ? normalized.items : (Array.isArray(normalized.lines) ? normalized.lines : []),
-      terms: normalized.notes || normalized.terms || '',
-    };
+      const invTotal = normalized.total !== undefined ? Number(normalized.total) : Number(normalized.amount || 0);
+      const rawLines = Array.isArray(normalized.items) && normalized.items.length > 0
+        ? normalized.items
+        : (Array.isArray(normalized.lines) && normalized.lines.length > 0 ? normalized.lines : []);
+      const normalizedLines = rawLines.map((line, idx) => {
+        const name = line.name || line.productName || line.product || line.description || normalized.details || `Item ${idx + 1}`;
+        const qty = Number(line.qty || line.quantity || 1) || 1;
+        const total = Number(line.total || line.amount || 0);
+        const rate = Number(line.rate ?? line.price ?? (qty > 0 && total > 0 ? total / qty : invTotal));
+        const gst = Number(line.gst ?? line.gstPercent ?? line.taxRate ?? line.tax ?? 0);
+        return {
+          ...line,
+          id: line.id || `line-${idx + 1}`,
+          name,
+          description: line.description || name,
+          qty,
+          rate: rate >= 0 ? rate : 0,
+          gst: gst >= 0 ? gst : 0,
+          total: total > 0 ? total : (qty * rate),
+        };
+      });
+
+      const invDate = normalized.invoice_date || normalized.date || (row.created_at ? String(row.created_at).slice(0, 10) : '') || new Date().toISOString().slice(0, 10);
+      const invDueDate = normalized.due_date || normalized.dueDate || invDate;
+
+      normalized = {
+        ...normalized,
+        invoiceNo: normalized.invoice_number || normalized.invoiceNo || normalized.id,
+        customerName: normalized.customer_name || normalized.customerName || normalized.customer || '',
+        customerMobile: normalized.customer_mobile || normalized.customerMobile || normalized.mobile || normalized.phone || '',
+        customerAddress: normalized.customer_address || normalized.customerAddress || normalized.address || '',
+        customerGst: normalized.customer_gst || normalized.customerGst || normalized.gstin || normalized.gst || '',
+        customerId: normalized.customer_id || normalized.customerId,
+        taxable: Number(normalized.subtotal !== undefined ? normalized.subtotal : (normalized.taxable || invTotal)),
+        gstTotal: Number(normalized.tax !== undefined ? normalized.tax : (normalized.gstTotal || 0)),
+        total: invTotal,
+        paid: Number(normalized.paid_amount !== undefined ? normalized.paid_amount : (normalized.paid || 0)),
+        balance: normalized.balance_due !== undefined ? Number(normalized.balance_due) : Number(normalized.balance !== undefined ? normalized.balance : invTotal),
+        date: invDate,
+        dueDate: invDueDate,
+        lines: normalizedLines.length > 0 ? normalizedLines : (invTotal > 0 ? [{ id: 'line-1', name: normalized.details || 'Order Goods / Services', qty: 1, rate: invTotal, gst: 0, total: invTotal }] : []),
+        items: normalizedLines.length > 0 ? normalizedLines : (invTotal > 0 ? [{ id: 'line-1', name: normalized.details || 'Order Goods / Services', qty: 1, rate: invTotal, gst: 0, total: invTotal }] : []),
+        terms: normalized.notes || normalized.terms || '',
+      };
   } else if (tableName === 'orders') {
     normalized = {
       ...normalized,

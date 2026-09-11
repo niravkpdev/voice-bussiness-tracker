@@ -1363,7 +1363,7 @@ function SalesPrintModal({ invoice, profile = {}, onClose }) {
         
         {/* Header Controls */}
         <div style={{ padding: '12px 18px', background: '#0f172a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: '14px', fontWeight: 600 }}>TAX INVOICE PREVIEW - {invoice.billNo}</span>
+          <span style={{ fontSize: '14px', fontWeight: 600 }}>TAX INVOICE PREVIEW - {invoice.billNo || invoice.invoiceNo || invoice.invoice_number || 'INVOICE'}</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
               type="button"
@@ -1406,13 +1406,13 @@ function SalesPrintModal({ invoice, profile = {}, onClose }) {
                 TAX INVOICE
               </div>
               <p style={{ margin: '2px 0', fontSize: '12px' }}>
-                Invoice No: <strong>{invoice.billNo}</strong>
+                Invoice No: <strong>{invoice.billNo || invoice.invoiceNo || invoice.invoice_number || 'INV'}</strong>
               </p>
               <p style={{ margin: '2px 0', fontSize: '12px' }}>
-                Date: <strong>{invoice.date}</strong>
+                Date: <strong>{invoice.date || invoice.invoice_date || invoice.invoiceDate || new Date().toISOString().slice(0, 10)}</strong>
               </p>
               <p style={{ margin: '2px 0', fontSize: '11px', color: '#64748b' }}>
-                Type: {invoice.billType} | {invoice.taxType}
+                Type: {invoice.billType || 'Tax Invoice'} | {invoice.taxType || 'Standard'}
               </p>
             </div>
           </div>
@@ -1420,9 +1420,9 @@ function SalesPrintModal({ invoice, profile = {}, onClose }) {
           {/* Bill To */}
           <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '12px', marginBottom: '16px' }}>
             <strong style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '4px' }}>Billed To:</strong>
-            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>{invoice.partyName}</div>
+            <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>{invoice.partyName || invoice.customerName || invoice.customer_name || 'Customer'}</div>
             <div style={{ fontSize: '12px', color: '#334155' }}>
-              GSTIN: <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{invoice.gstin}</span>
+              GSTIN: <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{invoice.gstin || invoice.customerGst || '-'}</span>
             </div>
           </div>
 
@@ -1476,15 +1476,15 @@ function SalesPrintModal({ invoice, profile = {}, onClose }) {
             <div style={{ width: '240px', fontSize: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
                 <span>Taxable Amount:</span>
-                <span style={{ fontFamily: 'monospace' }}>₹{invoice.taxableAmt.toFixed(2)}</span>
+                <span style={{ fontFamily: 'monospace' }}>₹{Number(invoice.taxableAmt !== undefined ? invoice.taxableAmt : (invoice.taxable || invoice.subtotal || invoice.netTotal || 0)).toFixed(2)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
                 <span>GST (CGST + SGST):</span>
-                <span style={{ fontFamily: 'monospace' }}>₹{invoice.gstAmt.toFixed(2)}</span>
+                <span style={{ fontFamily: 'monospace' }}>₹{Number(invoice.gstAmt !== undefined ? invoice.gstAmt : (invoice.gstTotal || invoice.tax || 0)).toFixed(2)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderTop: '2px solid #0f172a', fontWeight: 800, fontSize: '14px', color: '#1e3a8a' }}>
                 <span>Grand Total:</span>
-                <span style={{ fontFamily: 'monospace' }}>₹{invoice.netTotal.toFixed(2)}</span>
+                <span style={{ fontFamily: 'monospace' }}>₹{Number(invoice.netTotal !== undefined ? invoice.netTotal : (invoice.total || 0)).toFixed(2)}</span>
               </div>
             </div>
           </div>
