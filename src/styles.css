@@ -8071,68 +8071,163 @@ input, textarea, [contenteditable="true"] {
    ========================================================================== */
 
 /* Unified Dark Theme for the merged navbar & shell */
-.saas-public-shell.dark-neon-auth {
+.saas-public-shell.dark-neon-auth,
+body.theme-light .saas-public-shell.dark-neon-auth,
+body.theme-dark .saas-public-shell.dark-neon-auth {
   background: #050811 !important;
+  background-color: #050811 !important;
   color: #ffffff !important;
 }
 
-.saas-nav.neon-topbar-merged {
+body .saas-nav.neon-topbar-merged,
+body.theme-light .saas-nav.neon-topbar-merged,
+body.theme-dark .saas-nav.neon-topbar-merged,
+.saas-public-shell.dark-neon-auth .saas-nav,
+body.theme-light .saas-public-shell.dark-neon-auth .saas-nav,
+body.theme-dark .saas-public-shell.dark-neon-auth .saas-nav {
   background: #050811 !important;
+  background-color: #050811 !important;
   border: none !important;
-  border-bottom: none !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
+  border-bottom: 1px solid rgba(0, 223, 196, 0.15) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
   justify-content: flex-end !important;
   position: sticky !important;
   top: 0 !important;
   z-index: 1000 !important;
 }
 
-.saas-public-shell.dark-neon-auth header {
+.saas-public-shell.dark-neon-auth header,
+body.theme-light .saas-public-shell.dark-neon-auth header {
   border: none !important;
-  border-bottom: none !important;
-  box-shadow: none !important;
+  border-bottom: 1px solid rgba(0, 223, 196, 0.15) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45) !important;
 }
 
 .saas-nav.neon-topbar-merged .saas-logo {
   display: none !important;
 }
 
-.saas-nav.neon-topbar-merged nav a {
-  color: rgba(255, 255, 255, 0.85) !important;
-  -webkit-text-fill-color: rgba(255, 255, 255, 0.85) !important;
-  transition: color 0.2s ease;
+body .saas-nav.neon-topbar-merged nav,
+body.theme-light .saas-nav.neon-topbar-merged nav,
+.saas-public-shell.dark-neon-auth .saas-nav nav {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
 }
 
-.saas-nav.neon-topbar-merged nav a:hover {
+body .saas-nav.neon-topbar-merged nav a,
+body.theme-light .saas-nav.neon-topbar-merged nav a,
+body.theme-dark .saas-nav.neon-topbar-merged nav a,
+.saas-public-shell.dark-neon-auth .saas-nav nav a,
+body.theme-light .saas-public-shell.dark-neon-auth .saas-nav nav a {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  font-weight: 700 !important;
+  font-size: 0.92rem !important;
+  text-decoration: none !important;
+  transition: all 0.2s ease !important;
+}
+
+body .saas-nav.neon-topbar-merged nav a:hover,
+body.theme-light .saas-nav.neon-topbar-merged nav a:hover,
+body.theme-dark .saas-nav.neon-topbar-merged nav a:hover,
+.saas-public-shell.dark-neon-auth .saas-nav nav a:hover,
+body.theme-light .saas-public-shell.dark-neon-auth .saas-nav nav a:hover {
   color: #00dfc4 !important;
   -webkit-text-fill-color: #00dfc4 !important;
+  text-shadow: 0 0 12px rgba(0, 223, 196, 0.6) !important;
 }
 
-.saas-nav.neon-topbar-merged nav a.neon-store-link {
+body .saas-nav.neon-topbar-merged nav a.neon-store-link,
+body.theme-light .saas-nav.neon-topbar-merged nav a.neon-store-link,
+body.theme-dark .saas-nav.neon-topbar-merged nav a.neon-store-link,
+.saas-public-shell.dark-neon-auth .saas-nav nav a.neon-store-link,
+body.theme-light .saas-public-shell.dark-neon-auth .saas-nav nav a.neon-store-link {
   color: #fbbf24 !important;
   -webkit-text-fill-color: #fbbf24 !important;
   font-weight: 800 !important;
+  text-shadow: 0 0 12px rgba(251, 191, 36, 0.4) !important;
 }
 
-.saas-nav.neon-topbar-merged nav button {
+body .saas-nav.neon-topbar-merged nav a.neon-store-link:hover,
+body.theme-light .saas-nav.neon-topbar-merged nav a.neon-store-link:hover,
+body.theme-dark .saas-nav.neon-topbar-merged nav a.neon-store-link:hover,
+.saas-public-shell.dark-neon-auth .saas-nav nav a.neon-store-link:hover,
+body.theme-light .saas-public-shell.dark-neon-auth .saas-nav nav a.neon-store-link:hover {
+  color: #fef08a !important;
+  -webkit-text-fill-color: #fef08a !important;
+  text-shadow: 0 0 16px rgba(254, 240, 138, 0.7) !important;
+}
+
+body .saas-nav.neon-topbar-merged nav button,
+body.theme-light .saas-nav.neon-topbar-merged nav button,
+body.theme-dark .saas-nav.neon-topbar-merged nav button,
+.saas-public-shell.dark-neon-auth .saas-nav nav button,
+body.theme-light .saas-public-shell.dark-neon-auth .saas-nav nav button {
   background: rgba(255, 255, 255, 0.08) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(0, 223, 196, 0.28) !important;
   color: #ffffff !important;
   -webkit-text-fill-color: #ffffff !important;
+  font-weight: 700 !important;
+  font-size: 0.92rem !important;
+  border-radius: 10px !important;
+  padding: 0 16px !important;
+  min-height: 40px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+  transition: all 0.2s ease !important;
 }
 
-.saas-nav.neon-topbar-merged nav button:hover {
-  background: rgba(255, 255, 255, 0.16) !important;
+body .saas-nav.neon-topbar-merged nav button:hover,
+body.theme-light .saas-nav.neon-topbar-merged nav button:hover,
+body.theme-dark .saas-nav.neon-topbar-merged nav button:hover,
+.saas-public-shell.dark-neon-auth .saas-nav nav button:hover,
+body.theme-light .saas-public-shell.dark-neon-auth .saas-nav nav button:hover {
+  background: rgba(0, 223, 196, 0.18) !important;
+  background-color: rgba(0, 223, 196, 0.18) !important;
   border-color: #00dfc4 !important;
+  color: #00dfc4 !important;
+  -webkit-text-fill-color: #00dfc4 !important;
+  box-shadow: 0 0 14px rgba(0, 223, 196, 0.45) !important;
+  transform: translateY(-1px) !important;
 }
 
-.saas-nav.neon-topbar-merged .saas-primary-button {
+body .saas-nav.neon-topbar-merged .saas-primary-button,
+body.theme-light .saas-nav.neon-topbar-merged .saas-primary-button,
+body.theme-dark .saas-nav.neon-topbar-merged .saas-primary-button,
+.saas-public-shell.dark-neon-auth .saas-nav .saas-primary-button,
+body.theme-light .saas-public-shell.dark-neon-auth .saas-nav .saas-primary-button,
+body.theme-dark .saas-public-shell.dark-neon-auth .saas-nav .saas-primary-button {
   background: #00dfc4 !important;
-  color: #081624 !important;
-  -webkit-text-fill-color: #081624 !important;
-  border: none !important;
-  box-shadow: 0 0 15px rgba(0, 223, 196, 0.4) !important;
+  background-color: #00dfc4 !important;
+  color: #05131d !important;
+  -webkit-text-fill-color: #05131d !important;
+  font-weight: 800 !important;
+  font-size: 0.92rem !important;
+  border: 1px solid #00dfc4 !important;
+  border-radius: 10px !important;
+  padding: 0 18px !important;
+  min-height: 40px !important;
+  box-shadow: 0 0 18px rgba(0, 223, 196, 0.45) !important;
+  text-shadow: none !important;
+  transition: all 0.2s ease !important;
+}
+
+body .saas-nav.neon-topbar-merged .saas-primary-button:hover,
+body.theme-light .saas-nav.neon-topbar-merged .saas-primary-button:hover,
+body.theme-dark .saas-nav.neon-topbar-merged .saas-primary-button:hover,
+.saas-public-shell.dark-neon-auth .saas-nav .saas-primary-button:hover,
+body.theme-light .saas-public-shell.dark-neon-auth .saas-nav .saas-primary-button:hover,
+body.theme-dark .saas-public-shell.dark-neon-auth .saas-nav .saas-primary-button:hover {
+  background: #2dd4bf !important;
+  background-color: #2dd4bf !important;
+  color: #05131d !important;
+  -webkit-text-fill-color: #05131d !important;
+  border-color: #2dd4bf !important;
+  box-shadow: 0 0 24px rgba(45, 212, 191, 0.6) !important;
+  transform: translateY(-1px) !important;
 }
 
 .neon-auth-page {
@@ -9528,33 +9623,37 @@ body.theme-light .neon-eye-icon {
 }
 
 /* 2. SaaS Landing Page & Hero Buttons in Light Mode ("Watch Demo", etc.) */
-body.theme-light .saas-public-shell {
+body.theme-light .saas-public-shell:not(.dark-neon-auth) {
   background: #f8fafc !important;
   color: #0f172a !important;
 }
 
-body.theme-light .saas-nav {
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .saas-nav,
+body.theme-light .saas-nav:not(.neon-topbar-merged) {
   background: rgba(255, 255, 255, 0.95) !important;
   border-bottom: 1px solid #e2e8f0 !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
 }
 
-body.theme-light .saas-nav a {
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .saas-nav a,
+body.theme-light .saas-nav:not(.neon-topbar-merged) a {
   color: #334155 !important;
   -webkit-text-fill-color: #334155 !important;
 }
 
-body.theme-light .saas-nav button {
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .saas-nav button,
+body.theme-light .saas-nav:not(.neon-topbar-merged) button {
   background: #ffffff !important;
   color: #0f172a !important;
   -webkit-text-fill-color: #0f172a !important;
   border: 1.5px solid #cbd5e1 !important;
 }
 
-body.theme-light .saas-primary-button,
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .saas-primary-button,
 body.theme-light .saas-hero-actions .saas-primary-button,
 body.theme-light .saas-pricing-card .saas-primary-button,
-body.theme-light .saas-nav .saas-primary-button {
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .saas-nav .saas-primary-button,
+body.theme-light .saas-nav:not(.neon-topbar-merged) .saas-primary-button {
   background: #0f172a !important;
   background-color: #0f172a !important;
   color: #ffffff !important;
@@ -9564,10 +9663,11 @@ body.theme-light .saas-nav .saas-primary-button {
   font-weight: 800 !important;
 }
 
-body.theme-light .saas-primary-button:hover,
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .saas-primary-button:hover,
 body.theme-light .saas-hero-actions .saas-primary-button:hover,
 body.theme-light .saas-pricing-card .saas-primary-button:hover,
-body.theme-light .saas-nav .saas-primary-button:hover {
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .saas-nav .saas-primary-button:hover,
+body.theme-light .saas-nav:not(.neon-topbar-merged) .saas-primary-button:hover {
   background: #1e293b !important;
   background-color: #1e293b !important;
   color: #ffffff !important;
@@ -9577,8 +9677,8 @@ body.theme-light .saas-nav .saas-primary-button:hover {
   transform: translateY(-1px) !important;
 }
 
-body.theme-light .saas-secondary-button,
-body.theme-light .saas-google-button,
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .saas-secondary-button,
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .saas-google-button,
 body.theme-light .saas-hero-actions .saas-secondary-button {
   background: #ffffff !important;
   color: #0f172a !important;
@@ -9588,8 +9688,8 @@ body.theme-light .saas-hero-actions .saas-secondary-button {
   font-weight: 700 !important;
 }
 
-body.theme-light .saas-secondary-button:hover,
-body.theme-light .saas-google-button:hover,
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .saas-secondary-button:hover,
+body.theme-light .saas-public-shell:not(.dark-neon-auth) .saas-google-button:hover,
 body.theme-light .saas-hero-actions .saas-secondary-button:hover {
   background: #f1f5f9 !important;
   border-color: #94a3b8 !important;
