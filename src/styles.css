@@ -9412,8 +9412,51 @@ body.storefront-mode #root,
   -webkit-text-fill-color: rgba(255, 255, 255, 0.9) !important;
 }
 
-.trinetr-storefront-root .trinetr-top-bar,
-.trinetr-storefront-root .trinetr-top-bar * {
+.trinetr-storefront-root .trinetr-top-bar {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+.trinetr-storefront-root .trinetr-top-bar a,
+.trinetr-storefront-root .trinetr-top-bar span:not(.trinetr-cart-label):not(.trinetr-cart-amount):not(.trinetr-action-text) {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+/* Cart Button on Storefront Header: Always crisp dark text on yellow background */
+.trinetr-storefront-root .trinetr-cart-action-btn,
+.trinetr-storefront-root .trinetr-cart-action-btn * {
+  color: initial;
+  -webkit-text-fill-color: initial;
+}
+
+.trinetr-storefront-root .trinetr-cart-action-btn {
+  background: #fef3c7 !important;
+  border: 1px solid #fde68a !important;
+}
+
+.trinetr-storefront-root .trinetr-cart-action-btn .trinetr-cart-label {
+  color: #78716c !important;
+  -webkit-text-fill-color: #78716c !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+}
+
+.trinetr-storefront-root .trinetr-cart-action-btn .trinetr-cart-amount {
+  color: #1e3a8a !important;
+  -webkit-text-fill-color: #1e3a8a !important;
+  font-size: 14px !important;
+  font-weight: 800 !important;
+}
+
+.trinetr-storefront-root .trinetr-cart-action-btn .trinetr-cart-icon-box svg {
+  color: #1e3a8a !important;
+  stroke: #1e3a8a !important;
+}
+
+.trinetr-storefront-root .trinetr-cart-action-btn .trinetr-badge {
+  background: #1e3a8a !important;
   color: #ffffff !important;
   -webkit-text-fill-color: #ffffff !important;
 }
@@ -9433,6 +9476,185 @@ body.storefront-mode #root,
   color: #64748b !important;
   -webkit-text-fill-color: #64748b !important;
 }
+
+/* ==========================================================================
+   GLOBAL LIGHT THEME ACCESSIBILITY & HIGH-CONTRAST READABILITY
+   ========================================================================== */
+
+/* 1. Auth Form Inputs in Light Mode (Login, Register, Reset Password) */
+body.theme-light .neon-input-box input,
+body.theme-light .neon-form-box input {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+  font-weight: 600 !important;
+  border: 1.5px solid #cbd5e1 !important;
+  border-radius: 12px !important;
+  padding: 0 42px 0 14px !important;
+  caret-color: #0d9488 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+}
+
+body.theme-light .neon-input-box input::placeholder,
+body.theme-light .neon-form-box input::placeholder {
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b !important;
+  opacity: 1 !important;
+  font-weight: 500 !important;
+}
+
+body.theme-light .neon-input-box {
+  border-bottom: none !important;
+}
+
+body.theme-light .neon-input-box:focus-within {
+  box-shadow: none !important;
+}
+
+body.theme-light .neon-input-box input:focus,
+body.theme-light .neon-form-box input:focus {
+  border-color: #0d9488 !important;
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.2) !important;
+}
+
+body.theme-light .neon-input-icon {
+  color: #0d9488 !important;
+  right: 12px !important;
+}
+
+body.theme-light .neon-eye-icon {
+  color: #0d9488 !important;
+  right: 12px !important;
+}
+
+/* 2. SaaS Landing Page & Hero Buttons in Light Mode ("Watch Demo", etc.) */
+body.theme-light .saas-public-shell {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+body.theme-light .saas-nav {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+body.theme-light .saas-nav a {
+  color: #334155 !important;
+  -webkit-text-fill-color: #334155 !important;
+}
+
+body.theme-light .saas-nav button {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+  border: 1.5px solid #cbd5e1 !important;
+}
+
+body.theme-light .saas-secondary-button,
+body.theme-light .saas-google-button,
+body.theme-light .saas-hero-actions .saas-secondary-button {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+  border: 1.5px solid #cbd5e1 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  font-weight: 700 !important;
+}
+
+body.theme-light .saas-secondary-button:hover,
+body.theme-light .saas-google-button:hover,
+body.theme-light .saas-hero-actions .saas-secondary-button:hover {
+  background: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
+
+body.theme-light .saas-hero-copy p,
+body.theme-light .saas-section-heading p {
+  color: #475569 !important;
+  -webkit-text-fill-color: #475569 !important;
+}
+
+body.theme-light .saas-command-strip span {
+  background: #ffffff !important;
+  color: #334155 !important;
+  -webkit-text-fill-color: #334155 !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+body.theme-light .saas-feature-card,
+body.theme-light .saas-testimonial-card,
+body.theme-light .saas-pricing-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05) !important;
+}
+
+body.theme-light .saas-feature-card h3,
+body.theme-light .saas-testimonial-card strong,
+body.theme-light .saas-pricing-card h3 {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
+
+body.theme-light .saas-feature-card p,
+body.theme-light .saas-testimonial-card p,
+body.theme-light .saas-pricing-card p {
+  color: #475569 !important;
+  -webkit-text-fill-color: #475569 !important;
+}
+
+/* 3. Legal / About Pages in Light Mode */
+body.theme-light .legal-page {
+  background: #f8fafc !important;
+}
+
+body.theme-light .legal-card {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06) !important;
+}
+
+body.theme-light .legal-card h1 {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
+
+body.theme-light .legal-updated {
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b !important;
+}
+
+body.theme-light .legal-section-list article {
+  border-top: 1px solid #e2e8f0 !important;
+}
+
+body.theme-light .legal-section-list h2 {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+body.theme-light .legal-section-list p,
+body.theme-light .legal-card p,
+body.theme-light .legal-card article p {
+  color: #334155 !important;
+  -webkit-text-fill-color: #334155 !important;
+  font-size: 15px !important;
+  line-height: 1.7 !important;
+  font-weight: 500 !important;
+}
+
+body.theme-light .legal-link-grid a {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
 
 
 
