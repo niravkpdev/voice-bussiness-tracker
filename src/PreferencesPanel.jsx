@@ -75,11 +75,41 @@ export default function PreferencesPanel({ userPreferences, setUserPreferences, 
           </h3>
           <PrefRow 
             title="Theme Mode" 
+            description="Switch between Trinetr Cosmic Dark and Classic White themes anytime."
             control={
-              <span style={{ fontSize: '13.5px', color: '#00dfc4', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00dfc4', boxShadow: '0 0 8px #00dfc4', display: 'inline-block' }} />
-                Trinetr Cosmic Suite (Dark &amp; Neon)
-              </span>
+              <select 
+                className="form-control" 
+                name="themeMode" 
+                value={localPrefs.themeMode || 'dark'} 
+                onChange={(e) => {
+                  handleChange(e);
+                  const newTheme = e.target.value;
+                  const isDark = newTheme === 'dark' || (newTheme === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                  if (isDark) {
+                    document.documentElement.classList.remove('theme-light');
+                    document.documentElement.classList.add('theme-dark', 'dark-neon-suite');
+                    document.body.classList.remove('theme-light');
+                    document.body.classList.add('dark', 'dark-neon-suite');
+                  } else {
+                    document.documentElement.classList.remove('theme-dark', 'dark-neon-suite');
+                    document.documentElement.classList.add('theme-light');
+                    document.body.classList.remove('dark', 'dark-neon-suite');
+                    document.body.classList.add('theme-light');
+                  }
+                }} 
+                style={{ 
+                  minWidth: '240px', 
+                  padding: '8px 12px', 
+                  borderRadius: '8px', 
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="dark">🌌 Trinetr Cosmic Suite (Dark &amp; Neon)</option>
+                <option value="light">☀️ Classic White (Light Mode)</option>
+                <option value="system">💻 System Default</option>
+              </select>
             } 
           />
           <PrefRow 

@@ -1635,11 +1635,7 @@ export default function VoiceExpenseTrackerPreview() {
   const [userPreferences, setUserPreferences] = useState(() => {
     try {
       const saved = localStorage.getItem('trinetr_user_preferences');
-      let prefs = saved ? { ...DEFAULT_PREFERENCES, ...JSON.parse(saved) } : DEFAULT_PREFERENCES;
-      if (prefs.themeMode !== 'dark') {
-        prefs.themeMode = 'dark';
-        localStorage.setItem('trinetr_user_preferences', JSON.stringify(prefs));
-      }
+      const prefs = saved ? { ...DEFAULT_PREFERENCES, ...JSON.parse(saved) } : DEFAULT_PREFERENCES;
       return prefs;
     } catch {
       return DEFAULT_PREFERENCES;
@@ -1718,10 +1714,22 @@ export default function VoiceExpenseTrackerPreview() {
     } else {
       root.classList.remove('storefront-mode');
       document.body.classList.remove('storefront-mode');
-      root.classList.add('theme-dark', 'dark-neon-suite');
-      root.classList.remove('theme-light');
-      document.body.classList.add('dark', 'dark-neon-suite');
-      document.body.classList.remove('theme-light');
+
+      const mode = userPreferences.themeMode || 'dark';
+      const isSystemDark = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const effectiveDark = mode === 'dark' || (mode === 'system' && isSystemDark);
+
+      if (effectiveDark) {
+        root.classList.add('theme-dark', 'dark-neon-suite');
+        root.classList.remove('theme-light');
+        document.body.classList.add('dark', 'dark-neon-suite');
+        document.body.classList.remove('theme-light');
+      } else {
+        root.classList.add('theme-light');
+        root.classList.remove('theme-dark', 'dark-neon-suite');
+        document.body.classList.add('theme-light');
+        document.body.classList.remove('dark', 'dark-neon-suite');
+      }
     }
     
     if (userPreferences.compactMode) root.classList.add('compact-mode');
