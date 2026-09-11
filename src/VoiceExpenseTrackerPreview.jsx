@@ -53,6 +53,8 @@ import { OnboardingChecklist } from './OnboardingChecklist.jsx';
 import { GuidedTour } from './GuidedTour.jsx';
 import { SetupWizard } from './SetupWizard.jsx';
 import { LegalPage, LEGAL_PAGE_IDS } from './LegalPages.jsx';
+import { PricingPage } from './PricingPage.jsx';
+import { ContactModal } from './ContactModal.jsx';
 import {
   createInvoiceWithStock,
   buildHrmsStoragePath,
@@ -5715,7 +5717,24 @@ export default function VoiceExpenseTrackerPreview() {
             >
               🛍️ Online Store
             </a>
-            <a href="#features" onClick={() => { if(authView !== 'landing') setAuthView('landing'); }}>Features</a>
+            <a 
+              href="#features" 
+              onClick={(e) => {
+                e.preventDefault();
+                if (authView !== 'landing') {
+                  setAuthView('landing');
+                  setTimeout(() => {
+                    const el = document.getElementById('features');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }, 80);
+                } else {
+                  const el = document.getElementById('features');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+            >
+              Features
+            </a>
             <button type="button" onClick={() => { trackPageView('pricing-modal'); setShowPricing(true); }}>Pricing</button>
             <button type="button" onClick={() => setAuthView('about-app')}>About</button>
             <button type="button" onClick={() => setShowContactModal(true)}>Contact</button>
@@ -5854,10 +5873,10 @@ export default function VoiceExpenseTrackerPreview() {
                   Track income, expenses, customers, inventory, and business performance using natural voice commands.
                 </p>
                 <div className="saas-hero-actions">
-                  <button className="saas-primary-button" type="button" onClick={() => { trackEvent('Signup started'); setAuthView('register'); }}>
+                  <button className="saas-primary-button" type="button" onClick={() => { trackEvent('Signup started'); handleTriggerLogin('register'); }}>
                     Start Free
                   </button>
-                  <button className="saas-secondary-button" type="button" onClick={() => setAuthView('login')}>
+                  <button className="saas-secondary-button" type="button" onClick={() => handleTriggerLogin('login')}>
                     Watch Demo
                   </button>
                 </div>
@@ -6256,6 +6275,24 @@ export default function VoiceExpenseTrackerPreview() {
             </button>
           )}
         </section>
+        )}
+
+        {showPricing && (
+          <PricingPage
+            onClose={() => setShowPricing(false)}
+            onUpgrade={(plan) => {
+              setShowPricing(false);
+              handleTriggerLogin('register');
+            }}
+            isLoggedIn={Boolean(authUser && hasVerifiedAccess)}
+          />
+        )}
+
+        {showContactModal && (
+          <ContactModal
+            onClose={() => setShowContactModal(false)}
+            setStatus={setStatus}
+          />
         )}
       </main>
     );
@@ -10626,6 +10663,23 @@ export default function VoiceExpenseTrackerPreview() {
       )}
 
       <SafeHelpCenterModal isOpen={isHelpCenterOpen} onClose={() => setIsHelpCenterOpen(false)} />
+
+      {showPricing && (
+        <PricingPage
+          onClose={() => setShowPricing(false)}
+          onUpgrade={(plan) => {
+            setShowPricing(false);
+          }}
+          isLoggedIn={Boolean(authUser && hasVerifiedAccess)}
+        />
+      )}
+
+      {showContactModal && (
+        <ContactModal
+          onClose={() => setShowContactModal(false)}
+          setStatus={setStatus}
+        />
+      )}
     </div>
   );
 }

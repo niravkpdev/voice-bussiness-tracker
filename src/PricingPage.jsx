@@ -108,7 +108,7 @@ export function PricingPage({ onClose, onUpgrade, isLoggedIn }) {
 
         {/* Professional */}
         <div style={{ background: 'var(--bg-primary)', borderRadius: '16px', padding: '32px', border: '2px solid var(--brand-primary)', display: 'flex', flexDirection: 'column', position: 'relative', boxShadow: '0 12px 24px rgba(0,0,0,0.05)' }}>
-          <div style={{ position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)', background: 'var(--brand-primary)', color: 'white', padding: '4px 12px', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 600 }}>
+          <div style={{ position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)', background: 'var(--brand-primary)', color: '#05131d', padding: '4px 14px', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 800, letterSpacing: '0.05em' }}>
             RECOMMENDED
           </div>
           <div style={{ color: 'var(--brand-primary)', marginBottom: '16px' }}><Crown size={28} /></div>
