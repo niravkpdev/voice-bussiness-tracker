@@ -76,8 +76,9 @@ export default function PreferencesPanel({ userPreferences, setUserPreferences, 
           <PrefRow 
             title="Theme Mode" 
             control={
-              <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>
-                Theme customization removed (Light only)
+              <span style={{ fontSize: '13.5px', color: '#00dfc4', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00dfc4', boxShadow: '0 0 8px #00dfc4', display: 'inline-block' }} />
+                Trinetr Cosmic Suite (Dark &amp; Neon)
               </span>
             } 
           />

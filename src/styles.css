@@ -1,41 +1,48 @@
 :root {
-  /* Colors */
-  --bg-primary: #f8fafc;
-  --bg-secondary: #ffffff;
-  --bg-tertiary: #f1f5f9;
+  /* Colors - Trinetr Cosmic Suite: Dark Cosmic Base with Mint Green & Purple Accents */
+  --bg-primary: #050811;
+  --bg-secondary: #0a1626;
+  --bg-tertiary: #0f2238;
   
-  --text-primary: #0f172a;
-  --text-secondary: #334155;
-  --text-muted: #475569;
+  --text-primary: #ffffff;
+  --text-secondary: #e2e8f0;
+  --text-muted: #94a3b8;
   
-  --border-subtle: #e2e8f0;
-  --border-strong: #cbd5e1;
+  --border-subtle: rgba(0, 223, 196, 0.18);
+  --border-strong: rgba(0, 223, 196, 0.4);
   
-  --brand-primary: #000000;
-  --brand-primary-hover: #333333;
-  --brand-secondary: #f3f4f6;
-  --brand-secondary-hover: #e5e7eb;
+  /* Primary Mint Green / Neon Cyan */
+  --brand-primary: #00dfc4;
+  --brand-primary-hover: #38bdf8;
+  --brand-secondary: rgba(124, 58, 237, 0.22);
+  --brand-secondary-hover: rgba(124, 58, 237, 0.35);
+
+  /* Purple Accents */
+  --accent-purple: #7c3aed;
+  --accent-purple-light: #a855f7;
+  --accent-purple-glow: rgba(124, 58, 237, 0.45);
+  --accent-mint-glow: rgba(0, 223, 196, 0.45);
   
-  --success: #10b981;
-  --success-bg: #d1fae5;
+  --success: #00dfc4;
+  --success-bg: rgba(0, 223, 196, 0.15);
   --danger: #ef4444;
-  --danger-bg: #fee2e2;
+  --danger-bg: rgba(239, 68, 68, 0.15);
   --warning: #f59e0b;
-  --warning-bg: #fef3c7;
+  --warning-bg: rgba(245, 158, 11, 0.15);
   
   /* Radii */
   --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
   --radius-full: 9999px;
   
-  /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.05), 0 8px 10px -6px rgb(0 0 0 / 0.05);
-  --shadow-floating: 0 25px 50px -12px rgb(0 0 0 / 0.15);
+  /* Shadows & Glows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 10px rgba(0, 223, 196, 0.15);
+  --shadow-lg: 0 12px 36px rgba(0, 0, 0, 0.55), 0 0 20px rgba(0, 223, 196, 0.2);
+  --shadow-xl: 0 20px 48px rgba(0, 0, 0, 0.7), 0 0 30px rgba(0, 223, 196, 0.25);
+  --shadow-floating: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 35px rgba(0, 223, 196, 0.3);
   
   /* Typography */
   --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -2630,17 +2637,17 @@ body {
    PREMIUM SAAS REDESIGN LAYER
    ================================================================ */
 :root {
-  --saas-primary: #4f46e5;
-  --saas-secondary: #3b82f6;
-  --saas-success: #10b981;
+  --saas-primary: #00dfc4;
+  --saas-secondary: #7c3aed;
+  --saas-success: #00dfc4;
   --saas-danger: #ef4444;
-  --saas-bg: #f8fafc;
-  --saas-surface: #ffffff;
-  --saas-border: #e2e8f0;
-  --saas-text: #0f172a;
-  --saas-muted: #64748b;
+  --saas-bg: #050811;
+  --saas-surface: #0a1626;
+  --saas-border: rgba(0, 223, 196, 0.2);
+  --saas-text: #ffffff;
+  --saas-muted: #94a3b8;
   --saas-radius: 16px;
-  --saas-shadow: 0 18px 44px rgba(15, 23, 42, 0.08);
+  --saas-shadow: 0 18px 44px rgba(0, 0, 0, 0.6);
 }
 
 body {
@@ -2651,9 +2658,9 @@ body {
 .saas-public-shell {
   min-height: 100dvh;
   background:
-    radial-gradient(circle at 16% 8%, rgba(79, 70, 229, 0.14), transparent 28%),
-    radial-gradient(circle at 80% 4%, rgba(59, 130, 246, 0.12), transparent 26%),
-    #ffffff;
+    radial-gradient(circle at 16% 8%, rgba(124, 58, 237, 0.18), transparent 30%),
+    radial-gradient(circle at 80% 4%, rgba(0, 223, 196, 0.14), transparent 28%),
+    #050811;
   color: var(--saas-text);
 }
 
@@ -5350,21 +5357,37 @@ body {
   transform: none;
 }
 
-/* Permanent light theme lock: keep the app readable on dark OS/browser modes. */
+/* ==========================================================================
+   UNIFORM TRINETR COSMIC SUITE: UNIFIED DESIGN LANGUAGE & GLOW SYSTEM
+   ========================================================================== */
+
 html,
 body,
 #root {
-  background: var(--app-surface) !important;
+  background: var(--app-bg) !important;
   color: var(--app-text) !important;
-  }
-
-.sidebar {
-  background: var(--app-surface) !important;
-  color: var(--app-text) !important;
-  border-right: 1px solid var(--app-border) !important;
-  box-shadow: 8px 0 28px rgba(15, 23, 42, 0.08) !important;
+  min-height: 100dvh;
 }
 
+/* Unified Cosmic Background with Subtle Ambient Aurora Glow */
+body {
+  background: 
+    radial-gradient(circle at 50% 10%, rgba(10, 25, 47, 0.8) 0%, transparent 50%),
+    radial-gradient(circle at 90% 20%, rgba(124, 58, 237, 0.12) 0%, transparent 40%),
+    radial-gradient(circle at 10% 80%, rgba(0, 223, 196, 0.08) 0%, transparent 45%),
+    #050811 !important;
+  color: var(--app-text) !important;
+}
+
+/* Sidebar: Cosmic Navy with Mint Border & Glowing Accents */
+.sidebar {
+  background: linear-gradient(180deg, #07111f 0%, #050811 100%) !important;
+  color: var(--app-text) !important;
+  border-right: 1px solid var(--app-border) !important;
+  box-shadow: 10px 0 40px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Glassmorphism Cards & Panels across Dashboard, Modules, Modals, and Invoices */
 .sidebar-brand,
 .sidebar-status-card,
 .sidebar-support,
@@ -5375,6 +5398,7 @@ body,
 .quick-action-console,
 .hero-panel,
 .panel,
+.glass-card,
 .advanced-panel,
 .auth-card,
 .legal-card,
@@ -5390,20 +5414,34 @@ body,
 .compact-item,
 .summary-card,
 .storage-box {
-  background: var(--app-surface) !important;
+  background: var(--app-card-bg) !important;
   color: var(--app-text) !important;
-  border-color: var(--app-border) !important;
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08) !important;
+  border: 1px solid var(--app-border) !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45), 0 0 15px rgba(0, 223, 196, 0.06) !important;
+  backdrop-filter: blur(18px) !important;
+  -webkit-backdrop-filter: blur(18px) !important;
+  border-radius: var(--radius-lg) !important;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease !important;
 }
 
+.dashboard-glass-panel:hover,
+.stat-card-modern:hover,
+.panel:hover,
+.glass-card:hover {
+  border-color: rgba(0, 223, 196, 0.45) !important;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.6), 0 0 22px rgba(0, 223, 196, 0.15) !important;
+}
+
+/* Sidebar Groups & Active Links */
 .erp-nav-group.is-open,
 .erp-nav-group.is-active,
 .sidebar-section.expanded,
 .sidebar-section.has-active {
-  background: #f9fafb !important;
-  border-color: #c7d2fe !important;
+  background: rgba(15, 27, 45, 0.75) !important;
+  border-color: rgba(0, 223, 196, 0.3) !important;
 }
 
+/* High Contrast Titles & Headings */
 .sidebar-brand strong,
 .sidebar-status-card strong,
 .sidebar-support strong,
@@ -5421,7 +5459,11 @@ h1,
 h2,
 h3,
 h4,
-strong,
+strong {
+  color: var(--app-heading) !important;
+  -webkit-text-fill-color: var(--app-heading) !important;
+}
+
 label,
 p,
 span,
@@ -5429,25 +5471,12 @@ li,
 td,
 th,
 .field-label,
-.erp-nav-trigger,
-.erp-nav-link,
 .topbar-link,
-.quick-action-tile,
 .activity-item,
-.statement-table,
 .statement-table td,
 .statement-table th {
   color: var(--app-text) !important;
 }
-
-/* Exempt Storefront dark footer and elements from being forced to dark app-text */
-.trinetr-storefront-root .trinetr-store-footer,
-.trinetr-storefront-root .trinetr-store-footer *,
-.trinetr-store-footer,
-.trinetr-store-footer * {
-  color: inherit;
-}
-
 
 .eyebrow,
 .sidebar-status-kicker,
@@ -5458,38 +5487,50 @@ th,
   color: var(--app-muted) !important;
 }
 
+/* Nav Link Hover & Active States */
 .erp-nav-trigger:hover,
 .erp-nav-trigger:focus-visible,
 .erp-nav-link:hover,
 .erp-nav-link:focus-visible,
 .quick-action-tile:hover,
 .quick-action-tile:focus-visible {
-  background: #eef2ff !important;
-  color: var(--app-text) !important;
+  background: rgba(0, 223, 196, 0.12) !important;
+  color: #00dfc4 !important;
+  border-color: rgba(0, 223, 196, 0.4) !important;
 }
 
 .erp-nav-link.is-active,
 .side-nav a.active,
 .mobile-bottom-nav a.active {
-  background: #4f46e5 !important;
-  color: #ffffff !important;
-  border-color: #4f46e5 !important;
+  background: linear-gradient(135deg, rgba(0, 223, 196, 0.25) 0%, rgba(124, 58, 237, 0.3) 100%) !important;
+  color: #00dfc4 !important;
+  border: 1px solid #00dfc4 !important;
+  box-shadow: 0 0 16px rgba(0, 223, 196, 0.35) !important;
 }
 
 .erp-nav-link.is-active *,
 .side-nav a.active *,
 .mobile-bottom-nav a.active * {
-  color: #ffffff !important;
+  color: #00dfc4 !important;
 }
 
+/* Accent Badges (Purple / Mint) */
 .erp-nav-section-icon,
 .erp-nav-child-icon,
 .sidebar-section-icon,
 .sidebar-item-icon,
 .stat-icon-badge,
 .growth-badge {
-  background: #eef2ff !important;
-  color: #4f46e5 !important;
+  background: rgba(124, 58, 237, 0.22) !important;
+  color: #c084fc !important;
+  border: 1px solid rgba(168, 85, 247, 0.35) !important;
+  box-shadow: 0 0 10px rgba(124, 58, 237, 0.25) !important;
+}
+
+/* Topbar & Search Bar */
+.topbar {
+  background: #050811 !important;
+  border-bottom: 1px solid rgba(0, 223, 196, 0.2) !important;
 }
 
 .topbar-search,
@@ -5499,106 +5540,205 @@ th,
 .topbar-actions > button,
 .icon-command-button,
 .profile-avatar {
-  background: var(--app-surface) !important;
+  background: rgba(8, 20, 34, 0.85) !important;
   color: var(--app-text) !important;
-  border: 1px solid var(--app-border) !important;
+  border: 1px solid rgba(0, 223, 196, 0.2) !important;
 }
 
+.topbar-search:focus-within,
+.dashboard-search:focus-within {
+  border-color: #00dfc4 !important;
+  box-shadow: 0 0 14px rgba(0, 223, 196, 0.35) !important;
+}
+
+/* Form Controls & Inputs */
 input,
 select,
-textarea,
-button,
-.restore-label {
-  }
+textarea {
+  background: var(--app-input-bg) !important;
+  color: #ffffff !important;
+  border: 1.5px solid rgba(148, 163, 184, 0.25) !important;
+  border-radius: var(--radius-md) !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #00dfc4 !important;
+  box-shadow: 0 0 14px rgba(0, 223, 196, 0.4) !important;
+  outline: none !important;
+}
 
 input::placeholder,
 textarea::placeholder,
 .topbar-search input::placeholder,
 .dashboard-search input::placeholder {
   color: var(--app-muted) !important;
-  opacity: 1 !important;
+  opacity: 0.8 !important;
 }
 
 select option {
-  background: var(--app-surface) !important;
-  color: var(--app-text) !important;
+  background: #0a1626 !important;
+  color: #ffffff !important;
 }
 
+/* Tables & Ledger Grids */
 table,
 .statement-table,
 .data-table,
 .erp-table-wrap table {
-  background: var(--app-surface) !important;
+  background: transparent !important;
   color: var(--app-text) !important;
-  border-color: var(--app-border) !important;
+  border-color: rgba(0, 223, 196, 0.18) !important;
 }
 
 thead th,
 .statement-table th {
-  background: #f9fafb !important;
-  color: #374151 !important;
+  background: rgba(15, 27, 45, 0.95) !important;
+  color: #00dfc4 !important;
+  border-bottom: 1px solid rgba(0, 223, 196, 0.3) !important;
+  font-weight: 750 !important;
 }
 
+tbody tr {
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1) !important;
+  transition: background 0.15s ease !important;
+}
+
+tbody tr:hover {
+  background: rgba(0, 223, 196, 0.06) !important;
+}
+
+/* Notices & Alerts */
 .notice {
-  background: #ecfdf5 !important;
-  color: #065f46 !important;
-  border-color: #a7f3d0 !important;
+  background: rgba(0, 223, 196, 0.12) !important;
+  color: #00dfc4 !important;
+  border: 1px solid rgba(0, 223, 196, 0.35) !important;
+  border-radius: var(--radius-md) !important;
 }
 
 .notice.error,
 .app-error-banner {
-  background: #fef2f2 !important;
-  color: #991b1b !important;
-  border-color: #fecaca !important;
+  background: rgba(239, 68, 68, 0.14) !important;
+  color: #f87171 !important;
+  border: 1px solid rgba(239, 68, 68, 0.35) !important;
+  border-radius: var(--radius-md) !important;
 }
 
 .notice.warning {
-  background: #fffbeb !important;
-  color: #92400e !important;
-  border-color: #fde68a !important;
+  background: rgba(245, 158, 11, 0.14) !important;
+  color: #fbbf24 !important;
+  border: 1px solid rgba(245, 158, 11, 0.35) !important;
+  border-radius: var(--radius-md) !important;
 }
 
+/* Unified Button System */
 .saas-primary-button,
 .manual-button,
 .primary-button,
+.btn-primary,
+button[type="submit"].save-btn,
+button[type="submit"].submit-btn,
 .sidebar-support-button,
 .topbar-link.primary {
-  background: #4f46e5 !important;
-  color: #ffffff !important;
-  border-color: #4f46e5 !important;
+  background: #00dfc4 !important;
+  color: #05131d !important;
+  -webkit-text-fill-color: #05131d !important;
+  border: none !important;
+  font-weight: 800 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 0 16px rgba(0, 223, 196, 0.45), 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.saas-primary-button:hover,
+.manual-button:hover,
+.primary-button:hover,
+.btn-primary:hover,
+button[type="submit"].save-btn:hover,
+button[type="submit"].submit-btn:hover,
+.sidebar-support-button:hover,
+.topbar-link.primary:hover {
+  background: #38bdf8 !important;
+  color: #05131d !important;
+  -webkit-text-fill-color: #05131d !important;
+  box-shadow: 0 0 24px rgba(0, 223, 196, 0.7), 0 6px 16px rgba(0, 0, 0, 0.4) !important;
+  transform: translateY(-2px) !important;
 }
 
 .saas-google-button,
 .secondary-button,
+.btn-secondary,
+.cancel-btn,
 .topbar-link.dark-mode-toggle-btn,
 .password-toggle-button {
-  background: var(--app-surface) !important;
-  color: var(--app-text) !important;
-  border: 1px solid var(--app-border) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #00dfc4 !important;
+  -webkit-text-fill-color: #00dfc4 !important;
+  border: 1px solid rgba(0, 223, 196, 0.35) !important;
+  border-radius: 12px !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+  transition: all 0.2s ease !important;
+}
+
+.saas-google-button:hover,
+.secondary-button:hover,
+.btn-secondary:hover,
+.cancel-btn:hover,
+.topbar-link.dark-mode-toggle-btn:hover,
+.password-toggle-button:hover {
+  background: rgba(0, 223, 196, 0.15) !important;
+  border-color: #00dfc4 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  box-shadow: 0 0 14px rgba(0, 223, 196, 0.4) !important;
+  transform: translateY(-1px) !important;
 }
 
 .danger-button,
-.delete-entry-button {
-  background: #fef2f2 !important;
-  color: #991b1b !important;
-  border-color: #fecaca !important;
+.delete-entry-button,
+.btn-danger,
+.delete-btn {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #f87171 !important;
+  -webkit-text-fill-color: #f87171 !important;
+  border: 1px solid rgba(239, 68, 68, 0.4) !important;
+  border-radius: 12px !important;
+  font-weight: 700 !important;
+}
+
+.danger-button:hover,
+.delete-entry-button:hover,
+.btn-danger:hover,
+.delete-btn:hover {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.5) !important;
 }
 
 .mobile-bottom-nav {
-  background: var(--app-surface) !important;
-  border-top: 1px solid var(--app-border) !important;
+  background: #07111f !important;
+  border-top: 1px solid rgba(0, 223, 196, 0.2) !important;
 }
 
 .mobile-bottom-nav a {
-  color: #374151 !important;
+  color: #94a3b8 !important;
+}
+
+.mobile-bottom-nav a.active {
+  color: #00dfc4 !important;
 }
 
 .modal-backdrop {
-  background: rgba(17, 24, 39, 0.35) !important;
+  background: rgba(5, 8, 17, 0.75) !important;
+  backdrop-filter: blur(8px) !important;
 }
 
 svg text {
-  fill: #111827 !important;
+  fill: #e2e8f0 !important;
 }
 
 * {
@@ -7065,23 +7205,23 @@ table {
   }
 }
 
-/* --- GLOBAL THEME OVERRIDES --- */
+/* --- GLOBAL THEME OVERRIDES: TRINETR COSMIC SUITE --- */
 :root {
-  --app-bg: #F8FAFC;
-  --app-sidebar-bg: #FFFFFF;
-  --app-topbar-bg: #FFFFFF;
-  --app-surface: #FFFFFF;
-  --app-surface-2: #F1F5F9;
-  --app-card-bg: #FFFFFF;
-  --app-card-soft: #F8FAFC;
-  --app-heading: #0F172A;
-  --app-text: #0F172A;
-  --app-muted: #334155;
-  --app-subtle: #475569;
-  --app-border: #CBD5E1;
-  --app-input-bg: #FFFFFF;
-  --app-primary: #1E3A8A;
-  --app-primary-hover: #1E40AF;
+  --app-bg: #050811;
+  --app-sidebar-bg: #07111f;
+  --app-topbar-bg: #050811;
+  --app-surface: #0a1626;
+  --app-surface-2: #0f2238;
+  --app-card-bg: rgba(10, 22, 38, 0.82);
+  --app-card-soft: rgba(15, 27, 45, 0.7);
+  --app-heading: #FFFFFF;
+  --app-text: #E2E8F0;
+  --app-muted: #94A3B8;
+  --app-subtle: #64748B;
+  --app-border: rgba(0, 223, 196, 0.2);
+  --app-input-bg: rgba(8, 20, 34, 0.85);
+  --app-primary: #00DFC4;
+  --app-primary-hover: #38BDF8;
 }
 
 /* Compact & Large Text Modes */

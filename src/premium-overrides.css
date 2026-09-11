@@ -34,23 +34,28 @@ button:disabled, .btn:disabled {
 /* Primary Button */
 .btn-primary, button[type="submit"], .save-btn, .submit-btn {
   background-color: var(--brand-primary) !important;
-  color: #fff !important;
+  color: #05131d !important;
+  font-weight: 800 !important;
   border-color: transparent !important;
+  box-shadow: 0 0 16px rgba(0, 223, 196, 0.45) !important;
 }
 .btn-primary:hover, button[type="submit"]:hover, .save-btn:hover, .submit-btn:hover {
   background-color: var(--brand-primary-hover) !important;
-  box-shadow: var(--shadow-md) !important;
+  color: #05131d !important;
+  box-shadow: 0 0 24px rgba(0, 223, 196, 0.7) !important;
 }
 
 /* Secondary / Outline */
 .btn-secondary, .cancel-btn {
-  background-color: var(--bg-secondary) !important;
-  color: var(--text-primary) !important;
-  border-color: var(--border-strong) !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  color: #00dfc4 !important;
+  border-color: rgba(0, 223, 196, 0.35) !important;
 }
 .btn-secondary:hover, .cancel-btn:hover {
-  background-color: var(--brand-secondary) !important;
-  border-color: var(--text-muted) !important;
+  background-color: rgba(0, 223, 196, 0.15) !important;
+  border-color: #00dfc4 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 14px rgba(0, 223, 196, 0.4) !important;
 }
 
 /* Danger Button */
@@ -96,7 +101,7 @@ textarea {
 
 input:focus, select:focus, textarea:focus {
   border-color: var(--brand-primary);
-  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.12);
+  box-shadow: 0 0 14px rgba(0, 223, 196, 0.4);
 }
 input:disabled, select:disabled, textarea:disabled {
   background-color: var(--bg-tertiary);

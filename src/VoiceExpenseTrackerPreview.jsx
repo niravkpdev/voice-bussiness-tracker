@@ -149,7 +149,7 @@ const DEFAULT_PROFILE = {
 };
 
 const DEFAULT_PREFERENCES = {
-  themeMode: "light",
+  themeMode: "dark",
   compactMode: false,
   largeText: false,
   defaultLandingPage: "dashboard",
@@ -1633,8 +1633,8 @@ export default function VoiceExpenseTrackerPreview() {
     try {
       const saved = localStorage.getItem('trinetr_user_preferences');
       let prefs = saved ? { ...DEFAULT_PREFERENCES, ...JSON.parse(saved) } : DEFAULT_PREFERENCES;
-      if (prefs.themeMode !== 'light') {
-        prefs.themeMode = 'light';
+      if (prefs.themeMode !== 'dark') {
+        prefs.themeMode = 'dark';
         localStorage.setItem('trinetr_user_preferences', JSON.stringify(prefs));
       }
       return prefs;
@@ -1706,10 +1706,11 @@ export default function VoiceExpenseTrackerPreview() {
   useEffect(() => {
     const root = document.documentElement;
     
-    // Force light theme permanently
-    root.classList.add('theme-light');
-    root.classList.remove('theme-dark');
-    document.body.classList.remove('dark');
+    // Trinetr Cosmic Suite: Unify brand theme with dark cosmic base and glowing neon mint/purple
+    root.classList.add('theme-dark', 'dark-neon-suite');
+    root.classList.remove('theme-light');
+    document.body.classList.add('dark', 'dark-neon-suite');
+    document.body.classList.remove('theme-light');
     
     if (userPreferences.compactMode) root.classList.add('compact-mode');
     else root.classList.remove('compact-mode');
