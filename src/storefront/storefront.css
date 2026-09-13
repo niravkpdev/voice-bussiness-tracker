@@ -32,7 +32,10 @@
 }
 
 .trinetr-storefront-root {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   background-color: var(--trinetr-bg-cream);
   color: var(--trinetr-text-dark);
   min-height: 100vh;
@@ -2522,18 +2525,35 @@
   background: #f5f5f4;
   border-radius: 14px;
   padding: 2px 6px;
-  gap: 6px;
+  gap: 4px;
 }
 
 .cart-qty-pill button {
-  background: none;
+  background: #e7e5e4;
   border: none;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+  color: #1e293b;
+  transition: all 0.15s ease;
+}
+
+.cart-qty-pill button:active {
+  transform: scale(0.92);
+  background: #cbd5e1;
 }
 
 .cart-qty-num {
-  font-size: 12px;
+  font-size: 13.5px;
   font-weight: 800;
+  min-width: 26px;
+  text-align: center;
 }
 
 .cart-line-total {
@@ -3193,9 +3213,13 @@
   }
 
   .trinetr-weight-chip {
-    font-size: 10px;
-    padding: 3px 6px;
-    border-radius: 4px;
+    font-size: 11.5px;
+    padding: 5px 10px;
+    min-height: 32px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .trinetr-price-final {
@@ -3203,9 +3227,13 @@
   }
 
   .trinetr-add-cart-btn {
-    padding: 6px 10px;
-    font-size: 11px;
+    padding: 8px 12px;
+    font-size: 12px;
+    min-height: 42px;
     border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .trinetr-hero-promo-card {
@@ -3276,8 +3304,13 @@
   }
 
   .trinetr-weight-chip {
-    font-size: 9px;
-    padding: 2px 5px;
+    font-size: 11px;
+    padding: 4px 8px;
+    min-height: 30px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .trinetr-card-action-row {
@@ -3292,6 +3325,8 @@
 
   .trinetr-add-cart-btn {
     width: 100%;
+    min-height: 44px;
+    font-size: 12.5px;
     justify-content: center;
   }
 

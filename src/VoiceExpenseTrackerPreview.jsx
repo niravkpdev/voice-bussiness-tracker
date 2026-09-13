@@ -9,7 +9,7 @@ import {
   LogOut, User, ChevronDown, Calendar, Lightbulb, CheckCircle, AlertCircle,
   CalendarDays, Gift, Briefcase, MapPin, Star, Sparkles, TrendingDown, Sun, Cloud,
   Filter, Tag, Download, Phone, Mail, MessageCircle, MoreHorizontal, Paperclip, Edit3, ArrowLeft, Image as ImageIcon, X,
-  Trash2, Copy, Check, ChevronRight, Lock, Shield
+  Trash2, Copy, Check, ChevronRight, Lock, Shield, Menu, Home, LayoutDashboard
 } from 'lucide-react';
 import { SafeHelpCenterModal } from './SafeHelpCenterModal';
 import { DemoPreviewModal } from './DemoPreviewModal.jsx';
@@ -1179,6 +1179,7 @@ export default function VoiceExpenseTrackerPreview() {
     }
   });
   const [authLoading, setAuthLoading] = useState(false);
+  const [publicMobileNavOpen, setPublicMobileNavOpen] = useState(false);
   const [isRegisterMode, setIsRegisterMode] = useState(authView === 'register');
   const [loginIdentifier, setLoginIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -5732,13 +5733,57 @@ export default function VoiceExpenseTrackerPreview() {
     return (
       <main className={`saas-public-shell ${isNeonAuthActive ? 'dark-neon-auth' : ''}`}>
         <header className={`saas-nav ${isNeonAuthActive ? 'neon-topbar-merged' : ''}`}>
-          {!isNeonAuthActive && (
-            <a className="saas-logo" href="#home" onClick={() => setAuthView('landing')}>
-              <img src={profile.logo} alt="" />
-              <span>Trinetr Business Suite</span>
-            </a>
-          )}
-          <nav>
+          <div className="saas-nav-top-row">
+            {!isNeonAuthActive ? (
+              <a className="saas-logo" href="#home" onClick={() => setAuthView('landing')}>
+                <img src={profile.logo} alt="" />
+                <span>Trinetr Business Suite</span>
+              </a>
+            ) : (
+              <a className="saas-logo saas-logo-mobile-only" href="#home" onClick={() => setAuthView('landing')}>
+                <img src={profile.logo} alt="" />
+                <span>Trinetr</span>
+              </a>
+            )}
+
+            <div className="saas-nav-mobile-actions">
+              <a 
+                href="#store" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  setActiveTab('store');
+                  window.location.hash = 'store';
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }} 
+                className="saas-mobile-store-pill"
+                style={{ 
+                  color: '#fbbf24', 
+                  fontWeight: 800, 
+                  fontSize: '12.5px', 
+                  background: 'rgba(251, 191, 36, 0.12)', 
+                  border: '1px solid rgba(251, 191, 36, 0.3)',
+                  padding: '6px 12px',
+                  borderRadius: '20px',
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                🛍️ Store
+              </a>
+              <button 
+                type="button" 
+                className="saas-nav-mobile-toggle"
+                aria-label={publicMobileNavOpen ? "Close navigation menu" : "Open navigation menu"}
+                onClick={() => setPublicMobileNavOpen(!publicMobileNavOpen)}
+              >
+                {publicMobileNavOpen ? <X size={20} /> : <Menu size={20} />}
+              </button>
+            </div>
+          </div>
+
+          <nav className="saas-desktop-nav">
             <a 
               href="#store" 
               onClick={(e) => {
@@ -5821,6 +5866,94 @@ export default function VoiceExpenseTrackerPreview() {
               Start Free
             </button>
           </nav>
+
+          {publicMobileNavOpen && (
+            <div className="saas-mobile-menu-drawer">
+              <a 
+                href="#store" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  setPublicMobileNavOpen(false);
+                  setActiveTab('store');
+                  window.location.hash = 'store';
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }} 
+                style={{ color: '#fbbf24', fontWeight: 800 }}
+              >
+                🛍️ Online Store
+              </a>
+              <a 
+                href="#features" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  setPublicMobileNavOpen(false);
+                  if (authView !== 'landing') {
+                    setAuthView('landing');
+                    setTimeout(() => {
+                      const el = document.getElementById('features');
+                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    }, 120);
+                  } else {
+                    const el = document.getElementById('features');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }}
+              >
+                ✨ Features
+              </a>
+              <button 
+                type="button" 
+                onClick={() => { 
+                  setPublicMobileNavOpen(false);
+                  trackPageView('pricing-modal'); 
+                  setShowPricing(true); 
+                }}
+              >
+                💎 Pricing Plans
+              </button>
+              <button 
+                type="button" 
+                onClick={() => {
+                  setPublicMobileNavOpen(false);
+                  setAuthView('about-app');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+              >
+                📖 About Trinetr
+              </button>
+              <button 
+                type="button" 
+                onClick={() => {
+                  setPublicMobileNavOpen(false);
+                  setShowContactModal(true);
+                }}
+              >
+                📞 Contact & Support
+              </button>
+              <button 
+                type="button" 
+                onClick={() => {
+                  setPublicMobileNavOpen(false);
+                  handleTriggerLogin('login');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+              >
+                🔐 Login to Portal
+              </button>
+              <button 
+                className="saas-primary-button" 
+                type="button" 
+                onClick={() => { 
+                  setPublicMobileNavOpen(false);
+                  trackEvent('Signup started'); 
+                  handleTriggerLogin('register');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+              >
+                🚀 Start Free
+              </button>
+            </div>
+          )}
         </header>
 
         {authView === 'verify-email' ? (
@@ -6153,6 +6286,32 @@ export default function VoiceExpenseTrackerPreview() {
                 )}
 
                 <div className="neon-card-spring-wrapper">
+                  <div className="mobile-auth-mode-tabs" role="tablist">
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={!isRegisterMode}
+                      className={!isRegisterMode ? 'active' : ''}
+                      onClick={() => {
+                        setIsRegisterMode(false);
+                        setAuthView('login');
+                      }}
+                    >
+                      Login
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={isRegisterMode}
+                      className={isRegisterMode ? 'active' : ''}
+                      onClick={() => {
+                        setIsRegisterMode(true);
+                        setAuthView('register');
+                      }}
+                    >
+                      Register
+                    </button>
+                  </div>
                   <div className={`neon-auth-card ${isRegisterMode ? 'active' : ''}`}>
 
                 {/* ANIMATED SLANTED DIAGONAL TEAL OVERLAY */}
@@ -7445,37 +7604,254 @@ export default function VoiceExpenseTrackerPreview() {
           )}
           
           {activeTab === 'dashboard' && isMobile && (
-            <section className="mobile-dashboard-view fade-in" id="mobile-dashboard" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h1 style={{ fontSize: '24px', fontWeight: '700', margin: 0 }}>Business Summary</h1>
+            <section className="mobile-dashboard-view fade-in" id="mobile-dashboard" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              {/* Executive Header & Business Health */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                <div>
+                  <h1 style={{ fontSize: '22px', fontWeight: '800', margin: '0 0 4px 0', color: 'var(--text-primary)' }}>
+                    {profile.name || 'Dashboard'}
+                  </h1>
+                  <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
+                    {profile.owner || 'Executive'} • Today's Overview
+                  </p>
+                </div>
+                <div 
+                  onClick={() => navigateToTab('ai-assistant')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 10px',
+                    borderRadius: '20px',
+                    background: dashboardMetrics.dynamicHealth >= 70 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.12)',
+                    border: `1px solid ${dashboardMetrics.dynamicHealth >= 70 ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`,
+                    cursor: 'pointer'
+                  }}
+                  title="Business Health Score - Tap for AI Insights"
+                >
+                  <Sparkles size={13} color={dashboardMetrics.dynamicHealth >= 70 ? '#10b981' : '#f59e0b'} />
+                  <span style={{ fontSize: '12px', fontWeight: '800', color: dashboardMetrics.dynamicHealth >= 70 ? '#10b981' : '#f59e0b' }}>
+                    {dashboardMetrics.dynamicHealth}/100 Health
+                  </span>
+                </div>
               </div>
               
-              <div className="dashboard-summary-grid">
-                <div className="stat-card-modern" style={{ background: 'var(--bg-primary)' }}>
-                  <span className="metric-label">Monthly Revenue</span>
-                  <strong className="metric-value">{formatCurrency(dashboardMetrics.totalMonthlyRevenue)}</strong>
+              {/* 6 Core Executive KPIs Grid */}
+              <div className="dashboard-summary-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+                <div 
+                  className="stat-card-modern hover-scale" 
+                  onClick={() => navigateToTab('sales-entry')}
+                  style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-subtle)', borderRadius: '14px', padding: '14px', cursor: 'pointer' }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span className="metric-label" style={{ fontSize: '11.5px', fontWeight: '600', color: 'var(--text-secondary)' }}>Monthly Sales</span>
+                    <Activity size={14} color="var(--brand-primary)" />
+                  </div>
+                  <strong className="metric-value" style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text-primary)', display: 'block', marginBottom: '4px' }}>
+                    {formatCurrency(dashboardMetrics.totalMonthlyRevenue)}
+                  </strong>
+                  <span style={{ fontSize: '11px', color: dashboardMetrics.salesGrowth >= 0 ? '#10b981' : '#ef4444', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                    {dashboardMetrics.salesGrowth >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+                    {dashboardMetrics.salesGrowth >= 0 ? `+${dashboardMetrics.salesGrowth}%` : `${dashboardMetrics.salesGrowth}%`}
+                  </span>
                 </div>
-                <div className="stat-card-modern" style={{ background: 'var(--bg-primary)' }}>
-                  <span className="metric-label">Total Expenses</span>
-                  <strong className="metric-value">{formatCurrency(dashboardMetrics.currentExpenses)}</strong>
+
+                <div 
+                  className="stat-card-modern hover-scale"
+                  onClick={() => navigateToTab('day-book')}
+                  style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-subtle)', borderRadius: '14px', padding: '14px', cursor: 'pointer' }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span className="metric-label" style={{ fontSize: '11.5px', fontWeight: '600', color: 'var(--text-secondary)' }}>Total Expenses</span>
+                    <TrendingDown size={14} color="#ef4444" />
+                  </div>
+                  <strong className="metric-value" style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text-primary)', display: 'block', marginBottom: '4px' }}>
+                    {formatCurrency(dashboardMetrics.currentExpenses)}
+                  </strong>
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    Outflows this mo.
+                  </span>
                 </div>
-                <div className="stat-card-modern" style={{ background: 'var(--bg-primary)' }}>
-                  <span className="metric-label">Net Profit</span>
-                  <strong className="metric-value">{formatCurrency(dashboardMetrics.monthlyProfit)}</strong>
+
+                <div 
+                  className="stat-card-modern hover-scale"
+                  onClick={() => navigateToTab('reports')}
+                  style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-subtle)', borderRadius: '14px', padding: '14px', cursor: 'pointer' }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span className="metric-label" style={{ fontSize: '11.5px', fontWeight: '600', color: 'var(--text-secondary)' }}>Net Profit</span>
+                    <TrendingUp size={14} color="#10b981" />
+                  </div>
+                  <strong className="metric-value" style={{ fontSize: '18px', fontWeight: '800', color: dashboardMetrics.monthlyProfit >= 0 ? '#10b981' : '#ef4444', display: 'block', marginBottom: '4px' }}>
+                    {formatCurrency(dashboardMetrics.monthlyProfit)}
+                  </strong>
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    {dashboardMetrics.profitMargin}% margin
+                  </span>
                 </div>
-                <div className="stat-card-modern" style={{ background: 'var(--bg-primary)' }}>
-                  <span className="metric-label">Pending Payments</span>
-                  <strong className="metric-value">{formatCurrency(dashboardMetrics.combinedOutstanding)}</strong>
+
+                <div 
+                  className="stat-card-modern hover-scale"
+                  onClick={() => navigateToTab('crm')}
+                  style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-subtle)', borderRadius: '14px', padding: '14px', cursor: 'pointer' }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span className="metric-label" style={{ fontSize: '11.5px', fontWeight: '600', color: 'var(--text-secondary)' }}>Pending Dues</span>
+                    <Clock size={14} color="#f59e0b" />
+                  </div>
+                  <strong className="metric-value" style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text-primary)', display: 'block', marginBottom: '4px' }}>
+                    {formatCurrency(dashboardMetrics.combinedOutstanding)}
+                  </strong>
+                  <span style={{ fontSize: '11px', color: '#f59e0b', fontWeight: '600' }}>
+                    {dashboardMetrics.pendingCount || 0} unpaid
+                  </span>
+                </div>
+
+                <div 
+                  className="stat-card-modern hover-scale"
+                  onClick={() => navigateToTab('day-book')}
+                  style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-subtle)', borderRadius: '14px', padding: '14px', cursor: 'pointer' }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span className="metric-label" style={{ fontSize: '11.5px', fontWeight: '600', color: 'var(--text-secondary)' }}>Cash in Hand</span>
+                    <DollarSign size={14} color="#06b6d4" />
+                  </div>
+                  <strong className="metric-value" style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text-primary)', display: 'block', marginBottom: '4px' }}>
+                    {formatCurrency(cashInHand)}
+                  </strong>
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    Available balance
+                  </span>
+                </div>
+
+                <div 
+                  className="stat-card-modern hover-scale"
+                  onClick={() => navigateToTab('orders')}
+                  style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-subtle)', borderRadius: '14px', padding: '14px', cursor: 'pointer' }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span className="metric-label" style={{ fontSize: '11.5px', fontWeight: '600', color: 'var(--text-secondary)' }}>Orders</span>
+                    <ShoppingBag size={14} color="#8b5cf6" />
+                  </div>
+                  <strong className="metric-value" style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text-primary)', display: 'block', marginBottom: '4px' }}>
+                    {activeOrders?.length || 0}
+                  </strong>
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    Active pipeline
+                  </span>
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '8px' }}>
-                <button className="btn btn-primary" onClick={() => { setVoucherType('Receipt'); navigateToTab('voucher-entry'); }} style={{ minHeight: '48px' }}>
-                  <Plus size={16} /> Add Income
-                </button>
-                <button className="btn btn-danger" onClick={() => { setVoucherType('Payment'); navigateToTab('voucher-entry'); }} style={{ minHeight: '48px', background: 'var(--danger)', color: '#fff', border: 'none' }}>
-                  <Minus size={16} /> Add Expense
-                </button>
+              {/* Quick Action Center (4 touch-friendly cards) */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Quick Actions
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <button 
+                    type="button" 
+                    className="btn btn-primary hover-scale" 
+                    onClick={() => navigateToTab('sales-entry')} 
+                    style={{ minHeight: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', borderRadius: '12px', fontWeight: '700', fontSize: '13.5px' }}
+                  >
+                    <Plus size={16} /> New Sale
+                  </button>
+                  <button 
+                    type="button" 
+                    className="btn btn-secondary hover-scale" 
+                    onClick={() => { setVoucherType('Payment'); navigateToTab('voucher-entry'); }} 
+                    style={{ minHeight: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', borderRadius: '12px', fontWeight: '700', fontSize: '13.5px' }}
+                  >
+                    <CreditCard size={16} /> Add Expense
+                  </button>
+                  <button 
+                    type="button" 
+                    className="btn btn-secondary hover-scale" 
+                    onClick={() => navigateToTab('crm')} 
+                    style={{ minHeight: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', borderRadius: '12px', fontWeight: '700', fontSize: '13.5px' }}
+                  >
+                    <Users size={16} /> Customers
+                  </button>
+                  <button 
+                    type="button" 
+                    className="btn btn-secondary hover-scale" 
+                    onClick={() => navigateToTab('day-book')} 
+                    style={{ minHeight: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', borderRadius: '12px', fontWeight: '700', fontSize: '13.5px' }}
+                  >
+                    <FileText size={16} /> Day Book
+                  </button>
+                </div>
+              </div>
+
+              {/* Recent Activity Feed */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Recent Activity
+                  </span>
+                  <button 
+                    type="button" 
+                    className="btn btn-ghost" 
+                    onClick={() => navigateToTab('day-book')}
+                    style={{ fontSize: '12px', padding: '4px 8px', color: 'var(--brand-primary)', fontWeight: '600' }}
+                  >
+                    View All ➔
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {(recentVouchers.length > 0 ? recentVouchers.slice(0, 4) : [
+                    { type: 'SALES', narration: 'Recent Sale Entry', date: 'Today', amount: 4500 },
+                    { type: 'RECEIPT', narration: 'Customer Payment', date: 'Today', amount: 2200 },
+                    { type: 'PAYMENT', narration: 'Operating Expense', date: 'Yesterday', amount: 850 }
+                  ]).map((v, i) => {
+                    const isIncome = v.type === 'SALES' || v.type === 'RECEIPT';
+                    return (
+                      <div 
+                        key={i} 
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '12px 14px',
+                          background: 'var(--bg-primary)',
+                          border: '1px solid var(--border-subtle)',
+                          borderRadius: '12px',
+                          gap: '10px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+                          <div style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: isIncome ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                            color: isIncome ? '#10b981' : '#ef4444',
+                            flexShrink: 0
+                          }}>
+                            {isIncome ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+                          </div>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {v.narration || v.type}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                              {v.date || 'Recent'}
+                            </div>
+                          </div>
+                        </div>
+                        {v.amount && (
+                          <div style={{ fontSize: '13.5px', fontWeight: '800', color: isIncome ? '#10b981' : 'var(--text-primary)', flexShrink: 0 }}>
+                            {formatCurrency(v.amount)}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </section>
           )}
@@ -10455,11 +10831,26 @@ export default function VoiceExpenseTrackerPreview() {
       </div>
 
       <nav className="mobile-bottom-nav" aria-label="Mobile navigation">
-        <a className={activeTab === 'dashboard' ? 'active' : ''} href="#dashboard">Home</a>
-        <a className={['entries', 'voucher-entry', 'day-book'].includes(activeTab) ? 'active' : ''} href="#day-book">Entries</a>
-        <a className={['parties', 'crm', 'party-management', 'suppliers'].includes(activeTab) ? 'active' : ''} href="#crm">Parties</a>
-        <a className={['stock', 'inventory'].includes(activeTab) ? 'active' : ''} href="#inventory">Stock</a>
-        <a className={activeTab === 'more' ? 'active' : ''} href="#more">More</a>
+        <a className={activeTab === 'dashboard' ? 'active' : ''} href="#dashboard">
+          <LayoutDashboard size={20} />
+          <span>Home</span>
+        </a>
+        <a className={['entries', 'voucher-entry', 'day-book'].includes(activeTab) ? 'active' : ''} href="#day-book">
+          <FileText size={20} />
+          <span>Entries</span>
+        </a>
+        <a className={['parties', 'crm', 'party-management', 'suppliers'].includes(activeTab) ? 'active' : ''} href="#crm">
+          <Users size={20} />
+          <span>Parties</span>
+        </a>
+        <a className={['stock', 'inventory'].includes(activeTab) ? 'active' : ''} href="#inventory">
+          <Package size={20} />
+          <span>Stock</span>
+        </a>
+        <a className={activeTab === 'more' ? 'active' : ''} href="#more">
+          <MoreHorizontal size={20} />
+          <span>More</span>
+        </a>
       </nav>
 
       {/* High-Performance Voice Manager Widget */}
