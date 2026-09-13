@@ -860,8 +860,36 @@ tr:hover td {
   border-radius: var(--radius-lg);
 }
 .hrms-header-title h2 { margin: 4px 0; font-size: 24px; }
-.hrms-header-title p { color: var(--text-secondary); margin: 0; font-size: 14px; }
-.hrms-header-actions { display: flex; gap: 12px; }
+.hrms-header-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  flex-wrap: wrap !important;
+}
+
+.hrms-header-actions button,
+.hrms-header-actions a,
+.hrms-header-actions a.secondary-button {
+  margin: 0 !important;
+  min-height: 42px !important;
+  height: 42px !important;
+  padding: 0 16px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+  text-decoration: none !important;
+  border-radius: 12px !important;
+  cursor: pointer !important;
+  line-height: 1 !important;
+  width: auto !important;
+  flex: 0 0 auto !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
 
 .hrms-kpi-grid {
   display: grid;

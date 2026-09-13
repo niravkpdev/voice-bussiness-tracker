@@ -1752,7 +1752,7 @@ export default function Phase2ERP({
           </div>
           <div className="hrms-header-actions">
             <button className="primary-button" onClick={() => setEditingProduct({})}>+ Add Product</button>
-            <a href="#voucher-entry" className="secondary-button" style={{ display: 'inline-flex', alignItems: 'center', textDecoration: 'none', color: 'inherit' }}>📦 + New Purchase Voucher</a>
+            <a href="#voucher-entry" className="secondary-button" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', whiteSpace: 'nowrap', textDecoration: 'none' }}>+ New Purchase Voucher</a>
             <button className="secondary-button" onClick={() => setShowImportModal(true)}>Import</button>
             <button className="secondary-button" onClick={handleExportCSV}>Export</button>
             <button className="secondary-button" onClick={() => setShowStockReport(true)}>Stock Report</button>

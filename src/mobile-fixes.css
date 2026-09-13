@@ -863,7 +863,7 @@ img, picture, video, canvas {
     font-size: 13px !important;
     font-weight: 600 !important;
     box-sizing: border-box !important;
-    white-space: normal !important;
+    white-space: nowrap !important;
   }
 
   .inventory-premium-header .hrms-header-actions button:first-child,
