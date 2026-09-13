@@ -15,7 +15,7 @@ export function CategoriesView({ onSelectCategory }) {
   return (
     <div className="trinetr-categories-page-wrapper">
       <div className="trinetr-categories-header-banner">
-        <h2 className="trinetr-categories-title">All Product Categories</h2>
+        <h1 className="trinetr-categories-title">All Product Categories</h1>
         <div className="trinetr-breadcrumbs">
           <span>Home</span> &gt; <span>Only Categories</span>
         </div>

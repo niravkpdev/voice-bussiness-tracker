@@ -16,6 +16,7 @@ import { BannerEditModal } from './components/BannerEditModal';
 import { StoreFooter } from './components/StoreFooter';
 import { PRODUCTS, CATEGORIES, STORE_INFO } from './data/namkeenData';
 import { Truck, Award, Headphones, Zap, ShoppingBag, ArrowRight, Sparkles, CheckCircle2, Edit3, Star, Camera } from 'lucide-react';
+import { SEOHead } from '../SEOHead';
 import './storefront.css';
 
 function StorefrontContent(props) {
@@ -78,8 +79,69 @@ function StorefrontContent(props) {
     String(p.id).startsWith('prd-')
   );
 
+  const seoData = React.useMemo(() => {
+    const storeName = activeStore.name || 'Jay Ambe Namkeen';
+    const storeTagline = activeStore.tagline || 'Authentic Snacks & Namkeen';
+    const baseSiteUrl = 'https://voice-bussiness-tracker.vercel.app';
+    
+    if (currentTab === 'shop') {
+      return {
+        title: `Order Snacks & Namkeen Online | ${storeName}`,
+        description: `Explore fresh gathiya, wafers, sev, chana, and traditional delicacies from ${storeName}. Instant WhatsApp order with express doorstep delivery.`,
+        canonicalUrl: `${baseSiteUrl}/react.html#shop`,
+      };
+    }
+    if (currentTab === 'categories') {
+      return {
+        title: `Browse Product Categories | ${storeName}`,
+        description: `Explore our wide range of snack categories: gathiya, wafers, farsan, sweets, and diet-friendly snacks from ${storeName}.`,
+        canonicalUrl: `${baseSiteUrl}/react.html#categories`,
+      };
+    }
+    if (currentTab === 'product-menu') {
+      return {
+        title: `Snack Price List & Menu | ${storeName}`,
+        description: `Complete price list and catalog for wholesale and retail snacks from ${storeName}.`,
+        canonicalUrl: `${baseSiteUrl}/react.html#product-menu`,
+      };
+    }
+    if (currentTab === 'contact') {
+      return {
+        title: `Contact & Location | ${storeName}`,
+        description: `Get in touch with ${storeName} for bulk orders, wedding gifting, and fresh snack delivery. Located at ${activeStore.address}.`,
+        canonicalUrl: `${baseSiteUrl}/react.html#store-contact`,
+      };
+    }
+    return {
+      title: `${storeName} — ${storeTagline}`,
+      description: activeStore.description || `${storeName} offers authentic handcrafted namkeen, regional delicacies, and sweets prepared daily in 100% pure oil with Pan-India dispatch.`,
+      canonicalUrl: `${baseSiteUrl}/react.html#store`,
+      jsonLd: {
+        "@context": "https://schema.org",
+        "@type": "GroceryStore",
+        "name": storeName,
+        "description": activeStore.description || storeTagline,
+        "telephone": activeStore.phone || '+918488943771',
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": activeStore.address || 'Plot No. 12, GIDC Industrial Estate, Gujarat, India'
+        },
+        "openingHours": activeStore.hours || 'Mo-Su 09:00-22:00',
+        "priceRange": "₹₹",
+        "currenciesAccepted": "INR"
+      }
+    };
+  }, [currentTab, activeStore]);
+
   return (
     <div className="trinetr-storefront-root">
+      <SEOHead
+        title={seoData.title}
+        description={seoData.description}
+        canonicalUrl={seoData.canonicalUrl}
+        ogImage={activeStore.bannerImage || 'https://voice-bussiness-tracker.vercel.app/assets/trinetr-logo.jpg'}
+        jsonLd={seoData.jsonLd}
+      />
       {/* Universal Storefront Header */}
       <StoreHeader
         currentTab={currentTab}
@@ -163,9 +225,14 @@ function StorefrontContent(props) {
                     <span>🔥 Fresh Daily Batch • Traditional Surat Kitchen</span>
                   </div>
                   
-                  <h1 className="trinetr-promo-heading">
-                    {activeStore.bannerOffer || 'FLAT 40% OFF'}
+                  {/* Semantic Screen Reader H1 for SEO Brand Keyword Relevancy */}
+                  <h1 className="trinetr-sr-only" style={{ position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px', overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0 }}>
+                    {activeStore.name} — Authentic Handcrafted Namkeen, Farsan &amp; Delicacies
                   </h1>
+
+                  <h2 className="trinetr-promo-heading">
+                    {activeStore.bannerOffer || 'FLAT 40% OFF'}
+                  </h2>
                   
                   <h3 className="trinetr-promo-subheading">
                     {activeStore.bannerRegion || "For All Gujarat and Mumbai City's Customers"}
@@ -204,7 +271,9 @@ function StorefrontContent(props) {
                   <div className="trinetr-hero-snack-card">
                     <img 
                       src={activeStore.bannerImage || 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=700&auto=format&fit=crop&q=80'} 
-                      alt="Fresh Kathiyawadi Namkeen" 
+                      alt={`${activeStore.name} Fresh Kathiyawadi Namkeen & Snacks`} 
+                      fetchPriority="high"
+                      decoding="async"
                       className="trinetr-hero-snack-img"
                       onError={(e) => {
                         e.target.onerror = null;

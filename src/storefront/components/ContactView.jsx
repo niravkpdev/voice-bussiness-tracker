@@ -22,7 +22,7 @@ export function ContactView() {
   return (
     <div className="trinetr-contact-page-wrapper">
       <div className="trinetr-contact-header-banner">
-        <h2 className="trinetr-contact-title">Keep In Touch With Us</h2>
+        <h1 className="trinetr-contact-title">Keep In Touch With Us</h1>
         <div className="trinetr-breadcrumbs">
           <span>Home</span> &gt; <span>Contact Us</span>
         </div>

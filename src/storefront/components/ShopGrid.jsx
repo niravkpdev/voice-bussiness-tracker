@@ -206,6 +206,9 @@ export function ShopGrid() {
 
         {/* Product Grid Area */}
         <main className="trinetr-shop-main">
+          <h1 className="trinetr-sr-only" style={{ position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px', overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0 }}>
+            {activeCategory !== 'all' ? `${activeCategory.toUpperCase()} Snacks & Namkeen Catalog` : 'All Fresh Namkeen, Sweets & Snacks Catalog'}
+          </h1>
           {/* Top Bar with count, layout switch, and sort */}
           <div className="trinetr-shop-toolbar">
             <div className="trinetr-toolbar-left">
