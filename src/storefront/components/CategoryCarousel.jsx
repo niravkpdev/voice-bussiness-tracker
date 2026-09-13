@@ -40,8 +40,8 @@ export function CategoryCarousel({ onSelectCategory }) {
                   }}
                 />
               </div>
-              <span className="trinetr-cat-name">{cat.name}</span>
-              <span className="trinetr-cat-count-pill">{cat.count} Items</span>
+              <span className="trinetr-cat-name" style={{ color: '#0f172a', fontWeight: 750, fontSize: '13px', display: 'block' }}>{cat.name}</span>
+              <span className="trinetr-cat-count-pill" style={{ color: '#64748b', fontWeight: 600, fontSize: '10.5px' }}>{cat.count} Items</span>
             </button>
           );
         })}

@@ -41,8 +41,8 @@ export function CategoriesView({ onSelectCategory }) {
               />
             </div>
             <div className="trinetr-category-card-meta">
-              <h4 className="category-title">{cat.name}</h4>
-              <span className="category-item-count">{cat.count} Products</span>
+              <h4 className="category-title" style={{ color: '#0f172a', fontWeight: 800 }}>{cat.name}</h4>
+              <span className="category-item-count" style={{ color: '#64748b', fontWeight: 600 }}>{cat.count} Products</span>
             </div>
           </button>
         ))}

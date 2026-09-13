@@ -9595,21 +9595,136 @@ body.storefront-mode #root,
   -webkit-text-fill-color: #0f172a !important;
 }
 
-.trinetr-storefront-root p,
-.trinetr-storefront-root span,
-.trinetr-storefront-root label,
-.trinetr-storefront-root li {
-  color: inherit;
+/* Universal Storefront Color System: Guarantee high-contrast dark text on light store theme */
+.trinetr-storefront-root button:not(.trinetr-dept-button):not(.trinetr-add-cart-btn):not(.btn-primary):not(.trinetr-mobile-cart-btn):not(.trinetr-search-submit):not(.saas-primary-button) {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
 }
 
-.trinetr-storefront-root .trinetr-cat-circle-name {
-  color: #1c1917 !important;
-  -webkit-text-fill-color: #1c1917 !important;
+.trinetr-storefront-root .trinetr-cat-circle-card,
+.trinetr-storefront-root .trinetr-cat-circle-card * {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
 }
 
-.trinetr-storefront-root .trinetr-cat-count-pill {
+.trinetr-storefront-root .trinetr-cat-name,
+.trinetr-cat-name {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+  font-weight: 750 !important;
+  font-size: 13px !important;
+  display: block !important;
+}
+
+.trinetr-storefront-root .trinetr-cat-count-pill,
+.trinetr-cat-count-pill {
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b !important;
+  background: #f1f5f9 !important;
+  font-weight: 600 !important;
+}
+
+/* Storefront Currency Dropdown */
+.trinetr-storefront-root .trinetr-currency-menu,
+.trinetr-currency-menu {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+}
+
+.trinetr-storefront-root .trinetr-currency-menu-title,
+.trinetr-currency-menu-title {
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+}
+
+.trinetr-storefront-root .trinetr-currency-option,
+.trinetr-currency-option {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+  background: transparent !important;
+}
+
+.trinetr-storefront-root .trinetr-currency-option:hover,
+.trinetr-currency-option:hover {
+  background: #f1f5f9 !important;
+  background-color: #f1f5f9 !important;
+}
+
+.trinetr-storefront-root .trinetr-currency-option.active,
+.trinetr-currency-option.active {
+  background: #ecfdf5 !important;
+  background-color: #ecfdf5 !important;
+}
+
+.trinetr-storefront-root .currency-option-name,
+.currency-option-name {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+  font-weight: 750 !important;
+  font-size: 13px !important;
+}
+
+.trinetr-storefront-root .currency-option-rate,
+.currency-option-rate {
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+}
+
+.trinetr-storefront-root .currency-check,
+.currency-check {
+  color: #10b981 !important;
+  -webkit-text-fill-color: #10b981 !important;
+  font-weight: 800 !important;
+}
+
+/* Storefront Departments Dropdown */
+.trinetr-storefront-root .trinetr-dept-dropdown,
+.trinetr-dept-dropdown {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15) !important;
+}
+
+.trinetr-storefront-root .trinetr-dept-item,
+.trinetr-dept-item {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+  background: transparent !important;
+}
+
+.trinetr-storefront-root .trinetr-dept-item span,
+.trinetr-dept-item span {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+  font-weight: 600 !important;
+}
+
+.trinetr-storefront-root .trinetr-dept-item:hover,
+.trinetr-dept-item:hover {
+  background: #fef3c7 !important;
+  background-color: #fef3c7 !important;
+  color: #92400e !important;
+  -webkit-text-fill-color: #92400e !important;
+}
+
+.trinetr-storefront-root .trinetr-dept-item:hover span,
+.trinetr-dept-item:hover span {
+  color: #92400e !important;
+  -webkit-text-fill-color: #92400e !important;
+}
+
+.trinetr-storefront-root .trinetr-dept-count,
+.trinetr-dept-count {
   color: #78716c !important;
   -webkit-text-fill-color: #78716c !important;
+  background: #f5f5f4 !important;
 }
 
 .trinetr-storefront-root .trinetr-promo-heading {

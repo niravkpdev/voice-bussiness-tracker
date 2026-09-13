@@ -708,18 +708,26 @@
   object-fit: cover;
 }
 
+.trinetr-cat-circle-card {
+  color: #0f172a !important;
+}
+
 .trinetr-cat-name {
   font-size: 13px;
-  font-weight: 700;
-  color: var(--trinetr-text-dark);
+  font-weight: 750;
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+  display: block;
 }
 
 .trinetr-cat-count-pill {
   font-size: 10px;
-  color: #78716c;
-  background: #f5f5f4;
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b !important;
+  background: #f1f5f9 !important;
   padding: 2px 6px;
   border-radius: 12px;
+  font-weight: 600;
 }
 
 /* --------------------------------------------------------------------------
@@ -4682,13 +4690,15 @@
 
 .currency-option-name {
   font-size: 13px;
-  font-weight: 700;
-  color: #1e293b;
+  font-weight: 750;
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
 }
 
 .currency-option-rate {
   font-size: 11px;
-  color: #64748b;
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b !important;
   font-weight: 600;
 }
 

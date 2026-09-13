@@ -129,7 +129,7 @@ export function StoreHeader({
 
               {currencyDropdownOpen && (
                 <div className="trinetr-currency-menu">
-                  <div className="trinetr-currency-menu-title">Select Store Currency</div>
+                  <div className="trinetr-currency-menu-title" style={{ color: '#64748b', fontWeight: 800, fontSize: '11px' }}>Select Store Currency</div>
                   {Object.values(currencies).map(cur => (
                     <button
                       key={cur.code}
@@ -139,13 +139,14 @@ export function StoreHeader({
                         setCurrency(cur.code);
                         setCurrencyDropdownOpen(false);
                       }}
+                      style={{ color: '#0f172a' }}
                     >
                       <span className="currency-flag-large">{cur.flag}</span>
                       <div className="currency-option-info">
-                        <span className="currency-option-name">{cur.name}</span>
-                        <span className="currency-option-rate">{cur.code} • {cur.symbol}</span>
+                        <span className="currency-option-name" style={{ color: '#0f172a', fontWeight: 750, fontSize: '13px' }}>{cur.name}</span>
+                        <span className="currency-option-rate" style={{ color: '#64748b', fontWeight: 600, fontSize: '11px' }}>{cur.code} • {cur.symbol}</span>
                       </div>
-                      {cur.code === currentCurrency.code && <span className="currency-check">✓</span>}
+                      {cur.code === currentCurrency.code && <span className="currency-check" style={{ color: '#10b981', fontWeight: 800 }}>✓</span>}
                     </button>
                   ))}
                 </div>
@@ -226,9 +227,10 @@ export function StoreHeader({
                     type="button"
                     className="trinetr-dept-item"
                     onClick={() => handleCategoryClick(cat.id)}
+                    style={{ color: '#0f172a' }}
                   >
-                    <span>{cat.name}</span>
-                    <span className="trinetr-dept-count">{cat.count}</span>
+                    <span style={{ color: '#0f172a', fontWeight: 650 }}>{cat.name}</span>
+                    <span className="trinetr-dept-count" style={{ color: '#78716c', fontWeight: 600 }}>{cat.count}</span>
                   </button>
                 ))}
               </div>
