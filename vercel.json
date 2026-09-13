@@ -59,7 +59,7 @@
   ],
   "rewrites": [
     {
-      "source": "/",
+      "source": "/((?!assets/|api/|sw\\.js|manifest\\.webmanifest|robots\\.txt|sitemap\\.xml).*)",
       "destination": "/react.html"
     }
   ]
