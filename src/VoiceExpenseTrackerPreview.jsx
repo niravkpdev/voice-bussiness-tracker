@@ -413,13 +413,21 @@ function readProfile() {
     } catch {}
     const merged = { ...DEFAULT_PROFILE, ...localSaved, ...scoped };
     // If company name was customized by the user, but storeName remained on old demo defaults, auto-sync them!
-    const isDemoStoreName = !merged.storeName || merged.storeName === 'Jay Ambe Namkeen' || merged.storeName === 'Jay Ambe Namkeen Store';
-    const isCustomCompanyName = merged.name && merged.name !== 'Jay Ambe Namkeen' && merged.name !== 'Trinetr Business Suite';
+    const isDemoStoreName = !merged.storeName ||
+      merged.storeName.trim().toLowerCase() === 'jay ambe namkeen' ||
+      merged.storeName.trim().toLowerCase() === 'jay ambe namkeen store';
+    const isCustomCompanyName = merged.name &&
+      merged.name.trim().toLowerCase() !== 'jay ambe namkeen' &&
+      merged.name.trim().toLowerCase() !== 'jay ambe namkeen store';
     if (isCustomCompanyName && isDemoStoreName) {
       merged.storeName = merged.name;
     }
-    const isDemoStoreTagline = !merged.storeTagline || merged.storeTagline === 'Fresh & Authentic Homemade Snacks & Delicacies' || merged.storeTagline === 'Authentic Namkeen & Farsan Manufacturer & Wholesaler';
-    const isCustomTagline = merged.tagline && merged.tagline !== 'Authentic Namkeen & Farsan Manufacturer & Wholesaler' && merged.tagline !== 'Fresh & Authentic Homemade Snacks & Delicacies';
+    const isDemoStoreTagline = !merged.storeTagline ||
+      merged.storeTagline.trim().toLowerCase() === 'fresh & authentic homemade snacks & delicacies' ||
+      merged.storeTagline.trim().toLowerCase() === 'authentic namkeen & farsan manufacturer & wholesaler';
+    const isCustomTagline = merged.tagline &&
+      merged.tagline.trim().toLowerCase() !== 'authentic namkeen & farsan manufacturer & wholesaler' &&
+      merged.tagline.trim().toLowerCase() !== 'fresh & authentic homemade snacks & delicacies';
     if (isCustomTagline && isDemoStoreTagline) {
       merged.storeTagline = merged.tagline;
     }
@@ -5219,13 +5227,25 @@ export default function VoiceExpenseTrackerPreview() {
     let submittedStoreName = sanitizeText(formData.get('profileStoreName'), 140);
     let submittedStoreTagline = sanitizeText(formData.get('profileStoreTagline'), 160);
 
-    const isOldDemoName = (n) => !n || n === 'Jay Ambe Namkeen' || n === 'Jay Ambe Namkeen Store' || n === 'Trinetr Business Suite' || n === profile.name || n === profile.storeName;
-    if (!submittedStoreName || (submittedName !== profile.name && isOldDemoName(submittedStoreName))) {
+    const isOldDemoName = (n) => {
+      if (!n) return true;
+      const s = String(n).trim().toLowerCase();
+      return s === 'jay ambe namkeen' || s === 'jay ambe namkeen store';
+    };
+    if (!submittedStoreName || isOldDemoName(submittedStoreName) || (submittedName !== profile.name && (submittedStoreName === profile.name || submittedStoreName === profile.storeName))) {
       submittedStoreName = submittedName;
     }
 
-    const isOldDemoTagline = (t) => !t || t === 'Fresh & Authentic Homemade Snacks & Delicacies' || t === 'Authentic Namkeen & Farsan Manufacturer & Wholesaler' || t === 'namkeen & wafers' || t === profile.tagline || t === profile.storeTagline;
-    if (!submittedStoreTagline || (submittedTagline !== profile.tagline && isOldDemoTagline(submittedStoreTagline))) {
+    const isOldDemoTagline = (t) => {
+      if (!t) return true;
+      const s = String(t).trim().toLowerCase();
+      return (
+        s === 'fresh & authentic homemade snacks & delicacies' ||
+        s === 'authentic namkeen & farsan manufacturer & wholesaler' ||
+        s === 'namkeen & wafers'
+      );
+    };
+    if (!submittedStoreTagline || isOldDemoTagline(submittedStoreTagline) || (submittedTagline !== profile.tagline && (submittedStoreTagline === profile.tagline || submittedStoreTagline === profile.storeTagline))) {
       submittedStoreTagline = submittedTagline;
     }
 
@@ -5299,7 +5319,7 @@ export default function VoiceExpenseTrackerPreview() {
 
   const updateBusinessProfile = async (updates) => {
     let nextProfile = { ...profile, ...updates };
-    if (updates.name && (!nextProfile.storeName || nextProfile.storeName === 'Jay Ambe Namkeen' || nextProfile.storeName === 'Jay Ambe Namkeen Store' || nextProfile.storeName === profile.name)) {
+    if (updates.name && (!nextProfile.storeName || nextProfile.storeName.trim().toLowerCase() === 'jay ambe namkeen' || nextProfile.storeName.trim().toLowerCase() === 'jay ambe namkeen store' || nextProfile.storeName === profile.name)) {
       nextProfile.storeName = updates.name;
     }
     if (updates.tagline && (!nextProfile.storeTagline || nextProfile.storeTagline === profile.tagline)) {

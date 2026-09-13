@@ -137,15 +137,15 @@ describe('Online Storefront Catalog, Brand Dynamic Profile & Variants', () => {
 
   it('falls back gracefully to Jay Ambe Namkeen defaults when user profile is unconfigured', () => {
     const unconfiguredProfile = {
-      name: 'Trinetr Business Suite',
+      name: '',
       storeName: '',
       whatsapp: '',
       address: ''
     };
 
-    const resolvedName = (!unconfiguredProfile.storeName || unconfiguredProfile.name === 'Trinetr Business Suite')
+    const resolvedName = (!unconfiguredProfile.storeName || unconfiguredProfile.name === 'Jay Ambe Namkeen' || !unconfiguredProfile.name)
       ? (STORE_INFO.name || 'Jay Ambe Namkeen')
-      : unconfiguredProfile.storeName;
+      : unconfiguredProfile.name;
 
     expect(resolvedName).toBe('Jay Ambe Namkeen');
   });
@@ -529,6 +529,37 @@ describe('Online Storefront Catalog, Brand Dynamic Profile & Variants', () => {
     expect(getByTestId('store-email').textContent).toBe('ap0767573@gmail.com');
     expect(getByTestId('store-address').textContent).toBe('364 , PRAJAPATI VAS , MANDALI KHAROD');
     expect(getByTestId('store-facebook').textContent).toBe('@radhekrishnafarsan');
+  });
+
+  it('correctly honors "Trinetr Business Suite" as the business name across storefront without fallback', () => {
+    const trinetrProfile = {
+      name: 'Trinetr Business Suite',
+      storeName: 'Jay Ambe Namkeen Store', // leftover demo storeName in storage
+      tagline: 'Authentic Namkeen & Farsan Manufacturer & Wholesaler',
+      email: 'trinetr1901@gmail.com',
+      phone: '+918488943771',
+      address: 'Plot No. 12, GIDC Industrial Estate, Gujarat, India'
+    };
+    localStorage.setItem('businessProfile', JSON.stringify(trinetrProfile));
+
+    function TestTrinetrConsumer() {
+      const { storeInfo } = useStoreCart();
+      return (
+        <div>
+          <span data-testid="store-name">{storeInfo.name}</span>
+          <span data-testid="store-facebook">{storeInfo.facebook}</span>
+        </div>
+      );
+    }
+
+    const { getByTestId } = render(
+      <StoreCartProvider storeProfile={trinetrProfile} isOwner={false}>
+        <TestTrinetrConsumer />
+      </StoreCartProvider>
+    );
+
+    expect(getByTestId('store-name').textContent).toBe('Trinetr Business Suite');
+    expect(getByTestId('store-facebook').textContent).toBe('@trinetrbusinesssuite');
   });
 });
 

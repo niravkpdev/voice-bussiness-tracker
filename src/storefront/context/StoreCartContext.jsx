@@ -46,19 +46,20 @@ function applyProductOverrides(items) {
 }
 
 function isDefaultDemoName(val) {
-  if (!val) return true;
-  const s = String(val).trim().toLowerCase();
+  if (!val || typeof val !== 'string') return true;
+  const s = val.trim().toLowerCase();
   return (
+    s === '' ||
     s === 'jay ambe namkeen' ||
-    s === 'jay ambe namkeen store' ||
-    s === 'trinetr business suite'
+    s === 'jay ambe namkeen store'
   );
 }
 
 function isDefaultDemoTagline(val) {
-  if (!val) return true;
-  const s = String(val).trim().toLowerCase();
+  if (!val || typeof val !== 'string') return true;
+  const s = val.trim().toLowerCase();
   return (
+    s === '' ||
     s === 'fresh & authentic homemade snacks & delicacies' ||
     s === 'authentic namkeen & farsan manufacturer & wholesaler' ||
     s === 'namkeen & wafers'
@@ -104,7 +105,7 @@ function resolveStoreInfo(customProfile) {
     : (localData?.storeName && !isDefaultDemoName(localData.storeName) ? localData.storeName : null);
 
   let name = '';
-  if (storeNameCandidate && storeNameCandidate !== compNameCandidate && storeNameCandidate !== 'Jay Ambe Namkeen Store') {
+  if (storeNameCandidate && storeNameCandidate !== compNameCandidate && !isDefaultDemoName(storeNameCandidate)) {
     name = storeNameCandidate;
   } else if (compNameCandidate) {
     name = compNameCandidate;
@@ -114,7 +115,7 @@ function resolveStoreInfo(customProfile) {
     name = profileData?.storeName || profileData?.name || STORE_INFO.name || 'Jay Ambe Namkeen';
   }
 
-  if (name === 'Trinetr Business Suite') {
+  if (!name || typeof name !== 'string' || !name.trim()) {
     name = STORE_INFO.name || 'Jay Ambe Namkeen';
   }
 
@@ -170,7 +171,7 @@ function resolveStoreInfo(customProfile) {
   }
 
   // Auto-sync localStorage if company name was updated but storeName was still holding demo default
-  if (compNameCandidate && (localData?.storeName === 'Jay Ambe Namkeen' || localData?.storeName === 'Jay Ambe Namkeen Store' || !localData?.storeName)) {
+  if (compNameCandidate && (isDefaultDemoName(localData?.storeName) || !localData?.storeName)) {
     try {
       const repaired = { ...localData, storeName: compNameCandidate, name: compNameCandidate };
       localStorage.setItem('businessProfile', JSON.stringify(repaired));
