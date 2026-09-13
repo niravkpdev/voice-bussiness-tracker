@@ -45,6 +45,26 @@ function applyProductOverrides(items) {
   });
 }
 
+function isDefaultDemoName(val) {
+  if (!val) return true;
+  const s = String(val).trim().toLowerCase();
+  return (
+    s === 'jay ambe namkeen' ||
+    s === 'jay ambe namkeen store' ||
+    s === 'trinetr business suite'
+  );
+}
+
+function isDefaultDemoTagline(val) {
+  if (!val) return true;
+  const s = String(val).trim().toLowerCase();
+  return (
+    s === 'fresh & authentic homemade snacks & delicacies' ||
+    s === 'authentic namkeen & farsan manufacturer & wholesaler' ||
+    s === 'namkeen & wafers'
+  );
+}
+
 function resolveStoreInfo(customProfile) {
   let localData = {};
   try {
@@ -59,26 +79,65 @@ function resolveStoreInfo(customProfile) {
     // ignore
   }
 
+  // Combine defaults, localStorage, and live customProfile prop
   const profileData = {
     ...STORE_INFO,
     ...localData,
     ...(customProfile || {})
   };
 
-  // Ensure customized fields from local storage take precedence over default fallbacks
+  // Preserve owner customized banner overrides from local storage
   if (localData?.bannerOffer) profileData.bannerOffer = localData.bannerOffer;
   if (localData?.bannerRegion) profileData.bannerRegion = localData.bannerRegion;
   if (localData?.bannerImage) profileData.bannerImage = localData.bannerImage;
-  if (localData?.storeName) profileData.storeName = localData.storeName;
-  if (localData?.storeTagline) profileData.storeTagline = localData.storeTagline;
-  if (localData?.whatsapp) profileData.whatsapp = localData.whatsapp;
-  if (localData?.phone) profileData.phone = localData.phone;
-  if (localData?.address) profileData.address = localData.address;
-  if (localData?.hours) profileData.hours = localData.hours;
-  if (localData?.fssaiNumber) profileData.fssaiNumber = localData.fssaiNumber;
 
-  const name = profileData?.storeName || profileData?.name || STORE_INFO.name || 'Jay Ambe Namkeen';
-  const tagline = profileData?.storeTagline || profileData?.tagline || STORE_INFO.tagline;
+  // Resolve business name:
+  // 1. If customProfile or localData has an explicitly customized company name (from Company Settings/ERP), that is the source of truth!
+  // 2. If an explicit storeName was set and is NOT the default demo name, allow it.
+  // 3. Otherwise, if the company name was updated in ERP/Settings, storefront name MUST adopt it!
+  const compNameCandidate = (customProfile?.name && !isDefaultDemoName(customProfile.name))
+    ? customProfile.name
+    : (localData?.name && !isDefaultDemoName(localData.name) ? localData.name : null);
+
+  const storeNameCandidate = (customProfile?.storeName && !isDefaultDemoName(customProfile.storeName))
+    ? customProfile.storeName
+    : (localData?.storeName && !isDefaultDemoName(localData.storeName) ? localData.storeName : null);
+
+  let name = '';
+  if (storeNameCandidate && storeNameCandidate !== compNameCandidate && storeNameCandidate !== 'Jay Ambe Namkeen Store') {
+    name = storeNameCandidate;
+  } else if (compNameCandidate) {
+    name = compNameCandidate;
+  } else if (storeNameCandidate) {
+    name = storeNameCandidate;
+  } else {
+    name = profileData?.storeName || profileData?.name || STORE_INFO.name || 'Jay Ambe Namkeen';
+  }
+
+  if (name === 'Trinetr Business Suite') {
+    name = STORE_INFO.name || 'Jay Ambe Namkeen';
+  }
+
+  // Resolve business tagline:
+  const compTaglineCandidate = (customProfile?.tagline && !isDefaultDemoTagline(customProfile.tagline))
+    ? customProfile.tagline
+    : (localData?.tagline && !isDefaultDemoTagline(localData.tagline) ? localData.tagline : null);
+
+  const storeTaglineCandidate = (customProfile?.storeTagline && !isDefaultDemoTagline(customProfile.storeTagline))
+    ? customProfile.storeTagline
+    : (localData?.storeTagline && !isDefaultDemoTagline(localData.storeTagline) ? localData.storeTagline : null);
+
+  let tagline = '';
+  if (storeTaglineCandidate && storeTaglineCandidate !== compTaglineCandidate && storeTaglineCandidate !== 'Fresh & Authentic Homemade Snacks & Delicacies') {
+    tagline = storeTaglineCandidate;
+  } else if (compTaglineCandidate) {
+    tagline = compTaglineCandidate;
+  } else if (storeTaglineCandidate) {
+    tagline = storeTaglineCandidate;
+  } else {
+    tagline = profileData?.storeTagline || profileData?.tagline || STORE_INFO.tagline;
+  }
+
   const phone = profileData?.phone || STORE_INFO.phone;
   const whatsapp = profileData?.whatsapp || profileData?.phone || STORE_INFO.whatsapp;
   const email = profileData?.email || STORE_INFO.email;
@@ -89,9 +148,38 @@ function resolveStoreInfo(customProfile) {
   const bannerRegion = profileData?.bannerRegion || "For All Gujarat and Mumbai City's Customers";
   const bannerImage = profileData?.bannerImage || 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=700&auto=format&fit=crop&q=80';
 
+  // Dynamic social handles matching business name if not customized
+  let facebook = profileData?.facebook;
+  let instagram = profileData?.instagram;
+  if (!facebook || facebook === '@jayambenamkeen') {
+    facebook = !isDefaultDemoName(name) ? `@${name.toLowerCase().replace(/[^a-z0-9]/g, '')}` : '@jayambenamkeen';
+  }
+  if (!instagram || instagram === '@jayambenamkeen') {
+    instagram = !isDefaultDemoName(name) ? `@${name.toLowerCase().replace(/[^a-z0-9]/g, '')}` : '@jayambenamkeen';
+  }
+
+  let description = profileData?.description;
+  if (!description) {
+    if (!isDefaultDemoName(name)) {
+      description = tagline && !isDefaultDemoTagline(tagline)
+        ? `${tagline}. Handcrafted with pure quality and authentic taste.`
+        : `Handcrafted with pure quality. Offering fresh delicacies, snacks, and foods.`;
+    } else {
+      description = 'Handcrafted with pure quality and authentic recipes. Offering 175+ varieties of fresh delicacies, snacks, and foods.';
+    }
+  }
+
+  // Auto-sync localStorage if company name was updated but storeName was still holding demo default
+  if (compNameCandidate && (localData?.storeName === 'Jay Ambe Namkeen' || localData?.storeName === 'Jay Ambe Namkeen Store' || !localData?.storeName)) {
+    try {
+      const repaired = { ...localData, storeName: compNameCandidate, name: compNameCandidate };
+      localStorage.setItem('businessProfile', JSON.stringify(repaired));
+    } catch {}
+  }
+
   return {
     ...STORE_INFO,
-    name: (name && name !== 'Trinetr Business Suite') ? name : (STORE_INFO.name || 'Jay Ambe Namkeen'),
+    name,
     tagline,
     phone,
     whatsapp,
@@ -102,7 +190,10 @@ function resolveStoreInfo(customProfile) {
     bannerOffer,
     bannerRegion,
     bannerImage,
-    logo: profileData?.logo || null
+    logo: profileData?.logo || null,
+    facebook,
+    instagram,
+    description
   };
 }
 
@@ -193,7 +284,11 @@ export function StoreCartProvider({ children, storeProfile, customInventory, isO
     window.addEventListener('trinetr-profile-updated', handleProfileUpdate);
     const handleStorage = (e) => {
       if (e.key === 'businessProfile') {
-        setStoreInfo(resolveStoreInfo(storeProfile));
+        let updatedProfile = null;
+        try {
+          if (e.newValue) updatedProfile = JSON.parse(e.newValue);
+        } catch {}
+        setStoreInfo(resolveStoreInfo(updatedProfile || storeProfile));
       }
     };
     window.addEventListener('storage', handleStorage);

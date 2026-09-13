@@ -490,6 +490,46 @@ describe('Online Storefront Catalog, Brand Dynamic Profile & Variants', () => {
     expect(container).toBeDefined();
     expect(container.textContent).toContain('Edit Offer Banner');
   });
+
+  it('dynamically adopts updated company name when changed in ERP settings even if localStorage had old demo defaults', () => {
+    // Simulate user changing company name in Company Settings, but businessProfile in localStorage still had old storeName
+    const staleStorageProfile = {
+      name: 'Radhe Krishna Farsan',
+      storeName: 'Jay Ambe Namkeen Store', // old demo name that was stuck
+      tagline: 'Pure Singtel Sweets & Snacks',
+      storeTagline: 'Fresh & Authentic Homemade Snacks & Delicacies',
+      email: 'ap0767573@gmail.com',
+      address: '364 , PRAJAPATI VAS , MANDALI KHAROD',
+      phone: '+918488943771'
+    };
+    localStorage.setItem('businessProfile', JSON.stringify(staleStorageProfile));
+
+    function TestProfileConsumer() {
+      const { storeInfo } = useStoreCart();
+      return (
+        <div>
+          <span data-testid="store-name">{storeInfo.name}</span>
+          <span data-testid="store-tagline">{storeInfo.tagline}</span>
+          <span data-testid="store-email">{storeInfo.email}</span>
+          <span data-testid="store-address">{storeInfo.address}</span>
+          <span data-testid="store-facebook">{storeInfo.facebook}</span>
+        </div>
+      );
+    }
+
+    const { getByTestId } = render(
+      <StoreCartProvider storeProfile={staleStorageProfile} isOwner={false}>
+        <TestProfileConsumer />
+      </StoreCartProvider>
+    );
+
+    // Verify company name takes precedence over stale demo storeName
+    expect(getByTestId('store-name').textContent).toBe('Radhe Krishna Farsan');
+    expect(getByTestId('store-tagline').textContent).toBe('Pure Singtel Sweets & Snacks');
+    expect(getByTestId('store-email').textContent).toBe('ap0767573@gmail.com');
+    expect(getByTestId('store-address').textContent).toBe('364 , PRAJAPATI VAS , MANDALI KHAROD');
+    expect(getByTestId('store-facebook').textContent).toBe('@radhekrishnafarsan');
+  });
 });
 
 

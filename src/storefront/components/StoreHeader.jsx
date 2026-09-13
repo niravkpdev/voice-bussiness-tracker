@@ -75,12 +75,12 @@ export function StoreHeader({
               <img src={storeInfo.logo} alt={storeInfo.name} style={{ width: 44, height: 44, borderRadius: 10, objectFit: 'cover' }} />
             ) : (
               <div className="trinetr-logo-emblem">
-                <span className="trinetr-logo-accent">{(storeInfo?.name || 'J')[0].toUpperCase()}</span>
+                <span className="trinetr-logo-accent">{(storeInfo?.name || 'S')[0].toUpperCase()}</span>
               </div>
             )}
             <div className="trinetr-logo-text">
               <span className="trinetr-brand-title">{storeInfo?.name?.toUpperCase()}</span>
-              <span className="trinetr-brand-sub">{storeInfo?.tagline?.toUpperCase() || 'NAMKEEN & WAFERS'}</span>
+              <span className="trinetr-brand-sub">{storeInfo?.tagline?.toUpperCase() || 'ONLINE STORE'}</span>
             </div>
           </div>
 

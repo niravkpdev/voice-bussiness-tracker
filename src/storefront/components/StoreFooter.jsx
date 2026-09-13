@@ -82,8 +82,7 @@ export function StoreFooter({ onNavigate }) {
               <span className="tagline" style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase' }}>{activeStore.tagline}</span>
             </div>
             <p className="brand-description" style={{ color: '#cbd5e1', fontSize: '13px', lineHeight: 1.6, margin: '12px 0 16px 0' }}>
-              Handcrafted with pure quality and authentic recipes. 
-              Offering {activeStore.varietiesCount || '100+'} varieties of fresh delicacies, snacks, and foods.
+              {activeStore.description || `Handcrafted with pure quality and authentic recipes. Offering ${activeStore.varietiesCount || '100+'} varieties of fresh delicacies, snacks, and foods.`}
             </p>
             <div className="trinetr-social-links">
               <span className="social-pill" style={{ background: '#1e293b', color: '#38bdf8', border: '1px solid #334155', padding: '5px 12px', borderRadius: '12px', fontSize: '11.5px', fontWeight: 700 }}>{activeStore.facebook || 'Facebook'}</span>

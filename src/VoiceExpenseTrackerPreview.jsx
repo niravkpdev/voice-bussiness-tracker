@@ -411,7 +411,19 @@ function readProfile() {
       const raw = localStorage.getItem('businessProfile');
       if (raw) localSaved = JSON.parse(raw);
     } catch {}
-    return { ...DEFAULT_PROFILE, ...localSaved, ...scoped };
+    const merged = { ...DEFAULT_PROFILE, ...localSaved, ...scoped };
+    // If company name was customized by the user, but storeName remained on old demo defaults, auto-sync them!
+    const isDemoStoreName = !merged.storeName || merged.storeName === 'Jay Ambe Namkeen' || merged.storeName === 'Jay Ambe Namkeen Store';
+    const isCustomCompanyName = merged.name && merged.name !== 'Jay Ambe Namkeen' && merged.name !== 'Trinetr Business Suite';
+    if (isCustomCompanyName && isDemoStoreName) {
+      merged.storeName = merged.name;
+    }
+    const isDemoStoreTagline = !merged.storeTagline || merged.storeTagline === 'Fresh & Authentic Homemade Snacks & Delicacies' || merged.storeTagline === 'Authentic Namkeen & Farsan Manufacturer & Wholesaler';
+    const isCustomTagline = merged.tagline && merged.tagline !== 'Authentic Namkeen & Farsan Manufacturer & Wholesaler' && merged.tagline !== 'Fresh & Authentic Homemade Snacks & Delicacies';
+    if (isCustomTagline && isDemoStoreTagline) {
+      merged.storeTagline = merged.tagline;
+    }
+    return merged;
   } catch {
     return DEFAULT_PROFILE;
   }
@@ -5202,17 +5214,32 @@ export default function VoiceExpenseTrackerPreview() {
       return;
     }
     const formData = new FormData(event.currentTarget);
+    const submittedName = sanitizeText(formData.get('profileName'), 140) || DEFAULT_PROFILE.name;
+    const submittedTagline = sanitizeText(formData.get('profileTagline'), 160) || DEFAULT_PROFILE.tagline;
+    let submittedStoreName = sanitizeText(formData.get('profileStoreName'), 140);
+    let submittedStoreTagline = sanitizeText(formData.get('profileStoreTagline'), 160);
+
+    const isOldDemoName = (n) => !n || n === 'Jay Ambe Namkeen' || n === 'Jay Ambe Namkeen Store' || n === 'Trinetr Business Suite' || n === profile.name || n === profile.storeName;
+    if (!submittedStoreName || (submittedName !== profile.name && isOldDemoName(submittedStoreName))) {
+      submittedStoreName = submittedName;
+    }
+
+    const isOldDemoTagline = (t) => !t || t === 'Fresh & Authentic Homemade Snacks & Delicacies' || t === 'Authentic Namkeen & Farsan Manufacturer & Wholesaler' || t === 'namkeen & wafers' || t === profile.tagline || t === profile.storeTagline;
+    if (!submittedStoreTagline || (submittedTagline !== profile.tagline && isOldDemoTagline(submittedStoreTagline))) {
+      submittedStoreTagline = submittedTagline;
+    }
+
     const nextProfile = {
       ...profile,
-      name: sanitizeText(formData.get('profileName'), 140) || DEFAULT_PROFILE.name,
-      tagline: sanitizeText(formData.get('profileTagline'), 160) || DEFAULT_PROFILE.tagline,
+      name: submittedName,
+      tagline: submittedTagline,
       owner: sanitizeText(formData.get('profileOwner'), 120) || DEFAULT_PROFILE.owner,
       email: sanitizeEmail(formData.get('profileEmail')) || DEFAULT_PROFILE.email,
       phone: sanitizeText(formData.get('profilePhone'), 24) || DEFAULT_PROFILE.phone,
       address: sanitizeText(formData.get('profileAddress'), 240),
       gstin: sanitizeText(formData.get('profileGstin'), 30) || profile.gstin || '',
-      storeName: sanitizeText(formData.get('profileStoreName'), 140) || sanitizeText(formData.get('profileName'), 140) || DEFAULT_PROFILE.name,
-      storeTagline: sanitizeText(formData.get('profileStoreTagline'), 160) || sanitizeText(formData.get('profileTagline'), 160) || DEFAULT_PROFILE.storeTagline,
+      storeName: submittedStoreName,
+      storeTagline: submittedStoreTagline,
       whatsapp: sanitizeText(formData.get('profileWhatsapp'), 24) || sanitizeText(formData.get('profilePhone'), 24) || DEFAULT_PROFILE.whatsapp,
       fssaiNumber: sanitizeText(formData.get('profileFssai'), 40) || DEFAULT_PROFILE.fssaiNumber,
       hours: sanitizeText(formData.get('profileHours'), 100) || DEFAULT_PROFILE.hours,
@@ -5271,7 +5298,13 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const updateBusinessProfile = async (updates) => {
-    const nextProfile = { ...profile, ...updates };
+    let nextProfile = { ...profile, ...updates };
+    if (updates.name && (!nextProfile.storeName || nextProfile.storeName === 'Jay Ambe Namkeen' || nextProfile.storeName === 'Jay Ambe Namkeen Store' || nextProfile.storeName === profile.name)) {
+      nextProfile.storeName = updates.name;
+    }
+    if (updates.tagline && (!nextProfile.storeTagline || nextProfile.storeTagline === profile.tagline)) {
+      nextProfile.storeTagline = updates.tagline;
+    }
     try {
       writeScopedString(PROFILE_KEY, JSON.stringify(nextProfile));
     } catch {}
@@ -10215,10 +10248,10 @@ export default function VoiceExpenseTrackerPreview() {
                       <input
                         id="profile-store-name"
                         name="profileStoreName"
-                        defaultValue={profile.storeName || profile.name}
-                        placeholder="e.g. Jay Ambe Namkeen or My Brand"
+                        defaultValue={(!profile.storeName || profile.storeName === 'Jay Ambe Namkeen Store' || profile.storeName === 'Jay Ambe Namkeen') ? profile.name : profile.storeName}
+                        placeholder="Leave blank to automatically match Company Name"
                       />
-                      <span className="field-help" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Displays in storefront header, logo badge, and order confirmations.</span>
+                      <span className="field-help" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Displays in storefront header, logo badge, and order confirmations. Automatically syncs with Company Name if left empty.</span>
                     </div>
 
                     <div>
@@ -10242,8 +10275,8 @@ export default function VoiceExpenseTrackerPreview() {
                       <input
                         id="profile-store-tagline"
                         name="profileStoreTagline"
-                        defaultValue={profile.storeTagline || profile.tagline}
-                        placeholder="e.g. Authentic Surat Farsan & Fresh Snacks"
+                        defaultValue={(!profile.storeTagline || profile.storeTagline === 'Fresh & Authentic Homemade Snacks & Delicacies') ? profile.tagline : profile.storeTagline}
+                        placeholder="Leave blank to automatically match Business Tagline"
                       />
                     </div>
 
