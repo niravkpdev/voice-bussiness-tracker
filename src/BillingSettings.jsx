@@ -20,7 +20,7 @@ export function BillingSettings({ profile, onOpenPricing }) {
             </h3>
             {currentPlan === 'Free Trial' ? (
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-                You have {trialDaysLeft} days left in your free trial.
+                You have {trialDaysLeft} days left in your 1-month free trial.
               </p>
             ) : (
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>

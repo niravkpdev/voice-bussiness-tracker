@@ -85,11 +85,26 @@ export function PricingPage({ onClose, onUpgrade, onSelectPlan, onContactSales, 
 
       {/* Hero */}
       <section style={{ textAlign: 'center', padding: '50px 20px 30px', maxWidth: '800px', margin: '0 auto' }}>
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '8px',
+          background: 'rgba(16, 185, 129, 0.12)',
+          color: '#10b981',
+          padding: '6px 16px',
+          borderRadius: '999px',
+          fontWeight: 700,
+          fontSize: '0.85rem',
+          marginBottom: '16px',
+          border: '1px solid rgba(16, 185, 129, 0.3)'
+        }}>
+          ✨ 1 Month Free Trial for everyone • No credit card required
+        </div>
         <h1 style={{ fontSize: 'clamp(2rem, 4vw, 2.75rem)', marginBottom: '16px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
           Simple, transparent pricing
         </h1>
         <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', marginBottom: '32px', lineHeight: 1.6 }}>
-          Choose the right plan to manage and grow your business. No hidden fees. Cancel anytime.
+          Start with our 1-Month Free Trial. Plans start from just ₹99/month with our Basic model. No hidden fees. Cancel anytime.
         </p>
         
         {/* Toggle */}
@@ -141,7 +156,7 @@ export function PricingPage({ onClose, onUpgrade, onSelectPlan, onContactSales, 
         boxSizing: 'border-box'
       }}>
         
-        {/* Starter */}
+        {/* Basic */}
         <div style={{
           background: 'var(--bg-secondary)',
           borderRadius: '16px',
@@ -152,25 +167,26 @@ export function PricingPage({ onClose, onUpgrade, onSelectPlan, onContactSales, 
           boxShadow: '0 4px 16px rgba(0,0,0,0.05)'
         }}>
           <div style={{ color: 'var(--brand-primary)', marginBottom: '16px' }}><Zap size={28} /></div>
-          <h3 style={{ fontSize: '1.5rem', marginBottom: '8px', fontWeight: 700, color: 'var(--text-primary)' }}>Starter</h3>
+          <h3 style={{ fontSize: '1.5rem', marginBottom: '8px', fontWeight: 700, color: 'var(--text-primary)' }}>Basic</h3>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '24px', minHeight: '40px', lineHeight: 1.5 }}>
-            Perfect for small shops just getting started.
+            Entry-level plan starting at ₹99. Perfect for small shops, retail counters, and freelancers.
           </p>
           <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
             <span className="pricing-page-price" style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-              ₹{billingCycle === 'monthly' ? '499' : '399'}
+              ₹{billingCycle === 'monthly' ? '99' : '79'}
             </span>
             <span className="pricing-page-period" style={{ color: 'var(--text-secondary)', fontSize: '1rem', fontWeight: 500 }}>/mo</span>
           </div>
-          <button className="saas-primary-button full" style={{ marginBottom: '32px' }} onClick={() => handleAction('Starter')}>
-            {isLoggedIn ? 'Upgrade to Starter' : 'Start Free Trial'}
+          <button className="saas-primary-button full" style={{ marginBottom: '32px' }} onClick={() => handleAction('Basic')}>
+            {isLoggedIn ? 'Upgrade to Basic' : 'Start Free Trial'}
           </button>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px', color: 'var(--text-secondary)', fontSize: '0.95rem', flex: 1 }}>
             <li style={{ display: 'flex', alignItems: 'center', gap: '12px' }}><Check size={18} color="#10b981" /> Up to 500 Customers</li>
             <li style={{ display: 'flex', alignItems: 'center', gap: '12px' }}><Check size={18} color="#10b981" /> Up to 500 Products</li>
-            <li style={{ display: 'flex', alignItems: 'center', gap: '12px' }}><Check size={18} color="#10b981" /> Basic Reports</li>
+            <li style={{ display: 'flex', alignItems: 'center', gap: '12px' }}><Check size={18} color="#10b981" /> GST Invoicing &amp; Billing</li>
+            <li style={{ display: 'flex', alignItems: 'center', gap: '12px' }}><Check size={18} color="#10b981" /> Basic Profit &amp; Loss Reports</li>
             <li style={{ display: 'flex', alignItems: 'center', gap: '12px' }}><Check size={18} color="#10b981" /> Basic HRMS (10 Employees)</li>
-            <li style={{ display: 'flex', alignItems: 'center', gap: '12px' }}><Check size={18} color="#10b981" /> Email Support</li>
+            <li style={{ display: 'flex', alignItems: 'center', gap: '12px' }}><Check size={18} color="#10b981" /> Email &amp; WhatsApp Support</li>
           </ul>
         </div>
 
@@ -203,11 +219,11 @@ export function PricingPage({ onClose, onUpgrade, onSelectPlan, onContactSales, 
           <div style={{ color: 'var(--brand-primary)', marginBottom: '16px' }}><Crown size={28} /></div>
           <h3 style={{ fontSize: '1.5rem', marginBottom: '8px', fontWeight: 700, color: 'var(--text-primary)' }}>Professional</h3>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '24px', minHeight: '40px', lineHeight: 1.5 }}>
-            For growing businesses needing advanced tools.
+            For growing businesses needing advanced ERP &amp; AI tools.
           </p>
           <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
             <span className="pricing-page-price" style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-              ₹{billingCycle === 'monthly' ? '999' : '799'}
+              ₹{billingCycle === 'monthly' ? '499' : '399'}
             </span>
             <span className="pricing-page-period" style={{ color: 'var(--text-secondary)', fontSize: '1rem', fontWeight: 500 }}>/mo</span>
           </div>
@@ -215,9 +231,9 @@ export function PricingPage({ onClose, onUpgrade, onSelectPlan, onContactSales, 
             {isLoggedIn ? 'Upgrade to Pro' : 'Start Free Trial'}
           </button>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px', color: 'var(--text-secondary)', fontSize: '0.95rem', flex: 1 }}>
-            <li style={{ display: 'flex', alignItems: 'center', gap: '12px', fontWeight: 700, color: 'var(--text-primary)' }}><Check size={18} color="var(--brand-primary)" /> Everything in Starter, plus:</li>
+            <li style={{ display: 'flex', alignItems: 'center', gap: '12px', fontWeight: 700, color: 'var(--text-primary)' }}><Check size={18} color="var(--brand-primary)" /> Everything in Basic, plus:</li>
             <li style={{ display: 'flex', alignItems: 'center', gap: '12px' }}><Check size={18} color="var(--brand-primary)" /> Unlimited Customers &amp; Products</li>
-            <li style={{ display: 'flex', alignItems: 'center', gap: '12px' }}><Check size={18} color="var(--brand-primary)" /> Advanced GST Reports</li>
+            <li style={{ display: 'flex', alignItems: 'center', gap: '12px' }}><Check size={18} color="var(--brand-primary)" /> Advanced GST &amp; Tax Reports</li>
             <li style={{ display: 'flex', alignItems: 'center', gap: '12px' }}><Check size={18} color="var(--brand-primary)" /> Multiple Users (Up to 5)</li>
             <li style={{ display: 'flex', alignItems: 'center', gap: '12px' }}><Check size={18} color="var(--brand-primary)" /> Trinetr AI Assistant</li>
             <li style={{ display: 'flex', alignItems: 'center', gap: '12px' }}><Check size={18} color="var(--brand-primary)" /> Priority Support</li>

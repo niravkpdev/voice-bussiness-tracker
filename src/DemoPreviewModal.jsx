@@ -452,7 +452,7 @@ export function DemoPreviewModal({ isOpen, onClose, onStartFree, onTryLiveDemo }
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <ShieldCheck size={18} color="#10b981" />
             <span style={{ fontSize: '12.5px', color: 'var(--text-secondary, #64748b)' }}>
-              14-Day Free Trial • No Credit Card Required
+              1-Month Free Trial • No Credit Card Required
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

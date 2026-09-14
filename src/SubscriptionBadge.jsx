@@ -11,8 +11,8 @@ export function SubscriptionBadge({ plan, onClick }) {
     label: 'Free Trial'
   };
 
-  if (currentPlan === 'Starter') {
-    config = { color: '#10b981', bg: '#ecfdf5', icon: <Zap size={12} />, label: 'Starter' };
+  if (currentPlan === 'Basic' || currentPlan === 'Starter') {
+    config = { color: '#10b981', bg: '#ecfdf5', icon: <Zap size={12} />, label: 'Basic' };
   } else if (currentPlan === 'Professional') {
     config = { color: '#8b5cf6', bg: '#f5f3ff', icon: <Crown size={12} />, label: 'Professional' };
   } else if (currentPlan === 'Enterprise') {

@@ -28,13 +28,13 @@ describe('Top Navbar Functions & Associated Modals', () => {
     );
 
     expect(screen.getByText('Simple, transparent pricing')).toBeInTheDocument();
-    expect(screen.getByText('Starter')).toBeInTheDocument();
+    expect(screen.getByText('Basic')).toBeInTheDocument();
     expect(screen.getByText('Professional')).toBeInTheDocument();
     expect(screen.getByText('Enterprise')).toBeInTheDocument();
 
-    const starterBtn = screen.getAllByRole('button', { name: /Start Free Trial/i })[0];
-    fireEvent.click(starterBtn);
-    expect(handleSelectPlan).toHaveBeenCalledWith('Starter', 'monthly');
+    const basicBtn = screen.getAllByRole('button', { name: /Start Free Trial/i })[0];
+    fireEvent.click(basicBtn);
+    expect(handleSelectPlan).toHaveBeenCalledWith('Basic', 'monthly');
 
     const enterpriseBtn = screen.getByRole('button', { name: /Contact Sales/i });
     fireEvent.click(enterpriseBtn);

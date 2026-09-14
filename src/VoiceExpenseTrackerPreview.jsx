@@ -54,6 +54,8 @@ import { GuidedTour } from './GuidedTour.jsx';
 import { SetupWizard } from './SetupWizard.jsx';
 import { LegalPage, LEGAL_PAGE_IDS } from './LegalPages.jsx';
 import { PricingPage } from './PricingPage.jsx';
+import { UpgradeModal } from './UpgradeModal.jsx';
+import { getUpgradeMessage } from './subscription.js';
 import { ContactModal } from './ContactModal.jsx';
 import {
   createInvoiceWithStock,
@@ -6375,20 +6377,39 @@ export default function VoiceExpenseTrackerPreview() {
 
             <section className="saas-section" id="pricing">
               <div className="saas-section-heading">
-                <span className="saas-kicker">Pricing</span>
-                <h2>Start simple. Scale when your business grows.</h2>
+                <span className="saas-kicker">Pricing &amp; Plans</span>
+                <h2>Start with a 1-Month Free Trial. Scale from ₹99/mo.</h2>
               </div>
               <div className="saas-feature-grid three">
-                {['Starter', 'Business', 'Enterprise'].map((plan, index) => (
-                  <article className="saas-pricing-card" key={plan}>
-                    <strong>{plan}</strong>
-                    <h3>{index === 0 ? 'Free' : index === 1 ? '₹499/mo' : 'Custom'}</h3>
-                    <p>{index === 0 ? 'Voice entries and reports' : index === 1 ? 'ERP, invoices, inventory, AI' : 'Security, roles, integrations'}</p>
-                    <button className={index === 1 ? 'saas-primary-button' : 'saas-secondary-button'} type="button" onClick={() => { trackEvent('Signup started'); setAuthView('register'); }}>
-                      Start
-                    </button>
-                  </article>
-                ))}
+                <article className="saas-pricing-card">
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Try Risk-Free</span>
+                  <strong>1-Month Free Trial</strong>
+                  <h3>₹0</h3>
+                  <p>30 days full access for everyone. Core accounting, voice entries, GST billing, and reports.</p>
+                  <button className="saas-secondary-button" type="button" onClick={() => { trackEvent('Signup started'); setAuthView('register'); }}>
+                    Start Free Trial
+                  </button>
+                </article>
+
+                <article className="saas-pricing-card" style={{ border: '2px solid var(--brand-primary, #00dfc4)', position: 'relative' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--brand-primary, #00dfc4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Most Popular</span>
+                  <strong>Basic</strong>
+                  <h3>₹99<span style={{ fontSize: '1rem', fontWeight: 500, color: 'var(--text-secondary)' }}>/mo</span></h3>
+                  <p>Starts from ₹99/mo. Complete ERP, up to 500 customers &amp; products, barcode billing, and HRMS.</p>
+                  <button className="saas-primary-button" type="button" onClick={() => { trackEvent('Signup started'); setAuthView('register'); }}>
+                    Get Started at ₹99
+                  </button>
+                </article>
+
+                <article className="saas-pricing-card">
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Growth &amp; Enterprise</span>
+                  <strong>Pro &amp; Enterprise</strong>
+                  <h3>₹499<span style={{ fontSize: '1rem', fontWeight: 500, color: 'var(--text-secondary)' }}>/mo</span></h3>
+                  <p>Unlimited inventory, Trinetr AI Assistant, multi-user access, advanced GST, and custom roles.</p>
+                  <button className="saas-secondary-button" type="button" onClick={() => setShowPricing(true)}>
+                    View All Plans
+                  </button>
+                </article>
               </div>
             </section>
 
@@ -11417,6 +11438,18 @@ export default function VoiceExpenseTrackerPreview() {
             setShowPricing(false);
           }}
           isLoggedIn={Boolean(authUser && hasVerifiedAccess)}
+        />
+      )}
+
+      {upgradeModalFeature && (
+        <UpgradeModal
+          currentPlan={profile?.subscriptionPlan || 'Free Trial'}
+          featureMessage={getUpgradeMessage(profile?.subscriptionPlan, upgradeModalFeature)}
+          onClose={() => setUpgradeModalFeature(null)}
+          onUpgrade={() => {
+            setUpgradeModalFeature(null);
+            setShowPricing(true);
+          }}
         />
       )}
 

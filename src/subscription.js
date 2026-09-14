@@ -1,12 +1,22 @@
 export const PLAN_LIMITS = {
   'Free Trial': { 
-    customers: 5, 
-    products: 10, 
-    employees: 2,
+    customers: 50, 
+    products: 50, 
+    employees: 5,
     users: 1,
     ai: false,
-    label: 'Free Trial',
-    price: 0
+    label: '1 Month Free Trial',
+    price: 0,
+    trialDays: 30
+  },
+  'Basic': { 
+    customers: 500, 
+    products: 500, 
+    employees: 10,
+    users: 1,
+    ai: false,
+    label: 'Basic',
+    price: 99
   },
   'Starter': { 
     customers: 500, 
@@ -14,8 +24,8 @@ export const PLAN_LIMITS = {
     employees: 10,
     users: 1,
     ai: false,
-    label: 'Starter',
-    price: 499
+    label: 'Basic',
+    price: 99
   },
   'Professional': { 
     customers: 999999, 
@@ -24,7 +34,7 @@ export const PLAN_LIMITS = {
     users: 5,
     ai: true,
     label: 'Professional',
-    price: 999
+    price: 499
   },
   'Enterprise': { 
     customers: 999999, 
@@ -77,14 +87,14 @@ export function getUpgradeMessage(currentPlan, featureName) {
 }
 
 /**
- * Calculate trial days left
+ * Calculate trial days left (1 Month Free Trial = 30 days)
  */
 export function getTrialDaysLeft(trialStartDate) {
-  if (!trialStartDate) return 0;
+  if (!trialStartDate) return 30;
   const start = new Date(trialStartDate);
   const now = new Date();
-  const diffTime = Math.abs(now - start);
+  const diffTime = Math.max(0, now - start);
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  const remaining = 14 - diffDays;
+  const remaining = 30 - diffDays;
   return remaining > 0 ? remaining : 0;
 }
