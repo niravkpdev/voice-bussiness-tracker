@@ -523,7 +523,19 @@ function buildRow(uid, id, data) {
 
 async function syncUserProfileBestEffort(uid, profile) {
   try {
-    await saveUserProfile(uid, profile);
+    const client = getSupabaseClient();
+    if (!client || !uid) return;
+    let hasExisting = false;
+    try {
+      const { data } = await client.from('settings').select('data').eq('user_id', uid).eq('id', 'profile').maybeSingle();
+      if (data?.data && (data.data.name || data.data.businessName || data.data.storeName)) {
+        hasExisting = true;
+      }
+    } catch {}
+
+    if (!hasExisting) {
+      await saveUserProfile(uid, profile);
+    }
   } catch (error) {
     cloudError('SUPABASE_PROFILE_SYNC_SKIPPED', {
       uid,
@@ -1069,7 +1081,37 @@ export async function listenToSupabaseAuth(onUser, onError) {
 }
 
 export async function saveUserProfile(uid, profile) {
-  return saveCloudRecord(uid, 'settings', 'profile', profile);
+  const client = getSupabaseClient();
+  if (!client || !uid) {
+    return null;
+  }
+
+  try {
+    const metaUpdates = {};
+    if (profile?.businessName || profile?.name) metaUpdates.businessName = profile.businessName || profile.name;
+    if (profile?.ownerName || profile?.owner) metaUpdates.ownerName = profile.ownerName || profile.owner;
+    if (profile?.role) metaUpdates.role = profile.role;
+    if (Object.keys(metaUpdates).length > 0 && client.auth?.updateUser) {
+      await client.auth.updateUser({ data: metaUpdates }).catch(() => {});
+    }
+  } catch {}
+
+  let existing = {};
+  try {
+    const { data } = await client.from('settings').select('data').eq('user_id', uid).eq('id', 'profile').maybeSingle();
+    if (data?.data && typeof data.data === 'object') {
+      existing = data.data;
+    }
+  } catch {}
+
+  const merged = {
+    ...existing,
+    ...(profile || {}),
+    name: profile?.name || existing.name || profile?.businessName || existing.businessName || '',
+    businessName: profile?.businessName || profile?.name || existing.businessName || existing.name || '',
+  };
+
+  return saveCloudRecord(uid, 'settings', 'profile', merged);
 }
 
 export async function createInvoiceWithStock(uid, invoice, inventoryItems = []) {

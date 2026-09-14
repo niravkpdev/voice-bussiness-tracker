@@ -210,7 +210,7 @@ export default function ProfitNxProduction({
             </h1>
           </div>
           <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#334155' }}>
-            Company: <strong style={{ color: '#0f172a' }}>{profile.name || 'JAY AMBE NAMKEEN'}</strong> &nbsp;|&nbsp; Manufacturing &amp; Processing Unit &nbsp;|&nbsp; FY: <strong style={{ color: '#0f172a' }}>[2026 - 2027]</strong>
+            Company: <strong style={{ color: '#0f172a' }}>{profile?.name || 'TRINETR BUSINESS SUITE'}</strong> &nbsp;|&nbsp; Manufacturing &amp; Processing Unit &nbsp;|&nbsp; FY: <strong style={{ color: '#0f172a' }}>[2026 - 2027]</strong>
           </p>
         </div>
 

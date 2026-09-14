@@ -133,17 +133,17 @@ const INVENTORY_KEY = 'businessInventory';
 const ORDERS_KEY = 'businessOrders';
 const VOICE_ALERTS_KEY = 'voiceLowStockAlertsEnabled';
 const DEFAULT_PROFILE = {
-  name: 'Jay Ambe Namkeen',
-  tagline: 'Authentic Namkeen & Farsan Manufacturer & Wholesaler',
+  name: 'Trinetr Business Suite',
+  tagline: 'Enterprise Business Management & Point of Sale',
   logo: '/assets/trinetr-logo.jpg',
-  owner: 'Jay Ambe Namkeen',
+  owner: 'Business Owner',
   email: 'trinetr1901@gmail.com',
   phone: '+918488943771',
   address: 'Plot No. 12, GIDC Industrial Estate, Gujarat, India',
   gstin: '24CPVPC7753J1Z8',
   financialYear: '2026-2027',
-  storeName: 'Jay Ambe Namkeen Store',
-  storeTagline: 'Fresh & Authentic Homemade Snacks & Delicacies',
+  storeName: 'Trinetr Store',
+  storeTagline: 'Fresh & Authentic Quality Products',
   whatsapp: '+918488943771',
   fssaiNumber: '10722026001234',
   hours: 'Mon - Sun: 9:00 AM - 10:00 PM',
@@ -400,6 +400,29 @@ function readSavedLogs() {
   return readSavedArray(STORAGE_KEY);
 }
 
+export const isDemoBusinessName = (val) => {
+  if (!val || typeof val !== 'string') return true;
+  const s = val.trim().toLowerCase();
+  return (
+    s === '' ||
+    s === 'jay ambe namkeen' ||
+    s === 'jay ambe namkeen store' ||
+    s === 'demo workspace' ||
+    s === 'voice business tracker'
+  );
+};
+
+export const isDemoBusinessTagline = (val) => {
+  if (!val || typeof val !== 'string') return true;
+  const s = val.trim().toLowerCase();
+  return (
+    s === '' ||
+    s === 'fresh & authentic homemade snacks & delicacies' ||
+    s === 'authentic namkeen & farsan manufacturer & wholesaler' ||
+    s === 'namkeen & wafers'
+  );
+};
+
 function readProfile() {
   try {
     let scoped = {};
@@ -411,26 +434,96 @@ function readProfile() {
       const raw = localStorage.getItem('businessProfile');
       if (raw) localSaved = JSON.parse(raw);
     } catch {}
-    const merged = { ...DEFAULT_PROFILE, ...localSaved, ...scoped };
-    // If company name was customized by the user, but storeName remained on old demo defaults, auto-sync them!
-    const isDemoStoreName = !merged.storeName ||
-      merged.storeName.trim().toLowerCase() === 'jay ambe namkeen' ||
-      merged.storeName.trim().toLowerCase() === 'jay ambe namkeen store';
-    const isCustomCompanyName = merged.name &&
-      merged.name.trim().toLowerCase() !== 'jay ambe namkeen' &&
-      merged.name.trim().toLowerCase() !== 'jay ambe namkeen store';
-    if (isCustomCompanyName && isDemoStoreName) {
-      merged.storeName = merged.name;
+
+    // Check if auth user has a custom registered business name
+    let authBizName = '';
+    let authOwnerName = '';
+    try {
+      const rawAuth = localStorage.getItem(AUTH_KEY);
+      if (rawAuth) {
+        const authData = JSON.parse(rawAuth);
+        if (authData?.businessName && !isDemoBusinessName(authData.businessName)) {
+          authBizName = authData.businessName.trim();
+        }
+        if (authData?.ownerName && authData.ownerName !== 'Business Owner' && authData.ownerName !== 'Demo User') {
+          authOwnerName = authData.ownerName.trim();
+        }
+      }
+    } catch {}
+
+    // Resolve company name: prefer non-demo customized names from scoped, localSaved, or auth
+    let chosenName = '';
+    if (scoped.name && !isDemoBusinessName(scoped.name)) {
+      chosenName = scoped.name.trim();
+    } else if (localSaved.name && !isDemoBusinessName(localSaved.name)) {
+      chosenName = localSaved.name.trim();
+    } else if (scoped.businessName && !isDemoBusinessName(scoped.businessName)) {
+      chosenName = scoped.businessName.trim();
+    } else if (localSaved.businessName && !isDemoBusinessName(localSaved.businessName)) {
+      chosenName = localSaved.businessName.trim();
+    } else if (scoped.storeName && !isDemoBusinessName(scoped.storeName)) {
+      chosenName = scoped.storeName.trim();
+    } else if (localSaved.storeName && !isDemoBusinessName(localSaved.storeName)) {
+      chosenName = localSaved.storeName.trim();
+    } else if (authBizName) {
+      chosenName = authBizName;
+    } else if (scoped.name && scoped.name.trim()) {
+      chosenName = scoped.name.trim();
+    } else if (localSaved.name && localSaved.name.trim()) {
+      chosenName = localSaved.name.trim();
+    } else {
+      chosenName = DEFAULT_PROFILE.name;
     }
-    const isDemoStoreTagline = !merged.storeTagline ||
-      merged.storeTagline.trim().toLowerCase() === 'fresh & authentic homemade snacks & delicacies' ||
-      merged.storeTagline.trim().toLowerCase() === 'authentic namkeen & farsan manufacturer & wholesaler';
-    const isCustomTagline = merged.tagline &&
-      merged.tagline.trim().toLowerCase() !== 'authentic namkeen & farsan manufacturer & wholesaler' &&
-      merged.tagline.trim().toLowerCase() !== 'fresh & authentic homemade snacks & delicacies';
-    if (isCustomTagline && isDemoStoreTagline) {
-      merged.storeTagline = merged.tagline;
+
+    // Resolve storefront name: prefer customized storeName, else inherit chosen company name
+    let chosenStoreName = '';
+    if (scoped.storeName && !isDemoBusinessName(scoped.storeName)) {
+      chosenStoreName = scoped.storeName.trim();
+    } else if (localSaved.storeName && !isDemoBusinessName(localSaved.storeName)) {
+      chosenStoreName = localSaved.storeName.trim();
+    } else {
+      chosenStoreName = chosenName;
     }
+
+    // Resolve tagline
+    let chosenTagline = '';
+    if (scoped.tagline && !isDemoBusinessTagline(scoped.tagline)) {
+      chosenTagline = scoped.tagline.trim();
+    } else if (localSaved.tagline && !isDemoBusinessTagline(localSaved.tagline)) {
+      chosenTagline = localSaved.tagline.trim();
+    } else if (scoped.storeTagline && !isDemoBusinessTagline(scoped.storeTagline)) {
+      chosenTagline = scoped.storeTagline.trim();
+    } else if (localSaved.storeTagline && !isDemoBusinessTagline(localSaved.storeTagline)) {
+      chosenTagline = localSaved.storeTagline.trim();
+    } else if (scoped.tagline && scoped.tagline.trim()) {
+      chosenTagline = scoped.tagline.trim();
+    } else if (localSaved.tagline && localSaved.tagline.trim()) {
+      chosenTagline = localSaved.tagline.trim();
+    } else {
+      chosenTagline = DEFAULT_PROFILE.tagline;
+    }
+
+    let chosenStoreTagline = '';
+    if (scoped.storeTagline && !isDemoBusinessTagline(scoped.storeTagline)) {
+      chosenStoreTagline = scoped.storeTagline.trim();
+    } else if (localSaved.storeTagline && !isDemoBusinessTagline(localSaved.storeTagline)) {
+      chosenStoreTagline = localSaved.storeTagline.trim();
+    } else {
+      chosenStoreTagline = chosenTagline;
+    }
+
+    const merged = {
+      ...DEFAULT_PROFILE,
+      ...localSaved,
+      ...scoped,
+      name: chosenName,
+      storeName: chosenStoreName,
+      tagline: chosenTagline,
+      storeTagline: chosenStoreTagline,
+      owner: scoped.owner || localSaved.owner || authOwnerName || DEFAULT_PROFILE.owner,
+      businessName: chosenName,
+    };
+
     return merged;
   } catch {
     return DEFAULT_PROFILE;
@@ -2036,7 +2129,51 @@ export default function VoiceExpenseTrackerPreview() {
     setLedgers(initialLedgers);
     setVouchers(initialVouchers);
     setLogs(initialLogs);
-    setProfile(cloudProfile ? { ...DEFAULT_PROFILE, ...cloudProfile } : readProfile());
+
+    const localProfile = readProfile();
+    let resolvedProfile = localProfile;
+    if (cloudProfile && typeof cloudProfile === 'object') {
+      const normalizedCloud = {
+        ...cloudProfile,
+        name: cloudProfile.name || cloudProfile.businessName || '',
+        owner: cloudProfile.owner || cloudProfile.ownerName || '',
+      };
+
+      const cloudNameIsDemo = isDemoBusinessName(normalizedCloud.name);
+      const localNameIsCustom = !isDemoBusinessName(localProfile.name);
+
+      const effectiveName = (localNameIsCustom && cloudNameIsDemo)
+        ? localProfile.name
+        : (normalizedCloud.name || localProfile.name || DEFAULT_PROFILE.name);
+
+      const effectiveStoreName = (localProfile.storeName && !isDemoBusinessName(localProfile.storeName) && isDemoBusinessName(normalizedCloud.storeName))
+        ? localProfile.storeName
+        : (normalizedCloud.storeName || effectiveName);
+
+      resolvedProfile = {
+        ...DEFAULT_PROFILE,
+        ...localProfile,
+        ...normalizedCloud,
+        name: effectiveName,
+        storeName: effectiveStoreName,
+        businessName: effectiveName,
+      };
+
+      if (localNameIsCustom && cloudNameIsDemo && authUser?.uid && supabaseEnabled) {
+        saveUserProfileSettings(authUser.uid, {
+          ...resolvedProfile,
+          businessName: resolvedProfile.name,
+          userId: authUser.uid,
+        }).catch(() => {});
+      }
+    }
+
+    try {
+      writeScopedString(PROFILE_KEY, JSON.stringify(resolvedProfile));
+      localStorage.setItem('businessProfile', JSON.stringify(resolvedProfile));
+    } catch {}
+
+    setProfile(resolvedProfile);
 
     const parties = getPartyLedgers(initialLedgers);
     if (parties.length > 0) {
@@ -2984,12 +3121,31 @@ export default function VoiceExpenseTrackerPreview() {
     setSecureError('');
     setAuthNotice('');
 
-    // Update active business GSTIN
-    setProfile(prev => ({ ...prev, gstin }));
+    // Update active business name and GSTIN
+    const trimmedBizName = (businessName || '').trim();
+    setProfile(prev => {
+      const next = { ...prev, gstin: gstin || prev.gstin };
+      if (trimmedBizName && !isDemoBusinessName(trimmedBizName)) {
+        next.name = trimmedBizName;
+        next.businessName = trimmedBizName;
+        if (!next.storeName || isDemoBusinessName(next.storeName)) {
+          next.storeName = trimmedBizName;
+        }
+      }
+      return next;
+    });
     try {
       const savedProfile = JSON.parse(localStorage.getItem('businessProfile') || '{}');
-      savedProfile.gstin = gstin;
+      if (gstin) savedProfile.gstin = gstin;
+      if (trimmedBizName && !isDemoBusinessName(trimmedBizName)) {
+        savedProfile.name = trimmedBizName;
+        savedProfile.businessName = trimmedBizName;
+        if (!savedProfile.storeName || isDemoBusinessName(savedProfile.storeName)) {
+          savedProfile.storeName = trimmedBizName;
+        }
+      }
       localStorage.setItem('businessProfile', JSON.stringify(savedProfile));
+      writeScopedString(PROFILE_KEY, JSON.stringify(savedProfile));
     } catch {}
 
     try {
@@ -5296,18 +5452,22 @@ export default function VoiceExpenseTrackerPreview() {
     // 2. Cloud sync if Supabase is connected and user is logged in
     try {
       if (authUser?.uid && supabaseEnabled) {
-        await Promise.allSettled([
-          saveUserProfile(authUser.uid, {
-            businessName: nextProfile.name,
-            ownerName: nextProfile.owner,
-            email: nextProfile.email,
-            role: authUser.role || 'Owner',
-          }),
-          saveUserProfileSettings(authUser.uid, {
-            ...nextProfile,
-            userId: authUser.uid,
-          }),
-        ]);
+        await saveUserProfileSettings(authUser.uid, {
+          ...nextProfile,
+          businessName: nextProfile.name,
+          userId: authUser.uid,
+        });
+        if (authUser.email) {
+          try {
+            const client = getSupabaseClient();
+            await client?.auth?.updateUser?.({
+              data: {
+                businessName: nextProfile.name,
+                ownerName: nextProfile.owner,
+              },
+            });
+          } catch {}
+        }
       }
       setSecureError('');
       setStatus('Business and Online Storefront profile saved');
@@ -5319,7 +5479,7 @@ export default function VoiceExpenseTrackerPreview() {
 
   const updateBusinessProfile = async (updates) => {
     let nextProfile = { ...profile, ...updates };
-    if (updates.name && (!nextProfile.storeName || nextProfile.storeName.trim().toLowerCase() === 'jay ambe namkeen' || nextProfile.storeName.trim().toLowerCase() === 'jay ambe namkeen store' || nextProfile.storeName === profile.name)) {
+    if (updates.name && (!nextProfile.storeName || isDemoBusinessName(nextProfile.storeName) || nextProfile.storeName === profile.name)) {
       nextProfile.storeName = updates.name;
     }
     if (updates.tagline && (!nextProfile.storeTagline || nextProfile.storeTagline === profile.tagline)) {
@@ -5338,6 +5498,7 @@ export default function VoiceExpenseTrackerPreview() {
       if (authUser?.uid && supabaseEnabled) {
         await saveUserProfileSettings(authUser.uid, {
           ...nextProfile,
+          businessName: nextProfile.name,
           userId: authUser.uid,
         });
       }
@@ -6834,7 +6995,7 @@ export default function VoiceExpenseTrackerPreview() {
         <div className="sidebar-brand" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px solid var(--border-subtle)' }}>
           {profile.logo ? <img src={profile.logo} alt="" style={{ width: '28px', height: '28px', borderRadius: '6px', objectFit: 'cover' }} /> : <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: '#1e3a8a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '13px' }}>TR</div>}
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <strong style={{ fontSize: '13px', fontWeight: '700', lineHeight: '1.2' }}>{profile.name || 'JAY AMBE NAMKEEN'}</strong>
+            <strong style={{ fontSize: '13px', fontWeight: '700', lineHeight: '1.2' }}>{profile.name || authUser?.businessName || 'TRINETR BUSINESS SUITE'}</strong>
             <span style={{ fontSize: '10px', color: '#d97706', fontWeight: 700, letterSpacing: '0.05em' }}>TRINETR ERP [2026-2027]</span>
           </div>
           <button className="drawer-close-button" type="button" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--text-secondary)' }}>
@@ -7280,7 +7441,7 @@ export default function VoiceExpenseTrackerPreview() {
             </button>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
               <span style={{ background: '#1e3a8a', color: '#ffffff', fontWeight: 800, padding: '3px 8px', borderRadius: '4px', fontSize: '11px', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>TRINETR ERP</span>
-              <strong style={{ fontWeight: 800, fontSize: '14.5px', color: 'var(--text-primary, #0f172a)', letterSpacing: '0.01em', whiteSpace: 'nowrap' }}>{profile.name || 'JAY AMBE NAMKEEN'}</strong>
+              <strong style={{ fontWeight: 800, fontSize: '14.5px', color: 'var(--text-primary, #0f172a)', letterSpacing: '0.01em', whiteSpace: 'nowrap' }}>{profile.name || authUser?.businessName || 'TRINETR BUSINESS SUITE'}</strong>
               <span style={{ fontSize: '12px', color: 'var(--text-muted, #64748b)', fontWeight: 600, whiteSpace: 'nowrap' }}>[2026 - 2027]</span>
               <span className="hide-on-mobile" style={{ color: 'var(--border-subtle, #cbd5e1)' }}>|</span>
               <span className="hide-on-mobile" style={{ fontSize: '12px', color: 'var(--text-secondary, #334155)', fontWeight: 600, whiteSpace: 'nowrap' }}>
@@ -7592,7 +7753,7 @@ export default function VoiceExpenseTrackerPreview() {
                   }}
                 >
                   <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border-subtle, #e2e8f0)', marginBottom: '4px' }}>
-                    <div style={{ fontWeight: 750, fontSize: '13.5px', color: 'var(--text-primary, #0f172a)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{profile.name || 'JAY AMBE NAMKEEN'}</div>
+                    <div style={{ fontWeight: 750, fontSize: '13.5px', color: 'var(--text-primary, #0f172a)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{profile.name || authUser?.businessName || 'TRINETR BUSINESS SUITE'}</div>
                     <div style={{ fontSize: '11.5px', color: 'var(--text-secondary, #64748b)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{authUser?.email || profile.owner || 'Owner / Administrator'}</div>
                   </div>
                   <button type="button" onClick={() => { navigateToTab('app-settings'); setProfileDropdownOpen(false); }} className="saas-dropdown-item" style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', color: 'var(--text-primary, #0f172a)', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}><Settings size={15} /> Company Settings</button>
@@ -10167,7 +10328,7 @@ export default function VoiceExpenseTrackerPreview() {
                       <label className="field-label" htmlFor="profile-name">
                         Company / Shop Name
                       </label>
-                      <input id="profile-name" name="profileName" defaultValue={profile.name} required />
+                      <input id="profile-name" name="profileName" key={profile.name || 'profile-name-input'} defaultValue={profile.name} required />
                     </div>
                     <div>
                       <label className="field-label" htmlFor="profile-owner">

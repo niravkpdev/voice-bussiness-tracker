@@ -277,7 +277,7 @@ export default function ProfitNxSalesEntry({
   };
 
   const handleWhatsApp = (item) => {
-    const text = `Namaste ${item.partyName},\nHere is your invoice ${item.billNo} from ${profile.name || 'Jay Ambe Namkeen'}.\nDate: ${item.date}\nAmount: ₹${item.netTotal}\nItems: ${item.itemsDesc}\nThank you for your business!`;
+    const text = `Namaste ${item.partyName},\nHere is your invoice ${item.billNo} from ${profile?.name || 'Trinetr Business Suite'}.\nDate: ${item.date}\nAmount: ₹${item.netTotal}\nItems: ${item.itemsDesc}\nThank you for your business!`;
     const phone = item.original?.customerMobile || item.original?.phone || '';
     const cleanPhone = formatWhatsAppPhone(phone);
     const url = `https://wa.me/${cleanPhone || ''}?text=${encodeURIComponent(text)}`;
@@ -331,7 +331,7 @@ export default function ProfitNxSalesEntry({
             </h1>
           </div>
           <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#334155' }}>
-            Company: <strong style={{ color: '#0f172a' }}>{profile.name || 'JAY AMBE NAMKEEN'}</strong> &nbsp;|&nbsp; GSTIN: <strong style={{ color: '#0f172a', fontFamily: 'monospace' }}>{profile.gstin || '24CPVPC7753J1Z8'}</strong> &nbsp;|&nbsp; FY: <strong style={{ color: '#0f172a' }}>[2026 - 2027]</strong>
+            Company: <strong style={{ color: '#0f172a' }}>{profile?.name || 'TRINETR BUSINESS SUITE'}</strong> &nbsp;|&nbsp; GSTIN: <strong style={{ color: '#0f172a', fontFamily: 'monospace' }}>{profile?.gstin || '24CPVPC7753J1Z8'}</strong> &nbsp;|&nbsp; FY: <strong style={{ color: '#0f172a' }}>[2026 - 2027]</strong>
           </p>
         </div>
 
@@ -1386,7 +1386,7 @@ function SalesPrintModal({ invoice, profile = {}, onClose }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #0f172a', paddingBottom: '16px', marginBottom: '16px' }}>
             <div>
               <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 800, color: '#1e3a8a', textTransform: 'uppercase' }}>
-                {profile.name || 'JAY AMBE NAMKEEN'}
+                {profile?.name || 'TRINETR BUSINESS SUITE'}
               </h1>
               <p style={{ margin: '4px 0', fontSize: '12px', color: '#475569' }}>
                 {profile.tagline || 'Namkeen & Farsan Manufacturer & Wholesaler'}
@@ -1497,7 +1497,7 @@ function SalesPrintModal({ invoice, profile = {}, onClose }) {
               <div style={{ borderTop: '1px solid #475569', fontSize: '11px', paddingTop: '4px' }}>Receiver's Signature</div>
             </div>
             <div style={{ textAlign: 'center', width: '220px' }}>
-              <div style={{ fontSize: '11px', fontWeight: 700, marginBottom: '25px' }}>For, {profile.name || 'JAY AMBE NAMKEEN'}</div>
+              <div style={{ fontSize: '11px', fontWeight: 700, marginBottom: '25px' }}>For, {profile?.name || 'TRINETR BUSINESS SUITE'}</div>
               <div style={{ borderTop: '1px solid #475569', fontSize: '11px', paddingTop: '4px' }}>Authorized Signatory</div>
             </div>
           </div>
