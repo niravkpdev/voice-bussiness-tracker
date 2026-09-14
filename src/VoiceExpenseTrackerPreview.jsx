@@ -288,7 +288,6 @@ const navigationConfig = [
     label: '2. Reports',
     icon: '▱',
     children: [
-      { id: 'sales-reg', path: '#sales-entry', tab: 'sales-entry', label: 'Sales Register & GST', icon: '⚡' },
       { id: 'day-book-rep', path: '#day-book', tab: 'day-book', label: 'Day Book', icon: '☷' },
       { id: 'party-statement', path: '#party-statement', tab: 'party-statement', label: 'Party Statement / Ledger', icon: '▤' },
       { id: 'gst', path: '#gst', tab: 'gst', label: 'GST Center & Returns', icon: '◇' },
@@ -7175,9 +7174,6 @@ export default function VoiceExpenseTrackerPreview() {
               </button>
               {openNxMenu === 'reports' && (
                 <div className="trinetr-dropdown-menu">
-                  <button type="button" className="trinetr-dropdown-item featured" onClick={() => { navigateToTab('sales-entry'); setOpenNxMenu(null); }}>
-                    ⚡ Sales Register &amp; Item Wise Analysis
-                  </button>
                   <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('day-book'); setOpenNxMenu(null); }}>
                     ☷ Day Book Summary &amp; Vouchers
                   </button>
