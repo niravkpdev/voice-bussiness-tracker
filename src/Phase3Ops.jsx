@@ -217,6 +217,8 @@ function whatsappUrl(phone, message = '') {
 
 export default function Phase3Ops({
   activeTab,
+  hrmsSubTab,
+  onHrmsSubTabChange,
   profile,
   invoices,
   customers,
@@ -291,6 +293,20 @@ export default function Phase3Ops({
   const [isInvoking, setIsInvoking] = useState(false);
   const [employeeStatusFilter, setEmployeeStatusFilter] = useState('All');
   const [employeePage, setEmployeePage] = useState(1);
+  const [currentHrmsTab, setCurrentHrmsTab] = useState(hrmsSubTab || 'directory');
+
+  useEffect(() => {
+    if (hrmsSubTab) {
+      setCurrentHrmsTab(hrmsSubTab);
+    }
+  }, [hrmsSubTab]);
+
+  const handleHrmsTabChange = (nextTab) => {
+    setCurrentHrmsTab(nextTab);
+    if (onHrmsSubTabChange) {
+      onHrmsSubTabChange(nextTab);
+    }
+  };
   const getActiveBusinessId = () => {
     return (
       (typeof selectedBusiness !== 'undefined' ? selectedBusiness?.id : null) ||
@@ -2770,6 +2786,106 @@ export default function Phase3Ops({
           </div>
         </header>
 
+        {/* HRMS Dedicated Sub-Navigation Bar */}
+        <div className="hrms-subnav-bar" style={{
+          display: 'flex',
+          gap: '8px',
+          margin: '16px 0 20px 0',
+          padding: '6px',
+          backgroundColor: 'var(--bg-secondary, #f8fafc)',
+          borderRadius: '12px',
+          border: '1px solid var(--border-subtle, #e2e8f0)',
+          overflowX: 'auto',
+          flexWrap: 'wrap',
+          alignItems: 'center'
+        }}>
+          <button
+            type="button"
+            className={`hrms-subnav-pill ${currentHrmsTab === 'directory' ? 'active' : ''}`}
+            onClick={() => handleHrmsTabChange('directory')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '8px',
+              border: currentHrmsTab === 'directory' ? '1px solid var(--brand-primary, #0284c7)' : '1px solid transparent',
+              fontWeight: 700,
+              fontSize: '13px',
+              cursor: 'pointer',
+              backgroundColor: currentHrmsTab === 'directory' ? 'var(--brand-primary, #0284c7)' : 'transparent',
+              color: currentHrmsTab === 'directory' ? '#ffffff' : 'var(--text-primary, #0f172a)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            👥 Employee Directory &amp; Staff Profiles
+          </button>
+          <button
+            type="button"
+            className={`hrms-subnav-pill ${currentHrmsTab === 'attendance' ? 'active' : ''}`}
+            onClick={() => handleHrmsTabChange('attendance')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '8px',
+              border: currentHrmsTab === 'attendance' ? '1px solid var(--brand-primary, #0284c7)' : '1px solid transparent',
+              fontWeight: 700,
+              fontSize: '13px',
+              cursor: 'pointer',
+              backgroundColor: currentHrmsTab === 'attendance' ? 'var(--brand-primary, #0284c7)' : 'transparent',
+              color: currentHrmsTab === 'attendance' ? '#ffffff' : 'var(--text-primary, #0f172a)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            📅 Daily Attendance &amp; Shift Register
+          </button>
+          <button
+            type="button"
+            className={`hrms-subnav-pill ${currentHrmsTab === 'payroll' ? 'active' : ''}`}
+            onClick={() => handleHrmsTabChange('payroll')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '8px',
+              border: currentHrmsTab === 'payroll' ? '1px solid var(--brand-primary, #0284c7)' : '1px solid transparent',
+              fontWeight: 700,
+              fontSize: '13px',
+              cursor: 'pointer',
+              backgroundColor: currentHrmsTab === 'payroll' ? 'var(--brand-primary, #0284c7)' : 'transparent',
+              color: currentHrmsTab === 'payroll' ? '#ffffff' : 'var(--text-primary, #0f172a)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            💵 Monthly Payroll, Payslips &amp; Leaves
+          </button>
+          <button
+            type="button"
+            className={`hrms-subnav-pill ${currentHrmsTab === 'all' ? 'active' : ''}`}
+            onClick={() => handleHrmsTabChange('all')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '8px',
+              border: currentHrmsTab === 'all' ? '1px solid var(--brand-primary, #0284c7)' : '1px solid transparent',
+              fontWeight: 650,
+              fontSize: '13px',
+              cursor: 'pointer',
+              backgroundColor: currentHrmsTab === 'all' ? 'var(--brand-primary, #0284c7)' : 'transparent',
+              color: currentHrmsTab === 'all' ? '#ffffff' : 'var(--text-secondary, #64748b)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.15s ease',
+              marginLeft: 'auto'
+            }}
+          >
+            📑 View All Sections
+          </button>
+        </div>
+
         {!canViewEmployeeMaster && (
           <section className="notice error">
             Your current role does not have unrestricted employee access. Contact the owner for HRMS permissions.
@@ -3002,7 +3118,7 @@ export default function Phase3Ops({
           </div>
         )}
 
-        {canManageEmployees && profileRequests.some(r => r.status === 'Pending') && (
+        {canManageEmployees && (currentHrmsTab === 'directory' || currentHrmsTab === 'all') && profileRequests.some(r => r.status === 'Pending') && (
           <section className="panel">
             <div className="section-header">
               <h2>Pending Profile Updates</h2>
@@ -3029,7 +3145,8 @@ export default function Phase3Ops({
           </section>
         )}
 
-        {canViewEmployeeMaster && <section className="hrms-directory-panel">
+        {canViewEmployeeMaster && (currentHrmsTab === 'directory' || currentHrmsTab === 'all') && (
+          <section className="hrms-directory-panel">
           <div className="hrms-directory-header">
             <div>
               <h2>Employee Directory</h2>
@@ -3123,9 +3240,10 @@ export default function Phase3Ops({
               <button className="secondary-button" disabled={employeePage >= employeePageCount} onClick={() => setEmployeePage((page) => Math.min(employeePageCount, page + 1))}>Next →</button>
             </div>
           )}
-        </section>}
+        </section>
+        )}
 
-        {canViewEmployeeMaster && (
+        {canViewEmployeeMaster && (currentHrmsTab === 'attendance' || currentHrmsTab === 'all') && (
           <section className="panel hrms-phaseb-panel">
             <div className="section-header">
               <div>
@@ -3186,7 +3304,7 @@ export default function Phase3Ops({
           </section>
         )}
 
-        {(canManageAttendance || canViewSalary) && (
+        {(canManageAttendance || canViewSalary) && (currentHrmsTab === 'attendance' || currentHrmsTab === 'all') && (
           <section className="panel hrms-phaseb-panel">
             <div className="section-header">
               <div>
@@ -3232,7 +3350,86 @@ export default function Phase3Ops({
           </section>
         )}
 
-        {canViewEmployeeMaster && (
+        {(currentHrmsTab === 'payroll' || currentHrmsTab === 'all') && (canViewSalary || canManageSalary) && (
+          <section className="panel hrms-phaseb-panel" id="payroll-overview">
+            <div className="section-header">
+              <div>
+                <h2>Monthly Payroll &amp; Payslips Register</h2>
+                <p className="panel-hint">Generated staff payslips, salary disbursement status, and PDF vouchers.</p>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <span className="badge" style={{ background: 'var(--bg-secondary)', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 650 }}>
+                  {payslips.length} payslips recorded
+                </span>
+              </div>
+            </div>
+
+            <div className="hrms-summary-grid">
+              <div className="summary-card">
+                <span>Total Net Payroll</span>
+                <strong>{formatCurrency(payslips.reduce((sum, p) => sum + (Number(p.netSalary ?? p.net_salary) || 0), 0))}</strong>
+              </div>
+              <div className="summary-card">
+                <span>Approved &amp; Paid</span>
+                <strong>{payslips.filter(p => p.status === 'Approved' || p.status === 'Paid').length}</strong>
+              </div>
+              <div className="summary-card">
+                <span>Pending Approvals</span>
+                <strong>{payslips.filter(p => p.status === 'Draft' || p.status === 'Pending Approval').length}</strong>
+              </div>
+            </div>
+
+            <div className="hrms-record-grid" style={{ marginTop: '16px' }}>
+              {payslips.length === 0 ? (
+                <div className="empty-state" style={{ gridColumn: '1 / -1', padding: '24px', textAlign: 'center' }}>
+                  No monthly payslips generated yet. Open an employee profile from the Directory to generate a payslip.
+                </div>
+              ) : (
+                payslips.slice(0, 12).map((slip) => {
+                  const emp = employees.find(e => e.id === slip.employeeId || e.id === slip.employee_id);
+                  return (
+                    <article className="hrms-mini-card" key={slip.id}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <strong>{emp ? employeeDisplayName(emp) : (slip.employeeName || 'Staff Member')}</strong>
+                          <p style={{ margin: '4px 0', fontSize: '13px' }}>Month: {slip.salaryMonth || slip.salary_month}</p>
+                          <p style={{ fontWeight: 750, color: 'var(--brand-primary, #0284c7)' }}>Net: {formatCurrency(slip.netSalary ?? slip.net_salary)}</p>
+                        </div>
+                        <span className={`hrms-status ${(slip.status || 'Draft').toLowerCase()}`}>{slip.status || 'Draft'}</span>
+                      </div>
+                      <div className="voucher-actions" style={{ marginTop: '10px' }}>
+                        {emp && (
+                          <button
+                            className="secondary-button compact-button"
+                            type="button"
+                            onClick={() => {
+                              setSelectedEmployee(emp);
+                              setEmployeeProfileTab('Salary Information');
+                            }}
+                          >
+                            Open Salary Profile
+                          </button>
+                        )}
+                        {canManageSalary && (
+                          <button
+                            className="share-entry-button"
+                            type="button"
+                            onClick={() => generatePayslipPdf(slip, emp || {})}
+                            disabled={generatingPayslipId === slip.id}
+                          >
+                            {generatingPayslipId === slip.id ? 'Generating...' : (slip.storagePath || slip.storage_path ? 'Regenerate PDF' : 'PDF Payslip')}
+                          </button>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })
+              )}
+            </div>
+          </section>
+        )}
+
+        {canViewEmployeeMaster && (currentHrmsTab === 'payroll' || currentHrmsTab === 'all') && (
           <section className="panel hrms-phaseb-panel">
             <div className="section-header">
               <div>
@@ -3305,7 +3502,7 @@ export default function Phase3Ops({
           </section>
         )}
 
-        {canViewEmployeeMaster && (
+        {canViewEmployeeMaster && (currentHrmsTab === 'payroll' || currentHrmsTab === 'all') && (
           <section className="panel hrms-phaseb-panel">
             <div className="section-header">
               <div>
@@ -3343,7 +3540,7 @@ export default function Phase3Ops({
           </section>
         )}
 
-        {canManageLeave && (
+        {canManageLeave && (currentHrmsTab === 'payroll' || currentHrmsTab === 'all') && (
           <section className="panel hrms-phaseb-panel">
             <div className="section-header">
               <div>

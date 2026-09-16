@@ -1789,6 +1789,7 @@ export default function VoiceExpenseTrackerPreview() {
   const menubarRef = useRef(null);
   const [showShareStoreModal, setShowShareStoreModal] = useState(false);
   const [storeLinkCopied, setStoreLinkCopied] = useState(false);
+  const [hrmsSubTab, setHrmsSubTab] = useState('directory');
 
   useEffect(() => {
     const handleOutsideClick = (e) => {
@@ -1809,12 +1810,15 @@ export default function VoiceExpenseTrackerPreview() {
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
-  const navigateToTab = (tab) => {
+  const navigateToTab = (tab, subTab = null) => {
     let target = tab;
     if (target === 'storefront') target = 'store';
     if (target === 'help-center') target = 'help';
     if (target === 'party-management' || target === 'parties') target = 'crm';
     if (target === 'profile') target = 'app-settings';
+    if (subTab && target === 'employees') {
+      setHrmsSubTab(subTab);
+    }
     setActiveTab(target);
     window.location.hash = target;
     setOpenNxMenu(null);
@@ -7354,14 +7358,14 @@ export default function VoiceExpenseTrackerPreview() {
               </button>
               {openNxMenu === 'payroll' && (
                 <div className="trinetr-dropdown-menu">
-                  <button type="button" className="trinetr-dropdown-item featured" onClick={() => { navigateToTab('employees'); setOpenNxMenu(null); }}>
+                  <button type="button" className="trinetr-dropdown-item featured" onClick={() => { navigateToTab('employees', 'directory'); setOpenNxMenu(null); }}>
                     👥 Employee Directory &amp; Staff Profiles
                   </button>
-                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('employees'); setOpenNxMenu(null); }}>
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('employees', 'attendance'); setOpenNxMenu(null); }}>
                     📅 Daily Attendance &amp; Shift Register
                   </button>
                   <div className="trinetr-dropdown-divider" />
-                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('employees'); setOpenNxMenu(null); }}>
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('employees', 'payroll'); setOpenNxMenu(null); }}>
                     💵 Monthly Payroll, Payslips, Leaves &amp; KYC Documents
                   </button>
                 </div>
@@ -9084,6 +9088,8 @@ export default function VoiceExpenseTrackerPreview() {
                   window.location.hash = 'voucher-entry';
                 }}
                 activeTab={activeTab}
+                hrmsSubTab={hrmsSubTab}
+                onHrmsSubTabChange={setHrmsSubTab}
                 profile={profile}
                 invoices={cloudInvoices}
                 customers={cloudCustomers}
