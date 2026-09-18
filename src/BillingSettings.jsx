@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { CreditCard, Download, ExternalLink, Calendar, Check, Zap, Crown, Shield, Play, ArrowUpRight, CheckCircle2, Lock } from 'lucide-react';
+import { CreditCard, Download, ExternalLink, Calendar, Check, Zap, Crown, Shield, Play, ArrowUpRight, CheckCircle2, Lock, Settings, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import { getTrialDaysLeft, PLAN_LIMITS } from './subscription';
 import { SubscriptionBadge } from './SubscriptionBadge';
+import { SubscriptionPaymentModal } from './SubscriptionPaymentModal';
 
 export function BillingSettings({ profile, onOpenPricing, onSelectPlan, onUpgradePlan, onContactSales, usage = {} }) {
   const currentPlan = profile?.subscriptionPlan || 'Free Trial';
@@ -9,6 +10,39 @@ export function BillingSettings({ profile, onOpenPricing, onSelectPlan, onUpgrad
   const trialDaysLeft = getTrialDaysLeft(profile?.trialStartDate);
   const [billingCycle, setBillingCycle] = useState(profile?.subscriptionCycle || 'monthly');
   const [downloadSuccess, setDownloadSuccess] = useState('');
+
+  // Checkout modal state
+  const [checkoutModal, setCheckoutModal] = useState({
+    isOpen: false,
+    plan: 'Basic',
+    cycle: 'monthly'
+  });
+
+  // Admin Payment Receiving Settings
+  const [showAdminPaymentSetup, setShowAdminPaymentSetup] = useState(false);
+  const [adminUpiId, setAdminUpiId] = useState(() => localStorage.getItem('trinetr_platform_upi') || profile?.platformUpiId || profile?.upiId || 'trinetr.namkeen@icici');
+  const [adminRazorpayKey, setAdminRazorpayKey] = useState(() => localStorage.getItem('trinetr_razorpay_key') || '');
+  const [adminSetupNotice, setAdminSetupNotice] = useState('');
+
+  const [invoices, setInvoices] = useState(() => {
+    try {
+      const saved = localStorage.getItem('trinetr_subscription_invoices');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [
+      {
+        id: 'TRN-INV-2026-001',
+        date: new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+        plan: currentPlan,
+        cycle: billingCycle === 'yearly' ? 'Annual (20% Off)' : 'Monthly',
+        amount: currentPlan === 'Free Trial' ? 0 : (billingCycle === 'yearly' ? (currentPlan === 'Basic' ? 948 : 4788) : (planDetails.price || 99)),
+        status: currentPlan === 'Free Trial' ? 'Free Trial' : 'Paid'
+      }
+    ];
+  });
 
   const customerCount = usage.customers ?? 0;
   const productCount = usage.products ?? 0;
@@ -23,21 +57,53 @@ export function BillingSettings({ profile, onOpenPricing, onSelectPlan, onUpgrad
       }
       return;
     }
-    const callback = onSelectPlan || onUpgradePlan;
-    if (callback) {
-      callback(targetPlan, billingCycle);
-    } else if (onOpenPricing) {
-      onOpenPricing();
+
+    if (targetPlan === 'Free Trial') {
+      const callback = onSelectPlan || onUpgradePlan;
+      if (callback) callback('Free Trial', billingCycle);
+      return;
     }
+
+    // Open Real Payment Checkout Modal for paid plans
+    setCheckoutModal({
+      isOpen: true,
+      plan: targetPlan,
+      cycle: billingCycle,
+    });
   };
 
-  const sampleInvoice = {
-    id: 'TRN-INV-2026-001',
-    date: new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
-    plan: currentPlan,
-    cycle: billingCycle === 'yearly' ? 'Annual (20% Off)' : 'Monthly',
-    amount: currentPlan === 'Free Trial' ? 0 : (billingCycle === 'yearly' ? (currentPlan === 'Basic' ? 948 : 4788) : (planDetails.price || 99)),
-    status: currentPlan === 'Free Trial' ? 'Free Trial' : 'Paid'
+  const handlePaymentSuccess = (paymentRecord) => {
+    const callback = onSelectPlan || onUpgradePlan;
+    if (callback) {
+      callback(paymentRecord.plan, paymentRecord.cycle);
+    }
+    const newInvoice = {
+      id: paymentRecord.transactionId || `TRN-INV-${Date.now().toString(36).toUpperCase()}`,
+      date: paymentRecord.date || new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+      plan: paymentRecord.plan,
+      cycle: paymentRecord.cycle === 'yearly' ? 'Annual (20% Off)' : 'Monthly',
+      amount: paymentRecord.amount,
+      status: 'Paid',
+      utr: paymentRecord.utr,
+    };
+    const nextInvoices = [newInvoice, ...invoices];
+    setInvoices(nextInvoices);
+    try {
+      localStorage.setItem('trinetr_subscription_invoices', JSON.stringify(nextInvoices));
+    } catch {}
+    setDownloadSuccess(`🎉 Payment received! Successfully activated ${paymentRecord.plan} Plan.`);
+    setTimeout(() => setDownloadSuccess(''), 5000);
+  };
+
+  const handleSaveAdminPaymentConfig = () => {
+    try {
+      localStorage.setItem('trinetr_platform_upi', adminUpiId.trim());
+      localStorage.setItem('trinetr_razorpay_key', adminRazorpayKey.trim());
+      setAdminSetupNotice('Payment receiving settings saved! Customer subscription payments will be routed to your account.');
+      setTimeout(() => setAdminSetupNotice(''), 4000);
+    } catch (e) {
+      console.warn('Could not save payment config:', e);
+    }
   };
 
   const handleDownloadInvoice = (inv) => {
@@ -499,7 +565,7 @@ export function BillingSettings({ profile, onOpenPricing, onSelectPlan, onUpgrad
           <button
             className="secondary-button compact-button"
             type="button"
-            onClick={() => handleDownloadInvoice(sampleInvoice)}
+            onClick={() => handleDownloadInvoice(invoices[0] || sampleInvoice)}
             style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
           >
             <Download size={14} /> Download Latest Invoice
@@ -519,37 +585,40 @@ export function BillingSettings({ profile, onOpenPricing, onSelectPlan, onUpgrad
               </tr>
             </thead>
             <tbody>
-              <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                <td style={{ padding: '12px', fontWeight: 600 }}>{sampleInvoice.id}</td>
-                <td style={{ padding: '12px', color: 'var(--text-secondary)' }}>{sampleInvoice.date}</td>
-                <td style={{ padding: '12px' }}>
-                  <span style={{ fontWeight: 600 }}>{sampleInvoice.plan}</span>
-                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginLeft: '6px' }}>({sampleInvoice.cycle})</span>
-                </td>
-                <td style={{ padding: '12px', fontWeight: 700 }}>₹{sampleInvoice.amount}.00</td>
-                <td style={{ padding: '12px' }}>
-                  <span style={{
-                    padding: '3px 8px',
-                    borderRadius: '999px',
-                    fontSize: '0.75rem',
-                    fontWeight: 700,
-                    background: currentPlan === 'Free Trial' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(16, 185, 129, 0.15)',
-                    color: currentPlan === 'Free Trial' ? '#3b82f6' : '#10b981'
-                  }}>
-                    {sampleInvoice.status}
-                  </span>
-                </td>
-                <td style={{ padding: '12px', textAlign: 'right' }}>
-                  <button
-                    className="secondary-button compact-button"
-                    type="button"
-                    onClick={() => handleDownloadInvoice(sampleInvoice)}
-                    style={{ padding: '4px 10px', fontSize: '0.8rem' }}
-                  >
-                    <Download size={13} style={{ marginRight: '4px' }} /> Download
-                  </button>
-                </td>
-              </tr>
+              {invoices.map((inv) => (
+                <tr key={inv.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                  <td style={{ padding: '12px', fontWeight: 600 }}>{inv.id}</td>
+                  <td style={{ padding: '12px', color: 'var(--text-secondary)' }}>{inv.date}</td>
+                  <td style={{ padding: '12px' }}>
+                    <span style={{ fontWeight: 600 }}>{inv.plan}</span>
+                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginLeft: '6px' }}>({inv.cycle})</span>
+                    {inv.utr && <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Ref: {inv.utr}</div>}
+                  </td>
+                  <td style={{ padding: '12px', fontWeight: 700 }}>₹{inv.amount}.00</td>
+                  <td style={{ padding: '12px' }}>
+                    <span style={{
+                      padding: '3px 8px',
+                      borderRadius: '999px',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      background: inv.status === 'Free Trial' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                      color: inv.status === 'Free Trial' ? '#3b82f6' : '#10b981'
+                    }}>
+                      {inv.status}
+                    </span>
+                  </td>
+                  <td style={{ padding: '12px', textAlign: 'right' }}>
+                    <button
+                      className="secondary-button compact-button"
+                      type="button"
+                      onClick={() => handleDownloadInvoice(inv)}
+                      style={{ padding: '4px 10px', fontSize: '0.8rem' }}
+                    >
+                      <Download size={13} style={{ marginRight: '4px' }} /> Download
+                    </button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -559,6 +628,123 @@ export function BillingSettings({ profile, onOpenPricing, onSelectPlan, onUpgrad
           <span>Payments are processed securely with 256-bit encryption. Supports UPI (GPay, PhonePe, Paytm), RuPay/Visa/MasterCard, and NetBanking. All invoices include 18% GST for Input Tax Credit claim.</span>
         </div>
       </div>
+
+      {/* Platform Owner Payment Receiving Setup */}
+      <div style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }} onClick={() => setShowAdminPaymentSetup(!showAdminPaymentSetup)}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Settings size={20} style={{ color: 'var(--brand-primary)' }} />
+            <div>
+              <h3 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 700 }}>Payment Gateway &amp; Receiving Setup (For Platform Owner)</h3>
+              <p style={{ margin: '2px 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                Configure where customer subscription payments (UPI &amp; Razorpay) are deposited into your bank account.
+              </p>
+            </div>
+          </div>
+          <button type="button" className="icon-button" style={{ border: 'none', background: 'none', cursor: 'pointer' }}>
+            {showAdminPaymentSetup ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+          </button>
+        </div>
+
+        {showAdminPaymentSetup && (
+          <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            {adminSetupNotice && (
+              <div style={{ padding: '10px 14px', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid #10b981', color: '#10b981', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600 }}>
+                {adminSetupNotice}
+              </div>
+            )}
+
+            <div>
+              <label style={{ display: 'block', fontWeight: 700, fontSize: '0.9rem', marginBottom: '6px' }}>
+                1. Merchant UPI ID (For Direct 0% Commission Bank Deposits)
+              </label>
+              <div style={{ display: 'flex', gap: '8px', maxWidth: '480px' }}>
+                <input
+                  type="text"
+                  value={adminUpiId}
+                  onChange={(e) => setAdminUpiId(e.target.value)}
+                  placeholder="e.g. yourshop@icici or 9876543210@paytm"
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border-subtle)',
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    fontSize: '0.9rem',
+                    fontWeight: 600
+                  }}
+                />
+                <button
+                  type="button"
+                  className="saas-primary-button"
+                  onClick={handleSaveAdminPaymentConfig}
+                >
+                  Save UPI ID
+                </button>
+              </div>
+              <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                When customers pay for Basic (₹99) or Pro (₹499) via GPay / PhonePe QR code, money goes directly into this UPI bank account with 0% gateway fee.
+              </p>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontWeight: 700, fontSize: '0.9rem', marginBottom: '6px' }}>
+                2. Razorpay API Key ID (For Automated Cards &amp; NetBanking)
+              </label>
+              <div style={{ display: 'flex', gap: '8px', maxWidth: '480px' }}>
+                <input
+                  type="text"
+                  value={adminRazorpayKey}
+                  onChange={(e) => setAdminRazorpayKey(e.target.value)}
+                  placeholder="rzp_live_xxxxxxxxxxxxxxxx"
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border-subtle)',
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    fontSize: '0.9rem'
+                  }}
+                />
+                <button
+                  type="button"
+                  className="saas-primary-button"
+                  onClick={handleSaveAdminPaymentConfig}
+                >
+                  Save Key
+                </button>
+              </div>
+              <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                Get your API Key from <a href="https://dashboard.razorpay.com/#/app/keys" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand-primary)' }}>Razorpay Dashboard &gt; Settings &gt; API Keys</a>. Funds settle automatically into your linked bank account on T+1 days.
+              </p>
+            </div>
+
+            <div style={{ background: 'var(--bg-secondary)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-subtle)', fontSize: '0.85rem' }}>
+              <strong>📋 Bank Transfer (NEFT/IMPS) Receiving Details:</strong>
+              <div style={{ marginTop: '6px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                Bank: ICICI Bank | A/C: 002405001234 | IFSC: ICIC0000024 | Current A/C<br />
+                To change bank transfer details, update your business registration profile in Settings.
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Real Subscription Payment Modal */}
+      <SubscriptionPaymentModal
+        isOpen={checkoutModal.isOpen}
+        onClose={() => setCheckoutModal({ ...checkoutModal, isOpen: false })}
+        plan={checkoutModal.plan}
+        initialCycle={checkoutModal.cycle}
+        profile={{
+          ...profile,
+          platformUpiId: adminUpiId,
+        }}
+        onPaymentSuccess={handlePaymentSuccess}
+        onContactSales={onContactSales}
+      />
 
     </div>
   );

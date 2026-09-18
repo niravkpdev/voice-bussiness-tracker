@@ -55,6 +55,7 @@ import { SetupWizard } from './SetupWizard.jsx';
 import { LegalPage, LEGAL_PAGE_IDS } from './LegalPages.jsx';
 import { PricingPage } from './PricingPage.jsx';
 import { BillingSettings } from './BillingSettings.jsx';
+import { SubscriptionPaymentModal } from './SubscriptionPaymentModal.jsx';
 import { UpgradeModal } from './UpgradeModal.jsx';
 import { getUpgradeMessage } from './subscription.js';
 import { ContactModal } from './ContactModal.jsx';
@@ -1324,7 +1325,11 @@ export default function VoiceExpenseTrackerPreview() {
   const [isDraggingInProgress, setIsDraggingInProgress] = useState(false);
   const [monkeyState, setMonkeyState] = useState('idle'); // 'idle' | 'dragging' | 'celebrating' | 'done'
 
-  const handleTriggerLogin = (targetMode = 'login') => {
+  const [selectedSignupPlan, setSelectedSignupPlan] = useState('Free Trial');
+  const handleTriggerLogin = (targetMode = 'login', plan = null) => {
+    if (plan) {
+      setSelectedSignupPlan(plan);
+    }
     if (targetMode === 'register') {
       setIsRegisterMode(true);
       setAuthView('register');
@@ -1733,6 +1738,11 @@ export default function VoiceExpenseTrackerPreview() {
   const [settingsLegalPage, setSettingsLegalPage] = useState(null);
   const [isHelpCenterOpen, setIsHelpCenterOpen] = useState(false);
   const [upgradeModalFeature, setUpgradeModalFeature] = useState(null); // null means hidden, string means feature name
+  const [subscriptionCheckout, setSubscriptionCheckout] = useState({
+    isOpen: false,
+    plan: 'Basic',
+    cycle: 'monthly'
+  });
 
   const [browserSupported, setBrowserSupported] = useState(true);
   const [voucherType, setVoucherType] = useState('Receipt');
@@ -2253,6 +2263,14 @@ export default function VoiceExpenseTrackerPreview() {
     setAuthView('app');
     setSecureError('');
     setAppLoading(false);
+
+    if (isRegisterMode && selectedSignupPlan && selectedSignupPlan !== 'Free Trial') {
+      setSubscriptionCheckout({
+        isOpen: true,
+        plan: selectedSignupPlan,
+        cycle: 'monthly',
+      });
+    }
 
     if (restoreCloud && supabaseEnabled) {
       try {
@@ -3136,10 +3154,13 @@ export default function VoiceExpenseTrackerPreview() {
     setSecureError('');
     setAuthNotice('');
 
-    // Update active business name and GSTIN
+    // Update active business name, GSTIN and selected plan
     const trimmedBizName = (businessName || '').trim();
     setProfile(prev => {
       const next = { ...prev, gstin: gstin || prev.gstin };
+      if (selectedSignupPlan && authView === 'register') {
+        next.subscriptionPlan = selectedSignupPlan;
+      }
       if (trimmedBizName && !isDemoBusinessName(trimmedBizName)) {
         next.name = trimmedBizName;
         next.businessName = trimmedBizName;
@@ -3152,6 +3173,9 @@ export default function VoiceExpenseTrackerPreview() {
     try {
       const savedProfile = JSON.parse(localStorage.getItem('businessProfile') || '{}');
       if (gstin) savedProfile.gstin = gstin;
+      if (selectedSignupPlan && authView === 'register') {
+        savedProfile.subscriptionPlan = selectedSignupPlan;
+      }
       if (trimmedBizName && !isDemoBusinessName(trimmedBizName)) {
         savedProfile.name = trimmedBizName;
         savedProfile.businessName = trimmedBizName;
@@ -6667,6 +6691,38 @@ export default function VoiceExpenseTrackerPreview() {
                   {authNotice && <div className="neon-alert notice">{authNotice}</div>}
                   {secureError && isRegisterMode && <div className="neon-alert error">{secureError}</div>}
 
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '8px 12px',
+                    margin: '6px 0 16px 0',
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    borderRadius: '8px',
+                    fontSize: '13px'
+                  }}>
+                    <span style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                      Plan: <strong style={{ color: selectedSignupPlan === 'Professional' ? '#c084fc' : selectedSignupPlan === 'Basic' ? '#60a5fa' : '#34d399' }}>{selectedSignupPlan}</strong>
+                      {selectedSignupPlan === 'Free Trial' && <span style={{ fontSize: '11px', opacity: 0.8 }}> (1 Month ₹0)</span>}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowPricing(true)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#38bdf8',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        textDecoration: 'underline'
+                      }}
+                    >
+                      Change Plan
+                    </button>
+                  </div>
+
                   <form onSubmit={completeAuth} autoComplete="on">
                     <div className="neon-input-box">
                       <input
@@ -6777,11 +6833,11 @@ export default function VoiceExpenseTrackerPreview() {
             onClose={() => setShowPricing(false)}
             onUpgrade={(plan) => {
               setShowPricing(false);
-              handleTriggerLogin('register');
+              handleTriggerLogin('register', plan);
             }}
             onSelectPlan={(plan) => {
               setShowPricing(false);
-              handleTriggerLogin('register');
+              handleTriggerLogin('register', plan);
             }}
             onContactSales={() => {
               setShowPricing(false);
@@ -11485,17 +11541,43 @@ export default function VoiceExpenseTrackerPreview() {
           onClose={() => setShowPricing(false)}
           onUpgrade={(plan, cycle) => {
             setShowPricing(false);
-            handleUpgradePlan(plan, cycle);
+            if (plan === 'Free Trial') {
+              handleUpgradePlan('Free Trial', cycle);
+            } else {
+              setSubscriptionCheckout({ isOpen: true, plan, cycle: cycle || 'monthly' });
+            }
           }}
           onSelectPlan={(plan, cycle) => {
             setShowPricing(false);
-            handleUpgradePlan(plan, cycle);
+            if (plan === 'Free Trial') {
+              handleUpgradePlan('Free Trial', cycle);
+            } else {
+              setSubscriptionCheckout({ isOpen: true, plan, cycle: cycle || 'monthly' });
+            }
           }}
           onContactSales={() => {
             setShowPricing(false);
             setShowContactModal(true);
           }}
           isLoggedIn={Boolean(authUser && hasVerifiedAccess)}
+        />
+      )}
+
+      {subscriptionCheckout.isOpen && (
+        <SubscriptionPaymentModal
+          isOpen={subscriptionCheckout.isOpen}
+          onClose={() => setSubscriptionCheckout(prev => ({ ...prev, isOpen: false }))}
+          plan={subscriptionCheckout.plan}
+          initialCycle={subscriptionCheckout.cycle}
+          profile={profile}
+          onPaymentSuccess={async (paymentRecord) => {
+            await handleUpgradePlan(paymentRecord.plan, paymentRecord.cycle);
+            setStatus(`🎉 Payment received! Successfully activated ${paymentRecord.plan} Plan.`);
+          }}
+          onContactSales={() => {
+            setSubscriptionCheckout(prev => ({ ...prev, isOpen: false }));
+            setShowContactModal(true);
+          }}
         />
       )}
 
