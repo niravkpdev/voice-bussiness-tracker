@@ -9,7 +9,7 @@ import {
   LogOut, User, ChevronDown, Calendar, Lightbulb, CheckCircle, AlertCircle,
   CalendarDays, Gift, Briefcase, MapPin, Star, Sparkles, TrendingDown, Sun, Cloud,
   Filter, Tag, Download, Phone, Mail, MessageCircle, MoreHorizontal, Paperclip, Edit3, ArrowLeft, Image as ImageIcon, X,
-  Trash2, Copy, Check, ChevronRight, Lock, Shield, Menu, Home, LayoutDashboard, Zap
+  Trash2, Copy, Check, ChevronRight, Lock, Shield, Menu, Home, LayoutDashboard, Zap, Layers
 } from 'lucide-react';
 import { SafeHelpCenterModal } from './SafeHelpCenterModal';
 import { DemoPreviewModal } from './DemoPreviewModal.jsx';
@@ -7136,7 +7136,10 @@ export default function VoiceExpenseTrackerPreview() {
                       <a
                         href={child.path}
                         key={child.id}
-                        onClick={() => setMobileNavOpen(false)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          navigateToTab(child.tab, child.subTab || null);
+                        }}
                         style={{
                           display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', borderRadius: '6px', fontSize: '14px', textDecoration: 'none',
                           background: activeTab === child.tab ? '#eff6ff' : 'transparent',
@@ -7925,7 +7928,10 @@ export default function VoiceExpenseTrackerPreview() {
                   </p>
                 </div>
                 <div 
+                  role="button"
+                  tabIndex={0}
                   onClick={() => navigateToTab('ai-assistant')}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigateToTab('ai-assistant'); }}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -7934,7 +7940,8 @@ export default function VoiceExpenseTrackerPreview() {
                     borderRadius: '20px',
                     background: dashboardMetrics.dynamicHealth >= 70 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.12)',
                     border: `1px solid ${dashboardMetrics.dynamicHealth >= 70 ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`,
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    touchAction: 'manipulation'
                   }}
                   title="Business Health Score - Tap for AI Insights"
                 >
@@ -8118,6 +8125,7 @@ export default function VoiceExpenseTrackerPreview() {
                     return (
                       <div 
                         key={i} 
+                        onClick={() => navigateToTab('day-book')}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
@@ -8126,7 +8134,9 @@ export default function VoiceExpenseTrackerPreview() {
                           background: 'var(--bg-primary)',
                           border: '1px solid var(--border-subtle)',
                           borderRadius: '12px',
-                          gap: '10px'
+                          gap: '10px',
+                          cursor: 'pointer',
+                          touchAction: 'manipulation'
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
@@ -9287,24 +9297,53 @@ export default function VoiceExpenseTrackerPreview() {
           )}
 
           {activeTab === 'more' && isMobile && (
-            <section className="mobile-more-view fade-in" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              <h1 style={{ fontSize: '24px', fontWeight: '700', margin: 0 }}>More Options</h1>
+            <section className="mobile-more-view fade-in" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div>
+                <h1 style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 4px 0', color: 'var(--text-primary)' }}>More Modules &amp; Actions</h1>
+                <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>Quick touch access to all business features</p>
+              </div>
               
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                 <button className="btn btn-secondary" onClick={() => window.location.hash = 'orders'} style={{ justifyContent: 'flex-start', minHeight: '48px', paddingLeft: '16px' }}>📦 Orders</button>
-                 <button className="btn btn-secondary" onClick={() => window.location.hash = 'employees'} style={{ justifyContent: 'flex-start', minHeight: '48px', paddingLeft: '16px' }}>👥 Employees</button>
-                 <button className="btn btn-secondary" onClick={() => window.location.hash = 'reports'} style={{ justifyContent: 'flex-start', minHeight: '48px', paddingLeft: '16px' }}>📊 Basic Reports</button>
-                 <button className="btn btn-secondary" onClick={() => window.location.hash = 'app-settings'} style={{ justifyContent: 'flex-start', minHeight: '48px', paddingLeft: '16px' }}>⚙️ Settings</button>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => navigateToTab('invoices')} style={{ justifyContent: 'flex-start', minHeight: '52px', padding: '10px 14px', borderRadius: '12px', fontWeight: 650, fontSize: '13.5px', gap: '8px' }}>
+                  <FileText size={18} color="#2563eb" /> Invoices
+                </button>
+                <button type="button" className="btn btn-secondary" onClick={() => navigateToTab('orders')} style={{ justifyContent: 'flex-start', minHeight: '52px', padding: '10px 14px', borderRadius: '12px', fontWeight: 650, fontSize: '13.5px', gap: '8px' }}>
+                  <Package size={18} color="#059669" /> Orders
+                </button>
+                <button type="button" className="btn btn-secondary" onClick={() => navigateToTab('production')} style={{ justifyContent: 'flex-start', minHeight: '52px', padding: '10px 14px', borderRadius: '12px', fontWeight: 650, fontSize: '13.5px', gap: '8px' }}>
+                  <Layers size={18} color="#d97706" /> Production
+                </button>
+                <button type="button" className="btn btn-secondary" onClick={() => navigateToTab('employees')} style={{ justifyContent: 'flex-start', minHeight: '52px', padding: '10px 14px', borderRadius: '12px', fontWeight: 650, fontSize: '13.5px', gap: '8px' }}>
+                  <Users size={18} color="#7c3aed" /> Employees
+                </button>
+                <button type="button" className="btn btn-secondary" onClick={() => navigateToTab('reports')} style={{ justifyContent: 'flex-start', minHeight: '52px', padding: '10px 14px', borderRadius: '12px', fontWeight: 650, fontSize: '13.5px', gap: '8px' }}>
+                  <Activity size={18} color="#0891b2" /> Reports
+                </button>
+                <button type="button" className="btn btn-secondary" onClick={() => navigateToTab('billing')} style={{ justifyContent: 'flex-start', minHeight: '52px', padding: '10px 14px', borderRadius: '12px', fontWeight: 650, fontSize: '13.5px', gap: '8px' }}>
+                  <CreditCard size={18} color="#10b981" /> Billing &amp; Plan
+                </button>
+                <button type="button" className="btn btn-secondary" onClick={() => navigateToTab('store')} style={{ justifyContent: 'flex-start', minHeight: '52px', padding: '10px 14px', borderRadius: '12px', fontWeight: 650, fontSize: '13.5px', gap: '8px' }}>
+                  <ShoppingBag size={18} color="#f59e0b" /> Storefront
+                </button>
+                <button type="button" className="btn btn-secondary" onClick={() => navigateToTab('ai-assistant')} style={{ justifyContent: 'flex-start', minHeight: '52px', padding: '10px 14px', borderRadius: '12px', fontWeight: 650, fontSize: '13.5px', gap: '8px' }}>
+                  <Sparkles size={18} color="#8b5cf6" /> AI Insights
+                </button>
+                <button type="button" className="btn btn-secondary" onClick={() => navigateToTab('app-settings')} style={{ justifyContent: 'flex-start', minHeight: '52px', padding: '10px 14px', borderRadius: '12px', fontWeight: 650, fontSize: '13.5px', gap: '8px' }}>
+                  <Settings size={18} color="#64748b" /> Settings
+                </button>
+                <button type="button" className="btn btn-secondary" onClick={() => navigateToTab('help')} style={{ justifyContent: 'flex-start', minHeight: '52px', padding: '10px 14px', borderRadius: '12px', fontWeight: 650, fontSize: '13.5px', gap: '8px' }}>
+                  <HelpCircle size={18} color="#0284c7" /> Help Center
+                </button>
               </div>
 
               <div>
-                <h3 style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '8px' }}>Advanced Features</h3>
-                <div style={{ padding: '16px', background: 'var(--bg-secondary)', borderRadius: '12px', color: 'var(--text-secondary)', fontSize: '14px', lineHeight: '1.5' }}>
-                  Features such as <strong>Full Analytics, Advanced CRM, HRMS Document Management, Tax & GST filings, and Audit Logs</strong> are best managed on a larger screen. Please access the desktop/web view to utilize the full Trinetr Business Suite.
+                <h3 style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Desktop Capabilities</h3>
+                <div style={{ padding: '14px', background: 'var(--bg-secondary)', borderRadius: '12px', color: 'var(--text-secondary)', fontSize: '13px', lineHeight: '1.5' }}>
+                  Features such as <strong>Heavy GST Reconciliation, Large-scale HRMS Payroll Runs, and Audit Logs</strong> are also accessible on desktop monitors for full multi-column views.
                 </div>
               </div>
 
-              <button className="btn btn-danger" onClick={logout} style={{ minHeight: '48px' }}>Sign Out</button>
+              <button type="button" className="btn btn-danger" onClick={logout} style={{ minHeight: '48px', fontWeight: 700, borderRadius: '12px' }}>Sign Out</button>
             </section>
           )}
 
@@ -11167,28 +11206,65 @@ export default function VoiceExpenseTrackerPreview() {
         </main>
       </div>
 
-      <nav className="mobile-bottom-nav" aria-label="Mobile navigation">
-        <a className={activeTab === 'dashboard' ? 'active' : ''} href="#dashboard">
-          <LayoutDashboard size={20} />
-          <span>Home</span>
-        </a>
-        <a className={['entries', 'voucher-entry', 'day-book'].includes(activeTab) ? 'active' : ''} href="#day-book">
-          <FileText size={20} />
-          <span>Entries</span>
-        </a>
-        <a className={['parties', 'crm', 'party-management', 'suppliers'].includes(activeTab) ? 'active' : ''} href="#crm">
-          <Users size={20} />
-          <span>Parties</span>
-        </a>
-        <a className={['stock', 'inventory'].includes(activeTab) ? 'active' : ''} href="#inventory">
-          <Package size={20} />
-          <span>Stock</span>
-        </a>
-        <a className={activeTab === 'more' ? 'active' : ''} href="#more">
-          <MoreHorizontal size={20} />
-          <span>More</span>
-        </a>
-      </nav>
+      {!STOREFRONT_TABS.includes(activeTab) && (
+        <nav className="mobile-bottom-nav" aria-label="Mobile navigation">
+          <a
+            className={activeTab === 'dashboard' ? 'active' : ''}
+            href="#dashboard"
+            onClick={(e) => {
+              e.preventDefault();
+              navigateToTab('dashboard');
+            }}
+          >
+            <LayoutDashboard size={20} />
+            <span>Home</span>
+          </a>
+          <a
+            className={['entries', 'voucher-entry', 'day-book', 'sales-entry'].includes(activeTab) ? 'active' : ''}
+            href="#day-book"
+            onClick={(e) => {
+              e.preventDefault();
+              navigateToTab('day-book');
+            }}
+          >
+            <FileText size={20} />
+            <span>Entries</span>
+          </a>
+          <a
+            className={['parties', 'crm', 'party-management', 'suppliers'].includes(activeTab) ? 'active' : ''}
+            href="#crm"
+            onClick={(e) => {
+              e.preventDefault();
+              navigateToTab('crm');
+            }}
+          >
+            <Users size={20} />
+            <span>Parties</span>
+          </a>
+          <a
+            className={['stock', 'inventory', 'production'].includes(activeTab) ? 'active' : ''}
+            href="#inventory"
+            onClick={(e) => {
+              e.preventDefault();
+              navigateToTab('inventory');
+            }}
+          >
+            <Package size={20} />
+            <span>Stock</span>
+          </a>
+          <a
+            className={activeTab === 'more' ? 'active' : ''}
+            href="#more"
+            onClick={(e) => {
+              e.preventDefault();
+              navigateToTab('more');
+            }}
+          >
+            <MoreHorizontal size={20} />
+            <span>More</span>
+          </a>
+        </nav>
+      )}
 
       {/* High-Performance Voice Manager Widget */}
       {import.meta.env.VITE_ENABLE_VOICE_ASSISTANT === 'true' && (

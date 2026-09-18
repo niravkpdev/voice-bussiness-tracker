@@ -641,7 +641,16 @@ export function BillingSettings({ profile, onOpenPricing, onSelectPlan, onUpgrad
               </p>
             </div>
           </div>
-          <button type="button" className="icon-button" style={{ border: 'none', background: 'none', cursor: 'pointer' }}>
+          <button
+            type="button"
+            className="icon-button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowAdminPaymentSetup(!showAdminPaymentSetup);
+            }}
+            aria-label={showAdminPaymentSetup ? "Collapse payment setup" : "Expand payment setup"}
+            style={{ border: 'none', background: 'none', cursor: 'pointer' }}
+          >
             {showAdminPaymentSetup ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
           </button>
         </div>
