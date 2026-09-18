@@ -18,6 +18,7 @@ import {
   LEDGERS_KEY,
   VOUCHERS_KEY,
   addPartyLedger,
+  deletePartyLedger,
   buildCreditPurchaseLines,
   buildCreditSaleLines,
   buildPaymentLines,
@@ -1477,6 +1478,12 @@ export default function VoiceExpenseTrackerPreview() {
     }
   }, [vouchers]);
 
+  useEffect(() => {
+    if (Array.isArray(ledgers) && ledgers.length > 0) {
+      writeSavedArray(LEDGERS_KEY, ledgers);
+    }
+  }, [ledgers]);
+
   const [cloudCustomers, setCloudCustomers] = useState(() => {
     try {
       const raw = readScopedString('erpCustomers');
@@ -1554,7 +1561,7 @@ export default function VoiceExpenseTrackerPreview() {
       const { person, kind } = event.detail || {};
       if (person?.name) {
         try {
-          const { ledgers: nextL } = addPartyLedger(person.name, kind || (person.type === 'supplier' ? 'supplier' : 'customer'));
+          const { ledgers: nextL } = addPartyLedger(person.name, kind || (person.type === 'supplier' ? 'supplier' : 'customer'), ledgers);
           setLedgers(nextL);
           if (kind === 'supplier') {
             setCloudSuppliers((prev) => [person, ...(Array.isArray(prev) ? prev.filter((s) => s.id !== person.id) : [])]);
@@ -1565,13 +1572,18 @@ export default function VoiceExpenseTrackerPreview() {
       }
     };
     const handlePartyDeleted = (event) => {
-      const { id, kind } = event.detail || {};
-      if (!id) return;
+      const { id, kind, name } = event.detail || {};
+      if (!id && !name) return;
+      const targetName = name ? name.toLowerCase().trim() : '';
       if (kind === 'supplier') {
-        setCloudSuppliers((prev) => (Array.isArray(prev) ? prev.filter((s) => s.id !== id) : []));
+        setCloudSuppliers((prev) => (Array.isArray(prev) ? prev.filter((s) => s.id !== id && (!targetName || s.name?.toLowerCase().trim() !== targetName)) : []));
       } else {
-        setCloudCustomers((prev) => (Array.isArray(prev) ? prev.filter((c) => c.id !== id) : []));
+        setCloudCustomers((prev) => (Array.isArray(prev) ? prev.filter((c) => c.id !== id && (!targetName || c.name?.toLowerCase().trim() !== targetName)) : []));
       }
+      setLedgers((prev) => {
+        const next = deletePartyLedger(id || targetName, prev);
+        return next;
+      });
     };
     const handleInventoryChange = (event) => {
       const { id, product } = event.detail || {};
@@ -1762,6 +1774,8 @@ export default function VoiceExpenseTrackerPreview() {
   const [statementLedgerId, setStatementLedgerId] = useState('');
   const [newPartyName, setNewPartyName] = useState('');
   const [newPartyType, setNewPartyType] = useState('customer');
+  const [khataPartyFilter, setKhataPartyFilter] = useState('all');
+  const [khataPartySearch, setKhataPartySearch] = useState('');
   const [dayBookFilter, setDayBookFilter] = useState('');
   const [dayBookFromDate, setDayBookFromDate] = useState(() => {
     const now = new Date();
@@ -3801,14 +3815,57 @@ export default function VoiceExpenseTrackerPreview() {
     };
   }, [supabaseEnabled]);
   const partyLedgers = useMemo(() => getPartyLedgers(ledgers), [ledgers]);
-  const customerParties = useMemo(
-    () => partyLedgers.filter((ledger) => ledger.group === 'Sundry Debtors'),
-    [partyLedgers]
-  );
-  const supplierParties = useMemo(
-    () => partyLedgers.filter((ledger) => ledger.group === 'Sundry Creditors'),
-    [partyLedgers]
-  );
+  const customerParties = useMemo(() => {
+    const map = new Map();
+    partyLedgers
+      .filter((ledger) => ledger.group === 'Sundry Debtors')
+      .forEach((ledger) => {
+        if (ledger?.name) {
+          map.set(ledger.name.toLowerCase().trim(), ledger);
+        }
+      });
+    (Array.isArray(cloudCustomers) ? cloudCustomers : []).forEach((c) => {
+      if (c && c.name && !c.deleted && !c.isDeleted && c.status !== 'deleted' && c.status !== 'cancelled') {
+        const key = c.name.toLowerCase().trim();
+        if (!map.has(key)) {
+          map.set(key, {
+            id: c.id,
+            name: c.name,
+            group: 'Sundry Debtors',
+            balanceType: 'debit',
+            phone: c.phone || c.mobile || '',
+          });
+        }
+      }
+    });
+    return Array.from(map.values());
+  }, [partyLedgers, cloudCustomers]);
+
+  const supplierParties = useMemo(() => {
+    const map = new Map();
+    partyLedgers
+      .filter((ledger) => ledger.group === 'Sundry Creditors')
+      .forEach((ledger) => {
+        if (ledger?.name) {
+          map.set(ledger.name.toLowerCase().trim(), ledger);
+        }
+      });
+    (Array.isArray(cloudSuppliers) ? cloudSuppliers : []).forEach((s) => {
+      if (s && s.name && !s.deleted && !s.isDeleted && s.status !== 'deleted' && s.status !== 'cancelled') {
+        const key = s.name.toLowerCase().trim();
+        if (!map.has(key)) {
+          map.set(key, {
+            id: s.id,
+            name: s.name,
+            group: 'Sundry Creditors',
+            balanceType: 'credit',
+            phone: s.phone || s.mobile || '',
+          });
+        }
+      }
+    });
+    return Array.from(map.values());
+  }, [partyLedgers, cloudSuppliers]);
   const cashLedgers = useMemo(() => getCashLedgers(ledgers), [ledgers]);
   const expenseLedgers = useMemo(() => getExpenseLedgers(ledgers), [ledgers]);
 
@@ -4846,7 +4903,7 @@ export default function VoiceExpenseTrackerPreview() {
       }
       if (!custId) {
         try {
-          const { ledgers: nextL, ledger: newL } = addPartyLedger('Walk-in Customer', 'customer');
+          const { ledgers: nextL, ledger: newL } = addPartyLedger('Walk-in Customer', 'customer', ledgers);
           setLedgers(nextL);
           custId = newL.id;
         } catch {}
@@ -4863,7 +4920,7 @@ export default function VoiceExpenseTrackerPreview() {
       }
       if (!supId) {
         try {
-          const { ledgers: nextL, ledger: newL } = addPartyLedger('General Supplier', 'supplier');
+          const { ledgers: nextL, ledger: newL } = addPartyLedger('General Supplier', 'supplier', ledgers);
           setLedgers(nextL);
           supId = newL.id;
         } catch {}
@@ -4985,7 +5042,7 @@ export default function VoiceExpenseTrackerPreview() {
       let resolvedPartyId = '';
       if (partyName.trim()) {
         const partyType = (type === 'Receipt' || type === 'Sales') ? 'customer' : 'supplier';
-        const { ledgers: nextLedgers, ledger } = addPartyLedger(partyName, partyType);
+        const { ledgers: nextLedgers, ledger } = addPartyLedger(partyName, partyType, ledgers);
         setLedgers(nextLedgers);
         resolvedPartyId = ledger.id;
         setVoucherPartyId(ledger.id);
@@ -5336,7 +5393,8 @@ export default function VoiceExpenseTrackerPreview() {
     }
 
     try {
-      const { ledgers: nextLedgers, ledger } = addPartyLedger(newPartyName, newPartyType);
+      const { ledgers: nextLedgers, ledger } = addPartyLedger(newPartyName, newPartyType, ledgers);
+      writeSavedArray(LEDGERS_KEY, nextLedgers);
       
       const payload = {
         id: ledger.id,
@@ -5345,10 +5403,10 @@ export default function VoiceExpenseTrackerPreview() {
         type: newPartyType,
         createdAt: new Date().toISOString(),
         business_id: null,
-          balance: 0,
-          opening_balance: 0
-        };
-        const collectionName = newPartyType === 'supplier' ? 'suppliers' : 'customers';
+        balance: 0,
+        opening_balance: 0
+      };
+      const collectionName = newPartyType === 'supplier' ? 'suppliers' : 'customers';
       
       console.log(`Party insert payload for ${collectionName}:`, payload);
       
@@ -5371,26 +5429,101 @@ export default function VoiceExpenseTrackerPreview() {
       if (newPartyType === 'supplier') {
         setVoucherType('Purchase');
         setUseExpenseInsteadOfSupplier(false);
-        setCloudSuppliers((prev) => [payload, ...(Array.isArray(prev) ? prev.filter((s) => s.id !== ledger.id) : [])]);
+        setCloudSuppliers((prev) => [payload, ...(Array.isArray(prev) ? prev.filter((s) => s.id !== ledger.id && s.name?.toLowerCase().trim() !== ledger.name.toLowerCase().trim()) : [])]);
         try {
           const existing = readSavedArray('erpSuppliers');
-          writeSavedArray('erpSuppliers', [payload, ...existing.filter((s) => s.id !== ledger.id)]);
+          writeSavedArray('erpSuppliers', [payload, ...existing.filter((s) => s.id !== ledger.id && s.name?.toLowerCase().trim() !== ledger.name.toLowerCase().trim())]);
         } catch (e) {}
         setVoucherFormSuccess(`Party "${newPartyName.trim()}" added as Supplier and selected for Purchase Voucher! Enter purchase amount below, or switch to Payment voucher to record cash paid.`);
       } else {
         setVoucherType('Sales');
-        setCloudCustomers((prev) => [payload, ...(Array.isArray(prev) ? prev.filter((c) => c.id !== ledger.id) : [])]);
+        setCloudCustomers((prev) => [payload, ...(Array.isArray(prev) ? prev.filter((c) => c.id !== ledger.id && c.name?.toLowerCase().trim() !== ledger.name.toLowerCase().trim()) : [])]);
         try {
           const existing = readSavedArray('erpCustomers');
-          writeSavedArray('erpCustomers', [payload, ...existing.filter((c) => c.id !== ledger.id)]);
+          writeSavedArray('erpCustomers', [payload, ...existing.filter((c) => c.id !== ledger.id && c.name?.toLowerCase().trim() !== ledger.name.toLowerCase().trim())]);
         } catch (e) {}
         setVoucherFormSuccess(`Party "${newPartyName.trim()}" added as Customer and selected for Sales Voucher! Enter amount below.`);
       }
+
+      try {
+        window.dispatchEvent(new CustomEvent('trinetr-party-updated', { detail: { person: payload, kind: newPartyType } }));
+      } catch (e) {}
+
       setStatus(`Party ledger added successfully.`);
     } catch (error) {
       console.error("Party save error:", error);
       setVoucherFormError(error.message || 'Failed to add party');
       setStatus(error.message);
+    }
+  };
+
+  const deleteParty = async (party) => {
+    if (!party || !party.id) return;
+    const isSupplier = party.group === 'Sundry Creditors' || party.type === 'supplier' || party.kind === 'supplier';
+    const kind = isSupplier ? 'supplier' : 'customer';
+    const label = isSupplier ? 'Supplier' : 'Customer';
+
+    if (!window.confirm(`Are you sure you want to delete ${label} "${party.name}"? This party will be removed from voucher lists.`)) {
+      return;
+    }
+
+    try {
+      const nextLedgers = deletePartyLedger(party.id, ledgers);
+      setLedgers(nextLedgers);
+
+      if (isSupplier) {
+        setCloudSuppliers((prev) => {
+          const next = (Array.isArray(prev) ? prev : []).filter(
+            (s) => s.id !== party.id && s.name?.toLowerCase().trim() !== party.name?.toLowerCase().trim()
+          );
+          try {
+            writeSavedArray('erpSuppliers', next);
+            writeScopedString('erpSuppliers', JSON.stringify(next));
+          } catch (e) {}
+          return next;
+        });
+      } else {
+        setCloudCustomers((prev) => {
+          const next = (Array.isArray(prev) ? prev : []).filter(
+            (c) => c.id !== party.id && c.name?.toLowerCase().trim() !== party.name?.toLowerCase().trim()
+          );
+          try {
+            writeSavedArray('erpCustomers', next);
+            writeScopedString('erpCustomers', JSON.stringify(next));
+          } catch (e) {}
+          return next;
+        });
+      }
+
+      try {
+        if (authUser?.uid) {
+          const collectionName = isSupplier ? 'suppliers' : 'customers';
+          await deleteCloudRecord(authUser.uid, collectionName, party.id);
+        }
+      } catch (cloudErr) {
+        console.warn('Cloud delete party warning:', cloudErr);
+      }
+
+      if (voucherPartyId === party.id) {
+        setVoucherPartyId('');
+      }
+      if (statementLedgerId === party.id) {
+        setStatementLedgerId('');
+      }
+
+      try {
+        window.dispatchEvent(
+          new CustomEvent('trinetr-party-deleted', {
+            detail: { id: party.id, kind, name: party.name },
+          })
+        );
+      } catch (e) {}
+
+      setStatus(`${label} "${party.name}" deleted successfully.`);
+      setVoucherFormSuccess(`${label} "${party.name}" was removed from the list.`);
+    } catch (err) {
+      console.error('Delete party error:', err);
+      setStatus(err.message || 'Failed to delete party');
     }
   };
 
@@ -9801,6 +9934,154 @@ export default function VoiceExpenseTrackerPreview() {
                     Add Party Ledger
                   </button>
                 </form>
+
+                {/* Saved Parties (Khata List) with Delete Action */}
+                <div style={{ marginTop: '20px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
+                    <h3 style={{ fontSize: '14px', fontWeight: 600, margin: 0, color: '#1e293b' }}>
+                      Saved Parties ({customerParties.length + supplierParties.length})
+                    </h3>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      {[
+                        { id: 'all', label: `All (${customerParties.length + supplierParties.length})` },
+                        { id: 'customer', label: `Customers (${customerParties.length})` },
+                        { id: 'supplier', label: `Suppliers (${supplierParties.length})` },
+                      ].map((tab) => (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setKhataPartyFilter(tab.id)}
+                          style={{
+                            padding: '3px 8px',
+                            fontSize: '11px',
+                            borderRadius: '4px',
+                            border: '1px solid #cbd5e1',
+                            background: khataPartyFilter === tab.id ? '#1e3a8a' : '#f8fafc',
+                            color: khataPartyFilter === tab.id ? '#ffffff' : '#475569',
+                            cursor: 'pointer',
+                            fontWeight: khataPartyFilter === tab.id ? 600 : 400,
+                            minHeight: 'unset',
+                            margin: 0,
+                          }}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {(customerParties.length + supplierParties.length) > 5 && (
+                    <input
+                      type="text"
+                      placeholder="Search saved parties..."
+                      value={khataPartySearch}
+                      onChange={(e) => setKhataPartySearch(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '6px 10px',
+                        fontSize: '12px',
+                        borderRadius: '4px',
+                        border: '1px solid #cbd5e1',
+                        marginBottom: '8px',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  )}
+
+                  {(() => {
+                    const allList = [
+                      ...customerParties.map((c) => ({ ...c, kind: 'customer' })),
+                      ...supplierParties.map((s) => ({ ...s, kind: 'supplier' })),
+                    ];
+                    const filtered = allList.filter((p) => {
+                      if (khataPartyFilter === 'customer' && p.kind !== 'customer') return false;
+                      if (khataPartyFilter === 'supplier' && p.kind !== 'supplier') return false;
+                      if (khataPartySearch && !p.name.toLowerCase().includes(khataPartySearch.toLowerCase().trim())) return false;
+                      return true;
+                    });
+
+                    if (allList.length === 0) {
+                      return (
+                        <div style={{ fontSize: '13px', color: '#64748b', background: '#f8fafc', padding: '12px', borderRadius: '6px', textAlign: 'center', border: '1px dashed #cbd5e1' }}>
+                          No parties added yet. Enter a name above and click <strong>"Add Party Ledger"</strong> to create customers or suppliers.
+                        </div>
+                      );
+                    }
+
+                    if (filtered.length === 0) {
+                      return (
+                        <div style={{ fontSize: '13px', color: '#64748b', padding: '8px', textAlign: 'center' }}>
+                          No matching parties found.
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div style={{ maxHeight: '240px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {filtered.map((party) => (
+                          <div
+                            key={party.id}
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              padding: '8px 12px',
+                              background: '#ffffff',
+                              borderRadius: '6px',
+                              border: '1px solid #e2e8f0',
+                              fontSize: '13px',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                              <span
+                                style={{
+                                  fontSize: '10px',
+                                  fontWeight: 700,
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  textTransform: 'uppercase',
+                                  flexShrink: 0,
+                                  background: party.kind === 'customer' ? '#e0f2fe' : '#fef3c7',
+                                  color: party.kind === 'customer' ? '#0369a1' : '#b45309',
+                                }}
+                              >
+                                {party.kind === 'customer' ? 'Customer' : 'Supplier'}
+                              </span>
+                              <span style={{ fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {party.name}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => deleteParty(party)}
+                              style={{
+                                background: '#fef2f2',
+                                border: '1px solid #fecaca',
+                                color: '#dc2626',
+                                cursor: 'pointer',
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                                fontWeight: 500,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                minHeight: 'unset',
+                                margin: 0,
+                                flexShrink: 0,
+                              }}
+                              title={`Delete ${party.name}`}
+                            >
+                              <Trash2 size={12} />
+                              Delete
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
               </article>
 
               <article className="panel" style={{ marginTop: '24px' }}>

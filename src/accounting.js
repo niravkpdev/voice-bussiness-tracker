@@ -194,7 +194,7 @@ export function deleteVoucher(voucherId) {
   return vouchers;
 }
 
-export function addPartyLedger(name, partyType) {
+export function addPartyLedger(name, partyType, currentLedgers = null) {
   const trimmed = name.trim();
   if (!trimmed) {
     throw new Error('Party name is required');
@@ -202,7 +202,21 @@ export function addPartyLedger(name, partyType) {
 
   const group = partyType === 'supplier' ? 'Sundry Creditors' : 'Sundry Debtors';
   const balanceType = partyType === 'supplier' ? 'credit' : 'debit';
-  const ledgers = ensureDefaultLedgers();
+  
+  // Merge default ledgers, stored ledgers, and any current in-memory ledgers to guarantee no lost parties
+  const storedLedgers = readLedgers();
+  const map = new Map();
+  DEFAULT_LEDGERS.forEach((dl) => map.set(dl.id, dl));
+  (Array.isArray(storedLedgers) ? storedLedgers : []).forEach((el) => {
+    if (el && el.id) map.set(el.id, el);
+  });
+  if (Array.isArray(currentLedgers)) {
+    currentLedgers.forEach((cl) => {
+      if (cl && cl.id) map.set(cl.id, cl);
+    });
+  }
+  const ledgers = Array.from(map.values());
+
   const duplicate = ledgers.find(
     (ledger) => ledger.name.toLowerCase() === trimmed.toLowerCase() && ledger.group === group
   );
@@ -219,9 +233,35 @@ export function addPartyLedger(name, partyType) {
     balanceType,
   };
 
-  const nextLedgers = [ledger, ...ledgers];
+  const nextLedgers = [ledger, ...ledgers.filter((l) => l.id !== ledger.id)];
   writeSavedArray(LEDGERS_KEY, nextLedgers);
   return { ledgers: nextLedgers, ledger };
+}
+
+export function deletePartyLedger(ledgerIdOrName, currentLedgers = null) {
+  const storedLedgers = readLedgers();
+  const map = new Map();
+  DEFAULT_LEDGERS.forEach((dl) => map.set(dl.id, dl));
+  (Array.isArray(storedLedgers) ? storedLedgers : []).forEach((el) => {
+    if (el && el.id) map.set(el.id, el);
+  });
+  if (Array.isArray(currentLedgers)) {
+    currentLedgers.forEach((cl) => {
+      if (cl && cl.id) map.set(cl.id, cl);
+    });
+  }
+
+  const targetStr = String(ledgerIdOrName || '').toLowerCase().trim();
+  const nextLedgers = Array.from(map.values()).filter((l) => {
+    // Preserve default system accounts
+    if (DEFAULT_LEDGERS.some((dl) => dl.id === l.id)) return true;
+    if (l.id === ledgerIdOrName) return false;
+    if (l.name && l.name.toLowerCase().trim() === targetStr) return false;
+    return true;
+  });
+
+  writeSavedArray(LEDGERS_KEY, nextLedgers);
+  return nextLedgers;
 }
 
 export function getPartyLedgers(ledgers) {

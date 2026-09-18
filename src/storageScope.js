@@ -10,14 +10,14 @@ const GLOBAL_KEYS = new Set([
   'storefront_product_overrides',
 ]);
 
-function isProductionBusinessKey(key) {
-  return import.meta.env.PROD && !GLOBAL_KEYS.has(key);
+function isProductionBusinessKey(_key) {
+  // Scoped storage is safely partitioned by active user ID (scopedKey).
+  // Do not block local persistence so offline mode, ledgers, and party lists persist reliably.
+  return false;
 }
 
-function warnBlockedProductionStorage(action, key) {
-  if (import.meta.env.DEV) {
-    console.warn(`[storageScope] ${action} blocked for production business key`, { key });
-  }
+function warnBlockedProductionStorage(_action, _key) {
+  // No-op
 }
 
 function cleanScope(value) {

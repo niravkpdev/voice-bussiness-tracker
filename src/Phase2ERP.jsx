@@ -1030,7 +1030,7 @@ export default function Phase2ERP({
         writeArray(CUSTOMER_KEY, nextCustomers);
         onCustomersChange?.(nextCustomers);
         try {
-          window.dispatchEvent(new CustomEvent('trinetr-party-deleted', { detail: { id: person.id, kind: 'customer' } }));
+          window.dispatchEvent(new CustomEvent('trinetr-party-deleted', { detail: { id: person.id, kind: 'customer', name: person.name } }));
         } catch (e) {}
         debugDatabase('CUSTOMER_DELETE_SUCCESS', { path, customerId: person.id });
       } else {
@@ -1039,7 +1039,7 @@ export default function Phase2ERP({
         writeArray(SUPPLIER_KEY, nextSuppliers);
         onSuppliersChange?.(nextSuppliers);
         try {
-          window.dispatchEvent(new CustomEvent('trinetr-party-deleted', { detail: { id: person.id, kind: 'supplier' } }));
+          window.dispatchEvent(new CustomEvent('trinetr-party-deleted', { detail: { id: person.id, kind: 'supplier', name: person.name } }));
         } catch (e) {}
         debugDatabase('SUPPLIER_DELETE_SUCCESS', { path, supplierId: person.id });
       }
