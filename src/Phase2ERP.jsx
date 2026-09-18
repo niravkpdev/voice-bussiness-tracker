@@ -1843,7 +1843,7 @@ export default function Phase2ERP({
           <>
             <div className="hrms-filters" style={{ marginBottom: '24px' }}>
               <div className="hrms-search-box">
-                <span>🔍</span>
+                <Search size={16} className="search-icon" />
                 <input 
                   type="text" 
                   placeholder="Search products by name or SKU..." 
@@ -2834,36 +2834,36 @@ export default function Phase2ERP({
             </div>
 
             <div className="crm-table-wrapper fade-in">
-              <div className="table-responsive">
-<table className="crm-table">
-                <thead>
-                  <tr>
-                    <th>Profile</th>
-                    <th>Contact</th>
-                    <th>{isCustomer ? 'Outstanding' : 'Payable'}</th>
-                    <th>Status & Tags</th>
-                    <th>Assigned To</th>
-                    <th style={{ textAlign: 'right' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {list.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} style={{ padding: '60px 20px', textAlign: 'center' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-                          <div style={{ width: '80px', height: '80px', background: 'var(--bg-secondary)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Users size={32} color="var(--text-secondary)" />
-                          </div>
-                          <div>
-                            <h3 style={{ fontSize: '16px', marginBottom: '8px' }}>No {isCustomer ? 'customers' : 'suppliers'} yet</h3>
-                            <p className="text-secondary" style={{ fontSize: '14px', maxWidth: '300px', margin: '0 auto' }}>Start building your database by adding your first profile.</p>
-                          </div>
-                          <button className="primary-button" style={{ marginTop: '8px' }} onClick={() => setShowPersonDrawer(true)}><Plus size={16}/> Add {isCustomer ? 'Customer' : 'Supplier'}</button>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    list.map((item, i) => {
+              {list.length === 0 ? (
+                <div style={{ padding: '48px 16px', textAlign: 'center', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', maxWidth: '340px', margin: '0 auto' }}>
+                    <div style={{ width: '72px', height: '72px', background: 'var(--bg-secondary)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Users size={32} color="var(--text-secondary)" />
+                    </div>
+                    <div>
+                      <h3 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '6px', color: 'var(--text-primary)' }}>No {isCustomer ? 'customers' : 'suppliers'} yet</h3>
+                      <p className="text-secondary" style={{ fontSize: '14px', margin: '0 auto', color: 'var(--text-secondary)' }}>Start building your database by adding your first profile.</p>
+                    </div>
+                    <button className="primary-button" style={{ marginTop: '6px', width: '100%', maxWidth: '240px', minHeight: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }} onClick={() => setShowPersonDrawer(true)}>
+                      <Plus size={16}/> Add {isCustomer ? 'Customer' : 'Supplier'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="table-responsive">
+                  <table className="crm-table">
+                    <thead>
+                      <tr>
+                        <th>Profile</th>
+                        <th>Contact</th>
+                        <th>{isCustomer ? 'Outstanding' : 'Payable'}</th>
+                        <th>Status & Tags</th>
+                        <th>Assigned To</th>
+                        <th style={{ textAlign: 'right' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {list.map((item, i) => {
                       const balance = isCustomer ? safeMoney(item.outstandingAmount ?? item.outstanding ?? item.balance ?? 0) : safeMoney(item.payableAmount || item.balance || 0);
                       
                       // Mock CRM tags for demonstration
@@ -2918,12 +2918,12 @@ export default function Phase2ERP({
                           </td>
                         </tr>
                       );
-                    })
-                  )}
-                </tbody>
-              </table>
-</div>
-            </div>
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
           </>
         ) : (
           /* CRM PROFILE VIEW */

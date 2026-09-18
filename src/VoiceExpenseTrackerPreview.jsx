@@ -7535,8 +7535,8 @@ export default function VoiceExpenseTrackerPreview() {
             </button>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
               <span style={{ background: '#1e3a8a', color: '#ffffff', fontWeight: 800, padding: '3px 8px', borderRadius: '4px', fontSize: '11px', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>TRINETR ERP</span>
-              <strong style={{ fontWeight: 800, fontSize: '14.5px', color: 'var(--text-primary, #0f172a)', letterSpacing: '0.01em', whiteSpace: 'nowrap' }}>{profile.name || authUser?.businessName || 'TRINETR BUSINESS SUITE'}</strong>
-              <span style={{ fontSize: '12px', color: 'var(--text-muted, #64748b)', fontWeight: 600, whiteSpace: 'nowrap' }}>[2026 - 2027]</span>
+              <strong className="topbar-biz-name" style={{ fontWeight: 800, fontSize: '14.5px', color: 'var(--text-primary, #0f172a)', letterSpacing: '0.01em', whiteSpace: 'nowrap', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{profile.name || authUser?.businessName || 'TRINETR BUSINESS SUITE'}</strong>
+              <span className="hide-on-mobile" style={{ fontSize: '12px', color: 'var(--text-muted, #64748b)', fontWeight: 600, whiteSpace: 'nowrap' }}>[2026 - 2027]</span>
               <span className="hide-on-mobile" style={{ color: 'var(--border-subtle, #cbd5e1)' }}>|</span>
               <span className="hide-on-mobile" style={{ fontSize: '12px', color: 'var(--text-secondary, #334155)', fontWeight: 600, whiteSpace: 'nowrap' }}>
                 GSTIN: <strong style={{ color: 'var(--text-primary, #0f172a)', fontFamily: 'monospace', fontSize: '12.5px', fontWeight: 750 }}>{profile.gstin || '24CPVPC7753J1Z8'}</strong>
@@ -7554,12 +7554,12 @@ export default function VoiceExpenseTrackerPreview() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
-                fontSize: '12.5px',
+                fontSize: '12px',
                 background: activeTab === 'store' ? '#92400e' : '#fef3c7',
                 color: activeTab === 'store' ? '#ffffff' : '#92400e',
                 border: '1px solid #fde68a',
                 fontWeight: '750',
-                padding: '7px 12px',
+                padding: '6px 10px',
                 borderRadius: '6px',
                 cursor: 'pointer',
                 whiteSpace: 'nowrap',
@@ -7568,7 +7568,8 @@ export default function VoiceExpenseTrackerPreview() {
               }}
             >
               <ShoppingBag size={15} />
-              <span>Online Storefront</span>
+              <span className="hide-on-mobile">Online </span>
+              <span>Storefront</span>
             </button>
             
             {/* Quick Add Dropdown */}
@@ -7598,7 +7599,7 @@ export default function VoiceExpenseTrackerPreview() {
                   setNotificationsOpen(false);
                 }}
               >
-                <Plus size={16} /> Quick Add <ChevronDown size={14} style={{ opacity: 0.8, transform: quickAddOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                <Plus size={16} /> <span className="hide-on-mobile">Quick </span><span>Add</span> <ChevronDown size={14} style={{ opacity: 0.8, transform: quickAddOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
               </button>
               {quickAddOpen && (
                 <div
@@ -7647,14 +7648,14 @@ export default function VoiceExpenseTrackerPreview() {
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  width: '36px',
-                  minWidth: '36px',
-                  maxWidth: '36px',
-                  height: '36px',
+                  width: '34px',
+                  minWidth: '34px',
+                  maxWidth: '34px',
+                  height: '34px',
                   borderRadius: '50%',
-                  border: '1.5px solid #cbd5e1',
-                  color: notificationsOpen ? '#1e3a8a' : '#334155',
-                  background: notificationsOpen ? '#eff6ff' : '#f8fafc',
+                  border: '1px solid var(--border-subtle, #cbd5e1)',
+                  color: notificationsOpen ? '#38bdf8' : 'var(--text-primary, #334155)',
+                  background: notificationsOpen ? 'rgba(56, 189, 248, 0.15)' : 'var(--bg-secondary, #f8fafc)',
                   cursor: 'pointer',
                   position: 'relative',
                   padding: 0,
@@ -7868,7 +7869,7 @@ export default function VoiceExpenseTrackerPreview() {
         <main className="page-shell">
           {cloudBusinesses.length === 0 && !['profile-settings', 'company-setup'].includes(activeTab) && (
               <div style={{ gridColumn: '1 / -1', marginBottom: '16px' }}>
-              {userPreferences.showWelcomeMessage && (
+              {userPreferences.showWelcomeMessage && !isMobile && (
                 <h2 style={{ fontSize: '18px', fontWeight: '600' }}>Welcome to Trinetr Business Suite</h2>
               )}
               </div>
