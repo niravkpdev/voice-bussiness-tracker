@@ -9941,7 +9941,7 @@ export default function VoiceExpenseTrackerPreview() {
                     <h3 style={{ fontSize: '14px', fontWeight: 600, margin: 0, color: '#1e293b' }}>
                       Saved Parties ({customerParties.length + supplierParties.length})
                     </h3>
-                    <div style={{ display: 'flex', gap: '4px' }}>
+                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                       {[
                         { id: 'all', label: `All (${customerParties.length + supplierParties.length})` },
                         { id: 'customer', label: `Customers (${customerParties.length})` },
@@ -9950,6 +9950,7 @@ export default function VoiceExpenseTrackerPreview() {
                         <button
                           key={tab.id}
                           type="button"
+                          className="khata-filter-btn"
                           onClick={() => setKhataPartyFilter(tab.id)}
                           style={{
                             padding: '3px 8px',
@@ -9960,8 +9961,11 @@ export default function VoiceExpenseTrackerPreview() {
                             color: khataPartyFilter === tab.id ? '#ffffff' : '#475569',
                             cursor: 'pointer',
                             fontWeight: khataPartyFilter === tab.id ? 600 : 400,
-                            minHeight: 'unset',
+                            minHeight: '26px',
+                            height: '26px',
+                            width: 'auto',
                             margin: 0,
+                            flexShrink: 0,
                           }}
                         >
                           {tab.label}
@@ -10021,8 +10025,10 @@ export default function VoiceExpenseTrackerPreview() {
                         {filtered.map((party) => (
                           <div
                             key={party.id}
+                            className="khata-party-row"
                             style={{
                               display: 'flex',
+                              flexDirection: 'row',
                               justifyContent: 'space-between',
                               alignItems: 'center',
                               padding: '8px 12px',
@@ -10031,9 +10037,23 @@ export default function VoiceExpenseTrackerPreview() {
                               border: '1px solid #e2e8f0',
                               fontSize: '13px',
                               boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                              width: '100%',
+                              boxSizing: 'border-box',
+                              gap: '10px',
                             }}
                           >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                            <div
+                              className="khata-party-info"
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                gap: '8px',
+                                flex: '1 1 auto',
+                                minWidth: 0,
+                                overflow: 'hidden',
+                              }}
+                            >
                               <span
                                 style={{
                                   fontSize: '10px',
@@ -10044,38 +10064,95 @@ export default function VoiceExpenseTrackerPreview() {
                                   flexShrink: 0,
                                   background: party.kind === 'customer' ? '#e0f2fe' : '#fef3c7',
                                   color: party.kind === 'customer' ? '#0369a1' : '#b45309',
+                                  border: party.kind === 'customer' ? '1px solid #bae6fd' : '1px solid #fde68a',
+                                  display: 'inline-block',
                                 }}
                               >
                                 {party.kind === 'customer' ? 'Customer' : 'Supplier'}
                               </span>
-                              <span style={{ fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              <span
+                                style={{
+                                  fontWeight: 600,
+                                  color: '#0f172a',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  fontSize: '13px',
+                                  display: 'inline-block',
+                                  minWidth: 0,
+                                }}
+                                title={party.name}
+                              >
                                 {party.name}
                               </span>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => deleteParty(party)}
-                              style={{
-                                background: '#fef2f2',
-                                border: '1px solid #fecaca',
-                                color: '#dc2626',
-                                cursor: 'pointer',
-                                padding: '4px 8px',
-                                borderRadius: '4px',
-                                fontSize: '12px',
-                                fontWeight: 500,
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                minHeight: 'unset',
-                                margin: 0,
-                                flexShrink: 0,
-                              }}
-                              title={`Delete ${party.name}`}
-                            >
-                              <Trash2 size={12} />
-                              Delete
-                            </button>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '0 0 auto', flexShrink: 0 }}>
+                              <button
+                                type="button"
+                                className="khata-party-btn"
+                                onClick={() => {
+                                  setVoucherPartyId(party.id);
+                                  if (party.kind === 'customer') {
+                                    setVoucherType('Sales');
+                                    setUseSalesInsteadOfParty(false);
+                                  } else {
+                                    setVoucherType('Purchase');
+                                    setUseExpenseInsteadOfSupplier(false);
+                                  }
+                                  setStatus(`Selected "${party.name}" for ${party.kind === 'customer' ? 'Sales' : 'Purchase'} Voucher`);
+                                }}
+                                style={{
+                                  background: '#f1f5f9',
+                                  border: '1px solid #cbd5e1',
+                                  color: '#334155',
+                                  cursor: 'pointer',
+                                  padding: '4px 8px',
+                                  borderRadius: '4px',
+                                  fontSize: '11px',
+                                  fontWeight: 600,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '2px',
+                                  minHeight: '28px',
+                                  height: '28px',
+                                  margin: 0,
+                                  width: 'auto',
+                                  maxWidth: 'max-content',
+                                  flexShrink: 0,
+                                }}
+                                title={`Select ${party.name} for voucher`}
+                              >
+                                Select
+                              </button>
+                              <button
+                                type="button"
+                                className="khata-party-btn"
+                                onClick={() => deleteParty(party)}
+                                style={{
+                                  background: '#fef2f2',
+                                  border: '1px solid #fecaca',
+                                  color: '#dc2626',
+                                  cursor: 'pointer',
+                                  padding: '4px 8px',
+                                  borderRadius: '4px',
+                                  fontSize: '11px',
+                                  fontWeight: 600,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  minHeight: '28px',
+                                  height: '28px',
+                                  margin: 0,
+                                  width: 'auto',
+                                  maxWidth: 'max-content',
+                                  flexShrink: 0,
+                                }}
+                                title={`Delete ${party.name}`}
+                              >
+                                <Trash2 size={12} />
+                                Delete
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>

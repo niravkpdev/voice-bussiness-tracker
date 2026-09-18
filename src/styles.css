@@ -10041,6 +10041,41 @@ body.theme-light .legal-link-grid a {
   border-color: #cbd5e1 !important;
 }
 
+/* Saved Parties (Khata List) row & button layout */
+.khata-party-row {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.khata-party-row .khata-party-info {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 10px !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+.khata-party-row button,
+button.khata-party-btn,
+button.khata-filter-btn {
+  width: auto !important;
+  min-width: auto !important;
+  max-width: max-content !important;
+  min-height: 30px !important;
+  height: 30px !important;
+  margin: 0 !important;
+  margin-top: 0 !important;
+  flex: 0 0 auto !important;
+  flex-shrink: 0 !important;
+}
+
+
 
 
 
