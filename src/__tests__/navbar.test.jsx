@@ -165,5 +165,39 @@ describe('Top Navbar Functions & Associated Modals', () => {
     expect(screen.getByRole('button', { name: /AI Business Assistant/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Voice Command Center/i })).toBeInTheDocument();
   });
+
+  it('renders active Billing & Plans console without coming soon placeholder', () => {
+    window.matchMedia = window.matchMedia || function() {
+      return {
+        matches: false,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      };
+    };
+    localStorage.setItem('voiceBusinessTrackerAuth', JSON.stringify({ uid: 'test-user', email: 'owner@example.com', role: 'Owner' }));
+
+    render(<VoiceExpenseTrackerPreview />);
+
+    // Open 7. Master menu and navigate to Subscription Plan & Billing Center
+    const masterBtn = screen.getByRole('button', { name: /7\. Master ▾/i });
+    fireEvent.click(masterBtn);
+
+    const billingNavBtn = screen.getByRole('button', { name: /Subscription Plan & Billing Center/i });
+    expect(billingNavBtn).toBeInTheDocument();
+    fireEvent.click(billingNavBtn);
+
+    // Placeholder "Billing & Plans coming soon" must NOT exist
+    expect(screen.queryByText(/Billing & Plans coming soon/i)).not.toBeInTheDocument();
+
+    // The real Billing & Plans screen must be rendered
+    expect(screen.getAllByRole('heading', { name: /Billing & Plans/i })[0]).toBeInTheDocument();
+    expect(screen.getByText(/Choose or Switch Subscription Plan/i)).toBeInTheDocument();
+    expect(screen.getByText(/Plan Limits & Real-time Usage/i)).toBeInTheDocument();
+    expect(screen.getByText(/Invoices & Payment History/i)).toBeInTheDocument();
+  });
 });
+
 

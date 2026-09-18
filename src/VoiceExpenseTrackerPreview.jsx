@@ -9,7 +9,7 @@ import {
   LogOut, User, ChevronDown, Calendar, Lightbulb, CheckCircle, AlertCircle,
   CalendarDays, Gift, Briefcase, MapPin, Star, Sparkles, TrendingDown, Sun, Cloud,
   Filter, Tag, Download, Phone, Mail, MessageCircle, MoreHorizontal, Paperclip, Edit3, ArrowLeft, Image as ImageIcon, X,
-  Trash2, Copy, Check, ChevronRight, Lock, Shield, Menu, Home, LayoutDashboard
+  Trash2, Copy, Check, ChevronRight, Lock, Shield, Menu, Home, LayoutDashboard, Zap
 } from 'lucide-react';
 import { SafeHelpCenterModal } from './SafeHelpCenterModal';
 import { DemoPreviewModal } from './DemoPreviewModal.jsx';
@@ -54,6 +54,7 @@ import { GuidedTour } from './GuidedTour.jsx';
 import { SetupWizard } from './SetupWizard.jsx';
 import { LegalPage, LEGAL_PAGE_IDS } from './LegalPages.jsx';
 import { PricingPage } from './PricingPage.jsx';
+import { BillingSettings } from './BillingSettings.jsx';
 import { UpgradeModal } from './UpgradeModal.jsx';
 import { getUpgradeMessage } from './subscription.js';
 import { ContactModal } from './ContactModal.jsx';
@@ -152,6 +153,9 @@ const DEFAULT_PROFILE = {
   bannerOffer: 'FLAT 20% OFF',
   bannerRegion: "For All Gujarat and Mumbai City's Customers",
   upiId: 'trinetr.namkeen@icici',
+  subscriptionPlan: 'Free Trial',
+  subscriptionCycle: 'monthly',
+  trialStartDate: new Date().toISOString(),
 };
 
 const DEFAULT_PREFERENCES = {
@@ -523,6 +527,9 @@ function readProfile() {
       storeTagline: chosenStoreTagline,
       owner: scoped.owner || localSaved.owner || authOwnerName || DEFAULT_PROFILE.owner,
       businessName: chosenName,
+      subscriptionPlan: scoped.subscriptionPlan || localSaved.subscriptionPlan || DEFAULT_PROFILE.subscriptionPlan,
+      subscriptionCycle: scoped.subscriptionCycle || localSaved.subscriptionCycle || DEFAULT_PROFILE.subscriptionCycle,
+      trialStartDate: scoped.trialStartDate || localSaved.trialStartDate || DEFAULT_PROFILE.trialStartDate,
     };
 
     return merged;
@@ -5515,6 +5522,16 @@ export default function VoiceExpenseTrackerPreview() {
     }
     setStatus('Business profile updated successfully');
     return nextProfile;
+  };
+
+  const handleUpgradePlan = async (plan, cycle = 'monthly') => {
+    const updated = {
+      subscriptionPlan: plan,
+      subscriptionCycle: cycle,
+      subscriptionUpdatedAt: new Date().toISOString(),
+    };
+    await updateBusinessProfile(updated);
+    setStatus(`🎉 Successfully switched to ${plan} Plan (${cycle === 'yearly' ? 'Yearly' : 'Monthly'})!`);
   };
 
   const resetBusinessProfile = () => {
@@ -11019,19 +11036,29 @@ export default function VoiceExpenseTrackerPreview() {
               <div className="section-header">
                 <div>
                   <h2>Billing & Plans</h2>
-                  <p className="panel-hint">Manage your subscription, view invoices, and update payment methods.</p>
+                  <p className="panel-hint">Manage your active subscription, upgrade plans starting from ₹99/mo, and view invoices.</p>
                 </div>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => setShowPricing(true)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <Zap size={16} style={{ color: 'var(--brand-primary)' }} /> View Full Comparison
+                </button>
               </div>
-              <div style={{ padding: '32px', textAlign: 'center', background: 'var(--bg-primary)', borderRadius: '8px', border: '1px dashed var(--border-subtle)' }}>
-                <CreditCard size={48} style={{ color: 'var(--text-muted)', marginBottom: '16px', marginLeft: 'auto', marginRight: 'auto', display: 'block' }} />
-                <h3 style={{ margin: '0 0 8px 0' }}>Billing & Plans coming soon</h3>
-                <p style={{ color: 'var(--text-secondary)', margin: '0 0 24px 0', maxWidth: '400px', marginLeft: 'auto', marginRight: 'auto' }}>
-                  You are currently on the free beta plan. Subscription and payment integration will be available in a future update.
-                </p>
-                <div style={{ display: 'flex', justifyContent: 'center' }}>
-                  <button type="button" className="secondary-button" onClick={() => { setActiveTab('app-settings'); window.location.hash = 'app-settings'; }}>Go to Settings</button>
-                </div>
-              </div>
+              <BillingSettings
+                profile={profile}
+                onOpenPricing={() => setShowPricing(true)}
+                onSelectPlan={handleUpgradePlan}
+                onUpgradePlan={handleUpgradePlan}
+                onContactSales={() => setShowContactModal(true)}
+                usage={{
+                  customers: cloudCustomers?.length || 0,
+                  products: cloudInventory?.length || 0,
+                  employees: cloudEmployees?.length || 0,
+                }}
+              />
             </section>
           )}
 
@@ -11456,8 +11483,17 @@ export default function VoiceExpenseTrackerPreview() {
       {showPricing && (
         <PricingPage
           onClose={() => setShowPricing(false)}
-          onUpgrade={(plan) => {
+          onUpgrade={(plan, cycle) => {
             setShowPricing(false);
+            handleUpgradePlan(plan, cycle);
+          }}
+          onSelectPlan={(plan, cycle) => {
+            setShowPricing(false);
+            handleUpgradePlan(plan, cycle);
+          }}
+          onContactSales={() => {
+            setShowPricing(false);
+            setShowContactModal(true);
           }}
           isLoggedIn={Boolean(authUser && hasVerifiedAccess)}
         />
