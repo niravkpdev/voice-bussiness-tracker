@@ -3814,11 +3814,10 @@ export default function VoiceExpenseTrackerPreview() {
       unsubscribe();
     };
   }, [supabaseEnabled]);
-  const partyLedgers = useMemo(() => getPartyLedgers(ledgers), [ledgers]);
   const customerParties = useMemo(() => {
     const map = new Map();
-    partyLedgers
-      .filter((ledger) => ledger.group === 'Sundry Debtors')
+    (Array.isArray(ledgers) ? ledgers : [])
+      .filter((ledger) => ledger?.group === 'Sundry Debtors')
       .forEach((ledger) => {
         if (ledger?.name) {
           map.set(ledger.name.toLowerCase().trim(), ledger);
@@ -3839,12 +3838,12 @@ export default function VoiceExpenseTrackerPreview() {
       }
     });
     return Array.from(map.values());
-  }, [partyLedgers, cloudCustomers]);
+  }, [ledgers, cloudCustomers]);
 
   const supplierParties = useMemo(() => {
     const map = new Map();
-    partyLedgers
-      .filter((ledger) => ledger.group === 'Sundry Creditors')
+    (Array.isArray(ledgers) ? ledgers : [])
+      .filter((ledger) => ledger?.group === 'Sundry Creditors')
       .forEach((ledger) => {
         if (ledger?.name) {
           map.set(ledger.name.toLowerCase().trim(), ledger);
@@ -3865,9 +3864,44 @@ export default function VoiceExpenseTrackerPreview() {
       }
     });
     return Array.from(map.values());
-  }, [partyLedgers, cloudSuppliers]);
-  const cashLedgers = useMemo(() => getCashLedgers(ledgers), [ledgers]);
-  const expenseLedgers = useMemo(() => getExpenseLedgers(ledgers), [ledgers]);
+  }, [ledgers, cloudSuppliers]);
+
+  const partyLedgers = useMemo(() => {
+    const map = new Map();
+    (Array.isArray(ledgers) ? ledgers : [])
+      .filter((l) => l && (l.group === 'Sundry Debtors' || l.group === 'Sundry Creditors'))
+      .forEach((l) => {
+        if (l?.id) map.set(l.id, l);
+      });
+    customerParties.forEach((c) => {
+      if (c?.id && !map.has(c.id)) map.set(c.id, c);
+    });
+    supplierParties.forEach((s) => {
+      if (s?.id && !map.has(s.id)) map.set(s.id, s);
+    });
+    return Array.from(map.values());
+  }, [ledgers, customerParties, supplierParties]);
+
+  const allEffectiveLedgers = useMemo(() => {
+    const map = new Map();
+    (Array.isArray(ledgers) ? ledgers : []).forEach((l) => {
+      if (l?.id) map.set(l.id, l);
+    });
+    partyLedgers.forEach((p) => {
+      if (p?.id && !map.has(p.id)) map.set(p.id, p);
+    });
+    return Array.from(map.values());
+  }, [ledgers, partyLedgers]);
+
+  const effectiveStatementLedgerId = useMemo(() => {
+    if (statementLedgerId && partyLedgers.some((p) => p.id === statementLedgerId)) {
+      return statementLedgerId;
+    }
+    return partyLedgers.length > 0 ? partyLedgers[0].id : '';
+  }, [statementLedgerId, partyLedgers]);
+
+  const cashLedgers = useMemo(() => getCashLedgers(allEffectiveLedgers), [allEffectiveLedgers]);
+  const expenseLedgers = useMemo(() => getExpenseLedgers(allEffectiveLedgers), [allEffectiveLedgers]);
 
   const activeVouchers = useMemo(() => {
     return (Array.isArray(vouchers) ? vouchers : []).filter(
@@ -3890,19 +3924,19 @@ export default function VoiceExpenseTrackerPreview() {
   const totals = useMemo(() => voucherCashTotals(activeVouchers), [activeVouchers]);
 
   const statement = useMemo(
-    () => getLedgerStatement(statementLedgerId, ledgers, activeVouchers),
-    [statementLedgerId, ledgers, activeVouchers]
+    () => getLedgerStatement(effectiveStatementLedgerId, allEffectiveLedgers, activeVouchers),
+    [effectiveStatementLedgerId, allEffectiveLedgers, activeVouchers]
   );
 
-  const partySummary = useMemo(() => getPartySummary(ledgers, activeVouchers), [ledgers, activeVouchers]);
+  const partySummary = useMemo(() => getPartySummary(allEffectiveLedgers, activeVouchers), [allEffectiveLedgers, activeVouchers]);
 
   const stats = useMemo(() => {
-    return getDailyAndMonthlyStats(activeVouchers, ledgers);
-  }, [activeVouchers, ledgers]);
+    return getDailyAndMonthlyStats(activeVouchers, allEffectiveLedgers);
+  }, [activeVouchers, allEffectiveLedgers]);
 
   const cashInHand = useMemo(() => {
-    return cashLedgers.reduce((sum, ledger) => sum + computeLedgerBalance(ledger.id, ledgers, activeVouchers), 0);
-  }, [cashLedgers, ledgers, activeVouchers]);
+    return cashLedgers.reduce((sum, ledger) => sum + computeLedgerBalance(ledger.id, allEffectiveLedgers, activeVouchers), 0);
+  }, [cashLedgers, allEffectiveLedgers, activeVouchers]);
 
   const dashboardMetrics = useMemo(() => {
     const todayStr = new Date().toLocaleDateString('en-CA');
@@ -10298,14 +10332,14 @@ export default function VoiceExpenseTrackerPreview() {
                       </tr>
                     </thead>
                     <tbody>
-                      {getPartyLedgers(ledgers).slice(0, 5).map(ledger => (
+                      {partyLedgers.slice(0, 5).map(ledger => (
                         <tr key={ledger.id}>
                           <td>{ledger.name}</td>
                           <td>{ledger.group === 'Sundry Creditors' ? 'Supplier' : 'Customer'}</td>
                           <td>{ledger.group}</td>
                         </tr>
                       ))}
-                      {getPartyLedgers(ledgers).length === 0 && (
+                      {partyLedgers.length === 0 && (
                         <tr>
                           <td colSpan="3" style={{ textAlign: 'center', padding: '24px' }} className="text-secondary">No party ledgers found.</td>
                         </tr>
@@ -10625,19 +10659,25 @@ export default function VoiceExpenseTrackerPreview() {
                     id="statement-party"
                     className="saas-input"
                     style={{ backgroundColor: '#fff', color: '#111827', zIndex: 10, minHeight: '44px', width: '100%', appearance: 'auto', borderRadius: '6px', border: '1px solid #d1d5db', padding: '8px 12px', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}
-                    value={statementLedgerId}
+                    value={effectiveStatementLedgerId}
                     onChange={(event) => setStatementLedgerId(event.target.value)}
                   >
                     {partyLedgers.map((ledger) => (
                       <option key={ledger.id} value={ledger.id}>
-                        {ledger.name} ({ledger.group})
+                        {ledger.name} ({ledger.group === 'Sundry Creditors' ? 'Supplier' : 'Customer'})
                       </option>
                     ))}
                   </select>
                   {statement.ledger && (
-                    <p className="statement-balance">
-                      Closing balance: {formatPartyBalance(statement.ledger, statement.closingBalance)}
-                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', margin: '12px 0' }}>
+                      <p className="statement-balance" style={{ margin: 0, fontWeight: 700, fontSize: '15px', color: '#0f172a' }}>
+                        Closing balance: <span style={{ color: statement.closingBalance > 0 ? '#16a34a' : statement.closingBalance < 0 ? '#dc2626' : '#64748b' }}>{formatPartyBalance(statement.ledger, statement.closingBalance)}</span>
+                      </p>
+                      <span className="badge" style={{ backgroundColor: '#f1f5f9', color: '#475569', fontSize: '12px', padding: '4px 10px', borderRadius: '4px' }}>
+                        {statement.ledger.group === 'Sundry Creditors' ? 'Supplier Account' : 'Customer Account'}
+                        {statement.ledger.phone ? ` • 📞 ${statement.ledger.phone}` : ''}
+                      </span>
+                    </div>
                   )}
                   <div className="statement-table-wrap">
                     <table className="statement-table">

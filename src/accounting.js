@@ -293,6 +293,60 @@ export function ledgerDisplayBalance(ledger, balance) {
   return -balance;
 }
 
+export function isPartyVoucherLine(line, targetLedger, ledgers, voucher) {
+  if (!line || !targetLedger) return false;
+  // 1. Exact ledger ID match
+  if (line.ledgerId === targetLedger.id) return true;
+
+  const targetName = targetLedger.name ? targetLedger.name.toLowerCase().trim() : '';
+  if (!targetName) return false;
+
+  // 2. If another ledger object in `ledgers` has the same name and party group
+  const lineLedger = Array.isArray(ledgers) ? ledgers.find((l) => l && l.id === line.ledgerId) : null;
+  if (lineLedger) {
+    return (
+      lineLedger.name?.toLowerCase().trim() === targetName &&
+      PARTY_GROUPS.has(lineLedger.group)
+    );
+  }
+
+  // 3. If line.ledgerId is a system account, it never represents the party
+  if (DEFAULT_LEDGERS.some((dl) => dl.id === line.ledgerId)) return false;
+  if (
+    line.ledgerId?.startsWith('ledger-sales') ||
+    line.ledgerId?.startsWith('ledger-material') ||
+    line.ledgerId?.startsWith('ledger-expense') ||
+    line.ledgerId?.startsWith('ledger-purchase') ||
+    line.ledgerId?.startsWith('ledger-cash') ||
+    line.ledgerId?.startsWith('ledger-bank')
+  ) {
+    return false;
+  }
+
+  // 4. Voucher party match
+  const voucherPartyMatches =
+    voucher &&
+    (voucher.partyId === targetLedger.id ||
+      voucher.party_id === targetLedger.id ||
+      voucher.partyName?.toLowerCase().trim() === targetName ||
+      voucher.party_name?.toLowerCase().trim() === targetName ||
+      voucher.customerName?.toLowerCase().trim() === targetName ||
+      voucher.supplierName?.toLowerCase().trim() === targetName);
+
+  if (!voucherPartyMatches) return false;
+
+  // 5. Verify accounting orientation for this party type
+  if (targetLedger.group === 'Sundry Debtors') {
+    if (voucher.type === 'Sales' && (line.debit || 0) > 0) return true;
+    if (voucher.type === 'Receipt' && (line.credit || 0) > 0) return true;
+  } else if (targetLedger.group === 'Sundry Creditors') {
+    if (voucher.type === 'Purchase' && (line.credit || 0) > 0) return true;
+    if (voucher.type === 'Payment' && (line.debit || 0) > 0) return true;
+  }
+
+  return false;
+}
+
 export function computeLedgerBalance(ledgerId, ledgers, vouchers) {
   const ledger = getLedgerById(ledgers, ledgerId);
   if (!ledger) {
@@ -304,7 +358,11 @@ export function computeLedgerBalance(ledgerId, ledgers, vouchers) {
 
   vouchers.forEach((voucher) => {
     voucher.lines.forEach((line) => {
-      if (line.ledgerId !== ledgerId) {
+      const lineMatches = PARTY_GROUPS.has(ledger.group)
+        ? isPartyVoucherLine(line, ledger, ledgers, voucher)
+        : line.ledgerId === ledgerId;
+
+      if (!lineMatches) {
         return;
       }
       debits += line.debit || 0;
@@ -336,7 +394,11 @@ export function getLedgerStatement(ledgerId, ledgers, vouchers) {
 
   sorted.forEach((voucher) => {
     voucher.lines.forEach((line) => {
-      if (line.ledgerId !== ledgerId) {
+      const lineMatches = PARTY_GROUPS.has(ledger.group)
+        ? isPartyVoucherLine(line, ledger, ledgers, voucher)
+        : line.ledgerId === ledgerId;
+
+      if (!lineMatches) {
         return;
       }
 
@@ -753,7 +815,9 @@ export function getPartySummary(ledgers, vouchers) {
     vouchers.forEach((vch) => {
       let isPartyInvolved = false;
       vch.lines.forEach((line) => {
-        if (line.ledgerId === ledger.id) {
+        const lineMatches = isPartyVoucherLine(line, ledger, ledgers, vch);
+
+        if (lineMatches) {
           isPartyInvolved = true;
           if (ledger.group === 'Sundry Debtors') {
             // Customer ledger: debits are invoice sales, credits are cash payments received

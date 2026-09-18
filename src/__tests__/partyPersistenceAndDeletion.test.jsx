@@ -6,6 +6,8 @@ import {
   ensureDefaultLedgers,
   readLedgers,
   getPartyLedgers,
+  getLedgerStatement,
+  computeLedgerBalance,
   LEDGERS_KEY,
   writeSavedArray,
 } from '../accounting.js';
@@ -97,5 +99,75 @@ describe('Party (Customer / Supplier) Persistence & Deletion', () => {
 
     const matches = res2.ledgers.filter((l) => l.name.toLowerCase() === 'unique traders');
     expect(matches).toHaveLength(1);
+  });
+
+  it('recognizes party in getLedgerStatement and computes statement ledger rows and closing balance', () => {
+    const { ledgers, ledger: customer } = addPartyLedger('jay bhavani', 'customer');
+    
+    // Create vouchers for jay bhavani
+    const vouchers = [
+      {
+        id: 'vch-1',
+        date: '2026-09-15',
+        dateTime: '2026-09-15 10:00:00',
+        type: 'Sales',
+        narration: 'Credit Sale to jay bhavani',
+        partyId: customer.id,
+        partyName: 'jay bhavani',
+        lines: [
+          { ledgerId: customer.id, debit: 5000, credit: 0 },
+          { ledgerId: 'ledger-sales', debit: 0, credit: 5000 },
+        ],
+      },
+      {
+        id: 'vch-2',
+        date: '2026-09-16',
+        dateTime: '2026-09-16 14:00:00',
+        type: 'Receipt',
+        narration: 'Payment received from jay bhavani',
+        partyId: customer.id,
+        partyName: 'jay bhavani',
+        lines: [
+          { ledgerId: 'ledger-cash', debit: 2000, credit: 0 },
+          { ledgerId: customer.id, debit: 0, credit: 2000 },
+        ],
+      },
+    ];
+
+    const statement = getLedgerStatement(customer.id, ledgers, vouchers);
+    expect(statement.ledger).toBeDefined();
+    expect(statement.ledger.name).toBe('jay bhavani');
+    expect(statement.rows).toHaveLength(2);
+    expect(statement.rows[0].debit).toBe(5000);
+    expect(statement.rows[0].balance).toBe(5000);
+    expect(statement.rows[1].credit).toBe(2000);
+    expect(statement.rows[1].balance).toBe(3000);
+    expect(statement.closingBalance).toBe(3000);
+  });
+
+  it('recognizes party vouchers matched via partyId or partyName even if line ledgerId differed', () => {
+    const { ledgers, ledger: supplier } = addPartyLedger('Gujarat Spices', 'supplier');
+
+    const vouchers = [
+      {
+        id: 'vch-sup-1',
+        date: '2026-09-17',
+        dateTime: '2026-09-17 11:00:00',
+        type: 'Purchase',
+        narration: 'Credit purchase from Gujarat Spices',
+        partyId: supplier.id,
+        partyName: 'Gujarat Spices',
+        lines: [
+          { ledgerId: 'ledger-purchase', debit: 4500, credit: 0 },
+          { ledgerId: 'cloud-sup-diff-id', debit: 0, credit: 4500 },
+        ],
+      },
+    ];
+
+    const statement = getLedgerStatement(supplier.id, ledgers, vouchers);
+    expect(statement.ledger).toBeDefined();
+    expect(statement.rows).toHaveLength(1);
+    expect(statement.rows[0].credit).toBe(4500);
+    expect(statement.closingBalance).toBe(4500);
   });
 });
