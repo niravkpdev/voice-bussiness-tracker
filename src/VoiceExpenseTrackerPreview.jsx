@@ -1819,6 +1819,9 @@ export default function VoiceExpenseTrackerPreview() {
     if (subTab && target === 'employees') {
       setHrmsSubTab(subTab);
     }
+    if (subTab && target === 'reports') {
+      setActiveReportTab(subTab);
+    }
     setActiveTab(target);
     window.location.hash = target;
     setOpenNxMenu(null);
@@ -7212,10 +7215,10 @@ export default function VoiceExpenseTrackerPreview() {
                   <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('accounting-ledgers'); setOpenNxMenu(null); }}>
                     ▦ Accounting Ledgers &amp; Trial Balance
                   </button>
-                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('reports'); setOpenNxMenu(null); }}>
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('reports', 'pnl'); setOpenNxMenu(null); }}>
                     📊 Profit &amp; Loss / Balance Sheet
                   </button>
-                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('crm'); setOpenNxMenu(null); }}>
+                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('reports', 'customer'); setOpenNxMenu(null); }}>
                     ▱ Outstanding Receivables &amp; Payables
                   </button>
                   <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('reports-hub'); setOpenNxMenu(null); }}>
@@ -7253,9 +7256,6 @@ export default function VoiceExpenseTrackerPreview() {
                   </button>
                   <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('voice-bookkeeper'); setOpenNxMenu(null); }}>
                     🎙️ Voice Command Center &amp; History
-                  </button>
-                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('crm'); setOpenNxMenu(null); }}>
-                    👥 Customer Growth &amp; Lifetime Value (LTV)
                   </button>
                 </div>
               )}
@@ -10010,17 +10010,25 @@ export default function VoiceExpenseTrackerPreview() {
                         </tr>
                       </thead>
                       <tbody>
-                        {partySummary
-                          .filter(p => p.group === 'Sundry Debtors' && p.outstandingAmount > 0)
-                          .map(p => (
-                            <tr key={p.id}>
-                              <td><strong>{p.name}</strong></td>
-                              <td>{formatCurrency(p.totalSales)}</td>
-                              <td>{formatCurrency(p.totalPayments)}</td>
-                              <td><strong className="text-amber">{formatCurrency(p.outstandingAmount)}</strong></td>
-                              <td>{p.lastTransactionDate}</td>
-                            </tr>
-                          ))}
+                        {partySummary.filter(p => p.group === 'Sundry Debtors' && p.outstandingAmount > 0).length === 0 ? (
+                          <tr>
+                            <td colSpan={5} style={{ textAlign: 'center', padding: '24px 16px', color: 'var(--text-secondary)' }}>
+                              ✓ All customer accounts are settled! There are currently no outstanding receivables.
+                            </td>
+                          </tr>
+                        ) : (
+                          partySummary
+                            .filter(p => p.group === 'Sundry Debtors' && p.outstandingAmount > 0)
+                            .map(p => (
+                              <tr key={p.id}>
+                                <td><strong>{p.name}</strong></td>
+                                <td>{formatCurrency(p.totalSales)}</td>
+                                <td>{formatCurrency(p.totalPayments)}</td>
+                                <td><strong className="text-amber">{formatCurrency(p.outstandingAmount)}</strong></td>
+                                <td>{p.lastTransactionDate}</td>
+                              </tr>
+                            ))
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -10040,17 +10048,25 @@ export default function VoiceExpenseTrackerPreview() {
                         </tr>
                       </thead>
                       <tbody>
-                        {partySummary
-                          .filter(p => p.group === 'Sundry Creditors' && p.outstandingAmount > 0)
-                          .map(p => (
-                            <tr key={p.id}>
-                              <td><strong>{p.name}</strong></td>
-                              <td>{formatCurrency(p.totalSales)}</td>
-                              <td>{formatCurrency(p.totalPayments)}</td>
-                              <td><strong className="text-red">{formatCurrency(Math.abs(p.outstandingAmount))}</strong></td>
-                              <td>{p.lastTransactionDate}</td>
-                            </tr>
-                          ))}
+                        {partySummary.filter(p => p.group === 'Sundry Creditors' && p.outstandingAmount > 0).length === 0 ? (
+                          <tr>
+                            <td colSpan={5} style={{ textAlign: 'center', padding: '24px 16px', color: 'var(--text-secondary)' }}>
+                              ✓ All supplier accounts are settled! There are currently no outstanding payables.
+                            </td>
+                          </tr>
+                        ) : (
+                          partySummary
+                            .filter(p => p.group === 'Sundry Creditors' && p.outstandingAmount > 0)
+                            .map(p => (
+                              <tr key={p.id}>
+                                <td><strong>{p.name}</strong></td>
+                                <td>{formatCurrency(p.totalSales)}</td>
+                                <td>{formatCurrency(p.totalPayments)}</td>
+                                <td><strong className="text-red">{formatCurrency(Math.abs(p.outstandingAmount))}</strong></td>
+                                <td>{p.lastTransactionDate}</td>
+                              </tr>
+                            ))
+                        )}
                       </tbody>
                     </table>
                   </div>

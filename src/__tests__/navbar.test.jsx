@@ -6,7 +6,7 @@ import { PricingPage } from '../PricingPage.jsx';
 import { ContactModal } from '../ContactModal.jsx';
 import { LegalPage } from '../LegalPages.jsx';
 import { DemoPreviewModal } from '../DemoPreviewModal.jsx';
-import { STOREFRONT_TABS } from '../VoiceExpenseTrackerPreview.jsx';
+import VoiceExpenseTrackerPreview, { STOREFRONT_TABS } from '../VoiceExpenseTrackerPreview.jsx';
 
 describe('Top Navbar Functions & Associated Modals', () => {
   it('includes store in STOREFRONT_TABS for Online Store navigation', () => {
@@ -123,6 +123,47 @@ describe('Top Navbar Functions & Associated Modals', () => {
     const closeBtn = screen.getByRole('button', { name: /close/i });
     fireEvent.click(closeBtn);
     expect(handleClose).toHaveBeenCalled();
+  });
+
+  it('correctly routes 2. Reports Outstanding Receivables and cleans 3. Analytics menu', () => {
+    window.matchMedia = window.matchMedia || function() {
+      return {
+        matches: false,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      };
+    };
+    localStorage.setItem('voiceBusinessTrackerAuth', JSON.stringify({ uid: 'test-user', email: 'owner@example.com', role: 'Owner' }));
+
+    render(<VoiceExpenseTrackerPreview />);
+
+    // 1. Check 2. Reports dropdown
+    const reportsBtn = screen.getByRole('button', { name: /2\. Reports ▾/i });
+    fireEvent.click(reportsBtn);
+
+    // Outstanding Receivables & Payables button exists
+    const receivablesBtn = screen.getByRole('button', { name: /Outstanding Receivables & Payables/i });
+    expect(receivablesBtn).toBeInTheDocument();
+
+    // Clicking it navigates to reports console
+    fireEvent.click(receivablesBtn);
+    expect(screen.getByText(/Business Reports Console/i)).toBeInTheDocument();
+    expect(screen.getByText(/Customer Outstanding Receivables/i)).toBeInTheDocument();
+
+    // 2. Check 3. Analytics dropdown
+    const analyticsBtn = screen.getByRole('button', { name: /3\. Analytics ▾/i });
+    fireEvent.click(analyticsBtn);
+
+    // Customer Growth & LTV (which was a duplicate shortcut to Customers) has been removed
+    expect(screen.queryByRole('button', { name: /Customer Growth & Lifetime Value/i })).not.toBeInTheDocument();
+
+    // Valid Analytics items are intact
+    expect(screen.getByRole('button', { name: /Business Analytics, Revenue Trends/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /AI Business Assistant/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Voice Command Center/i })).toBeInTheDocument();
   });
 });
 
