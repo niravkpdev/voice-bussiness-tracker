@@ -386,6 +386,18 @@ tr:hover td {
 }
 
 /* 9. EXECUTIVE DASHBOARD LAYOUT */
+.dashboard-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+@media (min-width: 1024px) {
+  .dashboard-kpi-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
 .dashboard-grid-layout {
   display: grid;
   grid-template-columns: 1fr;

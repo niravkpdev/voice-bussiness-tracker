@@ -8682,197 +8682,168 @@ export default function VoiceExpenseTrackerPreview() {
                   {[1, 2, 3, 4, 5, 6, 7, 8].map(i => <div key={i} className="skeleton" style={{ height: '140px' }} />)}
                 </div>
               ) : (
-                <div className="dashboard-grid-layout">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
                   
-                  {/* MAIN COLUMN (LEFT) */}
-                  <div className="dashboard-main-column">
-                    
-                    {/* SECTION 1: EXECUTIVE OVERVIEW (8 KPIs) */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
-                      {[
-                        {
-                          title: 'Business Health',
-                          val: `${dashboardMetrics.dynamicHealth}/100`,
-                          icon: Star,
-                          color: 'var(--brand-primary)',
-                          bg: 'var(--brand-secondary)',
-                          trend: dashboardMetrics.dynamicHealth >= 80 ? 'Excellent' : dashboardMetrics.dynamicHealth >= 60 ? 'Good' : dashboardMetrics.dynamicHealth >= 40 ? 'Fair' : 'Needs Attention',
-                          up: dashboardMetrics.dynamicHealth >= 50,
-                          targetTab: 'ai-assistant',
-                          hint: 'AI Health Diagnostics & Recommendations'
-                        },
-                        {
-                          title: 'Monthly Revenue',
-                          val: formatCurrency(dashboardMetrics.totalMonthlyRevenue),
-                          icon: Activity,
-                          color: 'var(--success)',
-                          bg: 'var(--success-bg)',
-                          trend: dashboardMetrics.prevMonthlyRevenue > 0
-                            ? `${dashboardMetrics.salesGrowth >= 0 ? '+' : ''}${dashboardMetrics.salesGrowth}% MoM`
-                            : (dashboardMetrics.totalMonthlyRevenue > 0 ? '+100% (New)' : 'No Sales Yet'),
-                          up: dashboardMetrics.salesGrowth >= 0,
-                          targetTab: 'sales-entry',
-                          hint: 'Sales Register & Billing Entries'
-                        },
-                        {
-                          title: 'Total Expenses',
-                          val: formatCurrency(dashboardMetrics.currentExpenses),
-                          icon: DollarSign,
-                          color: 'var(--danger)',
-                          bg: 'var(--danger-bg)',
-                          trend: dashboardMetrics.prevExpenses > 0
-                            ? `${dashboardMetrics.expenseGrowth >= 0 ? '+' : ''}${dashboardMetrics.expenseGrowth}% MoM`
-                            : (dashboardMetrics.currentExpenses > 0 ? 'Recorded' : 'Zero Expense'),
-                          up: dashboardMetrics.expenseGrowth <= 0,
-                          targetTab: 'voucher-entry',
-                          hint: 'Expense & Payment Vouchers'
-                        },
-                        {
-                          title: 'Cash Flow',
-                          val: formatCurrency(cashInHand !== 0 ? cashInHand : dashboardMetrics.monthlyProfit),
-                          icon: CreditCard,
-                          color: 'var(--brand-primary)',
-                          bg: 'var(--brand-secondary)',
-                          trend: (cashInHand >= 0 && dashboardMetrics.monthlyProfit >= 0) ? 'Healthy' : cashInHand < 0 ? 'Deficit' : 'Strained',
-                          up: cashInHand >= 0,
-                          targetTab: 'day-book',
-                          hint: 'Day Book Cash & Bank Flow'
-                        },
-                        {
-                          title: 'Outstanding',
-                          val: formatCurrency(dashboardMetrics.combinedOutstanding),
-                          icon: Clock,
-                          color: 'var(--warning)',
-                          bg: 'var(--warning-bg)',
-                          trend: dashboardMetrics.combinedOutstanding > 0 ? `${dashboardMetrics.pendingCount} Pending` : 'All Cleared',
-                          up: dashboardMetrics.combinedOutstanding === 0,
-                          targetTab: 'party-statement',
-                          hint: 'Customer & Vendor Outstanding Ledger'
-                        },
-                        {
-                          title: 'Monthly Profit',
-                          val: formatCurrency(dashboardMetrics.monthlyProfit),
-                          icon: TrendingUp,
-                          color: 'var(--success)',
-                          bg: 'var(--success-bg)',
-                          trend: dashboardMetrics.totalMonthlyRevenue > 0
-                            ? `${dashboardMetrics.profitMargin >= 0 ? '+' : ''}${dashboardMetrics.profitMargin}% Margin`
-                            : '0% Margin',
-                          up: dashboardMetrics.monthlyProfit >= 0,
-                          targetTab: 'reports',
-                          hint: 'P&L Statement & Financial Reports'
-                        },
-                        {
-                          title: 'Inventory Value',
-                          val: formatCurrency(dashboardMetrics.totalInventoryVal),
-                          icon: Package,
-                          color: '#8b5cf6',
-                          bg: '#ede9fe',
-                          trend: dashboardMetrics.outOfStockItems.length > 0
-                            ? `${dashboardMetrics.outOfStockItems.length} Out of Stock`
-                            : (dashboardMetrics.lowStockItems.length > 0
-                              ? `${dashboardMetrics.lowStockItems.length} Low Stock`
-                              : `${(cloudInventory || []).length} Products`),
-                          up: dashboardMetrics.outOfStockItems.length === 0,
-                          targetTab: 'inventory',
-                          hint: 'Inventory & Stock Management'
-                        },
-                        {
-                          title: 'Attendance',
-                          val: dashboardMetrics.totalStaffCount > 0 ? `${dashboardMetrics.attendancePct}%` : '100%',
-                          icon: Users,
-                          color: '#06b6d4',
-                          bg: '#cffafe',
-                          trend: dashboardMetrics.totalStaffCount > 0
-                            ? `${dashboardMetrics.presentStaffCount}/${dashboardMetrics.totalStaffCount} Present`
-                            : 'Owner / Self-run',
-                          up: dashboardMetrics.attendancePct >= 75,
-                          targetTab: 'employees',
-                          hint: 'HRMS Staff & Attendance'
-                        },
-                      ].map((kpi, i) => (
-                        <div
-                          key={i}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => {
+                  {/* SECTION 1: EXECUTIVE OVERVIEW (8 KPIs in 4x2 Grid across full width) */}
+                  <div className="dashboard-kpi-grid">
+                    {[
+                      {
+                        title: 'Business Health',
+                        val: `${dashboardMetrics.dynamicHealth}/100`,
+                        icon: Star,
+                        color: 'var(--brand-primary)',
+                        bg: 'var(--brand-secondary)',
+                        trend: dashboardMetrics.dynamicHealth >= 80 ? 'Excellent' : dashboardMetrics.dynamicHealth >= 60 ? 'Good' : dashboardMetrics.dynamicHealth >= 40 ? 'Fair' : 'Needs Attention',
+                        up: dashboardMetrics.dynamicHealth >= 50,
+                        targetTab: 'ai-assistant',
+                        hint: 'AI Health Diagnostics & Recommendations'
+                      },
+                      {
+                        title: 'Monthly Revenue',
+                        val: formatCurrency(dashboardMetrics.totalMonthlyRevenue),
+                        icon: Activity,
+                        color: 'var(--success)',
+                        bg: 'var(--success-bg)',
+                        trend: dashboardMetrics.prevMonthlyRevenue > 0
+                          ? `${dashboardMetrics.salesGrowth >= 0 ? '+' : ''}${dashboardMetrics.salesGrowth}% MoM`
+                          : (dashboardMetrics.totalMonthlyRevenue > 0 ? '+100% (New)' : 'No Sales Yet'),
+                        up: dashboardMetrics.salesGrowth >= 0,
+                        targetTab: 'sales-entry',
+                        hint: 'Sales Register & Billing Entries'
+                      },
+                      {
+                        title: 'Total Expenses',
+                        val: formatCurrency(dashboardMetrics.currentExpenses),
+                        icon: DollarSign,
+                        color: 'var(--danger)',
+                        bg: 'var(--danger-bg)',
+                        trend: dashboardMetrics.prevExpenses > 0
+                          ? `${dashboardMetrics.expenseGrowth >= 0 ? '+' : ''}${dashboardMetrics.expenseGrowth}% MoM`
+                          : (dashboardMetrics.currentExpenses > 0 ? 'Recorded' : 'Zero Expense'),
+                        up: dashboardMetrics.expenseGrowth <= 0,
+                        targetTab: 'voucher-entry',
+                        hint: 'Expense & Payment Vouchers'
+                      },
+                      {
+                        title: 'Inventory Value',
+                        val: formatCurrency(dashboardMetrics.totalInventoryVal),
+                        icon: Package,
+                        color: '#8b5cf6',
+                        bg: '#ede9fe',
+                        trend: dashboardMetrics.outOfStockItems.length > 0
+                          ? `${dashboardMetrics.outOfStockItems.length} Out of Stock`
+                          : (dashboardMetrics.lowStockItems.length > 0
+                            ? `${dashboardMetrics.lowStockItems.length} Low Stock`
+                            : `${(cloudInventory || []).length} Products`),
+                        up: dashboardMetrics.outOfStockItems.length === 0,
+                        targetTab: 'inventory',
+                        hint: 'Inventory & Stock Management'
+                      },
+                      {
+                        title: 'Cash Flow',
+                        val: formatCurrency(cashInHand !== 0 ? cashInHand : dashboardMetrics.monthlyProfit),
+                        icon: CreditCard,
+                        color: 'var(--brand-primary)',
+                        bg: 'var(--brand-secondary)',
+                        trend: (cashInHand >= 0 && dashboardMetrics.monthlyProfit >= 0) ? 'Healthy' : cashInHand < 0 ? 'Deficit' : 'Strained',
+                        up: cashInHand >= 0,
+                        targetTab: 'day-book',
+                        hint: 'Day Book Cash & Bank Flow'
+                      },
+                      {
+                        title: 'Outstanding',
+                        val: formatCurrency(dashboardMetrics.combinedOutstanding),
+                        icon: Clock,
+                        color: 'var(--warning)',
+                        bg: 'var(--warning-bg)',
+                        trend: dashboardMetrics.combinedOutstanding > 0 ? `${dashboardMetrics.pendingCount} Pending` : 'All Cleared',
+                        up: dashboardMetrics.combinedOutstanding === 0,
+                        targetTab: 'party-statement',
+                        hint: 'Customer & Vendor Outstanding Ledger'
+                      },
+                      {
+                        title: 'Monthly Profit',
+                        val: formatCurrency(dashboardMetrics.monthlyProfit),
+                        icon: TrendingUp,
+                        color: 'var(--success)',
+                        bg: 'var(--success-bg)',
+                        trend: dashboardMetrics.totalMonthlyRevenue > 0
+                          ? `${dashboardMetrics.profitMargin >= 0 ? '+' : ''}${dashboardMetrics.profitMargin}% Margin`
+                          : '0% Margin',
+                        up: dashboardMetrics.monthlyProfit >= 0,
+                        targetTab: 'reports',
+                        hint: 'P&L Statement & Financial Reports'
+                      },
+                      {
+                        title: 'Attendance',
+                        val: dashboardMetrics.totalStaffCount > 0 ? `${dashboardMetrics.attendancePct}%` : '100%',
+                        icon: Users,
+                        color: '#06b6d4',
+                        bg: '#cffafe',
+                        trend: dashboardMetrics.totalStaffCount > 0
+                          ? `${dashboardMetrics.presentStaffCount}/${dashboardMetrics.totalStaffCount} Present`
+                          : 'Owner / Self-run',
+                        up: dashboardMetrics.attendancePct >= 75,
+                        targetTab: 'employees',
+                        hint: 'HRMS Staff & Attendance'
+                      },
+                    ].map((kpi, i) => (
+                      <div
+                        key={i}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => {
+                          if (kpi.targetTab) {
+                            navigateToTab(kpi.targetTab);
+                            setStatus(`Navigated to ${kpi.title} (${kpi.hint})`);
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
                             if (kpi.targetTab) {
                               navigateToTab(kpi.targetTab);
-                              setStatus(`Navigated to ${kpi.title} (${kpi.hint})`);
+                              setStatus(`Navigated to ${kpi.title}`);
                             }
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault();
-                              if (kpi.targetTab) {
-                                navigateToTab(kpi.targetTab);
-                                setStatus(`Navigated to ${kpi.title}`);
-                              }
-                            }
-                          }}
-                          className="glass-panel hover-scale"
-                          style={{
-                            padding: '20px',
-                            margin: 0,
-                            position: 'relative',
-                            overflow: 'hidden',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                            border: '1px solid var(--border-subtle)'
-                          }}
-                          title={`Click to open ${kpi.title} — ${kpi.hint}`}
-                        >
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                            <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-secondary)' }}>{kpi.title}</span>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <div style={{ padding: '6px', background: kpi.bg, color: kpi.color, borderRadius: '8px' }}>
-                                <kpi.icon size={16} />
-                              </div>
-                              <ChevronRight size={14} style={{ color: 'var(--text-muted)', opacity: 0.6 }} />
+                          }
+                        }}
+                        className="glass-panel hover-scale"
+                        style={{
+                          padding: '20px',
+                          margin: 0,
+                          position: 'relative',
+                          overflow: 'hidden',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                          border: '1px solid var(--border-subtle)'
+                        }}
+                        title={`Click to open ${kpi.title} — ${kpi.hint}`}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                          <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-secondary)' }}>{kpi.title}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <div style={{ padding: '6px', background: kpi.bg, color: kpi.color, borderRadius: '8px' }}>
+                              <kpi.icon size={16} />
                             </div>
+                            <ChevronRight size={14} style={{ color: 'var(--text-muted)', opacity: 0.6 }} />
                           </div>
-                          <div style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '8px' }}>{kpi.val}</div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: '500', color: kpi.up ? 'var(--success)' : 'var(--text-muted)' }}>
-                            {kpi.up ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />} {kpi.trend}
-                          </div>
-                          {/* Sparkline Mock */}
-                          <svg style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: '40px', opacity: 0.15, pointerEvents: 'none' }} preserveAspectRatio="none" viewBox="0 0 100 20">
-                            <path d={`M0,20 Q25,${kpi.up ? 10 : 15} 50,15 T100,${kpi.up ? 5 : 18} L100,20 L0,20 Z`} fill={kpi.color} />
-                          </svg>
                         </div>
-                      ))}
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '24px' }}>
-                      {/* SECTION 8: FINANCIAL SUMMARY */}
-                      <div className="glass-panel" style={{ padding: '24px', margin: 0 }}>
-                        <div className="panel-header">
-                          <h2 className="panel-title"><Activity size={18} color="var(--brand-primary)" /> Financial Summary</h2>
-                          <select style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)', fontSize: '12px' }}>
-                            <option>This Year</option>
-                            <option>Last 6 Months</option>
-                          </select>
+                        <div style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '8px' }}>{kpi.val}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: '500', color: kpi.up ? 'var(--success)' : 'var(--text-muted)' }}>
+                          {kpi.up ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />} {kpi.trend}
                         </div>
-                        <ProfitTrendChart data={getLast6MonthsData(activeVouchers, activeInvoices, activeOrders)} />
+                        {/* Sparkline Mock */}
+                        <svg style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: '40px', opacity: 0.15, pointerEvents: 'none' }} preserveAspectRatio="none" viewBox="0 0 100 20">
+                          <path d={`M0,20 Q25,${kpi.up ? 10 : 15} 50,15 T100,${kpi.up ? 5 : 18} L100,20 L0,20 Z`} fill={kpi.color} />
+                        </svg>
                       </div>
+                    ))}
+                  </div>
 
-                      {/* SECTION 4: BUSINESS INSIGHTS */}
-                      <div className="glass-panel" style={{ padding: '24px', margin: 0 }}>
-                        <div className="panel-header">
-                          <h2 className="panel-title"><Sparkles size={18} color="#8b5cf6" /> AI Business Insights</h2>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                          {dynamicAIInsights.map((insight, i) => (
-                            <div key={i} className="insight-card">
-                              <insight.icon size={18} className={insight.class} style={{ flexShrink: 0, marginTop: '2px' }} />
-                              <span style={{ fontSize: '14px', lineHeight: '1.5', color: 'var(--text-primary)' }}>{insight.text}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* SECTION 3: QUICK ACTION CENTER */}
+                  <div className="dashboard-grid-layout">
+                    {/* MAIN COLUMN (LEFT) */}
+                    <div className="dashboard-main-column">
+                      {/* SECTION 3: QUICK ACTION CENTER */}
                     <div className="glass-panel" style={{ padding: '24px', margin: 0 }}>
                       <div className="panel-header">
                         <h2 className="panel-title"><Plus size={18} color="var(--brand-primary)" /> Quick Action Center</h2>
@@ -9388,76 +9359,10 @@ export default function VoiceExpenseTrackerPreview() {
                       </div>
                     </div>
 
-                    {/* SECTION 5: NOTIFICATION CENTER */}
-                    <div className="glass-panel" style={{ padding: '24px', margin: 0 }}>
-                      <div className="panel-header">
-                        <h2 className="panel-title">
-                          <Bell size={18} color="var(--brand-primary)" /> Notifications 
-                          {unreadNotificationCount > 0 && (
-                            <span className="badge badge-danger" style={{ fontSize: '10px', padding: '2px 6px' }}>
-                              {unreadNotificationCount} New
-                            </span>
-                          )}
-                        </h2>
-                        {unreadNotificationCount > 0 && (
-                          <button
-                            type="button"
-                            className="btn btn-ghost"
-                            style={{ padding: '4px 8px', fontSize: '11px', cursor: 'pointer' }}
-                            onClick={handleMarkAllNotificationsRead}
-                          >
-                            Mark all read
-                          </button>
-                        )}
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        {liveNotifications.length === 0 ? (
-                          <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
-                            All caught up! No active alerts.
-                          </div>
-                        ) : (
-                          liveNotifications.slice(0, 5).map((notif) => {
-                            const isUnread = !readNotifIds.includes(notif.id);
-                            return (
-                              <div
-                                key={notif.id}
-                                className="hover-scale"
-                                onClick={() => handleNotificationClick(notif)}
-                                style={{
-                                  display: 'flex',
-                                  gap: '12px',
-                                  padding: '12px',
-                                  borderRadius: '8px',
-                                  background: isUnread ? 'rgba(59, 130, 246, 0.05)' : 'var(--bg-secondary)',
-                                  border: `1px solid ${isUnread ? 'rgba(59, 130, 246, 0.25)' : 'var(--border-subtle)'}`,
-                                  cursor: 'pointer'
-                                }}
-                              >
-                                <div style={{
-                                  width: '8px',
-                                  height: '8px',
-                                  borderRadius: '50%',
-                                  background: notif.dot || (isUnread ? 'var(--brand-primary)' : '#94a3b8'),
-                                  marginTop: '6px',
-                                  flexShrink: 0
-                                }} />
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                                    <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{notif.title}</div>
-                                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', flexShrink: 0, marginLeft: '6px' }}>{notif.time}</span>
-                                  </div>
-                                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>{notif.desc}</div>
-                                </div>
-                              </div>
-                            );
-                          })
-                        )}
-                      </div>
-                    </div>
-
                   </div>
                 </div>
-              )}
+              </div>
+            )}
             </section>
           )}
 
