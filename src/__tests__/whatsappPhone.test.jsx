@@ -207,4 +207,44 @@ describe('UpiPaymentModal WhatsApp Integration', () => {
     const calledUrl = openSpy.mock.calls[0][0];
     expect(calledUrl).toContain('https://wa.me/916355429227?text=');
   });
+
+  it('prints Counter Standee with merchant details and QR code without empty print', async () => {
+    const invoice = {
+      id: 'inv-standee-1',
+      invoiceNo: 'STORE-COUNTER',
+      customerName: 'In-Store Shopper',
+      total: 0,
+      balanceDue: 0,
+    };
+
+    render(
+      <UpiPaymentModal
+        isOpen={true}
+        onClose={vi.fn()}
+        invoice={invoice}
+        profile={{ name: 'Trinetr Business Suite', upiId: 'trinetr.namkeen@icici', gstin: '24CPVPC7753J1Z8' }}
+      />
+    );
+
+    // Switch to Counter Standee tab
+    const standeeTab = screen.getByRole('button', { name: /Counter Standee/i });
+    fireEvent.click(standeeTab);
+
+    // Verify Print button is present
+    const printBtn = screen.getByRole('button', { name: /Print Counter Standee/i });
+    expect(printBtn).toBeDefined();
+
+    // Trigger Print
+    fireEvent.click(printBtn);
+
+    // Verify an iframe was injected with the standee content containing merchant name, UPI ID and GSTIN
+    const printFrame = document.getElementById('standee-print-frame');
+    if (printFrame && printFrame.contentWindow?.document) {
+      const docHtml = printFrame.contentWindow.document.body.innerHTML;
+      expect(docHtml).toContain('Trinetr Business Suite');
+      expect(docHtml).toContain('trinetr.namkeen@icici');
+      expect(docHtml).toContain('SCAN &amp; PAY WITH ANY UPI APP');
+    }
+  });
 });
+

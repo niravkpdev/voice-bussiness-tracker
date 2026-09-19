@@ -187,7 +187,226 @@ export default function UpiPaymentModal({
   };
 
   const handlePrintStandee = () => {
-    window.print();
+    if (!qrDataUrl) {
+      alert('Generating QR Code, please wait a moment...');
+      return;
+    }
+
+    const printHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Counter Standee - ${businessName || 'TRINETR UPI'}</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 10mm;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: #ffffff;
+      color: #0f172a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 95vh;
+    }
+    .standee-frame {
+      width: 100%;
+      max-width: 380px;
+      border: 3px solid #1e3a8a;
+      border-radius: 24px;
+      padding: 24px 20px;
+      text-align: center;
+      background: #ffffff;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+      page-break-inside: avoid;
+    }
+    .brand-banner {
+      background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+      color: #ffffff;
+      padding: 16px 14px;
+      border-radius: 14px;
+      margin-bottom: 16px;
+    }
+    .brand-title {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      text-transform: uppercase;
+      margin: 0;
+      color: #ffffff;
+    }
+    .brand-gstin {
+      font-size: 11px;
+      opacity: 0.9;
+      margin-top: 4px;
+      letter-spacing: 0.05em;
+    }
+    .scan-pill {
+      background: #f0fdf4;
+      border: 1.5px solid #86efac;
+      color: #166534;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      display: inline-block;
+      margin-bottom: 16px;
+      letter-spacing: 0.02em;
+    }
+    .qr-box {
+      background: #ffffff;
+      padding: 10px;
+      border-radius: 14px;
+      border: 2px solid #0f172a;
+      display: inline-block;
+      margin-bottom: 14px;
+    }
+    .qr-img {
+      width: 230px;
+      height: 230px;
+      display: block;
+      margin: 0 auto;
+    }
+    .upi-display {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 14.5px;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 12px;
+    }
+    .upi-val {
+      color: #2563eb;
+    }
+    .accepted-row {
+      font-size: 11.5px;
+      color: #475569;
+      font-weight: 600;
+      line-height: 1.5;
+      margin-bottom: 14px;
+    }
+    .footer-note {
+      border-top: 1px dashed #cbd5e1;
+      padding-top: 10px;
+      font-size: 11px;
+      color: #64748b;
+      font-weight: 600;
+    }
+    .cut-line {
+      margin-top: 24px;
+      font-size: 11px;
+      color: #94a3b8;
+      text-align: center;
+      border-top: 1px dashed #cbd5e1;
+      padding-top: 10px;
+      width: 100%;
+      max-width: 400px;
+    }
+  </style>
+</head>
+<body>
+  <div class="standee-frame">
+    <div class="brand-banner">
+      <h1 class="brand-title">${businessName || 'TRINETR STORE'}</h1>
+      ${profile.gstin ? `<div class="brand-gstin">GSTIN: ${profile.gstin}</div>` : ''}
+    </div>
+
+    <div class="scan-pill">
+      ⚡ SCAN &amp; PAY WITH ANY UPI APP
+    </div>
+
+    <div class="qr-box">
+      <img src="${qrDataUrl}" alt="UPI QR Code" class="qr-img" />
+    </div>
+
+    <div class="upi-display">
+      UPI ID: <span class="upi-val">${upiId}</span>
+    </div>
+
+    <div class="accepted-row">
+      Google Pay &bull; PhonePe &bull; Paytm &bull; BHIM UPI &bull; Cred &bull; Amazon Pay &bull; Any Banking App
+    </div>
+
+    <div class="footer-note">
+      ⚡ Instant Payment Confirmation &bull; Powered by TRINETR ERP
+    </div>
+  </div>
+
+  <div class="cut-line">
+    ✂️ Cut or fold along border to place inside counter standee (4&quot;x6&quot; or A5)
+  </div>
+</body>
+</html>`;
+
+    // Remove any previous print frame
+    const existing = document.getElementById('standee-print-frame');
+    if (existing) existing.remove();
+
+    const iframe = document.createElement('iframe');
+    iframe.id = 'standee-print-frame';
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
+
+    try {
+      const doc = iframe.contentWindow.document;
+      doc.open();
+      doc.write(printHtml);
+      doc.close();
+
+      const triggerPrint = () => {
+        try {
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
+        } catch (err) {
+          console.warn('Iframe print error, falling back to window.open:', err);
+          const win = window.open('', '_blank');
+          if (win) {
+            win.document.write(printHtml);
+            win.document.close();
+            win.focus();
+            win.print();
+          }
+        } finally {
+          setTimeout(() => {
+            if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+          }, 10000);
+        }
+      };
+
+      const img = doc.querySelector('img');
+      if (img && !img.complete) {
+        img.onload = () => setTimeout(triggerPrint, 150);
+        img.onerror = () => triggerPrint();
+      } else {
+        setTimeout(triggerPrint, 250);
+      }
+    } catch (e) {
+      console.warn('Direct iframe error, using window.open fallback:', e);
+      const win = window.open('', '_blank');
+      if (win) {
+        win.document.write(printHtml);
+        win.document.close();
+        win.focus();
+        win.print();
+      }
+    }
   };
 
   const handleSubmitPayment = async (e) => {

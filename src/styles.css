@@ -7978,9 +7978,6 @@ input, textarea, [contenteditable="true"] {
 }
 
 @media print {
-  body * {
-    visibility: hidden;
-  }
   .profitnx-erp-top-wrapper,
   .topbar,
   .sidebar,
