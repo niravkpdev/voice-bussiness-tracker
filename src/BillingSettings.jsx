@@ -4,8 +4,41 @@ import { getTrialDaysLeft, PLAN_LIMITS } from './subscription';
 import { SubscriptionBadge } from './SubscriptionBadge';
 import { SubscriptionPaymentModal } from './SubscriptionPaymentModal';
 
-export function BillingSettings({ profile, onOpenPricing, onSelectPlan, onUpgradePlan, onContactSales, usage = {}, isPlatformOwner = false }) {
-  const showPlatformOwnerSetup = Boolean(isPlatformOwner || profile?.isPlatformOwner);
+const PLATFORM_OWNER_EMAILS = [
+  'ap0767573@gmail.com',
+  'nirav8347@gmail.com',
+];
+
+export function BillingSettings({
+  profile,
+  onOpenPricing,
+  onSelectPlan,
+  onUpgradePlan,
+  onContactSales,
+  usage = {},
+  isPlatformOwner = false,
+  currentUserEmail = '',
+}) {
+  const checkIsOwner = () => {
+    if (isPlatformOwner) return true;
+    if (profile?.isPlatformOwner) return true;
+    const normalize = (email) => String(email || '').trim().toLowerCase();
+    if (currentUserEmail && PLATFORM_OWNER_EMAILS.includes(normalize(currentUserEmail))) return true;
+    if (profile?.email && PLATFORM_OWNER_EMAILS.includes(normalize(profile.email))) return true;
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('voiceBusinessTrackerAuth');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.email && PLATFORM_OWNER_EMAILS.includes(normalize(parsed.email))) return true;
+        }
+      } catch {}
+      if (localStorage.getItem('trinetr_platform_admin') === 'true') return true;
+    }
+    return false;
+  };
+
+  const showPlatformOwnerSetup = checkIsOwner();
   const currentPlan = profile?.subscriptionPlan || 'Free Trial';
   const planDetails = PLAN_LIMITS[currentPlan] || PLAN_LIMITS['Free Trial'];
   const trialDaysLeft = getTrialDaysLeft(profile?.trialStartDate);

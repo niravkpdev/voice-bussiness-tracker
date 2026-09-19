@@ -53,6 +53,12 @@ describe('Mobile Responsive Buttons & Interaction Fixes', () => {
       expect(screen.queryByRole('button', { name: /payment setup/i })).not.toBeInTheDocument();
     });
 
+    it('renders platform owner payment setup when logged in as owner email ap0767573@gmail.com', () => {
+      render(<BillingSettings onNavigate={vi.fn()} currentUserEmail="ap0767573@gmail.com" />);
+      expect(screen.getByText(/Payment Gateway & Receiving Setup \(For Platform Owner\)/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /payment setup/i })).toBeInTheDocument();
+    });
+
     it('clicking the chevron button toggles the payment receiving setup panel when isPlatformOwner is true', () => {
       render(<BillingSettings onNavigate={vi.fn()} isPlatformOwner={true} />);
 

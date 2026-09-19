@@ -1974,6 +1974,29 @@ export default function VoiceExpenseTrackerPreview() {
   const hasVerifiedAccess = !REQUIRE_VERIFIED_EMAIL || Boolean(authUser?.emailVerified);
   const isCompanyOwner = String(authUser?.role || '').toLowerCase() === 'owner';
   const canViewDatabaseDebug = import.meta.env.DEV || import.meta.env.VITE_DEBUG_DATABASE === 'true';
+  const PLATFORM_OWNER_EMAILS = [
+    'ap0767573@gmail.com',
+    'nirav8347@gmail.com',
+  ];
+  const isPlatformOwner = Boolean(
+    (authUser?.email && PLATFORM_OWNER_EMAILS.includes(String(authUser.email).trim().toLowerCase())) ||
+    (profile?.email && PLATFORM_OWNER_EMAILS.includes(String(profile.email).trim().toLowerCase())) ||
+    (typeof window !== 'undefined' && (
+      (() => {
+        try {
+          const raw = localStorage.getItem(AUTH_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed?.email && PLATFORM_OWNER_EMAILS.includes(String(parsed.email).trim().toLowerCase())) return true;
+          }
+        } catch {}
+        return false;
+      })() ||
+      localStorage.getItem('trinetr_platform_admin') === 'true'
+    )) ||
+    authUser?.isPlatformOwner ||
+    profile?.isPlatformOwner
+  );
   const canViewAuthDebug = import.meta.env.DEV || import.meta.env.VITE_DEBUG_AUTH === 'true';
   const activeSidebarSection = SIDEBAR_SECTIONS.find((group) => group.children.some((child) => child.tab === activeTab));
   const activeSidebarItem = activeSidebarSection?.children.find((child) => child.tab === activeTab);
@@ -11701,7 +11724,8 @@ export default function VoiceExpenseTrackerPreview() {
                   products: cloudInventory?.length || 0,
                   employees: cloudEmployees?.length || 0,
                 }}
-                isPlatformOwner={false}
+                isPlatformOwner={isPlatformOwner}
+                currentUserEmail={authUser?.email || profile?.email || ''}
               />
             </section>
           )}
