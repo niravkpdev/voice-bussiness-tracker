@@ -107,6 +107,7 @@ export function BillingSettings({ profile, onOpenPricing, onSelectPlan, onUpgrad
   };
 
   const handleDownloadInvoice = (inv) => {
+    if (!inv) return;
     const invoiceHtml = `<!DOCTYPE html>
 <html>
 <head>
@@ -565,7 +566,8 @@ export function BillingSettings({ profile, onOpenPricing, onSelectPlan, onUpgrad
           <button
             className="secondary-button compact-button"
             type="button"
-            onClick={() => handleDownloadInvoice(invoices[0] || sampleInvoice)}
+            onClick={() => invoices[0] && handleDownloadInvoice(invoices[0])}
+            disabled={!invoices || invoices.length === 0}
             style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
           >
             <Download size={14} /> Download Latest Invoice
@@ -742,18 +744,20 @@ export function BillingSettings({ profile, onOpenPricing, onSelectPlan, onUpgrad
       </div>
 
       {/* Real Subscription Payment Modal */}
-      <SubscriptionPaymentModal
-        isOpen={checkoutModal.isOpen}
-        onClose={() => setCheckoutModal({ ...checkoutModal, isOpen: false })}
-        plan={checkoutModal.plan}
-        initialCycle={checkoutModal.cycle}
-        profile={{
-          ...profile,
-          platformUpiId: adminUpiId,
-        }}
-        onPaymentSuccess={handlePaymentSuccess}
-        onContactSales={onContactSales}
-      />
+      {checkoutModal.isOpen && (
+        <SubscriptionPaymentModal
+          isOpen={checkoutModal.isOpen}
+          onClose={() => setCheckoutModal({ ...checkoutModal, isOpen: false })}
+          plan={checkoutModal.plan}
+          initialCycle={checkoutModal.cycle}
+          profile={{
+            ...profile,
+            platformUpiId: adminUpiId,
+          }}
+          onPaymentSuccess={handlePaymentSuccess}
+          onContactSales={onContactSales}
+        />
+      )}
 
     </div>
   );

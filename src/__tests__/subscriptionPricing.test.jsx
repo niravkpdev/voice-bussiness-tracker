@@ -4,6 +4,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { PLAN_LIMITS, getTrialDaysLeft, getPlanLimit, canUseFeature } from '../subscription';
 import { PricingPage } from '../PricingPage';
 import { BillingSettings } from '../BillingSettings';
+import { SubscriptionPaymentModal } from '../SubscriptionPaymentModal';
 
 describe('Subscription & Pricing Core Logic', () => {
   it('has Basic model starting from ₹99 and Starter backwards compatibility', () => {
@@ -97,5 +98,96 @@ describe('BillingSettings Component', () => {
     render(<BillingSettings profile={profile} onOpenPricing={vi.fn()} />);
 
     expect(screen.getByText('₹99')).toBeInTheDocument();
+  });
+
+  it('opens checkout modal when Switch to Basic button is clicked', () => {
+    const profile = { subscriptionPlan: 'Free Trial' };
+    render(<BillingSettings profile={profile} onOpenPricing={vi.fn()} />);
+
+    const switchBtn = screen.getByRole('button', { name: /Switch to Basic/i });
+    fireEvent.click(switchBtn);
+
+    expect(screen.getByText(/Upgrade to Basic Plan/i)).toBeInTheDocument();
+  });
+});
+
+describe('SubscriptionPaymentModal Component', () => {
+  it('renders correctly when isOpen is true without infinite loop', () => {
+    const handleClose = vi.fn();
+    const handleSuccess = vi.fn();
+
+    render(
+      <SubscriptionPaymentModal
+        isOpen={true}
+        onClose={handleClose}
+        plan="Basic"
+        initialCycle="monthly"
+        profile={{ platformUpiId: 'merchant@icici' }}
+        onPaymentSuccess={handleSuccess}
+      />
+    );
+
+    expect(screen.getByText(/Upgrade to Basic Plan/i)).toBeInTheDocument();
+    expect(screen.getByText('₹99')).toBeInTheDocument();
+    expect(screen.getByText('merchant@icici')).toBeInTheDocument();
+    expect(screen.getByText(/Scan with any UPI App/i)).toBeInTheDocument();
+  });
+
+  it('switches between monthly and yearly cycles in checkout', () => {
+    render(
+      <SubscriptionPaymentModal
+        isOpen={true}
+        onClose={vi.fn()}
+        plan="Basic"
+        initialCycle="monthly"
+      />
+    );
+
+    expect(screen.getByText('₹99')).toBeInTheDocument();
+
+    const yearlyBtn = screen.getByRole('button', { name: /Yearly \(-20%\)/i });
+    fireEvent.click(yearlyBtn);
+
+    expect(screen.getByText('₹948')).toBeInTheDocument();
+  });
+
+  it('validates UTR input and verifies UPI payment without freezing', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const handleSuccess = vi.fn();
+
+    render(
+      <SubscriptionPaymentModal
+        isOpen={true}
+        onClose={vi.fn()}
+        plan="Basic"
+        initialCycle="monthly"
+        onPaymentSuccess={handleSuccess}
+      />
+    );
+
+    const utrInput = screen.getByPlaceholderText(/e\.g\. 423871928341/i);
+    const verifyBtn = screen.getByRole('button', { name: /Verify & Activate/i });
+
+    // Try submitting without UTR
+    fireEvent.click(verifyBtn);
+    expect(screen.getByText(/Please enter a valid 12-digit UPI Transaction/i)).toBeInTheDocument();
+
+    // Fill valid UTR
+    fireEvent.change(utrInput, { target: { value: '123456789012' } });
+    fireEvent.click(verifyBtn);
+
+    vi.advanceTimersByTime(1000);
+
+    expect(handleSuccess).toHaveBeenCalledWith(
+      expect.objectContaining({
+        plan: 'Basic',
+        cycle: 'monthly',
+        amount: 99,
+        method: 'UPI',
+        utr: '123456789012',
+      })
+    );
+
+    vi.useRealTimers();
   });
 });

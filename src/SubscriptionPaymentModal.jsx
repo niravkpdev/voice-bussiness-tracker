@@ -41,6 +41,7 @@ export function SubscriptionPaymentModal({
   const [isVerifying, setIsVerifying] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [paymentSuccess, setPaymentSuccess] = useState(null);
+  const [txnId, setTxnId] = useState('');
 
   // Platform receiving details (Can be customized via profile, localStorage, or env)
   const receivingUpiId = (typeof window !== 'undefined' && localStorage.getItem('trinetr_platform_upi')) || profile?.platformUpiId || import.meta.env?.VITE_SUBSCRIPTION_UPI_ID || profile?.upiId || 'trinetr.namkeen@icici';
@@ -52,19 +53,33 @@ export function SubscriptionPaymentModal({
   const yearlyRate = plan === 'Basic' ? 79 : 399;
   const totalAmount = billingCycle === 'yearly' ? yearlyRate * 12 : monthlyRate;
 
-  const txnId = `TRN-SUB-${Date.now().toString(36).toUpperCase()}`;
-
-  const upiUri = encodeSubscriptionUpiUri({
-    pa: receivingUpiId,
-    pn: merchantName,
-    am: totalAmount,
-    tn: `${plan} Plan (${billingCycle})`,
-    tr: txnId,
-  });
-
-  // Generate QR code for UPI
+  // Sync initialCycle, reset state, and generate unique transaction ID when modal opens or plan changes
   useEffect(() => {
-    if (!isOpen) return;
+    if (isOpen) {
+      setTxnId(`TRN-SUB-${Date.now().toString(36).toUpperCase()}`);
+      if (initialCycle) setBillingCycle(initialCycle);
+      setPaymentSuccess(null);
+      setUtrNumber('');
+      setErrorMsg('');
+    }
+  }, [isOpen, initialCycle, plan]);
+
+  const upiUri = React.useMemo(() => {
+    if (!isOpen) return '';
+    return encodeSubscriptionUpiUri({
+      pa: receivingUpiId,
+      pn: merchantName,
+      am: totalAmount,
+      tn: `${plan} Plan (${billingCycle})`,
+      tr: txnId || 'TRN-SUB-PENDING',
+    });
+  }, [isOpen, receivingUpiId, merchantName, totalAmount, plan, billingCycle, txnId]);
+
+  // Generate QR code for UPI (runs only when upiUri actually changes)
+  useEffect(() => {
+    if (!isOpen || !upiUri) return;
+    let isCurrent = true;
+
     QRCode.toDataURL(upiUri, {
       width: 260,
       margin: 1,
@@ -74,17 +89,15 @@ export function SubscriptionPaymentModal({
       },
       errorCorrectionLevel: 'M',
     })
-      .then((url) => setQrDataUrl(url))
+      .then((url) => {
+        if (isCurrent) setQrDataUrl(url);
+      })
       .catch((err) => console.error('UPI QR generation error:', err));
-  }, [isOpen, upiUri]);
 
-  // Sync initialCycle when modal opens
-  useEffect(() => {
-    if (initialCycle) setBillingCycle(initialCycle);
-    setPaymentSuccess(null);
-    setUtrNumber('');
-    setErrorMsg('');
-  }, [isOpen, initialCycle, plan]);
+    return () => {
+      isCurrent = false;
+    };
+  }, [isOpen, upiUri]);
 
   if (!isOpen) return null;
 
@@ -93,7 +106,29 @@ export function SubscriptionPaymentModal({
       navigator.clipboard.writeText(text).then(() => {
         setCopiedUpi(true);
         setTimeout(() => setCopiedUpi(false), 2500);
+      }).catch(() => {
+        fallbackCopyText(text);
       });
+    } else {
+      fallbackCopyText(text);
+    }
+  };
+
+  const fallbackCopyText = (text) => {
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      setCopiedUpi(true);
+      setTimeout(() => setCopiedUpi(false), 2500);
+    } catch (e) {
+      console.warn('Clipboard copy failed:', e);
     }
   };
 
