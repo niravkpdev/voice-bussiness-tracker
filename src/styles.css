@@ -10075,6 +10075,70 @@ button.khata-filter-btn {
   flex-shrink: 0 !important;
 }
 
+/* ==========================================================================
+   Subscription Checkout Modal - High Contrast Header & Deep Link Buttons
+   ========================================================================== */
+.subscription-checkout-header,
+.app-shell .subscription-checkout-header {
+  background: linear-gradient(135deg, #0b1329 0%, #1e293b 100%) !important;
+  color: #ffffff !important;
+}
+
+.subscription-checkout-header h1,
+.subscription-checkout-header h2,
+.subscription-checkout-header h3,
+.subscription-checkout-header .subscription-header-title,
+.app-shell .subscription-checkout-header h1,
+.app-shell .subscription-checkout-header h2,
+.app-shell .subscription-checkout-header h3,
+.app-shell .subscription-checkout-header .subscription-header-title {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  font-weight: 800 !important;
+}
+
+.subscription-checkout-header p,
+.subscription-checkout-header .subscription-header-subtitle,
+.app-shell .subscription-checkout-header p,
+.app-shell .subscription-checkout-header .subscription-header-subtitle {
+  color: #cbd5e1 !important;
+  -webkit-text-fill-color: #cbd5e1 !important;
+}
+
+.subscription-checkout-header .subscription-ssl-badge,
+.app-shell .subscription-checkout-header .subscription-ssl-badge {
+  color: #34d399 !important;
+  -webkit-text-fill-color: #34d399 !important;
+  background: rgba(16, 185, 129, 0.25) !important;
+  border: 1px solid rgba(16, 185, 129, 0.45) !important;
+}
+
+.subscription-checkout-header .subscription-activation-badge,
+.app-shell .subscription-checkout-header .subscription-activation-badge {
+  color: #e2e8f0 !important;
+  -webkit-text-fill-color: #e2e8f0 !important;
+}
+
+.subscription-checkout-header .subscription-close-btn,
+.app-shell .subscription-checkout-header .subscription-close-btn {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+.subscription-checkout-header .subscription-close-btn:hover,
+.app-shell .subscription-checkout-header .subscription-close-btn:hover {
+  background: rgba(255, 255, 255, 0.35) !important;
+}
+
+.subscription-checkout-header .subscription-close-btn svg,
+.app-shell .subscription-checkout-header .subscription-close-btn svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+
 
 
 

@@ -190,4 +190,56 @@ describe('SubscriptionPaymentModal Component', () => {
 
     vi.useRealTimers();
   });
+
+  it('triggers interactive feedback when clicking GPay, PhonePe, or Paytm buttons', () => {
+    render(
+      <SubscriptionPaymentModal
+        isOpen={true}
+        onClose={vi.fn()}
+        plan="Basic"
+        initialCycle="monthly"
+        profile={{ platformUpiId: 'testpay@icici' }}
+      />
+    );
+
+    // GPay button
+    const gpayBtn = screen.getByRole('button', { name: /^GPay$/i });
+    expect(gpayBtn).toBeInTheDocument();
+    fireEvent.click(gpayBtn);
+    expect(screen.getByText(/Copied UPI ID: testpay@icici/i)).toBeInTheDocument();
+
+    // PhonePe button
+    const phonepeBtn = screen.getByRole('button', { name: /^PhonePe$/i });
+    expect(phonepeBtn).toBeInTheDocument();
+    fireEvent.click(phonepeBtn);
+    expect(screen.getByText(/Scan the QR code above with your PhonePe app/i)).toBeInTheDocument();
+
+    // Paytm button
+    const paytmBtn = screen.getByRole('button', { name: /^Paytm$/i });
+    expect(paytmBtn).toBeInTheDocument();
+    fireEvent.click(paytmBtn);
+    expect(screen.getByText(/Scan the QR code above with your Paytm app/i)).toBeInTheDocument();
+  });
+
+  it('renders high-contrast header elements and close button', () => {
+    const handleClose = vi.fn();
+    render(
+      <SubscriptionPaymentModal
+        isOpen={true}
+        onClose={handleClose}
+        plan="Professional"
+        initialCycle="monthly"
+      />
+    );
+
+    expect(screen.getByText(/256-Bit SSL Secure Checkout/i)).toBeInTheDocument();
+    expect(screen.getByText(/Instant Activation/i)).toBeInTheDocument();
+    expect(screen.getByText(/Upgrade to Professional Plan/i)).toBeInTheDocument();
+    expect(screen.getByText(/Official Trinetr Business Suite Subscription/i)).toBeInTheDocument();
+
+    const closeBtn = screen.getByLabelText(/Close/i);
+    expect(closeBtn).toBeInTheDocument();
+    fireEvent.click(closeBtn);
+    expect(handleClose).toHaveBeenCalled();
+  });
 });

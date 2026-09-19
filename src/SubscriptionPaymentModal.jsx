@@ -42,6 +42,9 @@ export function SubscriptionPaymentModal({
   const [errorMsg, setErrorMsg] = useState('');
   const [paymentSuccess, setPaymentSuccess] = useState(null);
   const [txnId, setTxnId] = useState('');
+  const [appActionStatus, setAppActionStatus] = useState('');
+  const [activeApp, setActiveApp] = useState('');
+  const [highlightQr, setHighlightQr] = useState(false);
 
   // Platform receiving details (Can be customized via profile, localStorage, or env)
   const receivingUpiId = (typeof window !== 'undefined' && localStorage.getItem('trinetr_platform_upi')) || profile?.platformUpiId || import.meta.env?.VITE_SUBSCRIPTION_UPI_ID || profile?.upiId || 'trinetr.namkeen@icici';
@@ -61,6 +64,9 @@ export function SubscriptionPaymentModal({
       setPaymentSuccess(null);
       setUtrNumber('');
       setErrorMsg('');
+      setAppActionStatus('');
+      setActiveApp('');
+      setHighlightQr(false);
     }
   }, [isOpen, initialCycle, plan]);
 
@@ -130,6 +136,63 @@ export function SubscriptionPaymentModal({
     } catch (e) {
       console.warn('Clipboard copy failed:', e);
     }
+  };
+
+  const handleAppPayment = (app) => {
+    setActiveApp(app);
+    copyToClipboard(receivingUpiId);
+    setHighlightQr(true);
+    setTimeout(() => setHighlightQr(false), 2500);
+
+    const upiParams = new URLSearchParams({
+      pa: receivingUpiId,
+      pn: merchantName,
+      am: Number(totalAmount).toFixed(2),
+      cu: 'INR',
+      tn: `${plan} Plan (${billingCycle})`,
+      tr: txnId || `TRN-SUB-${Date.now().toString(36).toUpperCase()}`,
+    }).toString();
+
+    const genericUri = `upi://pay?${upiParams}`;
+    let targetUri = genericUri;
+    let appLabel = 'UPI App';
+
+    if (app === 'gpay') {
+      appLabel = 'Google Pay';
+      targetUri = `tez://upi/pay?${upiParams}`;
+    } else if (app === 'phonepe') {
+      appLabel = 'PhonePe';
+      targetUri = `phonepe://upi/pay?${upiParams}`;
+    } else if (app === 'paytm') {
+      appLabel = 'Paytm';
+      targetUri = `paytmmp://pay?${upiParams}`;
+    }
+
+    const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+
+    if (isMobile) {
+      const startTime = Date.now();
+      try {
+        window.location.href = targetUri;
+      } catch (err) {
+        window.location.href = genericUri;
+      }
+
+      setTimeout(() => {
+        if (Date.now() - startTime < 1500) {
+          window.location.href = genericUri;
+        }
+      }, 600);
+
+      setAppActionStatus(`📱 Opening ${appLabel}... If your app does not open automatically, scan the QR code above or pay to ${receivingUpiId}.`);
+    } else {
+      setAppActionStatus(`📋 Copied UPI ID: ${receivingUpiId} (₹${totalAmount})! Scan the QR code above with your ${appLabel} app, or pay directly using this UPI ID.`);
+    }
+
+    setTimeout(() => {
+      setAppActionStatus('');
+      setActiveApp('');
+    }, 9000);
   };
 
   const handleVerifyUpiPayment = () => {
@@ -251,47 +314,99 @@ export function SubscriptionPaymentModal({
       >
         {/* Header */}
         <div
+          className="subscription-checkout-header"
           style={{
-            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+            background: 'linear-gradient(135deg, #0b1329 0%, #1e293b 100%)',
             color: '#ffffff',
-            padding: '20px 24px',
+            WebkitTextFillColor: '#ffffff',
+            padding: '22px 24px',
             position: 'relative',
           }}
         >
           <button
             type="button"
             onClick={onClose}
+            className="subscription-close-btn"
+            aria-label="Close"
             style={{
               position: 'absolute',
               right: '16px',
               top: '16px',
-              background: 'rgba(255, 255, 255, 0.15)',
-              border: 'none',
+              background: 'rgba(255, 255, 255, 0.2)',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
               borderRadius: '50%',
-              width: '32px',
-              height: '32px',
+              width: '34px',
+              height: '34px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               color: '#ffffff',
+              WebkitTextFillColor: '#ffffff',
               cursor: 'pointer',
+              transition: 'background 0.2s',
             }}
           >
-            <X size={18} />
+            <X size={18} color="#ffffff" style={{ stroke: '#ffffff' }} />
           </button>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-            <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', background: 'rgba(16, 185, 129, 0.2)', color: '#10b981', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <span
+              className="subscription-ssl-badge"
+              style={{
+                fontSize: '11px',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                background: 'rgba(16, 185, 129, 0.25)',
+                color: '#34d399',
+                WebkitTextFillColor: '#34d399',
+                padding: '3px 9px',
+                borderRadius: '4px',
+                border: '1px solid rgba(16, 185, 129, 0.45)',
+                letterSpacing: '0.04em',
+              }}
+            >
               🔒 256-Bit SSL Secure Checkout
             </span>
-            <span style={{ fontSize: '12px', opacity: 0.8 }}>• Instant Activation</span>
+            <span
+              className="subscription-activation-badge"
+              style={{
+                fontSize: '12px',
+                fontWeight: 600,
+                color: '#e2e8f0',
+                WebkitTextFillColor: '#e2e8f0',
+              }}
+            >
+              • Instant Activation
+            </span>
           </div>
 
-          <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: '#ffffff', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {plan === 'Professional' ? <Crown size={22} color="#8b5cf6" /> : <Zap size={22} color="#10b981" />}
+          <h2
+            className="subscription-header-title"
+            style={{
+              margin: 0,
+              fontSize: '1.45rem',
+              fontWeight: 800,
+              color: '#ffffff',
+              WebkitTextFillColor: '#ffffff',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              letterSpacing: '-0.01em',
+            }}
+          >
+            {plan === 'Professional' ? <Crown size={24} color="#c084fc" /> : <Zap size={24} color="#34d399" />}
             Upgrade to {plan} Plan
           </h2>
-          <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#94a3b8' }}>
+          <p
+            className="subscription-header-subtitle"
+            style={{
+              margin: '6px 0 0',
+              fontSize: '0.88rem',
+              color: '#cbd5e1',
+              WebkitTextFillColor: '#cbd5e1',
+              lineHeight: 1.4,
+            }}
+          >
             Official Trinetr Business Suite Subscription • GST ITC Tax Invoice included
           </p>
         </div>
@@ -471,7 +586,20 @@ export function SubscriptionPaymentModal({
               {activeMethod === 'upi' && (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   {/* QR Box */}
-                  <div style={{ background: '#ffffff', padding: '12px', borderRadius: '12px', border: '2px dashed var(--border-subtle)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '12px' }}>
+                  <div
+                    style={{
+                      background: '#ffffff',
+                      padding: '14px',
+                      borderRadius: '12px',
+                      border: highlightQr ? '2px solid #10b981' : '2px dashed var(--border-subtle)',
+                      boxShadow: highlightQr ? '0 0 20px rgba(16, 185, 129, 0.45)' : '0 4px 12px rgba(0,0,0,0.05)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      marginBottom: '14px',
+                      transition: 'all 0.3s ease',
+                    }}
+                  >
                     {qrDataUrl ? (
                       <img src={qrDataUrl} alt="UPI QR Code" style={{ width: '180px', height: '180px', display: 'block', borderRadius: '6px' }} />
                     ) : (
@@ -479,7 +607,7 @@ export function SubscriptionPaymentModal({
                         Loading QR...
                       </div>
                     )}
-                    <span style={{ fontSize: '11px', color: '#166534', background: '#f0fdf4', padding: '3px 8px', borderRadius: '999px', fontWeight: 600, marginTop: '8px' }}>
+                    <span style={{ fontSize: '11px', color: '#166534', WebkitTextFillColor: '#166534', background: '#f0fdf4', padding: '4px 10px', borderRadius: '999px', fontWeight: 700, marginTop: '8px', border: '1px solid #bbf7d0' }}>
                       ✓ Scan with any UPI App: GPay, PhonePe, Paytm, BHIM, CRED
                     </span>
                   </div>
@@ -488,34 +616,129 @@ export function SubscriptionPaymentModal({
                   <div style={{ width: '100%', background: 'var(--bg-secondary)', borderRadius: '8px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', border: '1px solid var(--border-subtle)', fontSize: '0.85rem' }}>
                     <div>
                       <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', display: 'block' }}>Merchant UPI ID:</span>
-                      <strong>{receivingUpiId}</strong>
+                      <strong style={{ color: 'var(--text-primary)', WebkitTextFillColor: 'var(--text-primary)', fontSize: '0.95rem' }}>{receivingUpiId}</strong>
                     </div>
                     <button
                       type="button"
                       onClick={() => copyToClipboard(receivingUpiId)}
-                      style={{ padding: '4px 10px', background: copiedUpi ? '#10b981' : 'var(--bg-primary)', color: copiedUpi ? '#fff' : 'var(--text-primary)', border: '1px solid var(--border-subtle)', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                      style={{ padding: '6px 12px', background: copiedUpi ? '#10b981' : 'var(--bg-primary)', color: copiedUpi ? '#fff' : 'var(--text-primary)', border: '1px solid var(--border-subtle)', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
                     >
-                      {copiedUpi ? <Check size={12} /> : <Copy size={12} />}
+                      {copiedUpi ? <Check size={14} /> : <Copy size={14} />}
                       {copiedUpi ? 'Copied' : 'Copy UPI ID'}
                     </button>
                   </div>
 
-                  {/* Mobile Deep-Links */}
-                  <div style={{ display: 'flex', gap: '8px', width: '100%', marginBottom: '16px', flexWrap: 'wrap' }}>
-                    <a href={upiUri} style={{ flex: 1, minWidth: '90px', padding: '8px', background: '#4285f4', color: '#ffffff', borderRadius: '6px', fontSize: '12px', fontWeight: 600, textAlign: 'center', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                      <Smartphone size={13} /> GPay
-                    </a>
-                    <a href={upiUri} style={{ flex: 1, minWidth: '90px', padding: '8px', background: '#5f259f', color: '#ffffff', borderRadius: '6px', fontSize: '12px', fontWeight: 600, textAlign: 'center', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                      <Smartphone size={13} /> PhonePe
-                    </a>
-                    <a href={upiUri} style={{ flex: 1, minWidth: '90px', padding: '8px', background: '#002970', color: '#ffffff', borderRadius: '6px', fontSize: '12px', fontWeight: 600, textAlign: 'center', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                      <Smartphone size={13} /> Paytm
-                    </a>
+                  {/* Mobile & Desktop UPI App Buttons */}
+                  <div style={{ display: 'flex', gap: '8px', width: '100%', marginBottom: '10px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => handleAppPayment('gpay')}
+                      style={{
+                        flex: 1,
+                        minWidth: '95px',
+                        padding: '10px 8px',
+                        background: activeApp === 'gpay' ? '#1a73e8' : '#4285f4',
+                        color: '#ffffff',
+                        WebkitTextFillColor: '#ffffff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        textAlign: 'center',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 8px rgba(66, 133, 244, 0.35)',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <Smartphone size={15} /> GPay
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleAppPayment('phonepe')}
+                      style={{
+                        flex: 1,
+                        minWidth: '95px',
+                        padding: '10px 8px',
+                        background: activeApp === 'phonepe' ? '#4a1d7c' : '#5f259f',
+                        color: '#ffffff',
+                        WebkitTextFillColor: '#ffffff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        textAlign: 'center',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 8px rgba(95, 37, 159, 0.35)',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <Smartphone size={15} /> PhonePe
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleAppPayment('paytm')}
+                      style={{
+                        flex: 1,
+                        minWidth: '95px',
+                        padding: '10px 8px',
+                        background: activeApp === 'paytm' ? '#001b44' : '#002970',
+                        color: '#ffffff',
+                        WebkitTextFillColor: '#ffffff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        textAlign: 'center',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 8px rgba(0, 41, 112, 0.35)',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <Smartphone size={15} /> Paytm
+                    </button>
                   </div>
+
+                  {appActionStatus && (
+                    <div
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: '8px',
+                        background: 'rgba(16, 185, 129, 0.12)',
+                        border: '1.5px solid #10b981',
+                        color: '#065f46',
+                        WebkitTextFillColor: '#065f46',
+                        fontSize: '0.84rem',
+                        fontWeight: 600,
+                        marginBottom: '14px',
+                        lineHeight: 1.5,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                      }}
+                    >
+                      <CheckCircle2 size={16} style={{ flexShrink: 0, color: '#10b981' }} />
+                      <span>{appActionStatus}</span>
+                    </div>
+                  )}
 
                   {/* UTR Verification Input */}
                   <div style={{ width: '100%', borderTop: '1px solid var(--border-subtle)', paddingTop: '14px' }}>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px' }}>
+                    <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)', WebkitTextFillColor: 'var(--text-primary)', marginBottom: '6px' }}>
                       Step 2: Enter 12-digit UPI Ref / UTR No. after paying
                     </label>
                     <div style={{ display: 'flex', gap: '8px' }}>
@@ -533,6 +756,7 @@ export function SubscriptionPaymentModal({
                           fontWeight: 600,
                           background: 'var(--bg-primary)',
                           color: 'var(--text-primary)',
+                          WebkitTextFillColor: 'var(--text-primary)',
                         }}
                       />
                       <button
@@ -540,12 +764,23 @@ export function SubscriptionPaymentModal({
                         className="saas-primary-button"
                         onClick={handleVerifyUpiPayment}
                         disabled={isVerifying}
-                        style={{ whiteSpace: 'nowrap', padding: '10px 18px' }}
+                        style={{
+                          whiteSpace: 'nowrap',
+                          padding: '11px 22px',
+                          background: '#059669',
+                          color: '#ffffff',
+                          WebkitTextFillColor: '#ffffff',
+                          fontWeight: 700,
+                          borderRadius: '8px',
+                          border: 'none',
+                          cursor: isVerifying ? 'not-allowed' : 'pointer',
+                          boxShadow: '0 2px 8px rgba(5, 150, 105, 0.35)',
+                        }}
                       >
                         {isVerifying ? 'Verifying...' : 'Verify & Activate'}
                       </button>
                     </div>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginTop: '6px' }}>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'block', marginTop: '6px' }}>
                       The 12-digit UTR appears in your Google Pay / PhonePe / Paytm payment details receipt.
                     </span>
                   </div>
