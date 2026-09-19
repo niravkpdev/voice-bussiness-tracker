@@ -53,10 +53,13 @@ describe('Mobile Responsive Buttons & Interaction Fixes', () => {
       expect(screen.queryByRole('button', { name: /payment setup/i })).not.toBeInTheDocument();
     });
 
-    it('renders platform owner payment setup when logged in as owner email ap0767573@gmail.com', () => {
+    it('renders platform owner payment setup and customer subscriptions when logged in as owner email ap0767573@gmail.com', () => {
       render(<BillingSettings onNavigate={vi.fn()} currentUserEmail="ap0767573@gmail.com" />);
       expect(screen.getByText(/Payment Gateway & Receiving Setup \(For Platform Owner\)/i)).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /payment setup/i })).toBeInTheDocument();
+      expect(screen.getByText(/Customer Subscriptions & Received Payments/i)).toBeInTheDocument();
+      expect(screen.getByText('TRN-SUB-MU8F5YF0')).toBeInTheDocument();
+      expect(screen.getByText('pn74062-2@okaxis')).toBeInTheDocument();
     });
 
     it('clicking the chevron button toggles the payment receiving setup panel when isPlatformOwner is true', () => {

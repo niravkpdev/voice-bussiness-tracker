@@ -2216,6 +2216,12 @@ export default function VoiceExpenseTrackerPreview() {
         ? localProfile.storeName
         : (normalizedCloud.storeName || effectiveName);
 
+      const PLAN_RANK = { 'Free Trial': 0, 'Basic': 1, 'Starter': 1, 'Professional': 2, 'Enterprise': 3 };
+      const localPlan = localProfile.subscriptionPlan || 'Free Trial';
+      const cloudPlan = normalizedCloud.subscriptionPlan || 'Free Trial';
+      const effectivePlan = (PLAN_RANK[cloudPlan] || 0) >= (PLAN_RANK[localPlan] || 0) ? cloudPlan : localPlan;
+      const effectiveCycle = (effectivePlan === cloudPlan ? normalizedCloud.subscriptionCycle : localProfile.subscriptionCycle) || 'monthly';
+
       resolvedProfile = {
         ...DEFAULT_PROFILE,
         ...localProfile,
@@ -2223,9 +2229,11 @@ export default function VoiceExpenseTrackerPreview() {
         name: effectiveName,
         storeName: effectiveStoreName,
         businessName: effectiveName,
+        subscriptionPlan: effectivePlan,
+        subscriptionCycle: effectiveCycle,
       };
 
-      if (localNameIsCustom && cloudNameIsDemo && authUser?.uid && supabaseEnabled) {
+      if (((localNameIsCustom && cloudNameIsDemo) || (localPlan !== cloudPlan && effectivePlan === localPlan)) && authUser?.uid && supabaseEnabled) {
         saveUserProfileSettings(authUser.uid, {
           ...resolvedProfile,
           businessName: resolvedProfile.name,
@@ -5795,6 +5803,27 @@ export default function VoiceExpenseTrackerPreview() {
           businessName: nextProfile.name,
           userId: authUser.uid,
         });
+        if (updates.subscriptionPlan) {
+          try {
+            await saveCloudRecord(authUser.uid, 'subscriptions', 'current', {
+              id: 'current',
+              plan: nextProfile.subscriptionPlan,
+              cycle: nextProfile.subscriptionCycle,
+              updatedAt: new Date().toISOString(),
+              status: 'active',
+            });
+          } catch {}
+          try {
+            const client = getSupabaseClient();
+            await client?.auth?.updateUser?.({
+              data: {
+                subscriptionPlan: nextProfile.subscriptionPlan,
+                subscriptionCycle: nextProfile.subscriptionCycle,
+                subscriptionUpdatedAt: new Date().toISOString(),
+              },
+            });
+          } catch {}
+        }
       }
     } catch (e) {
       console.warn('Cloud profile sync warning:', e);

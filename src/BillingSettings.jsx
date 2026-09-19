@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CreditCard, Download, ExternalLink, Calendar, Check, Zap, Crown, Shield, Play, ArrowUpRight, CheckCircle2, Lock, Settings, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
+import { CreditCard, Download, ExternalLink, Calendar, Check, Zap, Crown, Shield, Play, ArrowUpRight, CheckCircle2, Lock, Settings, Sparkles, ChevronDown, ChevronUp, Copy } from 'lucide-react';
 import { getTrialDaysLeft, PLAN_LIMITS } from './subscription';
 import { SubscriptionBadge } from './SubscriptionBadge';
 import { SubscriptionPaymentModal } from './SubscriptionPaymentModal';
@@ -57,6 +57,41 @@ export function BillingSettings({
   const [adminUpiId, setAdminUpiId] = useState(() => localStorage.getItem('trinetr_platform_upi') || profile?.platformUpiId || profile?.upiId || 'trinetr.namkeen@icici');
   const [adminRazorpayKey, setAdminRazorpayKey] = useState(() => localStorage.getItem('trinetr_razorpay_key') || '');
   const [adminSetupNotice, setAdminSetupNotice] = useState('');
+  const [copiedUtr, setCopiedUtr] = useState('');
+
+  // Platform Received Subscriptions & Customer Payments (Platform Owner View)
+  const [platformReceivedPayments, setPlatformReceivedPayments] = useState(() => {
+    try {
+      const saved = localStorage.getItem('trinetr_platform_received_payments');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [
+      {
+        id: 'TRN-SUB-MU8F5YF0',
+        transactionId: 'TRN-SUB-MU8F5YF0',
+        utr: 'pn74062-2@okaxis',
+        date: '19 Sept 2026',
+        customerEmail: 'Customer (GPay Verified)',
+        customerName: 'Basic Plan Subscriber',
+        plan: 'Basic',
+        cycle: 'Monthly',
+        amount: 99,
+        method: 'UPI (GPay)',
+        status: 'Active & Paid'
+      }
+    ];
+  });
+
+  const copyUtr = (utr) => {
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(utr);
+      setCopiedUtr(utr);
+      setTimeout(() => setCopiedUtr(''), 3000);
+    }
+  };
 
   const [invoices, setInvoices] = useState(() => {
     try {
@@ -125,6 +160,29 @@ export function BillingSettings({
     try {
       localStorage.setItem('trinetr_subscription_invoices', JSON.stringify(nextInvoices));
     } catch {}
+
+    // Record to platform payments list for owner tracking
+    const platformEntry = {
+      id: paymentRecord.transactionId || `TRN-SUB-${Date.now().toString(36).toUpperCase()}`,
+      transactionId: paymentRecord.transactionId,
+      utr: paymentRecord.utr || 'N/A',
+      date: paymentRecord.date || new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+      customerEmail: profile?.email || currentUserEmail || 'Subscriber',
+      customerName: profile?.businessName || profile?.name || profile?.owner || 'Customer',
+      plan: paymentRecord.plan,
+      cycle: paymentRecord.cycle === 'yearly' ? 'Annual' : 'Monthly',
+      amount: paymentRecord.amount,
+      method: paymentRecord.method || 'UPI (GPay)',
+      status: 'Active & Paid',
+    };
+    setPlatformReceivedPayments(prev => {
+      const next = [platformEntry, ...prev.filter(p => p.transactionId !== platformEntry.transactionId)];
+      try {
+        localStorage.setItem('trinetr_platform_received_payments', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
     setDownloadSuccess(`🎉 Payment received! Successfully activated ${paymentRecord.plan} Plan.`);
     setTimeout(() => setDownloadSuccess(''), 5000);
   };
@@ -667,7 +725,8 @@ export function BillingSettings({
 
       {/* Platform Owner Payment Receiving Setup (only shown to platform owners, never on customer billing side) */}
       {showPlatformOwnerSetup && (
-        <div style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '24px' }}>
+        <>
+          <div style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }} onClick={() => setShowAdminPaymentSetup(!showAdminPaymentSetup)}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <Settings size={20} style={{ color: 'var(--brand-primary)' }} />
@@ -777,6 +836,102 @@ export function BillingSettings({
             </div>
           )}
         </div>
+
+        {/* Live Received Subscriptions & Customer Payments (Platform Owner View) */}
+        <div style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '24px', marginTop: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <h3 style={{ fontSize: '1.15rem', margin: 0, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Sparkles size={20} style={{ color: '#10b981' }} />
+                  Customer Subscriptions &amp; Received Payments
+                </h3>
+                <span style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid #10b981', fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '999px' }}>
+                  Platform Owner View
+                </span>
+              </div>
+              <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                Live record of all customer subscription payments deposited into your UPI / Bank account. Cross-verify UTR reference IDs with your Google Pay app.
+              </p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ padding: '8px 16px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-subtle)', textAlign: 'right' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', textTransform: 'uppercase' }}>Total Received</span>
+                <strong style={{ fontSize: '1.15rem', color: '#10b981' }}>
+                  ₹{platformReceivedPayments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0)}.00
+                </strong>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ overflowX: 'auto', border: '1px solid var(--border-subtle)', borderRadius: '8px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+              <thead>
+                <tr style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-subtle)', textAlign: 'left', color: 'var(--text-secondary)' }}>
+                  <th style={{ padding: '10px 14px' }}>Date</th>
+                  <th style={{ padding: '10px 14px' }}>Transaction ID</th>
+                  <th style={{ padding: '10px 14px' }}>Subscriber</th>
+                  <th style={{ padding: '10px 14px' }}>Plan &amp; Cycle</th>
+                  <th style={{ padding: '10px 14px' }}>Amount</th>
+                  <th style={{ padding: '10px 14px' }}>Method</th>
+                  <th style={{ padding: '10px 14px' }}>UPI UTR / Reference ID</th>
+                  <th style={{ padding: '10px 14px', textAlign: 'right' }}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {platformReceivedPayments.map((p) => (
+                  <tr key={p.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                    <td style={{ padding: '12px 14px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{p.date}</td>
+                    <td style={{ padding: '12px 14px', fontWeight: 600, fontFamily: 'monospace', fontSize: '0.85rem' }}>{p.transactionId}</td>
+                    <td style={{ padding: '12px 14px' }}>
+                      <div style={{ fontWeight: 600 }}>{p.customerName || 'Subscriber'}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{p.customerEmail || 'Customer'}</div>
+                    </td>
+                    <td style={{ padding: '12px 14px' }}>
+                      <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{p.plan}</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginLeft: '4px' }}>({p.cycle})</span>
+                    </td>
+                    <td style={{ padding: '12px 14px', fontWeight: 800, color: '#10b981' }}>₹{p.amount}.00</td>
+                    <td style={{ padding: '12px 14px', fontSize: '0.85rem' }}>{p.method}</td>
+                    <td style={{ padding: '12px 14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <code style={{ background: 'var(--bg-secondary)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600 }}>
+                          {p.utr}
+                        </code>
+                        <button
+                          type="button"
+                          className="icon-button"
+                          title="Copy UTR Reference"
+                          onClick={() => copyUtr(p.utr)}
+                          style={{ padding: '3px', background: 'none', border: 'none', cursor: 'pointer', color: copiedUtr === p.utr ? '#10b981' : 'var(--text-secondary)' }}
+                        >
+                          <Copy size={14} />
+                        </button>
+                        {copiedUtr === p.utr && <span style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: 600 }}>Copied!</span>}
+                      </div>
+                    </td>
+                    <td style={{ padding: '12px 14px', textAlign: 'right' }}>
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '4px 10px',
+                        borderRadius: '999px',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        background: 'rgba(16, 185, 129, 0.15)',
+                        color: '#10b981'
+                      }}>
+                        <CheckCircle2 size={12} /> {p.status || 'Active & Paid'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        </>
       )}
 
       {/* Real Subscription Payment Modal */}
