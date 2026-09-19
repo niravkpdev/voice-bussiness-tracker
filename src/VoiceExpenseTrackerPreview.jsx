@@ -11701,6 +11701,7 @@ export default function VoiceExpenseTrackerPreview() {
                   products: cloudInventory?.length || 0,
                   employees: cloudEmployees?.length || 0,
                 }}
+                isPlatformOwner={false}
               />
             </section>
           )}

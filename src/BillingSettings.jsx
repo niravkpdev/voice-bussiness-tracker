@@ -4,7 +4,8 @@ import { getTrialDaysLeft, PLAN_LIMITS } from './subscription';
 import { SubscriptionBadge } from './SubscriptionBadge';
 import { SubscriptionPaymentModal } from './SubscriptionPaymentModal';
 
-export function BillingSettings({ profile, onOpenPricing, onSelectPlan, onUpgradePlan, onContactSales, usage = {} }) {
+export function BillingSettings({ profile, onOpenPricing, onSelectPlan, onUpgradePlan, onContactSales, usage = {}, isPlatformOwner = false }) {
+  const showPlatformOwnerSetup = Boolean(isPlatformOwner || profile?.isPlatformOwner);
   const currentPlan = profile?.subscriptionPlan || 'Free Trial';
   const planDetails = PLAN_LIMITS[currentPlan] || PLAN_LIMITS['Free Trial'];
   const trialDaysLeft = getTrialDaysLeft(profile?.trialStartDate);
@@ -631,117 +632,119 @@ export function BillingSettings({ profile, onOpenPricing, onSelectPlan, onUpgrad
         </div>
       </div>
 
-      {/* Platform Owner Payment Receiving Setup */}
-      <div style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }} onClick={() => setShowAdminPaymentSetup(!showAdminPaymentSetup)}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Settings size={20} style={{ color: 'var(--brand-primary)' }} />
-            <div>
-              <h3 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 700 }}>Payment Gateway &amp; Receiving Setup (For Platform Owner)</h3>
-              <p style={{ margin: '2px 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                Configure where customer subscription payments (UPI &amp; Razorpay) are deposited into your bank account.
-              </p>
+      {/* Platform Owner Payment Receiving Setup (only shown to platform owners, never on customer billing side) */}
+      {showPlatformOwnerSetup && (
+        <div style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }} onClick={() => setShowAdminPaymentSetup(!showAdminPaymentSetup)}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Settings size={20} style={{ color: 'var(--brand-primary)' }} />
+              <div>
+                <h3 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 700 }}>Payment Gateway &amp; Receiving Setup (For Platform Owner)</h3>
+                <p style={{ margin: '2px 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  Configure where customer subscription payments (UPI &amp; Razorpay) are deposited into your bank account.
+                </p>
+              </div>
             </div>
+            <button
+              type="button"
+              className="icon-button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowAdminPaymentSetup(!showAdminPaymentSetup);
+              }}
+              aria-label={showAdminPaymentSetup ? "Collapse payment setup" : "Expand payment setup"}
+              style={{ border: 'none', background: 'none', cursor: 'pointer' }}
+            >
+              {showAdminPaymentSetup ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            </button>
           </div>
-          <button
-            type="button"
-            className="icon-button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowAdminPaymentSetup(!showAdminPaymentSetup);
-            }}
-            aria-label={showAdminPaymentSetup ? "Collapse payment setup" : "Expand payment setup"}
-            style={{ border: 'none', background: 'none', cursor: 'pointer' }}
-          >
-            {showAdminPaymentSetup ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-          </button>
+
+          {showAdminPaymentSetup && (
+            <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              {adminSetupNotice && (
+                <div style={{ padding: '10px 14px', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid #10b981', color: '#10b981', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600 }}>
+                  {adminSetupNotice}
+                </div>
+              )}
+
+              <div>
+                <label style={{ display: 'block', fontWeight: 700, fontSize: '0.9rem', marginBottom: '6px' }}>
+                  1. Merchant UPI ID (For Direct 0% Commission Bank Deposits)
+                </label>
+                <div style={{ display: 'flex', gap: '8px', maxWidth: '480px' }}>
+                  <input
+                    type="text"
+                    value={adminUpiId}
+                    onChange={(e) => setAdminUpiId(e.target.value)}
+                    placeholder="e.g. yourshop@icici or 9876543210@paytm"
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid var(--border-subtle)',
+                      background: 'var(--bg-secondary)',
+                      color: 'var(--text-primary)',
+                      fontSize: '0.9rem',
+                      fontWeight: 600
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="saas-primary-button"
+                    onClick={handleSaveAdminPaymentConfig}
+                  >
+                    Save UPI ID
+                  </button>
+                </div>
+                <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  When customers pay for Basic (₹99) or Pro (₹499) via GPay / PhonePe QR code, money goes directly into this UPI bank account with 0% gateway fee.
+                </p>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontWeight: 700, fontSize: '0.9rem', marginBottom: '6px' }}>
+                  2. Razorpay API Key ID (For Automated Cards &amp; NetBanking)
+                </label>
+                <div style={{ display: 'flex', gap: '8px', maxWidth: '480px' }}>
+                  <input
+                    type="text"
+                    value={adminRazorpayKey}
+                    onChange={(e) => setAdminRazorpayKey(e.target.value)}
+                    placeholder="rzp_live_xxxxxxxxxxxxxxxx"
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid var(--border-subtle)',
+                      background: 'var(--bg-secondary)',
+                      color: 'var(--text-primary)',
+                      fontSize: '0.9rem'
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="saas-primary-button"
+                    onClick={handleSaveAdminPaymentConfig}
+                  >
+                    Save Key
+                  </button>
+                </div>
+                <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  Get your API Key from <a href="https://dashboard.razorpay.com/#/app/keys" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand-primary)' }}>Razorpay Dashboard &gt; Settings &gt; API Keys</a>. Funds settle automatically into your linked bank account on T+1 days.
+                </p>
+              </div>
+
+              <div style={{ background: 'var(--bg-secondary)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-subtle)', fontSize: '0.85rem' }}>
+                <strong>📋 Bank Transfer (NEFT/IMPS) Receiving Details:</strong>
+                <div style={{ marginTop: '6px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                  Bank: ICICI Bank | A/C: 002405001234 | IFSC: ICIC0000024 | Current A/C<br />
+                  To change bank transfer details, update your business registration profile in Settings.
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-
-        {showAdminPaymentSetup && (
-          <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: '18px' }}>
-            {adminSetupNotice && (
-              <div style={{ padding: '10px 14px', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid #10b981', color: '#10b981', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600 }}>
-                {adminSetupNotice}
-              </div>
-            )}
-
-            <div>
-              <label style={{ display: 'block', fontWeight: 700, fontSize: '0.9rem', marginBottom: '6px' }}>
-                1. Merchant UPI ID (For Direct 0% Commission Bank Deposits)
-              </label>
-              <div style={{ display: 'flex', gap: '8px', maxWidth: '480px' }}>
-                <input
-                  type="text"
-                  value={adminUpiId}
-                  onChange={(e) => setAdminUpiId(e.target.value)}
-                  placeholder="e.g. yourshop@icici or 9876543210@paytm"
-                  style={{
-                    flex: 1,
-                    padding: '8px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--border-subtle)',
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    fontSize: '0.9rem',
-                    fontWeight: 600
-                  }}
-                />
-                <button
-                  type="button"
-                  className="saas-primary-button"
-                  onClick={handleSaveAdminPaymentConfig}
-                >
-                  Save UPI ID
-                </button>
-              </div>
-              <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                When customers pay for Basic (₹99) or Pro (₹499) via GPay / PhonePe QR code, money goes directly into this UPI bank account with 0% gateway fee.
-              </p>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontWeight: 700, fontSize: '0.9rem', marginBottom: '6px' }}>
-                2. Razorpay API Key ID (For Automated Cards &amp; NetBanking)
-              </label>
-              <div style={{ display: 'flex', gap: '8px', maxWidth: '480px' }}>
-                <input
-                  type="text"
-                  value={adminRazorpayKey}
-                  onChange={(e) => setAdminRazorpayKey(e.target.value)}
-                  placeholder="rzp_live_xxxxxxxxxxxxxxxx"
-                  style={{
-                    flex: 1,
-                    padding: '8px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--border-subtle)',
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    fontSize: '0.9rem'
-                  }}
-                />
-                <button
-                  type="button"
-                  className="saas-primary-button"
-                  onClick={handleSaveAdminPaymentConfig}
-                >
-                  Save Key
-                </button>
-              </div>
-              <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                Get your API Key from <a href="https://dashboard.razorpay.com/#/app/keys" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand-primary)' }}>Razorpay Dashboard &gt; Settings &gt; API Keys</a>. Funds settle automatically into your linked bank account on T+1 days.
-              </p>
-            </div>
-
-            <div style={{ background: 'var(--bg-secondary)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-subtle)', fontSize: '0.85rem' }}>
-              <strong>📋 Bank Transfer (NEFT/IMPS) Receiving Details:</strong>
-              <div style={{ marginTop: '6px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                Bank: ICICI Bank | A/C: 002405001234 | IFSC: ICIC0000024 | Current A/C<br />
-                To change bank transfer details, update your business registration profile in Settings.
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Real Subscription Payment Modal */}
       {checkoutModal.isOpen && (

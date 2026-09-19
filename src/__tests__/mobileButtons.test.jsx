@@ -47,8 +47,14 @@ describe('Mobile Responsive Buttons & Interaction Fixes', () => {
   });
 
   describe('BillingSettings Platform Owner Chevron Toggle Button', () => {
-    it('clicking the chevron button toggles the payment receiving setup panel', () => {
+    it('does not render platform owner payment setup on customer side by default', () => {
       render(<BillingSettings onNavigate={vi.fn()} />);
+      expect(screen.queryByText(/Payment Gateway & Receiving Setup/i)).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /payment setup/i })).not.toBeInTheDocument();
+    });
+
+    it('clicking the chevron button toggles the payment receiving setup panel when isPlatformOwner is true', () => {
+      render(<BillingSettings onNavigate={vi.fn()} isPlatformOwner={true} />);
 
       // Initially closed
       expect(screen.queryByText(/1\. Merchant UPI ID/i)).not.toBeInTheDocument();
