@@ -75,6 +75,7 @@ import {
   inviteCompanyMember,
   isSupabaseConfigured,
   isPasswordRecoveryRoute,
+  isEmailConfirmationRoute,
   linkEmployeeUserMapping,
   logEmployeeSelfServiceEvent,
   listenToSupabaseAuth,
@@ -1276,6 +1277,9 @@ export default function VoiceExpenseTrackerPreview() {
   const [authView, setAuthView] = useState(() => {
     if (isPasswordRecoveryRoute()) {
       return 'new-password';
+    }
+    if (isEmailConfirmationRoute()) {
+      return 'email-confirmed';
     }
     if (import.meta.env.PROD) {
       return 'landing';
@@ -3130,11 +3134,36 @@ export default function VoiceExpenseTrackerPreview() {
     const targetForm = event.currentTarget;
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    let rawEmail = sanitizeEmail(form.get('email') || form.get('username') || '').toLowerCase().trim();
-    if (rawEmail && !rawEmail.includes('@')) {
-      rawEmail = `${rawEmail.replace(/[^a-z0-9]/g, '')}@business.local`;
+    const rawInput = sanitizeEmail(form.get('email') || form.get('username') || loginIdentifier || '').trim();
+    let email = rawInput.toLowerCase();
+    let isUsernameEntered = false;
+
+    if (authView === 'login') {
+      if (rawInput && !rawInput.includes('@')) {
+        isUsernameEntered = true;
+        const normUser = rawInput.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+        let resolved = '';
+        try {
+          resolved = localStorage.getItem(`trinetr_alias_${normUser}`) || '';
+          if (!resolved && localStorage.getItem('trinetr_last_registered_user') === normUser) {
+            resolved = localStorage.getItem('trinetr_last_registered_email') || '';
+          }
+        } catch {}
+
+        if (resolved) {
+          email = resolved;
+        } else {
+          email = `${normUser}@business.local`;
+        }
+      }
+    } else {
+      let rawEmail = sanitizeEmail(form.get('email') || '').toLowerCase().trim();
+      if (!rawEmail && rawInput.includes('@')) {
+        rawEmail = rawInput.toLowerCase();
+      }
+      email = rawEmail;
     }
-    const email = rawEmail;
+
     const password = String(form.get('password') || '');
     const businessName = sanitizeText(form.get('businessName') || profile.name, 140);
     const ownerName = sanitizeText(form.get('username') || form.get('ownerName') || profile.owner, 120);
@@ -3148,7 +3177,7 @@ export default function VoiceExpenseTrackerPreview() {
     }
 
     if (!validateEmail(email)) {
-      setSecureError('Enter a valid username or email address.');
+      setSecureError(isUsernameEntered ? 'Please enter your registered email address or a valid username.' : 'Enter a valid email address.');
       return;
     }
 
@@ -3210,6 +3239,18 @@ export default function VoiceExpenseTrackerPreview() {
           ? await signInSupabaseAccount({ email, password })
           : await createSupabaseAccount({ email, password, ownerName, businessName });
 
+        if (authView === 'register') {
+          try {
+            const normUser = String(ownerName || registerUsername || '').toLowerCase().trim();
+            const normEmail = String(email || '').toLowerCase().trim();
+            if (normUser && normEmail) {
+              localStorage.setItem(`trinetr_alias_${normUser}`, normEmail);
+              localStorage.setItem('trinetr_last_registered_email', normEmail);
+              localStorage.setItem('trinetr_last_registered_user', normUser);
+            }
+          } catch {}
+        }
+
         mergeAuthDebugInfo({
           email: supabaseUser?.email || email,
           uid: supabaseUser?.uid || '',
@@ -3254,10 +3295,16 @@ export default function VoiceExpenseTrackerPreview() {
       setSecureError('Supabase is not configured yet, so this session is running in local demo mode.');
       setStatus('Demo mode active. Configure Supabase env variables for production login.');
     } catch (error) {
-      const message = getSupabaseAuthErrorMessage(error, 'Login failed. Please check your details and try again.');
+      let message = getSupabaseAuthErrorMessage(error, 'Login failed. Please check your details and try again.');
+      if (authView === 'login' && isUsernameEntered && email.endsWith('@business.local')) {
+        message = `Could not find an account for username '${rawInput}'. Please log in using your registered email address (e.g. name@example.com).`;
+      }
       setSecureError(message);
       setAuthNotice('');
       setStatus(message);
+      if (error?.code === 'auth/email-not-verified' || error?.message?.toLowerCase().includes('not confirmed')) {
+        setAuthNotice('Your email is not verified yet. Please check your inbox or spam folder for the confirmation email.');
+      }
     } finally {
       setAuthLoading(false);
     }
@@ -3771,6 +3818,17 @@ export default function VoiceExpenseTrackerPreview() {
             setAuthLoading(false);
             return;
           }
+          if (isEmailConfirmationRoute()) {
+            setAuthUser(user);
+            setAuthView('email-confirmed');
+            setAuthNotice('Your email has been verified successfully!');
+            setStatus('Email verified');
+            setAuthLoading(false);
+            if (typeof window !== 'undefined') {
+              window.history.replaceState({}, document.title, '/react.html');
+            }
+            return;
+          }
           await applyAuthenticatedUser(user);
         } else {
           if (import.meta.env.DEV) {
@@ -3781,6 +3839,13 @@ export default function VoiceExpenseTrackerPreview() {
             setAuthNotice('');
             setSecureError('Password reset link is expired or invalid. Please request a new reset link.');
             setStatus('Password reset link expired');
+          } else if (isEmailConfirmationRoute()) {
+            setAuthView('email-confirmed');
+            setAuthNotice('Your email has been confirmed! Please log in to your account.');
+            setStatus('Email verified');
+            if (typeof window !== 'undefined') {
+              window.history.replaceState({}, document.title, '/react.html');
+            }
           }
           mergeAuthDebugInfo({
             sessionState: 'signed-out',
@@ -6386,7 +6451,57 @@ export default function VoiceExpenseTrackerPreview() {
           )}
         </header>
 
-        {authView === 'verify-email' ? (
+        {authView === 'email-confirmed' ? (
+          <section className="auth-page">
+            <div className="auth-card" style={{ textAlign: 'center' }}>
+              <span className="security-mode live" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                ✓ Email Confirmed
+              </span>
+              <h1 style={{ marginTop: '16px' }}>Email Verified Successfully!</h1>
+              <p style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: '15px', lineHeight: '1.6' }}>
+                {authUser?.email ? (
+                  <>Your email <strong>{authUser.email}</strong> has been verified. Your business account is ready to use.</>
+                ) : (
+                  <>Your email address has been verified successfully. Your business account is ready to use.</>
+                )}
+              </p>
+              {authNotice && <div className="notice" style={{ marginTop: '12px' }}>{authNotice}</div>}
+              {secureError && <div className="notice error" style={{ marginTop: '12px' }}>{secureError}</div>}
+
+              {authUser?.uid ? (
+                <button
+                  className="saas-primary-button full"
+                  type="button"
+                  onClick={async () => {
+                    if (typeof window !== 'undefined') {
+                      window.history.replaceState({}, document.title, '/react.html');
+                    }
+                    await applyAuthenticatedUser(authUser);
+                  }}
+                  style={{ marginTop: '20px' }}
+                >
+                  Continue to Dashboard →
+                </button>
+              ) : (
+                <button
+                  className="saas-primary-button full"
+                  type="button"
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      window.history.replaceState({}, document.title, '/react.html');
+                    }
+                    setAuthView('login');
+                    setIsRegisterMode(false);
+                    setAuthNotice('Email verified successfully! Please log in to your account.');
+                  }}
+                  style={{ marginTop: '20px' }}
+                >
+                  Proceed to Login →
+                </button>
+              )}
+            </div>
+          </section>
+        ) : authView === 'verify-email' ? (
           <section className="auth-page">
             <div className="auth-card">
               <span className="security-mode live">Verification required</span>
@@ -6778,7 +6893,35 @@ export default function VoiceExpenseTrackerPreview() {
                 <div className="neon-form-box login-box">
                   <h2>Login</h2>
                   {authNotice && <div className="neon-alert notice">{authNotice}</div>}
-                  {secureError && !isRegisterMode && <div className="neon-alert error">{secureError}</div>}
+                  {secureError && !isRegisterMode && (
+                    <div className="neon-alert error">
+                      {secureError}
+                      {(secureError.toLowerCase().includes('verify') || secureError.toLowerCase().includes('confirm')) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAuthView('verify-email');
+                            setSecureError('');
+                            setAuthNotice('Please check your inbox or click Resend below.');
+                          }}
+                          style={{
+                            display: 'block',
+                            marginTop: '8px',
+                            background: 'rgba(255, 255, 255, 0.15)',
+                            border: '1px solid rgba(255, 255, 255, 0.3)',
+                            borderRadius: '4px',
+                            color: '#fff',
+                            padding: '4px 10px',
+                            fontSize: '11px',
+                            cursor: 'pointer',
+                            fontWeight: 600,
+                          }}
+                        >
+                          Resend Verification Email →
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                   <form onSubmit={completeAuth} autoComplete="on">
                     <input type="hidden" name="gstin" value={profile?.gstin || '24CPVPC7753J1Z8'} />
@@ -6789,9 +6932,10 @@ export default function VoiceExpenseTrackerPreview() {
                         name="email"
                         value={loginIdentifier}
                         onChange={(e) => setLoginIdentifier(e.target.value)}
-                        placeholder="Username"
+                        placeholder="Email or Username"
                         required
                         autoComplete="username email"
+                        title="Enter your registered email address or username"
                       />
                       <span className="neon-input-icon"><User size={19} /></span>
                     </div>
@@ -6967,6 +7111,11 @@ export default function VoiceExpenseTrackerPreview() {
                           setAuthView('login');
                           setSecureError('');
                           setAuthNotice('');
+                          if (registerEmail) {
+                            setLoginIdentifier(registerEmail);
+                          } else if (registerUsername) {
+                            setLoginIdentifier(registerUsername);
+                          }
                         }}
                       >
                         Sign In

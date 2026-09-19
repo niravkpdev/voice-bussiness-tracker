@@ -294,14 +294,14 @@ function userPayload(user, extra = {}) {
   };
 }
 
-function authRedirectTo() {
+export function authRedirectTo() {
   if (typeof window === 'undefined') {
     return undefined;
   }
-  return new URL('/react.html', window.location.origin).toString();
+  return new URL('/react.html?auth=confirmation', window.location.origin).toString();
 }
 
-function passwordRecoveryRedirectTo() {
+export function passwordRecoveryRedirectTo() {
   if (typeof window === 'undefined') {
     return undefined;
   }
@@ -317,11 +317,28 @@ export function isPasswordRecoveryRoute() {
   const hash = window.location.hash || '';
   const combined = `${query}&${hash.replace(/^#/, '')}`;
 
-  return /[?&]auth=recovery\b/.test(query)
-    || /(?:^|[&#?])type=recovery\b/.test(combined)
-    || /(?:^|[&#?])code=/.test(combined)
-    || /(?:^|[&#?])error_code=otp_expired\b/.test(combined)
-    || /(?:^|[&#?])error=access_denied\b/.test(combined);
+  const hasRecoveryFlag = /[?&]auth=recovery\b/.test(query) || /(?:^|[&#?])type=recovery\b/.test(combined);
+  const isRecoveryError = (/(?:^|[&#?])error_code=otp_expired\b/.test(combined) || /(?:^|[&#?])error=access_denied\b/.test(combined)) && hasRecoveryFlag;
+
+  return hasRecoveryFlag || isRecoveryError;
+}
+
+export function isEmailConfirmationRoute() {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  if (isPasswordRecoveryRoute()) {
+    return false;
+  }
+
+  const query = window.location.search || '';
+  const hash = window.location.hash || '';
+  const combined = `${query}&${hash.replace(/^#/, '')}`;
+
+  return /[?&]auth=(?:confirm|confirmation|verify|verified)\b/.test(query)
+    || /(?:^|[&#?])type=(?:signup|email_change|invite)\b/.test(combined)
+    || /(?:^|[&#?])code=/.test(combined);
 }
 
 function recoveryUrlParams() {
@@ -894,16 +911,22 @@ export async function prepareSupabasePasswordRecoverySession() {
 
   const code = params.get('code');
   if (code) {
-    const { data, error } = await client.auth.exchangeCodeForSession(code);
-    cloudInfo('PASSWORD_RECOVERY_EXCHANGE_RESPONSE', redactAuthResponse({ data, error }));
-    if (error) {
-      error.code = mapAuthError(error);
-      cloudError('PASSWORD_RECOVERY_EXCHANGE_ERROR', {
-        code: error.code,
-        message: error.message,
-        status: error.status || null,
-      });
-      throw error;
+    const { data: existingSession } = await client.auth.getSession();
+    if (!existingSession?.session?.user) {
+      const { data, error } = await client.auth.exchangeCodeForSession(code);
+      cloudInfo('PASSWORD_RECOVERY_EXCHANGE_RESPONSE', redactAuthResponse({ data, error }));
+      if (error) {
+        const { data: retrySession } = await client.auth.getSession();
+        if (!retrySession?.session?.user) {
+          error.code = mapAuthError(error);
+          cloudError('PASSWORD_RECOVERY_EXCHANGE_ERROR', {
+            code: error.code,
+            message: error.message,
+            status: error.status || null,
+          });
+          throw error;
+        }
+      }
     }
   } else {
     const accessToken = params.get('access_token');
