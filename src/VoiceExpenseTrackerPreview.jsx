@@ -635,10 +635,42 @@ const inrCurrencyFormatter = new Intl.NumberFormat('en-IN', {
   maximumFractionDigits: 0,
 });
 
-function formatCurrency(amount) {
+let activeUserPreferences = DEFAULT_PREFERENCES;
+try {
+  const savedPrefs = typeof window !== 'undefined' ? localStorage.getItem('trinetr_user_preferences') : null;
+  if (savedPrefs) activeUserPreferences = { ...DEFAULT_PREFERENCES, ...JSON.parse(savedPrefs) };
+} catch {}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('trinetr-preferences-updated', (e) => {
+    if (e.detail) {
+      activeUserPreferences = { ...DEFAULT_PREFERENCES, ...e.detail };
+    }
+  });
+}
+
+function formatCurrency(amount, forceVisible = false) {
+  if (activeUserPreferences?.hideFinancialValues && !forceVisible) {
+    const symbol =
+      activeUserPreferences?.currency === 'USD' ? '$' :
+      activeUserPreferences?.currency === 'EUR' ? '€' :
+      activeUserPreferences?.currency === 'GBP' ? '£' :
+      activeUserPreferences?.currency === 'AED' ? 'AED ' : '₹';
+    return `${symbol} ••••••`;
+  }
   const parsed = Number(amount);
   const safe = Number.isFinite(parsed) ? parsed : 0;
-  return inrCurrencyFormatter.format(safe);
+  const currencyCode = activeUserPreferences?.currency || 'INR';
+  const locale = activeUserPreferences?.numberFormat === 'international' ? 'en-US' : 'en-IN';
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: currencyCode,
+      maximumFractionDigits: 0,
+    }).format(safe);
+  } catch {
+    return inrCurrencyFormatter.format(safe);
+  }
 }
 
 function formatPartyBalance(ledger, balance) {
@@ -1946,6 +1978,37 @@ export default function VoiceExpenseTrackerPreview() {
       mediaQuery.removeEventListener('change', handleSystemThemeChange);
     };
   }, [userPreferences.themeMode]);
+
+  // Sync module active preferences
+  useEffect(() => {
+    activeUserPreferences = userPreferences;
+  }, [userPreferences]);
+
+  // Inactivity auto-logout timer
+  useEffect(() => {
+    if (!userPreferences?.autoLogout || userPreferences.autoLogout === 'never') return;
+    const minsMap = { '15m': 15, '30m': 30, '1h': 60, '4h': 240 };
+    const mins = minsMap[userPreferences.autoLogout];
+    if (!mins) return;
+
+    let timeoutId;
+    const resetTimer = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        setStatus(`Logged out due to ${userPreferences.autoLogout} of inactivity.`);
+        logout();
+      }, mins * 60 * 1000);
+    };
+
+    const events = ['mousedown', 'keydown', 'touchstart', 'scroll'];
+    events.forEach((ev) => window.addEventListener(ev, resetTimer, { passive: true }));
+    resetTimer();
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      events.forEach((ev) => window.removeEventListener(ev, resetTimer));
+    };
+  }, [userPreferences?.autoLogout]);
 
   // Listen for profile updates from Storefront or Settings
   useEffect(() => {
@@ -5040,6 +5103,12 @@ export default function VoiceExpenseTrackerPreview() {
       return;
     }
 
+    if (userPreferences?.confirmBeforeSavingVoucher) {
+      if (!window.confirm(`Are you sure you want to save this ${voucherType} voucher for ${formatCurrency(amount, true)}?`)) {
+        return;
+      }
+    }
+
     let selectedLedgerId = '';
     let accountDisplayName = '';
     let lines = [];
@@ -5612,8 +5681,10 @@ export default function VoiceExpenseTrackerPreview() {
     const kind = isSupplier ? 'supplier' : 'customer';
     const label = isSupplier ? 'Supplier' : 'Customer';
 
-    if (!window.confirm(`Are you sure you want to delete ${label} "${party.name}"? This party will be removed from voucher lists.`)) {
-      return;
+    if (userPreferences?.confirmBeforeDelete !== false) {
+      if (!window.confirm(`Are you sure you want to delete ${label} "${party.name}"? This party will be removed from voucher lists.`)) {
+        return;
+      }
     }
 
     try {
