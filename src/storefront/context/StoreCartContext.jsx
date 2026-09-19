@@ -51,7 +51,11 @@ function isDefaultDemoName(val) {
   return (
     s === '' ||
     s === 'jay ambe namkeen' ||
-    s === 'jay ambe namkeen store'
+    s === 'jay ambe namkeen store' ||
+    s === 'trinetr store' ||
+    s === 'default store' ||
+    s === 'demo workspace' ||
+    s === 'voice business tracker'
   );
 }
 
@@ -62,7 +66,10 @@ function isDefaultDemoTagline(val) {
     s === '' ||
     s === 'fresh & authentic homemade snacks & delicacies' ||
     s === 'authentic namkeen & farsan manufacturer & wholesaler' ||
-    s === 'namkeen & wafers'
+    s === 'authentic namkeen & farsan manufacturer & wholesale' ||
+    s === 'namkeen & wafers' ||
+    s === 'fresh & authentic quality products' ||
+    s === 'enterprise business management & point of sale'
   );
 }
 
@@ -100,9 +107,14 @@ function resolveStoreInfo(customProfile) {
     ? customProfile.name
     : (localData?.name && !isDefaultDemoName(localData.name) ? localData.name : null);
 
-  const storeNameCandidate = (customProfile?.storeName && !isDefaultDemoName(customProfile.storeName))
+  let storeNameCandidate = (customProfile?.storeName && !isDefaultDemoName(customProfile.storeName))
     ? customProfile.storeName
     : (localData?.storeName && !isDefaultDemoName(localData.storeName) ? localData.storeName : null);
+
+  // If company name was customized to a real business (not 'Trinetr Business Suite'), and storeName is still 'Trinetr Business Suite' or 'Trinetr Store', treat storeName as default so company name takes precedence!
+  if (compNameCandidate && compNameCandidate.toLowerCase() !== 'trinetr business suite' && storeNameCandidate && (storeNameCandidate.toLowerCase() === 'trinetr business suite' || storeNameCandidate.toLowerCase() === 'trinetr store')) {
+    storeNameCandidate = null;
+  }
 
   let name = '';
   if (storeNameCandidate && storeNameCandidate !== compNameCandidate && !isDefaultDemoName(storeNameCandidate)) {
@@ -124,12 +136,16 @@ function resolveStoreInfo(customProfile) {
     ? customProfile.tagline
     : (localData?.tagline && !isDefaultDemoTagline(localData.tagline) ? localData.tagline : null);
 
-  const storeTaglineCandidate = (customProfile?.storeTagline && !isDefaultDemoTagline(customProfile.storeTagline))
+  let storeTaglineCandidate = (customProfile?.storeTagline && !isDefaultDemoTagline(customProfile.storeTagline))
     ? customProfile.storeTagline
     : (localData?.storeTagline && !isDefaultDemoTagline(localData.storeTagline) ? localData.storeTagline : null);
 
+  if (compTaglineCandidate && storeTaglineCandidate && (storeTaglineCandidate.toLowerCase() === 'enterprise business management & point of sale' || storeTaglineCandidate.toLowerCase() === 'fresh & authentic quality products')) {
+    storeTaglineCandidate = null;
+  }
+
   let tagline = '';
-  if (storeTaglineCandidate && storeTaglineCandidate !== compTaglineCandidate && storeTaglineCandidate !== 'Fresh & Authentic Homemade Snacks & Delicacies') {
+  if (storeTaglineCandidate && storeTaglineCandidate !== compTaglineCandidate && !isDefaultDemoTagline(storeTaglineCandidate)) {
     tagline = storeTaglineCandidate;
   } else if (compTaglineCandidate) {
     tagline = compTaglineCandidate;
@@ -140,7 +156,10 @@ function resolveStoreInfo(customProfile) {
   }
 
   const phone = profileData?.phone || STORE_INFO.phone;
-  const whatsapp = profileData?.whatsapp || profileData?.phone || STORE_INFO.whatsapp;
+  let whatsapp = profileData?.whatsapp || profileData?.phone || STORE_INFO.whatsapp;
+  if (phone && phone !== STORE_INFO.phone && (whatsapp === STORE_INFO.whatsapp || whatsapp === '+91 9979668339' || whatsapp === '919979668339')) {
+    whatsapp = phone;
+  }
   const email = profileData?.email || STORE_INFO.email;
   const address = profileData?.address || STORE_INFO.address;
   const fssaiNumber = profileData?.fssaiNumber || profileData?.fssai || STORE_INFO.fssaiNumber;
@@ -171,7 +190,7 @@ function resolveStoreInfo(customProfile) {
   }
 
   // Auto-sync localStorage if company name was updated but storeName was still holding demo default
-  if (compNameCandidate && (isDefaultDemoName(localData?.storeName) || !localData?.storeName)) {
+  if (compNameCandidate && (isDefaultDemoName(localData?.storeName) || !localData?.storeName || (compNameCandidate.toLowerCase() !== 'trinetr business suite' && localData?.storeName?.toLowerCase() === 'trinetr business suite'))) {
     try {
       const repaired = { ...localData, storeName: compNameCandidate, name: compNameCandidate };
       localStorage.setItem('businessProfile', JSON.stringify(repaired));

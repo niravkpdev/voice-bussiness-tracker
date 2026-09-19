@@ -125,6 +125,12 @@ import {
 } from './storageScope.js';
 import { mapVoiceTypeToAccounting, parseReliableVoiceCommand } from './voiceParser.js';
 import VoiceCommandButton from './VoiceCommandButton.jsx';
+import BusinessProfileForm, {
+  isDemoStorefrontName,
+  isDemoStorefrontTagline,
+} from './BusinessProfileForm.jsx';
+
+export { isDemoStorefrontName, isDemoStorefrontTagline };
 
 const Phase2ERP = lazy(() => import('./Phase2ERP.jsx'));
 const Phase3Ops = lazy(() => import('./Phase3Ops.jsx'));
@@ -485,9 +491,9 @@ function readProfile() {
 
     // Resolve storefront name: prefer customized storeName, else inherit chosen company name
     let chosenStoreName = '';
-    if (scoped.storeName && !isDemoBusinessName(scoped.storeName)) {
+    if (scoped.storeName && !isDemoStorefrontName(scoped.storeName)) {
       chosenStoreName = scoped.storeName.trim();
-    } else if (localSaved.storeName && !isDemoBusinessName(localSaved.storeName)) {
+    } else if (localSaved.storeName && !isDemoStorefrontName(localSaved.storeName)) {
       chosenStoreName = localSaved.storeName.trim();
     } else {
       chosenStoreName = chosenName;
@@ -499,9 +505,9 @@ function readProfile() {
       chosenTagline = scoped.tagline.trim();
     } else if (localSaved.tagline && !isDemoBusinessTagline(localSaved.tagline)) {
       chosenTagline = localSaved.tagline.trim();
-    } else if (scoped.storeTagline && !isDemoBusinessTagline(scoped.storeTagline)) {
+    } else if (scoped.storeTagline && !isDemoStorefrontTagline(scoped.storeTagline)) {
       chosenTagline = scoped.storeTagline.trim();
-    } else if (localSaved.storeTagline && !isDemoBusinessTagline(localSaved.storeTagline)) {
+    } else if (localSaved.storeTagline && !isDemoStorefrontTagline(localSaved.storeTagline)) {
       chosenTagline = localSaved.storeTagline.trim();
     } else if (scoped.tagline && scoped.tagline.trim()) {
       chosenTagline = scoped.tagline.trim();
@@ -512,12 +518,23 @@ function readProfile() {
     }
 
     let chosenStoreTagline = '';
-    if (scoped.storeTagline && !isDemoBusinessTagline(scoped.storeTagline)) {
+    if (scoped.storeTagline && !isDemoStorefrontTagline(scoped.storeTagline)) {
       chosenStoreTagline = scoped.storeTagline.trim();
-    } else if (localSaved.storeTagline && !isDemoBusinessTagline(localSaved.storeTagline)) {
+    } else if (localSaved.storeTagline && !isDemoStorefrontTagline(localSaved.storeTagline)) {
       chosenStoreTagline = localSaved.storeTagline.trim();
     } else {
       chosenStoreTagline = chosenTagline;
+    }
+
+    const chosenPhone = scoped.phone || localSaved.phone || DEFAULT_PROFILE.phone;
+    let chosenWhatsapp = scoped.whatsapp || localSaved.whatsapp || '';
+    if (
+      !chosenWhatsapp ||
+      chosenWhatsapp === DEFAULT_PROFILE.whatsapp ||
+      chosenWhatsapp === '919979668339' ||
+      chosenWhatsapp === '+91 9979668339'
+    ) {
+      chosenWhatsapp = chosenPhone || DEFAULT_PROFILE.whatsapp;
     }
 
     const merged = {
@@ -528,6 +545,8 @@ function readProfile() {
       storeName: chosenStoreName,
       tagline: chosenTagline,
       storeTagline: chosenStoreTagline,
+      phone: chosenPhone,
+      whatsapp: chosenWhatsapp,
       owner: scoped.owner || localSaved.owner || authOwnerName || DEFAULT_PROFILE.owner,
       businessName: chosenName,
       subscriptionPlan: scoped.subscriptionPlan || localSaved.subscriptionPlan || DEFAULT_PROFILE.subscriptionPlan,
@@ -5682,29 +5701,34 @@ export default function VoiceExpenseTrackerPreview() {
     const formData = new FormData(event.currentTarget);
     const submittedName = sanitizeText(formData.get('profileName'), 140) || DEFAULT_PROFILE.name;
     const submittedTagline = sanitizeText(formData.get('profileTagline'), 160) || DEFAULT_PROFILE.tagline;
+    const submittedPhone = sanitizeText(formData.get('profilePhone'), 24) || DEFAULT_PROFILE.phone;
     let submittedStoreName = sanitizeText(formData.get('profileStoreName'), 140);
     let submittedStoreTagline = sanitizeText(formData.get('profileStoreTagline'), 160);
+    let submittedWhatsapp = sanitizeText(formData.get('profileWhatsapp'), 24);
 
-    const isOldDemoName = (n) => {
-      if (!n) return true;
-      const s = String(n).trim().toLowerCase();
-      return s === 'jay ambe namkeen' || s === 'jay ambe namkeen store';
-    };
-    if (!submittedStoreName || isOldDemoName(submittedStoreName) || (submittedName !== profile.name && (submittedStoreName === profile.name || submittedStoreName === profile.storeName))) {
+    if (
+      !submittedStoreName ||
+      isDemoStorefrontName(submittedStoreName) ||
+      (submittedName !== profile.name && (submittedStoreName === profile.name || submittedStoreName === profile.storeName))
+    ) {
       submittedStoreName = submittedName;
     }
 
-    const isOldDemoTagline = (t) => {
-      if (!t) return true;
-      const s = String(t).trim().toLowerCase();
-      return (
-        s === 'fresh & authentic homemade snacks & delicacies' ||
-        s === 'authentic namkeen & farsan manufacturer & wholesaler' ||
-        s === 'namkeen & wafers'
-      );
-    };
-    if (!submittedStoreTagline || isOldDemoTagline(submittedStoreTagline) || (submittedTagline !== profile.tagline && (submittedStoreTagline === profile.tagline || submittedStoreTagline === profile.storeTagline))) {
+    if (
+      !submittedStoreTagline ||
+      isDemoStorefrontTagline(submittedStoreTagline) ||
+      (submittedTagline !== profile.tagline && (submittedStoreTagline === profile.tagline || submittedStoreTagline === profile.storeTagline))
+    ) {
       submittedStoreTagline = submittedTagline;
+    }
+
+    if (
+      !submittedWhatsapp ||
+      submittedWhatsapp === '+91 9979668339' ||
+      submittedWhatsapp === '919979668339' ||
+      (submittedPhone !== profile.phone && (submittedWhatsapp === profile.phone || submittedWhatsapp === profile.whatsapp))
+    ) {
+      submittedWhatsapp = submittedPhone;
     }
 
     const nextProfile = {
@@ -5713,16 +5737,16 @@ export default function VoiceExpenseTrackerPreview() {
       tagline: submittedTagline,
       owner: sanitizeText(formData.get('profileOwner'), 120) || DEFAULT_PROFILE.owner,
       email: sanitizeEmail(formData.get('profileEmail')) || DEFAULT_PROFILE.email,
-      phone: sanitizeText(formData.get('profilePhone'), 24) || DEFAULT_PROFILE.phone,
+      phone: submittedPhone,
       address: sanitizeText(formData.get('profileAddress'), 240),
       gstin: sanitizeText(formData.get('profileGstin'), 30) || profile.gstin || '',
       storeName: submittedStoreName,
       storeTagline: submittedStoreTagline,
-      whatsapp: sanitizeText(formData.get('profileWhatsapp'), 24) || sanitizeText(formData.get('profilePhone'), 24) || DEFAULT_PROFILE.whatsapp,
+      whatsapp: submittedWhatsapp,
       fssaiNumber: sanitizeText(formData.get('profileFssai'), 40) || DEFAULT_PROFILE.fssaiNumber,
       hours: sanitizeText(formData.get('profileHours'), 100) || DEFAULT_PROFILE.hours,
-      bannerOffer: sanitizeText(formData.get('profileBannerOffer'), 80) || DEFAULT_PROFILE.bannerOffer,
-      bannerRegion: sanitizeText(formData.get('profileBannerRegion'), 120) || DEFAULT_PROFILE.bannerRegion,
+      bannerOffer: sanitizeText(formData.get('profileBannerOffer'), 80) || profile.bannerOffer || DEFAULT_PROFILE.bannerOffer,
+      bannerRegion: sanitizeText(formData.get('profileBannerRegion'), 120) || profile.bannerRegion || DEFAULT_PROFILE.bannerRegion,
       upiId: sanitizeText(formData.get('profileUpiId'), 80) || profile.upiId || DEFAULT_PROFILE.upiId,
     };
 
@@ -11065,211 +11089,12 @@ export default function VoiceExpenseTrackerPreview() {
                   <p className="panel-hint">Configure your company identity, logo, and GST number for invoice printing.</p>
                 </div>
               </div>
-              <form onSubmit={saveBusinessProfile}>
-                <div className="profile-editor-grid">
-                  <div className="profile-logo-card">
-                    <img className="profile-logo-preview" src={profile.logo} alt="Business logo preview" />
-                    <label className="field-label" htmlFor="profile-logo">
-                      Upload Business Logo
-                    </label>
-                    <input accept="image/*" id="profile-logo" name="profileLogo" type="file" />
-                  </div>
-                  <div className="form-grid">
-                    <div>
-                      <label className="field-label" htmlFor="profile-name">
-                        Company / Shop Name
-                      </label>
-                      <input id="profile-name" name="profileName" key={profile.name || 'profile-name-input'} defaultValue={profile.name} required />
-                    </div>
-                    <div>
-                      <label className="field-label" htmlFor="profile-owner">
-                        Owner Name
-                      </label>
-                      <input id="profile-owner" name="profileOwner" defaultValue={profile.owner} required />
-                    </div>
-                    <div className="wide-field">
-                      <label className="field-label" htmlFor="profile-tagline">
-                        Business Tagline / Description
-                      </label>
-                      <input id="profile-tagline" name="profileTagline" defaultValue={profile.tagline} />
-                    </div>
-                    <div>
-                      <label className="field-label" htmlFor="profile-gstin">
-                        GSTIN Number
-                      </label>
-                      <input id="profile-gstin" name="profileGstin" defaultValue={profile.gstin} placeholder="e.g. 27AAAAA1111A1Z1" />
-                    </div>
-                    <div>
-                      <label className="field-label" htmlFor="profile-phone">
-                        Mobile Number
-                      </label>
-                      <input id="profile-phone" name="profilePhone" defaultValue={profile.phone} required />
-                    </div>
-                    <div className="wide-field">
-                      <label className="field-label" htmlFor="profile-email">
-                        Email Address
-                      </label>
-                      <input id="profile-email" name="profileEmail" type="email" defaultValue={profile.email} required />
-                    </div>
-                    <div className="wide-field">
-                      <label className="field-label" htmlFor="profile-address">
-                        Business Address
-                      </label>
-                      <textarea id="profile-address" name="profileAddress" defaultValue={profile.address} placeholder="Street, City, State, ZIP" />
-                    </div>
-
-                    <div className="wide-field" style={{ marginTop: '16px', padding: '16px 18px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '10px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                        <span style={{ fontSize: '20px' }}>💳</span>
-                        <div>
-                          <strong style={{ fontSize: '15px', color: '#14532d', display: 'block' }}>
-                            Merchant UPI ID (VPA) & Digital Payments QR Code
-                          </strong>
-                          <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#166534' }}>
-                            All invoice QR codes, Pay Now buttons, and Counter Standees will deposit payments directly into your bank account via this UPI ID.
-                          </p>
-                        </div>
-                      </div>
-                      <label className="field-label" htmlFor="profile-upi-id" style={{ marginTop: '10px', color: '#14532d', fontWeight: 600 }}>
-                        Your Bank / App UPI ID (VPA)
-                      </label>
-                      <input
-                        id="profile-upi-id"
-                        name="profileUpiId"
-                        key={profile.upiId || 'default-upi'}
-                        defaultValue={profile.upiId || 'trinetr.namkeen@icici'}
-                        placeholder="e.g. 9876543210@paytm, shopname@icici, mobile@okhdfcbank, name@ybl"
-                        style={{ background: '#ffffff', borderColor: '#4ade80', fontWeight: 700, fontSize: '14px', color: '#0f172a' }}
-                      />
-                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '8px', flexWrap: 'wrap', fontSize: '11px', color: '#374151' }}>
-                        <span>📱 <strong>Google Pay:</strong> Tap profile &rarr; UPI ID</span>
-                        <span>📱 <strong>PhonePe:</strong> Tap profile photo &rarr; My QR / UPI ID</span>
-                        <span>📱 <strong>Paytm:</strong> Tap top-left avatar &rarr; UPI ID</span>
-                        <span>📱 <strong>BHIM:</strong> Home screen &rarr; Profile &rarr; UPI ID</span>
-                      </div>
-                    </div>
-
-                    <div className="wide-field" style={{ marginTop: '24px', borderTop: '2px dashed var(--border, #e2e8f0)', paddingTop: '20px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
-                        <div>
-                          <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '700', color: 'var(--text-primary)' }}>
-                            🛍️ Customer Online Storefront & WhatsApp E-Commerce
-                          </h3>
-                          <p className="panel-hint" style={{ margin: '4px 0 0 0' }}>
-                            Customize how your public online store looks to customers. Changes reflect immediately on your live storefront.
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          className="secondary-button compact-button"
-                          onClick={() => {
-                            setActiveTab('store');
-                            window.location.hash = 'store';
-                          }}
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                        >
-                          <span>Preview Live Store ↗</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="field-label" htmlFor="profile-store-name">
-                        Online Storefront Name
-                      </label>
-                      <input
-                        id="profile-store-name"
-                        name="profileStoreName"
-                        defaultValue={(!profile.storeName || profile.storeName === 'Jay Ambe Namkeen Store' || profile.storeName === 'Jay Ambe Namkeen') ? profile.name : profile.storeName}
-                        placeholder="Leave blank to automatically match Company Name"
-                      />
-                      <span className="field-help" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Displays in storefront header, logo badge, and order confirmations. Automatically syncs with Company Name if left empty.</span>
-                    </div>
-
-                    <div>
-                      <label className="field-label" htmlFor="profile-whatsapp">
-                        WhatsApp Orders Mobile Number *
-                      </label>
-                      <input
-                        id="profile-whatsapp"
-                        name="profileWhatsapp"
-                        defaultValue={profile.whatsapp || profile.phone}
-                        placeholder="+91 9979668339"
-                        required
-                      />
-                      <span className="field-help" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Customers send 1-click cart orders directly to this WhatsApp number.</span>
-                    </div>
-
-                    <div className="wide-field">
-                      <label className="field-label" htmlFor="profile-store-tagline">
-                        Store Tagline / Subtitle
-                      </label>
-                      <input
-                        id="profile-store-tagline"
-                        name="profileStoreTagline"
-                        defaultValue={(!profile.storeTagline || profile.storeTagline === 'Fresh & Authentic Homemade Snacks & Delicacies') ? profile.tagline : profile.storeTagline}
-                        placeholder="Leave blank to automatically match Business Tagline"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="field-label" htmlFor="profile-fssai">
-                        FSSAI Food License Number
-                      </label>
-                      <input
-                        id="profile-fssai"
-                        name="profileFssai"
-                        defaultValue={profile.fssaiNumber || ''}
-                        placeholder="e.g. 10722026001234"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="field-label" htmlFor="profile-hours">
-                        Store Timings / Working Hours
-                      </label>
-                      <input
-                        id="profile-hours"
-                        name="profileHours"
-                        defaultValue={profile.hours || 'Mon - Sun: 9:00 AM - 10:00 PM'}
-                        placeholder="e.g. Mon - Sun: 9:00 AM - 10:00 PM"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="field-label" htmlFor="profile-banner-offer">
-                        Hero Banner Headline / Offer
-                      </label>
-                      <input
-                        id="profile-banner-offer"
-                        name="profileBannerOffer"
-                        defaultValue={profile.bannerOffer || 'FLAT 20% OFF'}
-                        placeholder="e.g. FLAT 20% OFF or FESTIVE SPECIAL"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="field-label" htmlFor="profile-banner-region">
-                        Banner Subtitle / Delivery Area
-                      </label>
-                      <input
-                        id="profile-banner-region"
-                        name="profileBannerRegion"
-                        defaultValue={profile.bannerRegion || "For All Gujarat and Mumbai City's Customers"}
-                        placeholder="e.g. Free Delivery Across Surat on Orders Above ₹500"
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div className="inline-actions">
-                  <button className="manual-button" type="submit">
-                    Save Business Profile
-                  </button>
-                  <button className="warning-button" type="button" onClick={resetBusinessProfile}>
-                    Reset Defaults
-                  </button>
-                </div>
-              </form>
+              <BusinessProfileForm
+                profile={profile}
+                onSave={saveBusinessProfile}
+                onReset={resetBusinessProfile}
+                setActiveTab={setActiveTab}
+              />
               <section className="account-status-card">
                 <div className="section-header">
                   <div>
