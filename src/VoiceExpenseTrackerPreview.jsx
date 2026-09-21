@@ -4824,6 +4824,161 @@ export default function VoiceExpenseTrackerPreview() {
     return items;
   }, [activeOrders, dashboardMetrics, partySummary, customAgendaTasks]);
 
+  const upcomingTasksList = useMemo(() => {
+    const tasks = [];
+    const now = new Date();
+    const curDay = now.getDate();
+
+    // 1. Pending Store Orders
+    const pendingOrders = (Array.isArray(activeOrders) ? activeOrders : []).filter(
+      (o) => o && o.status && o.status.toLowerCase() !== 'delivered' && o.status.toLowerCase() !== 'cancelled'
+    );
+    if (pendingOrders.length > 0) {
+      const deliveredCount = (Array.isArray(activeOrders) ? activeOrders : []).filter(
+        (o) => o && o.status && o.status.toLowerCase() === 'delivered'
+      ).length;
+      const totalOrders = activeOrders.length || 1;
+      const progress = Math.min(100, Math.max(15, Math.round((deliveredCount / totalOrders) * 100)));
+      tasks.push({
+        id: 'task-orders',
+        title: `Dispatch ${pendingOrders.length} Pending Order${pendingOrders.length > 1 ? 's' : ''}`,
+        due: 'Due Today',
+        progress,
+        color: '#3b82f6',
+        targetTab: 'orders'
+      });
+    }
+
+    // 2. Tax / GST Filing preparation
+    if (curDay <= 20) {
+      const daysLeft = 20 - curDay;
+      const progress = Math.min(100, Math.round((curDay / 20) * 100));
+      tasks.push({
+        id: 'task-gst',
+        title: 'Tax Filing Preparation (GSTR-3B)',
+        due: daysLeft === 0 ? 'Due Today' : daysLeft === 1 ? 'Tomorrow' : `${daysLeft} Days Left`,
+        progress,
+        color: daysLeft <= 2 ? '#ef4444' : daysLeft <= 5 ? '#f59e0b' : '#3b82f6',
+        targetTab: 'gst'
+      });
+    } else {
+      tasks.push({
+        id: 'task-gst-next',
+        title: 'Monthly Books Reconciliation',
+        due: 'This Week',
+        progress: 60,
+        color: '#10b981',
+        targetTab: 'reports'
+      });
+    }
+
+    // 3. Staff Attendance / Payroll
+    const empList = Array.isArray(cloudEmployees) ? cloudEmployees : [];
+    if (empList.length > 0) {
+      const todayStr = new Date().toLocaleDateString('en-CA');
+      const todayAtt = (Array.isArray(cloudAttendance) ? cloudAttendance : []).filter((a) => {
+        const d = String(a.attendanceDate || a.attendance_date || a.date || '');
+        return d === todayStr || d.startsWith(todayStr);
+      });
+      const loggedCount = todayAtt.length;
+      const attProgress = Math.round((loggedCount / empList.length) * 100);
+      tasks.push({
+        id: 'task-attendance',
+        title: loggedCount < empList.length ? `Log Staff Attendance (${loggedCount}/${empList.length})` : 'Payroll & Staff Review',
+        due: loggedCount < empList.length ? 'Today' : 'This Month',
+        progress: attProgress,
+        color: loggedCount < empList.length ? '#f59e0b' : '#10b981',
+        targetTab: 'employees'
+      });
+    }
+
+    // 4. Low Stock replenishment
+    const lowCount = (dashboardMetrics.lowStockItems?.length || 0) + (dashboardMetrics.outOfStockItems?.length || 0);
+    if (lowCount > 0) {
+      tasks.push({
+        id: 'task-stock',
+        title: `Inventory Restock (${lowCount} Item${lowCount > 1 ? 's' : ''} Low)`,
+        due: (dashboardMetrics.outOfStockItems?.length || 0) > 0 ? 'Urgent' : 'This Week',
+        progress: (dashboardMetrics.outOfStockItems?.length || 0) > 0 ? 85 : 30,
+        color: (dashboardMetrics.outOfStockItems?.length || 0) > 0 ? '#ef4444' : '#f59e0b',
+        targetTab: 'inventory'
+      });
+    }
+
+    // 5. User custom agenda tasks
+    if (Array.isArray(customAgendaTasks) && customAgendaTasks.length > 0) {
+      customAgendaTasks.slice(0, 2).forEach((t) => {
+        tasks.push({
+          id: t.id,
+          title: t.title,
+          due: t.time || (t.completed ? 'Done' : 'Today'),
+          progress: t.completed ? 100 : 0,
+          color: t.completed ? '#10b981' : '#3b82f6',
+          targetTab: 'dashboard'
+        });
+      });
+    }
+
+    return tasks.slice(0, 4);
+  }, [activeOrders, cloudEmployees, cloudAttendance, dashboardMetrics.lowStockItems, dashboardMetrics.outOfStockItems, customAgendaTasks]);
+
+  const employeeOverviewStats = useMemo(() => {
+    const employeesList = Array.isArray(cloudEmployees) ? cloudEmployees : [];
+    const attendanceList = Array.isArray(cloudAttendance) ? cloudAttendance : [];
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    
+    const todayAtt = attendanceList.filter((a) => {
+      const d = String(a.attendanceDate || a.attendance_date || a.date || '');
+      return d === todayStr || d.startsWith(todayStr);
+    });
+    
+    const present = todayAtt.filter((a) => a.status === 'Present').length;
+    const absent = todayAtt.filter((a) => a.status === 'Absent').length;
+    const late = todayAtt.filter((a) => Boolean(a.lateMark || a.late_mark) || a.status === 'Late').length;
+    const onLeave = todayAtt.filter((a) => a.status === 'Leave' || a.status === 'Half Day' || a.status === 'On Leave').length;
+    const total = employeesList.length;
+    const unmarked = Math.max(0, total - todayAtt.length);
+
+    let birthdayNote = null;
+    const today = new Date();
+    const todayMonth = today.getMonth() + 1;
+    const todayDay = today.getDate();
+
+    for (const emp of employeesList) {
+      const bdayStr = emp.dob || emp.birthday || emp.birthDate || emp.dateOfBirth;
+      if (bdayStr) {
+        const bDate = new Date(bdayStr);
+        if (!isNaN(bDate.getTime())) {
+          const bm = bDate.getMonth() + 1;
+          const bd = bDate.getDate();
+          if (bm === todayMonth && bd === todayDay) {
+            birthdayNote = { name: emp.name || emp.full_name || 'Team member', when: 'today' };
+            break;
+          } else if (bm === todayMonth && bd === todayDay + 1) {
+            birthdayNote = { name: emp.name || emp.full_name || 'Team member', when: 'tomorrow' };
+            break;
+          }
+        }
+      }
+    }
+
+    return {
+      total,
+      present,
+      absent,
+      late,
+      onLeave,
+      unmarked,
+      birthdayNote
+    };
+  }, [cloudEmployees, cloudAttendance]);
+
+  const lowStockDisplayList = useMemo(() => {
+    const out = Array.isArray(dashboardMetrics.outOfStockItems) ? dashboardMetrics.outOfStockItems : [];
+    const low = Array.isArray(dashboardMetrics.lowStockItems) ? dashboardMetrics.lowStockItems : [];
+    return [...out, ...low];
+  }, [dashboardMetrics.outOfStockItems, dashboardMetrics.lowStockItems]);
+
   useEffect(() => {
     let isCancelled = false;
     async function fetchLiveWeather() {
@@ -8579,60 +8734,68 @@ export default function VoiceExpenseTrackerPreview() {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {(recentVouchers.length > 0 ? recentVouchers.slice(0, 4) : [
-                    { type: 'SALES', narration: 'Recent Sale Entry', date: 'Today', amount: 4500 },
-                    { type: 'RECEIPT', narration: 'Customer Payment', date: 'Today', amount: 2200 },
-                    { type: 'PAYMENT', narration: 'Operating Expense', date: 'Yesterday', amount: 850 }
-                  ]).map((v, i) => {
-                    const isIncome = v.type === 'SALES' || v.type === 'RECEIPT';
-                    return (
-                      <div 
-                        key={i} 
-                        onClick={() => navigateToTab('day-book')}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '12px 14px',
-                          background: 'var(--bg-primary)',
-                          border: '1px solid var(--border-subtle)',
-                          borderRadius: '12px',
-                          gap: '10px',
-                          cursor: 'pointer',
-                          touchAction: 'manipulation'
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
-                          <div style={{
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '8px',
+                  {recentVouchers && recentVouchers.length > 0 ? (
+                    recentVouchers.slice(0, 4).map((v, i) => {
+                      const typeStr = String(v.type || 'VOUCHER').toUpperCase();
+                      const isIncome = typeStr === 'SALES' || typeStr === 'RECEIPT';
+                      const amount = Number(v.amount || v.lines?.find(l => Number(l.debit) > 0)?.debit || v.lines?.find(l => Number(l.credit) > 0)?.credit || 0);
+                      return (
+                        <div 
+                          key={v.id || i} 
+                          onClick={() => navigateToTab('day-book')}
+                          style={{
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'center',
-                            background: isIncome ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                            color: isIncome ? '#10b981' : '#ef4444',
-                            flexShrink: 0
-                          }}>
-                            {isIncome ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
-                          </div>
-                          <div style={{ minWidth: 0, flex: 1 }}>
-                            <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {v.narration || v.type}
+                            justifyContent: 'space-between',
+                            padding: '12px 14px',
+                            background: 'var(--bg-primary)',
+                            border: '1px solid var(--border-subtle)',
+                            borderRadius: '12px',
+                            gap: '10px',
+                            cursor: 'pointer',
+                            touchAction: 'manipulation'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+                            <div style={{
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '8px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              background: isIncome ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                              color: isIncome ? '#10b981' : '#ef4444',
+                              flexShrink: 0
+                            }}>
+                              {isIncome ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
                             </div>
-                            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                              {v.date || 'Recent'}
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {v.narration || `${v.type || 'Transaction'} #${v.voucherNumber || v.id || i + 1}`}
+                              </div>
+                              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                                {v.date || 'Recent'}
+                              </div>
                             </div>
                           </div>
+                          {amount > 0 && (
+                            <div style={{ fontSize: '13.5px', fontWeight: '800', color: isIncome ? '#10b981' : 'var(--text-primary)', flexShrink: 0 }}>
+                              {formatCurrency(amount)}
+                            </div>
+                          )}
                         </div>
-                        {v.amount && (
-                          <div style={{ fontSize: '13.5px', fontWeight: '800', color: isIncome ? '#10b981' : 'var(--text-primary)', flexShrink: 0 }}>
-                            {formatCurrency(v.amount)}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '16px', background: 'var(--bg-primary)', borderRadius: '12px', border: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}>
+                      <div style={{ fontSize: '12.5px', fontWeight: '600', color: 'var(--text-secondary)' }}>No transactions yet</div>
+                      <div style={{ fontSize: '11px', marginTop: '2px', marginBottom: '10px' }}>Your recent activity will appear here</div>
+                      <button type="button" className="btn btn-primary" onClick={() => navigateToTab('voucher-entry')} style={{ fontSize: '11.5px', padding: '6px 14px' }}>
+                        <Plus size={13} /> New Entry
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </section>
@@ -8877,35 +9040,60 @@ export default function VoiceExpenseTrackerPreview() {
                       <div className="glass-panel" style={{ padding: '24px', margin: 0 }}>
                         <div className="panel-header">
                           <h2 className="panel-title"><Activity size={18} color="var(--brand-primary)" /> Recent Activity</h2>
-                          <button className="btn btn-ghost" onClick={() => { window.location.hash = 'day-book'; }} style={{ padding: '4px 8px', fontSize: '12px' }}>View All</button>
+                          <button className="btn btn-ghost" onClick={() => navigateToTab('day-book')} style={{ padding: '4px 8px', fontSize: '12px' }}>View All</button>
                         </div>
                         <div className="timeline">
-                          {(recentVouchers.length > 0 ? recentVouchers.slice(0, 5) : [
-                            { type: 'SALES', narration: 'Invoice #INV-202 Created', date: 'Just now', amount: 8900, icon: FileText, color: '#3b82f6' },
-                            { type: 'RECEIPT', narration: 'Payment from Globex', date: '2 hours ago', amount: 4500, icon: DollarSign, color: '#10b981' },
-                            { type: 'USER', narration: 'New Customer Added', date: '4 hours ago', amount: null, icon: Users, color: '#f59e0b' },
-                            { type: 'PAYMENT', narration: 'Office Supplies Expense', date: 'Yesterday', amount: 1200, icon: CreditCard, color: '#ef4444' },
-                            { type: 'INVENTORY', narration: 'Inventory Updated', date: 'Yesterday', amount: null, icon: Package, color: '#8b5cf6' }
-                          ]).map((v, i) => {
-                            const Ico = v.icon || (v.type === 'SALES' ? FileText : v.type === 'RECEIPT' ? DollarSign : v.type === 'PAYMENT' ? CreditCard : Activity);
-                            const c = v.color || (v.type === 'PAYMENT' ? '#ef4444' : '#10b981');
-                            return (
-                              <div key={i} className="timeline-item">
-                                <div className="timeline-icon" style={{ color: c }}>
-                                  <Ico size={16} />
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                  <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{v.narration || v.type}</div>
-                                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{v.date}</div>
-                                </div>
-                                {v.amount && (
-                                  <div style={{ fontSize: '13px', fontWeight: '600', color: c }}>
-                                    {formatCurrency(v.amount)}
+                          {recentVouchers && recentVouchers.length > 0 ? (
+                            recentVouchers.slice(0, 5).map((v, i) => {
+                              const typeStr = String(v.type || 'VOUCHER').toUpperCase();
+                              const isIncome = typeStr === 'SALES' || typeStr === 'RECEIPT';
+                              const isExpense = typeStr === 'PAYMENT' || typeStr === 'PURCHASE';
+                              const Ico = typeStr === 'SALES' ? FileText : typeStr === 'RECEIPT' ? DollarSign : typeStr === 'PAYMENT' ? CreditCard : typeStr === 'PURCHASE' ? ShoppingBag : Activity;
+                              const c = isExpense ? '#ef4444' : isIncome ? '#10b981' : 'var(--brand-primary)';
+                              const amount = Number(v.amount || v.lines?.find(l => Number(l.debit) > 0)?.debit || v.lines?.find(l => Number(l.credit) > 0)?.credit || 0);
+
+                              return (
+                                <div 
+                                  key={v.id || i} 
+                                  className="timeline-item hover-scale"
+                                  onClick={() => navigateToTab('day-book')}
+                                  style={{ cursor: 'pointer', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-secondary)', marginBottom: '8px' }}
+                                  title="Click to view in Day Book"
+                                >
+                                  <div className="timeline-icon" style={{ color: c }}>
+                                    <Ico size={16} />
                                   </div>
-                                )}
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                      {v.narration || `${v.type || 'Transaction'} #${v.voucherNumber || v.id || i + 1}`}
+                                    </div>
+                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                      {v.date || 'Recent'}
+                                    </div>
+                                  </div>
+                                  {amount > 0 && (
+                                    <div style={{ fontSize: '13px', fontWeight: '700', color: c, flexShrink: 0 }}>
+                                      {formatCurrency(amount)}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <div style={{ textAlign: 'center', padding: '24px 16px', color: 'var(--text-muted)' }}>
+                              <Activity size={28} style={{ opacity: 0.35, margin: '0 auto 8px' }} />
+                              <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-secondary)' }}>No transactions recorded yet</div>
+                              <div style={{ fontSize: '11px', marginTop: '4px', marginBottom: '14px' }}>Create your first entry to see activity here</div>
+                              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                                <button type="button" className="btn btn-primary" onClick={() => navigateToTab('voucher-entry')} style={{ fontSize: '12px', padding: '6px 12px' }}>
+                                  <Plus size={14} /> New Entry
+                                </button>
+                                <button type="button" className="btn btn-secondary" onClick={() => navigateToTab('invoices')} style={{ fontSize: '12px', padding: '6px 12px' }}>
+                                  <FileText size={14} /> New Invoice
+                                </button>
                               </div>
-                            );
-                          })}
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -8913,24 +9101,37 @@ export default function VoiceExpenseTrackerPreview() {
                       <div className="glass-panel" style={{ padding: '24px', margin: 0 }}>
                         <div className="panel-header">
                           <h2 className="panel-title"><CheckSquare size={18} color="var(--brand-primary)" /> Upcoming Tasks</h2>
+                          <button className="btn btn-ghost" onClick={() => setShowAddAgenda(true)} style={{ padding: '4px 8px', fontSize: '12px' }}>+ Task</button>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                          {[
-                            { title: 'Tax Filing Preparation', due: 'Due Today', progress: 85, color: '#ef4444' },
-                            { title: 'Payroll Processing', due: 'Tomorrow', progress: 40, color: '#f59e0b' },
-                            { title: 'Supplier Payments', due: 'This Week', progress: 15, color: '#3b82f6' },
-                            { title: 'Inventory Audit', due: 'Next Week', progress: 0, color: '#10b981' }
-                          ].map((task, i) => (
-                            <div key={i} className="hover-scale" style={{ padding: '12px', border: '1px solid var(--border-subtle)', borderRadius: '8px', background: 'var(--bg-secondary)' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{task.title}</span>
-                                <span style={{ fontSize: '11px', fontWeight: '600', color: task.color }}>{task.due}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          {upcomingTasksList.length > 0 ? (
+                            upcomingTasksList.map((task) => (
+                              <div 
+                                key={task.id} 
+                                className="hover-scale" 
+                                onClick={() => navigateToTab(task.targetTab || 'dashboard')}
+                                style={{ padding: '12px', border: '1px solid var(--border-subtle)', borderRadius: '8px', background: 'var(--bg-secondary)', cursor: 'pointer' }}
+                                title={`Navigate to ${task.targetTab}`}
+                              >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', alignItems: 'center' }}>
+                                  <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{task.title}</span>
+                                  <span style={{ fontSize: '11px', fontWeight: '600', color: task.color, background: 'rgba(0,0,0,0.04)', padding: '2px 6px', borderRadius: '4px' }}>{task.due}</span>
+                                </div>
+                                <div className="progress-bar-bg">
+                                  <div className="progress-bar-fill" style={{ width: `${task.progress}%`, background: task.color }}></div>
+                                </div>
                               </div>
-                              <div className="progress-bar-bg">
-                                <div className="progress-bar-fill" style={{ width: `${task.progress}%`, background: task.color }}></div>
-                              </div>
+                            ))
+                          ) : (
+                            <div style={{ textAlign: 'center', padding: '24px 16px', color: 'var(--text-muted)' }}>
+                              <CheckCircle size={28} style={{ color: 'var(--success)', opacity: 0.8, margin: '0 auto 8px' }} />
+                              <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>All caught up!</div>
+                              <div style={{ fontSize: '11px', marginTop: '4px', marginBottom: '14px' }}>No urgent operational tasks or deadlines pending</div>
+                              <button type="button" className="btn btn-secondary" onClick={() => setShowAddAgenda(true)} style={{ fontSize: '12px', padding: '6px 12px' }}>
+                                <Plus size={14} /> Add Task
+                              </button>
                             </div>
-                          ))}
+                          )}
                         </div>
                       </div>
                     </div>
@@ -8940,21 +9141,57 @@ export default function VoiceExpenseTrackerPreview() {
                       <div className="glass-panel" style={{ padding: '24px', margin: 0 }}>
                         <div className="panel-header">
                           <h2 className="panel-title"><Package size={18} color="var(--warning)" /> Low Stock Alerts</h2>
+                          <button className="btn btn-ghost" onClick={() => navigateToTab('inventory')} style={{ padding: '4px 8px', fontSize: '12px' }}>Inventory ➔</button>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                          {[
-                            { item: 'Printer Ink (Black)', stock: 2, alert: 5 },
-                            { item: 'A4 Paper Rims', stock: 12, alert: 20 },
-                            { item: 'Wireless Mouse', stock: 4, alert: 10 }
-                          ].map((item, i) => (
-                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px' }}>
-                              <div>
-                                <div style={{ fontWeight: '600', fontSize: '13px', color: 'var(--text-primary)' }}>{item.item}</div>
-                                <div style={{ fontSize: '11px', color: 'var(--danger)' }}>{item.stock} left (Min: {item.alert})</div>
+                          {lowStockDisplayList.length > 0 ? (
+                            lowStockDisplayList.slice(0, 4).map((item, i) => {
+                              const stock = Number(item.currentStock || 0);
+                              const min = Number(item.minStock || 15);
+                              const isOut = stock <= 0;
+                              return (
+                                <div key={item.id || i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px' }}>
+                                  <div style={{ minWidth: 0, flex: 1, paddingRight: '8px' }}>
+                                    <div style={{ fontWeight: '600', fontSize: '13px', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                      {item.name || item.title || 'Product'}
+                                    </div>
+                                    <div style={{ fontSize: '11px', color: isOut ? 'var(--danger)' : 'var(--warning)', fontWeight: '600', marginTop: '2px' }}>
+                                      {isOut ? '0 left (Out of Stock)' : `${stock} left (Min: ${min})`}
+                                    </div>
+                                  </div>
+                                  <button 
+                                    type="button" 
+                                    className="btn btn-secondary hover-scale" 
+                                    style={{ padding: '4px 10px', fontSize: '11px', flexShrink: 0 }} 
+                                    onClick={() => navigateToTab('inventory')}
+                                    title="Go to Inventory to restock"
+                                  >
+                                    Restock
+                                  </button>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            cloudInventory && cloudInventory.length > 0 ? (
+                              <div style={{ textAlign: 'center', padding: '24px 16px', color: 'var(--text-muted)' }}>
+                                <CheckCircle size={28} style={{ color: 'var(--success)', opacity: 0.8, margin: '0 auto 8px' }} />
+                                <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>All items well-stocked</div>
+                                <div style={{ fontSize: '11px', marginTop: '4px', marginBottom: '14px' }}>All {cloudInventory.length} inventory products are above minimum threshold</div>
+                                <button type="button" className="btn btn-secondary" onClick={() => navigateToTab('inventory')} style={{ fontSize: '12px', padding: '6px 12px' }}>
+                                  Manage Stock
+                                </button>
                               </div>
-                              <button type="button" className="btn btn-secondary hover-scale" style={{ padding: '4px 10px', fontSize: '11px' }} onClick={() => navigateToTab('inventory')}>Restock</button>
-                            </div>
-                          ))}
+                            ) : (
+                              <div style={{ textAlign: 'center', padding: '24px 16px', color: 'var(--text-muted)' }}>
+                                <Package size={28} style={{ opacity: 0.35, margin: '0 auto 8px' }} />
+                                <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-secondary)' }}>No inventory items yet</div>
+                                <div style={{ fontSize: '11px', marginTop: '4px', marginBottom: '14px' }}>Add products to track stock levels and receive automatic alerts</div>
+                                <button type="button" className="btn btn-primary" onClick={() => navigateToTab('inventory')} style={{ fontSize: '12px', padding: '6px 12px' }}>
+                                  <Plus size={14} /> Add Product
+                                </button>
+                              </div>
+                            )
+                          )}
                         </div>
                       </div>
 
@@ -8962,27 +9199,69 @@ export default function VoiceExpenseTrackerPreview() {
                       <div className="glass-panel" style={{ padding: '24px', margin: 0 }}>
                         <div className="panel-header">
                           <h2 className="panel-title"><Users size={18} color="#06b6d4" /> Employee Overview</h2>
+                          <button className="btn btn-ghost" onClick={() => navigateToTab('employees', 'attendance')} style={{ padding: '4px 8px', fontSize: '12px' }}>HRMS ➔</button>
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-                          <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-subtle)', textAlign: 'center' }}>
-                            <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--success)' }}>24</div>
+                          <div 
+                            onClick={() => navigateToTab('employees', 'attendance')}
+                            className="hover-scale"
+                            style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-subtle)', textAlign: 'center', cursor: 'pointer' }}
+                            title="View Present staff in HRMS"
+                          >
+                            <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--success)' }}>{employeeOverviewStats.present}</div>
                             <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Present</div>
                           </div>
-                          <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-subtle)', textAlign: 'center' }}>
-                            <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--danger)' }}>2</div>
+                          <div 
+                            onClick={() => navigateToTab('employees', 'attendance')}
+                            className="hover-scale"
+                            style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-subtle)', textAlign: 'center', cursor: 'pointer' }}
+                            title="View Absent staff in HRMS"
+                          >
+                            <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--danger)' }}>{employeeOverviewStats.absent}</div>
                             <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Absent</div>
                           </div>
-                          <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-subtle)', textAlign: 'center' }}>
-                            <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--warning)' }}>1</div>
+                          <div 
+                            onClick={() => navigateToTab('employees', 'attendance')}
+                            className="hover-scale"
+                            style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-subtle)', textAlign: 'center', cursor: 'pointer' }}
+                            title="View Late staff in HRMS"
+                          >
+                            <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--warning)' }}>{employeeOverviewStats.late}</div>
                             <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Late</div>
                           </div>
-                          <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-subtle)', textAlign: 'center' }}>
-                            <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--brand-primary)' }}>3</div>
+                          <div 
+                            onClick={() => navigateToTab('employees', 'attendance')}
+                            className="hover-scale"
+                            style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-subtle)', textAlign: 'center', cursor: 'pointer' }}
+                            title="View Staff on leave in HRMS"
+                          >
+                            <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--brand-primary)' }}>{employeeOverviewStats.onLeave}</div>
                             <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>On Leave</div>
                           </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                          <Gift size={14} color="#ec4899" /> <strong style={{ color: 'var(--text-primary)' }}>Rahul's</strong> birthday is tomorrow!
+                          {employeeOverviewStats.birthdayNote ? (
+                            <>
+                              <Gift size={14} color="#ec4899" /> <span><strong style={{ color: 'var(--text-primary)' }}>{employeeOverviewStats.birthdayNote.name}</strong>'s birthday is {employeeOverviewStats.birthdayNote.when}!</span>
+                            </>
+                          ) : employeeOverviewStats.total === 0 ? (
+                            <>
+                              <Users size={14} color="var(--text-muted)" />
+                              <span>No employees added yet.</span>
+                              <button type="button" className="btn btn-ghost" onClick={() => navigateToTab('employees')} style={{ padding: '2px 6px', fontSize: '12px', color: 'var(--brand-primary)' }}>+ Add Staff</button>
+                            </>
+                          ) : employeeOverviewStats.unmarked > 0 ? (
+                            <>
+                              <Clock size={14} color="var(--warning)" />
+                              <span>{employeeOverviewStats.unmarked} of {employeeOverviewStats.total} staff attendance pending</span>
+                              <button type="button" className="btn btn-ghost" onClick={() => navigateToTab('employees', 'attendance')} style={{ padding: '2px 6px', fontSize: '12px', color: 'var(--brand-primary)' }}>Mark ➔</button>
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle size={14} color="var(--success)" />
+                              <span>All {employeeOverviewStats.total} staff attendance logged for today!</span>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
