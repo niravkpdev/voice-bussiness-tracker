@@ -1470,6 +1470,12 @@ button,
   border: 1px solid #e2e8f0;
   padding: 16px;
   background: #f8fafc;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .profile-logo-preview {
@@ -1489,15 +1495,21 @@ button,
 
 .settings-card h3 {
   margin-bottom: 8px;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .settings-card p {
   color: #64748b;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  max-width: 100%;
 }
 
 .settings-card a {
   color: #0f766e;
   font-weight: 800;
+  word-break: break-all;
 }
 
 .compact-button {
@@ -3326,6 +3338,9 @@ body {
   text-align: left;
   transition: all 0.2s ease;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .settings-nav-card:hover {

@@ -1213,6 +1213,7 @@
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-width: 0;
 }
 
 .trinetr-cat-rating-row {
@@ -3167,12 +3168,43 @@
   }
 
   .trinetr-sub-nav-actions {
-    gap: 8px;
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    width: 100% !important;
+    justify-content: space-between !important;
+    margin-left: 0 !important;
   }
 
   .trinetr-erp-switch-btn-nav {
     font-size: 11px !important;
-    padding: 6px 12px !important;
+    padding: 5px 10px !important;
+    border-radius: 16px !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+
+  .trinetr-retailer-login-btn-nav {
+    font-size: 11px !important;
+    padding: 5px 10px !important;
+    border-radius: 16px !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+
+  .trinetr-hotline {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    font-size: 11.5px !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+
+  .trinetr-hotline-number {
+    font-size: 12px !important;
+    white-space: nowrap !important;
   }
 
   .trinetr-nav-links {
@@ -3202,12 +3234,16 @@
 
   .trinetr-products-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+    gap: 10px;
   }
 
   .trinetr-product-card {
     padding: 10px;
     border-radius: 12px;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
   }
 
   .trinetr-card-img-wrapper {
@@ -3234,14 +3270,78 @@
     font-size: 15px;
   }
 
+  .trinetr-price-action-footer,
+  .trinetr-card-action-row {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    margin-top: auto !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .trinetr-price-box,
+  .trinetr-card-price-block {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: baseline !important;
+    justify-content: space-between !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+    width: 100% !important;
+    text-align: left !important;
+  }
+
+  .trinetr-price-main-line {
+    display: flex !important;
+    align-items: baseline !important;
+    gap: 2px !important;
+  }
+
+  .trinetr-price-sub-line {
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    margin-top: 0 !important;
+  }
+
+  .trinetr-price-num {
+    font-size: 17px !important;
+  }
+
+  .trinetr-currency {
+    font-size: 13px !important;
+  }
+
+  .trinetr-mrp-strike {
+    font-size: 10.5px !important;
+  }
+
+  .trinetr-save-pill {
+    font-size: 9.5px !important;
+    padding: 1px 5px !important;
+  }
+
   .trinetr-add-cart-btn {
-    padding: 8px 12px;
-    font-size: 12px;
-    min-height: 42px;
-    border-radius: 8px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    width: 100% !important;
+    min-height: 38px !important;
+    height: 38px !important;
+    padding: 6px 8px !important;
+    font-size: 12px !important;
+    font-weight: 750 !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+  }
+
+  .trinetr-add-cart-btn span {
+    white-space: nowrap !important;
+    font-size: 12px !important;
   }
 
   .trinetr-hero-promo-card {
@@ -3295,7 +3395,11 @@
   }
 
   .trinetr-product-card {
-    padding: 8px;
+    padding: 8px !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
   }
 
   .trinetr-card-img-wrapper {
@@ -3321,21 +3425,61 @@
     justify-content: center;
   }
 
+  .trinetr-price-action-footer,
   .trinetr-card-action-row {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 6px !important;
+    margin-top: auto !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
-  .trinetr-card-action-row .trinetr-card-price-block {
-    text-align: left;
+  .trinetr-price-box,
+  .trinetr-card-price-block {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: baseline !important;
+    justify-content: space-between !important;
+    flex-wrap: wrap !important;
+    gap: 2px !important;
+    width: 100% !important;
+    text-align: left !important;
+  }
+
+  .trinetr-price-num {
+    font-size: 15.5px !important;
+  }
+
+  .trinetr-currency {
+    font-size: 12px !important;
+  }
+
+  .trinetr-save-pill {
+    font-size: 9px !important;
+    padding: 1px 4px !important;
   }
 
   .trinetr-add-cart-btn {
-    width: 100%;
-    min-height: 44px;
-    font-size: 12.5px;
-    justify-content: center;
+    width: 100% !important;
+    min-height: 36px !important;
+    height: 36px !important;
+    padding: 5px 6px !important;
+    font-size: 11.5px !important;
+    font-weight: 750 !important;
+    justify-content: center !important;
+    border-radius: 6px !important;
+    white-space: nowrap !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+  }
+
+  .trinetr-add-cart-btn span {
+    white-space: nowrap !important;
+    font-size: 11.5px !important;
   }
 
   .trinetr-category-carousel-wrapper {

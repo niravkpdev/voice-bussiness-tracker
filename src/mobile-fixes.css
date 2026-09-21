@@ -111,10 +111,23 @@ input, textarea, p, span, h1, h2, h3, h4, h5, h6, strong, div, table {
     padding: 16px !important;
   }
   
-  /* Dropdowns */
-  .saas-dropdown-menu {
-    max-width: calc(100vw - 32px) !important;
-    right: 16px !important;
+  /* Dropdowns on Mobile Viewports */
+  .saas-dropdown-menu,
+  .saas-dropdown-container .saas-dropdown-menu,
+  .notification-dropdown-menu,
+  .quick-add-dropdown-menu,
+  .profile-dropdown-menu {
+    position: fixed !important;
+    top: 54px !important;
+    left: 10px !important;
+    right: 10px !important;
+    width: auto !important;
+    max-width: calc(100vw - 20px) !important;
+    margin: 0 auto !important;
+    box-sizing: border-box !important;
+    transform: none !important;
+    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.25) !important;
+    z-index: 100000 !important;
   }
   
   /* Forms */
@@ -1016,6 +1029,11 @@ body.theme-dark .mobile-bottom-nav {
 @media (max-width: 820px) {
   .app-content,
   .page-shell,
+  .panel,
+  .settings-panel,
+  #app-settings,
+  .settings-grid,
+  .profile-editor-panel,
   #dashboard,
   #orders,
   #crm,
@@ -1032,7 +1050,23 @@ body.theme-dark .mobile-bottom-nav {
   .erp-dashboard,
   .phase2-stack,
   .phase3-stack {
-    padding-bottom: calc(96px + env(safe-area-inset-bottom, 20px)) !important;
+    padding-bottom: calc(115px + env(safe-area-inset-bottom, 20px)) !important;
+  }
+
+  .settings-card {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .settings-card p,
+  .settings-card .panel-hint {
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+    max-width: 100% !important;
   }
 
   /* Modernized Mobile Bottom Navigation */

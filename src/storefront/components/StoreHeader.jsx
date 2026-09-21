@@ -306,7 +306,7 @@ export function StoreHeader({
             )}
 
             {/* Hotline */}
-            <div className="trinetr-hotline hide-on-tablet">
+            <div className="trinetr-hotline">
               <Phone size={14} className="trinetr-hotline-icon" />
               <span className="trinetr-hotline-label">Hotline:</span>
               <a href={`tel:${storeInfo.phone}`} className="trinetr-hotline-number">

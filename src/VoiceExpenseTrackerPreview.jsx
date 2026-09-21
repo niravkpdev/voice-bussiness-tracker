@@ -8069,7 +8069,7 @@ export default function VoiceExpenseTrackerPreview() {
               </button>
               {quickAddOpen && (
                 <div
-                  className="saas-dropdown-menu dropdown-active"
+                  className="saas-dropdown-menu dropdown-active quick-add-dropdown-menu"
                   style={{
                     position: 'absolute',
                     top: 'calc(100% + 8px)',
@@ -8144,7 +8144,7 @@ export default function VoiceExpenseTrackerPreview() {
               </button>
               {notificationsOpen && (
                 <div
-                  className="saas-dropdown-menu dropdown-active"
+                  className="saas-dropdown-menu dropdown-active notification-dropdown-menu"
                   style={{
                     position: 'absolute',
                     top: 'calc(100% + 8px)',
@@ -8296,7 +8296,7 @@ export default function VoiceExpenseTrackerPreview() {
               </button>
               {profileDropdownOpen && (
                 <div
-                  className="saas-dropdown-menu dropdown-active"
+                  className="saas-dropdown-menu dropdown-active profile-dropdown-menu"
                   style={{
                     position: 'absolute',
                     top: 'calc(100% + 8px)',
@@ -11372,8 +11372,10 @@ export default function VoiceExpenseTrackerPreview() {
                 </article>
                 <article className="settings-card">
                   <h3>Logged-in Account</h3>
-                  <p><strong>{authUser?.email || 'No email available'}</strong></p>
-                  <p className="panel-hint">User ID: {authUser?.uid || 'Not available'}</p>
+                  <p style={{ wordBreak: 'break-all', overflowWrap: 'anywhere' }}><strong>{authUser?.email || 'No email available'}</strong></p>
+                  <p className="panel-hint" style={{ wordBreak: 'break-all', overflowWrap: 'anywhere' }}>
+                    User ID: <span style={{ fontFamily: 'monospace', fontSize: '11.5px', wordBreak: 'break-all' }}>{authUser?.uid || 'Not available'}</span>
+                  </p>
                   <p className="panel-hint">Status: {authUser?.emailVerified ? 'Email verified' : 'Email not verified'}</p>
                   <div className="inline-actions">
                     <button className="secondary-button compact-button" type="button" onClick={() => { window.location.hash = 'profile-settings'; }}>
