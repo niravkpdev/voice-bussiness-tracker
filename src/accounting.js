@@ -370,8 +370,11 @@ export function computeLedgerBalance(ledgerId, ledgers, vouchers) {
     });
   });
 
-  const net = debits - credits + (ledger.openingBalance || 0);
-  return ledger.balanceType === 'debit' ? net : -net;
+  const opBal = Number(ledger.openingBalance || 0);
+  const net = ledger.balanceType === 'debit'
+    ? (debits - credits + opBal)
+    : (credits - debits + opBal);
+  return net;
 }
 
 export function getLedgerStatement(ledgerId, ledgers, vouchers) {
@@ -804,41 +807,86 @@ export function getDailyAndMonthlyStats(vouchers, ledgers) {
 /**
  * Computes full performance metrics and details for each party (khata)
  */
-export function getPartySummary(ledgers, vouchers) {
+export function getPartySummary(ledgers, vouchers, invoices = []) {
   const partyLedgers = getPartyLedgers(ledgers);
+  const activeInvoices = Array.isArray(invoices) ? invoices : [];
 
   return partyLedgers.map((ledger) => {
-    let totalSales = 0;
-    let totalPayments = 0;
+    let voucherSales = 0;
+    let voucherPayments = 0;
+    let invoiceSales = 0;
+    let invoicePayments = 0;
     let lastDate = '—';
+    const targetName = ledger.name ? ledger.name.toLowerCase().trim() : '';
 
-    vouchers.forEach((vch) => {
+    (Array.isArray(vouchers) ? vouchers : []).forEach((vch) => {
       let isPartyInvolved = false;
-      vch.lines.forEach((line) => {
+      (vch.lines || []).forEach((line) => {
         const lineMatches = isPartyVoucherLine(line, ledger, ledgers, vch);
 
         if (lineMatches) {
           isPartyInvolved = true;
           if (ledger.group === 'Sundry Debtors') {
             // Customer ledger: debits are invoice sales, credits are cash payments received
-            totalSales += line.debit || 0;
-            totalPayments += line.credit || 0;
+            voucherSales += Number(line.debit || 0);
+            voucherPayments += Number(line.credit || 0);
           } else {
             // Supplier ledger: credits are invoice purchases, debits are payments made
-            totalSales += line.credit || 0; // represent purchases from them
-            totalPayments += line.debit || 0; // represent payments made to them
+            voucherSales += Number(line.credit || 0); // represent purchases from them
+            voucherPayments += Number(line.debit || 0); // represent payments made to them
           }
         }
       });
 
-      if (isPartyInvolved) {
+      if (isPartyInvolved && vch.date) {
         if (lastDate === '—' || vch.date > lastDate) {
           lastDate = vch.date;
         }
       }
     });
 
-    const outstandingAmount = computeLedgerBalance(ledger.id, ledgers, vouchers);
+    if (ledger.group === 'Sundry Debtors') {
+      activeInvoices.forEach((inv) => {
+        const invCustName = (inv.customerName || inv.customer_name || '').toLowerCase().trim();
+        const matchesCustomer =
+          inv.customerId === ledger.id ||
+          inv.customer_id === ledger.id ||
+          (invCustName && invCustName === targetName);
+
+        if (matchesCustomer) {
+          const invTotal = Number(inv.total || inv.grandTotal || 0);
+          const invPaid = Number(inv.paid || inv.paid_amount || inv.paidAmount || 0);
+          invoiceSales += invTotal;
+          invoicePayments += invPaid;
+          const invDate = inv.date || inv.dueDate || '';
+          if (invDate && (lastDate === '—' || invDate > lastDate)) {
+            lastDate = invDate;
+          }
+        }
+      });
+    }
+
+    const opBal = Number(ledger.openingBalance ?? ledger.profileOutstanding ?? 0);
+    const voucherBalance = computeLedgerBalance(ledger.id, ledgers, vouchers);
+
+    let totalSales = 0;
+    let totalPayments = 0;
+    let outstandingAmount = 0;
+
+    if (ledger.group === 'Sundry Debtors') {
+      totalSales = opBal + voucherSales + invoiceSales;
+      totalPayments = voucherPayments + invoicePayments;
+      outstandingAmount = (opBal + voucherSales + invoiceSales) - (voucherPayments + invoicePayments);
+    } else {
+      // Sundry Creditors (Suppliers)
+      totalSales = opBal + voucherSales;
+      totalPayments = voucherPayments;
+      outstandingAmount = voucherBalance !== 0 ? voucherBalance : opBal;
+    }
+
+    if (lastDate === '—' && (ledger.createdAt || ledger.date)) {
+      lastDate = String(ledger.createdAt || ledger.date).slice(0, 10);
+    }
 
     return {
       id: ledger.id,
@@ -848,6 +896,7 @@ export function getPartySummary(ledgers, vouchers) {
       totalPayments,
       outstandingAmount,
       lastTransactionDate: lastDate,
+      phone: ledger.phone || ledger.mobile || '',
     };
   });
 }

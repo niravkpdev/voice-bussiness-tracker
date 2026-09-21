@@ -284,7 +284,7 @@ const APP_TABS = [
   ...LEGAL_PAGE_IDS,
 ];
 export const STOREFRONT_TABS = ['store', 'storefront', 'shop', 'product-menu', 'categories', 'store-contact'];
-const navigationConfig = [
+export const navigationConfig = [
   {
     id: 'transaction',
     label: '1. Transaction',
@@ -307,9 +307,7 @@ const navigationConfig = [
       { id: 'party-statement', path: '#party-statement', tab: 'party-statement', label: 'Party Statement / Ledger', icon: '▤' },
       { id: 'gst', path: '#gst', tab: 'gst', label: 'GST Center & Returns', icon: '◇' },
       { id: 'reports', path: '#reports', tab: 'reports', label: 'Business Reports Summary', icon: '▱' },
-      { id: 'reports-hub', path: '#reports-hub', tab: 'reports-hub', label: 'Advanced Reports Hub', icon: '⌁' },
       { id: 'accounting-ledgers', path: '#accounting-ledgers', tab: 'accounting-ledgers', label: 'Accounting Ledgers', icon: '▦' },
-      { id: 'vouchers-hub', path: '#vouchers-hub', tab: 'vouchers-hub', label: 'Voucher Types Register', icon: '▣' },
     ],
   },
   {
@@ -327,7 +325,6 @@ const navigationConfig = [
     label: '4. Process',
     icon: '◈',
     children: [
-      { id: 'masters', path: '#masters', tab: 'masters', label: 'Masters Management', icon: '◈' },
       { id: 'company-setup', path: '#company-setup', tab: 'company-setup', label: 'Company Setup & FY', icon: '▦' },
       { id: 'businesses', path: '#businesses', tab: 'businesses', label: 'Multi-Business / Branches', icon: '⌖' },
       { id: 'cloud-backup', path: '#cloud-backup', tab: 'cloud-backup', label: 'Cloud Backup & Restore', icon: '⎇' },
@@ -342,7 +339,6 @@ const navigationConfig = [
     icon: '⚙',
     children: [
       { id: 'production', path: '#production', tab: 'production', label: 'Batch Production Run & BOM', icon: '⚙' },
-      { id: 'production-stock', path: '#inventory', tab: 'inventory', label: 'Raw Materials & Finished Stock', icon: '⬢' },
     ],
   },
   {
@@ -1902,6 +1898,10 @@ export default function VoiceExpenseTrackerPreview() {
     if (target === 'help-center') target = 'help';
     if (target === 'party-management' || target === 'parties') target = 'crm';
     if (target === 'profile') target = 'app-settings';
+    if (target === 'reports-hub') target = 'reports';
+    if (target === 'vouchers-hub') target = 'voucher-entry';
+    if (target === 'masters') target = 'crm';
+    if (target === 'production-stock') target = 'inventory';
     if (subTab && target === 'employees') {
       setHrmsSubTab(subTab);
     }
@@ -2205,6 +2205,10 @@ export default function VoiceExpenseTrackerPreview() {
       if (hash === 'help-center') hash = 'help';
       if (hash === 'party-management' || hash === 'parties') hash = 'crm';
       if (hash === 'profile') hash = 'app-settings';
+      if (hash === 'reports-hub') hash = 'reports';
+      if (hash === 'vouchers-hub') hash = 'voucher-entry';
+      if (hash === 'masters') hash = 'crm';
+      if (hash === 'production-stock') hash = 'inventory';
       if (hash && APP_TABS.includes(hash)) {
         setActiveTab(hash);
         const section = SIDEBAR_SECTIONS.find((group) => group.children.some((child) => child.tab === hash));
@@ -4004,13 +4008,25 @@ export default function VoiceExpenseTrackerPreview() {
     (Array.isArray(cloudCustomers) ? cloudCustomers : []).forEach((c) => {
       if (c && c.name && !c.deleted && !c.isDeleted && c.status !== 'deleted' && c.status !== 'cancelled') {
         const key = c.name.toLowerCase().trim();
-        if (!map.has(key)) {
+        const profileBalance = Number(c.outstandingAmount ?? c.outstanding ?? c.balance ?? c.openingBalance ?? 0);
+        const existing = map.get(key);
+        if (!existing) {
           map.set(key, {
             id: c.id,
             name: c.name,
             group: 'Sundry Debtors',
             balanceType: 'debit',
             phone: c.phone || c.mobile || '',
+            openingBalance: profileBalance,
+            profileOutstanding: profileBalance,
+            createdAt: c.createdAt || c.date || '',
+          });
+        } else if ((!existing.openingBalance || existing.openingBalance === 0) && profileBalance !== 0) {
+          map.set(key, {
+            ...existing,
+            openingBalance: profileBalance,
+            profileOutstanding: profileBalance,
+            createdAt: existing.createdAt || c.createdAt || c.date || '',
           });
         }
       }
@@ -4030,13 +4046,25 @@ export default function VoiceExpenseTrackerPreview() {
     (Array.isArray(cloudSuppliers) ? cloudSuppliers : []).forEach((s) => {
       if (s && s.name && !s.deleted && !s.isDeleted && s.status !== 'deleted' && s.status !== 'cancelled') {
         const key = s.name.toLowerCase().trim();
-        if (!map.has(key)) {
+        const profileBalance = Number(s.payableAmount ?? s.payable ?? s.balance ?? s.openingBalance ?? 0);
+        const existing = map.get(key);
+        if (!existing) {
           map.set(key, {
             id: s.id,
             name: s.name,
             group: 'Sundry Creditors',
             balanceType: 'credit',
             phone: s.phone || s.mobile || '',
+            openingBalance: profileBalance,
+            profileOutstanding: profileBalance,
+            createdAt: s.createdAt || s.date || '',
+          });
+        } else if ((!existing.openingBalance || existing.openingBalance === 0) && profileBalance !== 0) {
+          map.set(key, {
+            ...existing,
+            openingBalance: profileBalance,
+            profileOutstanding: profileBalance,
+            createdAt: existing.createdAt || s.createdAt || s.date || '',
           });
         }
       }
@@ -4106,7 +4134,7 @@ export default function VoiceExpenseTrackerPreview() {
     [effectiveStatementLedgerId, allEffectiveLedgers, activeVouchers]
   );
 
-  const partySummary = useMemo(() => getPartySummary(allEffectiveLedgers, activeVouchers), [allEffectiveLedgers, activeVouchers]);
+  const partySummary = useMemo(() => getPartySummary(allEffectiveLedgers, activeVouchers, activeInvoices), [allEffectiveLedgers, activeVouchers, activeInvoices]);
 
   const stats = useMemo(() => {
     return getDailyAndMonthlyStats(activeVouchers, allEffectiveLedgers);
@@ -4206,18 +4234,30 @@ export default function VoiceExpenseTrackerPreview() {
       .filter((p) => p.group === 'Sundry Debtors' && p.outstandingAmount > 0)
       .reduce((sum, p) => sum + p.outstandingAmount, 0);
 
-    const unpaidInvoices = activeInvoices.filter((inv) => {
+    const debtorPartyNames = new Set(
+      partySummary.filter((p) => p.group === 'Sundry Debtors').map((p) => (p.name || '').toLowerCase().trim())
+    );
+    const debtorPartyIds = new Set(
+      partySummary.filter((p) => p.group === 'Sundry Debtors').map((p) => p.id)
+    );
+
+    const unlinkedUnpaidInvoices = activeInvoices.filter((inv) => {
       const bal = Number(inv.balance !== undefined ? inv.balance : (Number(inv.total) - Number(inv.paidAmount || 0)));
-      return inv.status !== 'Paid' && bal > 0;
+      if (inv.status === 'Paid' || bal <= 0) return false;
+      const custName = (inv.customerName || inv.customer_name || '').toLowerCase().trim();
+      const hasPartyMatch = (inv.customerId && debtorPartyIds.has(inv.customerId)) ||
+                            (inv.customer_id && debtorPartyIds.has(inv.customer_id)) ||
+                            (custName && debtorPartyNames.has(custName));
+      return !hasPartyMatch;
     });
 
-    const invoiceOutstanding = unpaidInvoices.reduce(
+    const invoiceOutstanding = unlinkedUnpaidInvoices.reduce(
       (sum, inv) => sum + (Number(inv.balance !== undefined ? inv.balance : (Number(inv.total) - Number(inv.paidAmount || 0))) || 0),
       0
     );
 
     const combinedOutstanding = debtorOutstanding + invoiceOutstanding;
-    const pendingCount = partySummary.filter((p) => p.group === 'Sundry Debtors' && p.outstandingAmount > 0).length + unpaidInvoices.length;
+    const pendingCount = partySummary.filter((p) => p.group === 'Sundry Debtors' && p.outstandingAmount > 0).length + unlinkedUnpaidInvoices.length;
 
     // 6. Inventory Value
     const invItems = Array.isArray(cloudInventory) ? cloudInventory : [];
@@ -7915,9 +7955,6 @@ export default function VoiceExpenseTrackerPreview() {
                   <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('reports', 'customer'); setOpenNxMenu(null); }}>
                     ▱ Outstanding Receivables &amp; Payables
                   </button>
-                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('reports-hub'); setOpenNxMenu(null); }}>
-                    ⌁ Advanced Analytics Reports Hub
-                  </button>
                 </div>
               )}
             </div>
@@ -7974,9 +8011,6 @@ export default function VoiceExpenseTrackerPreview() {
               </button>
               {openNxMenu === 'process' && (
                 <div className="trinetr-dropdown-menu">
-                  <button type="button" className="trinetr-dropdown-item featured" onClick={() => { navigateToTab('masters'); setOpenNxMenu(null); }}>
-                    ◈ Masters Central Console
-                  </button>
                   <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('company-setup'); setOpenNxMenu(null); }}>
                     ▦ Company Setup &amp; Financial Year
                   </button>
@@ -8025,9 +8059,6 @@ export default function VoiceExpenseTrackerPreview() {
                   <div className="trinetr-dropdown-divider" />
                   <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('inventory'); setOpenNxMenu(null); }}>
                     ⬢ Production Inventory (Raw Materials &amp; Finished Goods Stock)
-                  </button>
-                  <button type="button" className="trinetr-dropdown-item" onClick={() => { navigateToTab('production'); setOpenNxMenu(null); }}>
-                    ⚡ Output Yield, Wastage &amp; Batch Production History
                   </button>
                 </div>
               )}

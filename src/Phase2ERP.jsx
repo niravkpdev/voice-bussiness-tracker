@@ -2551,21 +2551,33 @@ export default function Phase2ERP({
 
   if (activeTab === 'crm' || activeTab === 'suppliers' || activeTab === 'party-management' || activeTab === 'parties') {
     const isCustomer = peopleTab === 'customers';
+
+    const getPartyBalance = (item) => {
+      if (!item) return 0;
+      if (Array.isArray(partySummary) && partySummary.length > 0) {
+        const match = partySummary.find(
+          (p) =>
+            p.id === item.id ||
+            (p.name && item.name && p.name.toLowerCase().trim() === item.name.toLowerCase().trim())
+        );
+        if (match && typeof match.outstandingAmount === 'number') {
+          return match.outstandingAmount;
+        }
+      }
+      return isCustomer
+        ? safeMoney(item.outstandingAmount ?? item.outstanding ?? item.balance ?? item.openingBalance ?? 0)
+        : safeMoney(item.payableAmount ?? item.payable ?? item.balance ?? item.openingBalance ?? 0);
+    };
+
     let baseList = (isCustomer ? scopedCustomers : scopedSuppliers)?.filter(personMatchesSearch) || [];
     if (peopleFilter === 'outstanding') {
-      baseList = baseList.filter(p => {
-        const amt = isCustomer ? (p.outstandingAmount ?? p.outstanding ?? p.balance ?? 0) : (p.payableAmount || p.balance || 0);
-        return Number(amt) > 0;
-      });
+      baseList = baseList.filter(p => getPartyBalance(p) > 0);
     } else if (peopleFilter === 'settled') {
-      baseList = baseList.filter(p => {
-        const amt = isCustomer ? (p.outstandingAmount ?? p.outstanding ?? p.balance ?? 0) : (p.payableAmount || p.balance || 0);
-        return Number(amt) <= 0;
-      });
+      baseList = baseList.filter(p => getPartyBalance(p) <= 0);
     }
     if (peopleTagFilter !== 'all') {
       baseList = baseList.filter((p, i) => {
-        const amt = isCustomer ? (p.outstandingAmount ?? p.outstanding ?? p.balance ?? 0) : (p.payableAmount || p.balance || 0);
+        const amt = getPartyBalance(p);
         if (peopleTagFilter === 'vip') return amt > 50000;
         if (peopleTagFilter === 'wholesale') return i % 2 === 0;
         if (peopleTagFilter === 'retail') return i % 2 !== 0;
@@ -2577,9 +2589,7 @@ export default function Phase2ERP({
     const currentEdit = editingPerson?.type === formKind ? editingPerson : null;
     
     const totalProfiles = list.length;
-    const totalOutstanding = isCustomer 
-      ? list.reduce((sum, item) => sum + (Number(item?.outstandingAmount ?? item?.outstanding) || 0), 0) 
-      : list.reduce((sum, item) => sum + (Number(item?.payableAmount) || 0), 0);
+    const totalOutstanding = list.reduce((sum, item) => sum + getPartyBalance(item), 0);
     
     const exportPartiesCsv = () => {
       if (!list || list.length === 0) {
@@ -2593,7 +2603,7 @@ export default function Phase2ERP({
         `"${(p.email || '').replace(/"/g, '""')}"`,
         `"${(p.gst || p.gstin || '').replace(/"/g, '""')}"`,
         `"${(p.address || p.city || '').replace(/"/g, '""')}"`,
-        isCustomer ? safeMoney(p.outstandingAmount ?? p.outstanding ?? 0) : safeMoney(p.payableAmount ?? 0)
+        safeMoney(getPartyBalance(p))
       ]);
       const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
       const encodedUri = encodeURI(csvContent);
@@ -2864,7 +2874,7 @@ export default function Phase2ERP({
                     </thead>
                     <tbody>
                       {list.map((item, i) => {
-                      const balance = isCustomer ? safeMoney(item.outstandingAmount ?? item.outstanding ?? item.balance ?? 0) : safeMoney(item.payableAmount || item.balance || 0);
+                      const balance = safeMoney(getPartyBalance(item));
                       
                       // Mock CRM tags for demonstration
                       const tags = [];
@@ -3033,8 +3043,8 @@ export default function Phase2ERP({
                         <AlertCircle size={18} />
                       </div>
                     </div>
-                    <div className="kpi-value" style={{ fontSize: '24px', margin: '12px 0 4px', color: ((selectedCrmPerson?.outstandingAmount ?? selectedCrmPerson?.payableAmount) || 0) > 0 ? 'var(--danger)' : 'var(--text-primary)' }}>
-                      {formatCurrency(isCustomer ? selectedCrmPerson?.outstandingAmount ?? selectedCrmPerson?.outstanding ?? 0 : selectedCrmPerson?.payableAmount || 0)}
+                    <div className="kpi-value" style={{ fontSize: '24px', margin: '12px 0 4px', color: getPartyBalance(selectedCrmPerson) > 0 ? 'var(--danger)' : 'var(--text-primary)' }}>
+                      {formatCurrency(getPartyBalance(selectedCrmPerson))}
                     </div>
                     <div className="kpi-trend trend-neutral" style={{ fontSize: '12px' }}>Current Balance</div>
                   </div>
