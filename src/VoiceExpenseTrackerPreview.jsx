@@ -737,6 +737,547 @@ function sendStatementWhatsApp(statement, profile) {
   window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
 }
 
+function generateReceiptHtml({
+  profile,
+  party,
+  entry,
+  amount,
+  receiptNo,
+  date,
+  type,
+  narration,
+  closingBalance,
+}) {
+  const companyName = profile?.name || 'Trinetr Business Suite';
+  const companyAddress = profile?.address || '';
+  const companyGstin = profile?.gstin || '';
+  const companyPhone = profile?.phone || '';
+  const companyEmail = profile?.email || '';
+
+  const partyName = party?.name || 'Customer / Party';
+  const partyPhone = party?.phone || '';
+  const partyGstin = party?.gst || '';
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${type || 'Payment'} Receipt - ${receiptNo || ''}</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 24px;
+      color: #0f172a;
+      background: #ffffff;
+    }
+    .receipt-box {
+      max-width: 680px;
+      margin: 0 auto;
+      border: 2px solid #0f172a;
+      border-radius: 8px;
+      padding: 24px 28px;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid #0f172a;
+      padding-bottom: 16px;
+      margin-bottom: 16px;
+    }
+    .company-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: #0f172a;
+      margin: 0 0 4px;
+    }
+    .company-meta {
+      font-size: 12px;
+      color: #475569;
+      line-height: 1.4;
+    }
+    .receipt-badge {
+      text-align: right;
+    }
+    .receipt-title {
+      font-size: 18px;
+      font-weight: 800;
+      text-transform: uppercase;
+      background: #0f172a;
+      color: #ffffff;
+      padding: 4px 12px;
+      border-radius: 4px;
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+    .receipt-no {
+      font-size: 13px;
+      font-weight: 600;
+      color: #334155;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+      font-size: 13px;
+    }
+    .field-label {
+      color: #64748b;
+      font-size: 11px;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+    .field-val {
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .amount-card {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 16px 20px;
+      margin: 20px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .amount-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #475569;
+    }
+    .amount-val {
+      font-size: 24px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    .details-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 24px;
+      font-size: 13px;
+    }
+    .details-table th, .details-table td {
+      padding: 10px 12px;
+      border: 1px solid #e2e8f0;
+      text-align: left;
+    }
+    .details-table th {
+      background: #f1f5f9;
+      font-weight: 700;
+    }
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px dashed #cbd5e1;
+    }
+    .note {
+      font-size: 11px;
+      color: #64748b;
+      max-width: 340px;
+    }
+    .sig-block {
+      text-align: center;
+    }
+    .sig-line {
+      width: 160px;
+      border-bottom: 1px solid #0f172a;
+      margin-bottom: 6px;
+    }
+    .sig-text {
+      font-size: 11px;
+      font-weight: 600;
+      color: #334155;
+    }
+    @media print {
+      body { padding: 0; }
+      .no-print { display: none !important; }
+      .receipt-box { border: 1px solid #000; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print" style="max-width: 680px; margin: 0 auto 12px; display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; background: #f1f5f9; border-radius: 6px;">
+    <span style="font-size: 12px; color: #475569; font-weight: 600;">📄 Receipt Preview</span>
+    <div style="display: flex; gap: 8px;">
+      <button onclick="window.print()" style="background: #2563eb; color: #fff; border: none; padding: 6px 16px; border-radius: 4px; font-weight: 600; cursor: pointer; font-size: 12px;">🖨️ Print / Save as PDF</button>
+      <button onclick="window.close()" style="border: 1px solid #cbd5e1; background: #fff; color: #334155; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">Close</button>
+    </div>
+  </div>
+  <div class="receipt-box">
+    <div class="header">
+      <div>
+        <div class="company-title">${companyName}</div>
+        <div class="company-meta">${companyAddress ? `${companyAddress}<br>` : ''}
+          ${companyGstin ? `GSTIN: <strong>${companyGstin}</strong><br>` : ''}
+          ${companyPhone ? `Mob: ${companyPhone}` : ''} ${companyEmail ? `· ${companyEmail}` : ''}
+        </div>
+      </div>
+      <div class="receipt-badge">
+        <div class="receipt-title">${type || 'RECEIPT'}</div>
+        <div class="receipt-no"># ${receiptNo || 'REC-' + Date.now()}</div>
+        <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Date: ${date || new Date().toISOString().slice(0, 10)}</div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div>
+        <div class="field-label">Party / Customer Details</div>
+        <div class="field-val" style="font-size: 15px;">${partyName}</div>
+        ${partyPhone ? `<div style="color: #475569; font-size: 12px; margin-top: 2px;">📞 ${partyPhone}</div>` : ''}
+        ${partyGstin ? `<div style="color: #475569; font-size: 12px;">GSTIN: ${partyGstin}</div>` : ''}
+      </div>
+      <div>
+        <div class="field-label">Account Balance Status</div>
+        <div class="field-val" style="font-size: 15px; color: ${closingBalance > 0 ? '#16a34a' : '#0f172a'};">
+          ${closingBalance !== undefined ? formatPartyBalance(party, closingBalance) : 'Account Active'}
+        </div>
+      </div>
+    </div>
+
+    <table class="details-table">
+      <thead>
+        <tr>
+          <th>Description / Particulars</th>
+          <th style="width: 120px; text-align: right;">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <strong>${type || 'Entry'}</strong><br>
+            <span style="color: #475569; font-size: 12px;">${narration || 'Transaction recorded on party account'}</span>
+          </td>
+          <td style="text-align: right; font-weight: 700; font-size: 15px;">
+            ${formatCurrency(amount || 0)}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="amount-card">
+      <div>
+        <div class="amount-label">Total Amount ${type === 'Receipt' ? 'Received' : type === 'Payment' ? 'Paid' : 'Recorded'}</div>
+        <div style="font-size: 11px; color: #64748b;">Indian Rupees</div>
+      </div>
+      <div class="amount-val">${formatCurrency(amount || 0)}</div>
+    </div>
+
+    <div class="footer">
+      <div class="note">
+        This is a computer generated payment / account receipt. Thank you for doing business with us!
+      </div>
+      <div class="sig-block">
+        <div class="sig-line"></div>
+        <div class="sig-text">Authorized Signatory</div>
+        <div style="font-size: 10px; color: #64748b; margin-top: 2px;">${companyName}</div>
+      </div>
+    </div>
+  </div>
+  <script>
+    function doPrint() {
+      window.focus();
+      window.print();
+    }
+    if (document.readyState === 'complete') {
+      setTimeout(doPrint, 150);
+    } else {
+      window.addEventListener('load', function() {
+        setTimeout(doPrint, 150);
+      });
+    }
+  </script>
+</body>
+</html>
+`;
+}
+
+function generateStatementPrintHtml({ profile, statement, displayedRows, fromDate, toDate }) {
+  const ledger = statement?.ledger;
+  const companyName = profile?.name || 'Trinetr Business Suite';
+  const companyAddress = profile?.address || '';
+  const companyGstin = profile?.gstin || '';
+  const companyPhone = profile?.phone || '';
+  const companyEmail = profile?.email || '';
+
+  const isCreditor = ledger?.group === 'Sundry Creditors';
+  const rows = Array.isArray(displayedRows) ? displayedRows : (statement?.rows || []);
+
+  const opBalRow = (statement?.rows || []).find((r) => r.type === 'Opening Balance');
+  const opVal = opBalRow ? (isCreditor ? opBalRow.credit : opBalRow.debit) : (Number(ledger?.openingBalance) || 0);
+  const otherRows = (statement?.rows || []).filter((r) => r.type !== 'Opening Balance');
+  const periodDebits = otherRows.reduce((sum, r) => sum + Number(r.debit || 0), 0);
+  const periodCredits = otherRows.reduce((sum, r) => sum + Number(r.credit || 0), 0);
+  const totalDebits = rows.reduce((sum, r) => sum + Number(r.debit || 0), 0);
+  const totalCredits = rows.reduce((sum, r) => sum + Number(r.credit || 0), 0);
+
+  const rowsHtml = rows.length === 0
+    ? `<tr><td colspan="6" style="text-align: center; padding: 24px; color: #64748b;">No statement entries found for this period.</td></tr>`
+    : rows.map((r, i) => `
+      <tr style="background: ${i % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+        <td style="padding: 8px 10px; border: 1px solid #cbd5e1;">${r.date || '—'}</td>
+        <td style="padding: 8px 10px; border: 1px solid #cbd5e1; font-weight: 600;">${r.type || 'General'}</td>
+        <td style="padding: 8px 10px; border: 1px solid #cbd5e1;">${r.narration || '—'}</td>
+        <td style="padding: 8px 10px; border: 1px solid #cbd5e1; text-align: right; color: #0f172a;">${r.debit ? formatCurrency(r.debit) : '—'}</td>
+        <td style="padding: 8px 10px; border: 1px solid #cbd5e1; text-align: right; color: #0f172a;">${r.credit ? formatCurrency(r.credit) : '—'}</td>
+        <td style="padding: 8px 10px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold; color: #0f172a;">
+          ${formatCurrency(Math.abs(r.balance))} ${r.balance > 0 ? (ledger?.balanceType === 'credit' ? 'Cr' : 'Dr') : r.balance < 0 ? (ledger?.balanceType === 'credit' ? 'Dr' : 'Cr') : ''}
+        </td>
+      </tr>
+    `).join('');
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Statement of Account - ${ledger?.name || 'Party'}</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 28px;
+      color: #0f172a;
+      background: #ffffff;
+      font-size: 11pt;
+    }
+    .statement-box {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid #0f172a;
+      padding-bottom: 16px;
+      margin-bottom: 20px;
+    }
+    .company-title {
+      font-size: 24px;
+      font-weight: 800;
+      color: #0f172a;
+      margin: 0 0 4px;
+    }
+    .company-meta {
+      font-size: 12px;
+      color: #475569;
+      line-height: 1.4;
+    }
+    .statement-title-wrap {
+      text-align: right;
+    }
+    .statement-badge {
+      font-size: 16px;
+      font-weight: 800;
+      text-transform: uppercase;
+      background: #0f172a;
+      color: #ffffff;
+      padding: 6px 14px;
+      border-radius: 4px;
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+    .meta-box {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin-bottom: 18px;
+      font-size: 13px;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .kpi-card {
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 10px 14px;
+      text-align: center;
+      background: #ffffff;
+    }
+    .kpi-label {
+      font-size: 11px;
+      color: #64748b;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .kpi-val {
+      font-size: 16px;
+      font-weight: 800;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 24px;
+      font-size: 12px;
+    }
+    th {
+      background: #f1f5f9;
+      padding: 8px 10px;
+      border: 1px solid #cbd5e1;
+      text-align: left;
+      font-weight: 700;
+      color: #334155;
+    }
+    tfoot td {
+      background: #f8fafc;
+      font-weight: bold;
+      padding: 10px 12px;
+      border: 1px solid #cbd5e1;
+    }
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px dashed #cbd5e1;
+    }
+    .sig-line {
+      width: 180px;
+      border-bottom: 1px solid #0f172a;
+      margin-bottom: 6px;
+    }
+    @media print {
+      body { padding: 0; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print" style="max-width: 900px; margin: 0 auto 12px; display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; background: #f1f5f9; border-radius: 6px;">
+    <span style="font-size: 12px; color: #475569; font-weight: 600;">📄 Statement of Account Preview</span>
+    <div style="display: flex; gap: 8px;">
+      <button onclick="window.print()" style="background: #2563eb; color: #fff; border: none; padding: 6px 16px; border-radius: 4px; font-weight: 600; cursor: pointer; font-size: 12px;">🖨️ Print / Save as PDF</button>
+      <button onclick="window.close()" style="border: 1px solid #cbd5e1; background: #fff; color: #334155; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">Close</button>
+    </div>
+  </div>
+  <div class="statement-box">
+    <div class="header">
+      <div>
+        <div class="company-title">${companyName}</div>
+        <div class="company-meta">
+          ${companyAddress ? `${companyAddress}<br>` : ''}
+          ${companyGstin ? `GSTIN: <strong>${companyGstin}</strong><br>` : ''}
+          ${companyPhone ? `Mob: ${companyPhone}` : ''} ${companyEmail ? `· ${companyEmail}` : ''}
+        </div>
+      </div>
+      <div class="statement-title-wrap">
+        <div class="statement-badge">${isCreditor ? 'SUPPLIER' : 'CUSTOMER'} STATEMENT</div>
+        <div style="font-size: 12px; color: #64748b;">Period: ${fromDate || 'Opening'} to ${toDate || new Date().toISOString().slice(0, 10)}</div>
+        <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Generated: ${new Date().toLocaleString('en-IN')}</div>
+      </div>
+    </div>
+
+    <div class="meta-box">
+      <div>
+        <div style="font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 600;">Party / Account Details</div>
+        <div style="font-size: 16px; font-weight: 800; color: #0f172a; margin-top: 2px;">${ledger?.name || 'Customer'}</div>
+        <div style="font-size: 12px; color: #475569; margin-top: 2px;">
+          ${isCreditor ? 'Supplier Account' : 'Customer Account'}
+          ${ledger?.phone ? ` · 📞 ${ledger.phone}` : ''}
+          ${ledger?.gst ? ` · GSTIN: <strong>${ledger.gst}</strong>` : ''}
+        </div>
+      </div>
+      <div style="text-align: right;">
+        <div style="font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 600;">Closing Balance</div>
+        <div style="font-size: 18px; font-weight: 800; color: ${statement?.closingBalance > 0 ? '#16a34a' : '#dc2626'}; margin-top: 2px;">
+          ${formatPartyBalance(ledger, statement?.closingBalance)}
+        </div>
+        <div style="font-size: 11px; color: #64748b;">
+          ${statement?.closingBalance > 0 ? (isCreditor ? 'Payable to Supplier' : 'Receivable from Customer') : statement?.closingBalance < 0 ? 'Advance Balance' : 'Account Settled'}
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Opening Balance</div>
+        <div class="kpi-val">${formatCurrency(opVal)}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">${isCreditor ? 'Purchases (Cr)' : 'Sales Invoiced (Dr)'}</div>
+        <div class="kpi-val" style="color: #2563eb;">${formatCurrency(isCreditor ? periodCredits : periodDebits)}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">${isCreditor ? 'Payments Made (Dr)' : 'Payments Received (Cr)'}</div>
+        <div class="kpi-val" style="color: #16a34a;">${formatCurrency(isCreditor ? periodDebits : periodCredits)}</div>
+      </div>
+      <div class="kpi-card" style="background: #f8fafc;">
+        <div class="kpi-label">Closing Balance</div>
+        <div class="kpi-val" style="color: ${statement?.closingBalance > 0 ? '#16a34a' : '#dc2626'};">${formatCurrency(Math.abs(statement?.closingBalance || 0))}</div>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 90px;">Date</th>
+          <th style="width: 110px;">Type</th>
+          <th>Narration / Reference</th>
+          <th style="width: 100px; text-align: right;">Debit (Dr)</th>
+          <th style="width: 100px; text-align: right;">Credit (Cr)</th>
+          <th style="width: 110px; text-align: right;">Balance</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rowsHtml}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="3" style="text-align: right;">Period Totals:</td>
+          <td style="text-align: right;">${formatCurrency(totalDebits)}</td>
+          <td style="text-align: right;">${formatCurrency(totalCredits)}</td>
+          <td style="text-align: right; color: ${statement?.closingBalance > 0 ? '#16a34a' : '#dc2626'};">
+            ${formatPartyBalance(ledger, statement?.closingBalance)}
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <div class="footer">
+      <div style="font-size: 11px; color: #64748b; max-width: 420px; line-height: 1.4;">
+        This is an official computer-generated Statement of Account. For questions or discrepancies, please contact <strong>${companyPhone || companyEmail || companyName}</strong>.
+      </div>
+      <div style="text-align: center;">
+        <div class="sig-line"></div>
+        <div style="font-size: 11px; font-weight: 700; color: #0f172a;">Authorized Signatory</div>
+        <div style="font-size: 10px; color: #64748b; margin-top: 2px;">${companyName}</div>
+      </div>
+    </div>
+  </div>
+  <script>
+    function doPrint() {
+      window.focus();
+      window.print();
+    }
+    if (document.readyState === 'complete') {
+      setTimeout(doPrint, 150);
+    } else {
+      window.addEventListener('load', function() {
+        setTimeout(doPrint, 150);
+      });
+    }
+  </script>
+</body>
+</html>
+`;
+}
+
 function getBusinessHealthLabel(score) {
   if (score >= 80) {
     return 'Strong';
@@ -6406,35 +6947,73 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const printVoucherReceipt = (voucher) => {
-    const receiptWindow = window.open('', '_blank', 'width=720,height=860');
+    if (!voucher) return;
+    const counterParty = allEffectiveLedgers.find((l) => (voucher.lines || []).some((ln) => ln.ledgerId === l.id && PARTY_GROUPS.has(l.group))) || null;
+    const html = generateReceiptHtml({
+      profile,
+      party: counterParty || { name: counterLabel(voucher) },
+      amount: voucher.amount,
+      receiptNo: voucher.id,
+      date: voucher.date,
+      type: voucher.type || 'Voucher',
+      narration: voucher.narration || `${voucher.type} Voucher`,
+    });
+
+    const receiptWindow = window.open('', '_blank', 'width=760,height=860');
     if (!receiptWindow) {
       setStatus('Allow popups to print receipt/PDF');
       return;
     }
+    receiptWindow.document.open();
+    receiptWindow.document.write(html);
+    receiptWindow.document.close();
+  };
 
-    const doc = receiptWindow.document;
-    doc.title = `${voucher.type} Receipt`;
-    const style = doc.createElement('style');
-    style.textContent = [
-      'body { font-family: Arial, sans-serif; margin: 32px; color: #111827; }',
-      '.receipt { border: 1px solid #d1d5db; border-radius: 12px; padding: 24px; }',
-      'h1 { margin: 0 0 16px; font-size: 24px; }',
-      'p { margin: 8px 0; font-size: 14px; }',
-    ].join('\n');
-    doc.head.append(style);
-
-    const receipt = doc.createElement('div');
-    receipt.className = 'receipt';
-    const title = doc.createElement('h1');
-    title.textContent = profile.name;
-    receipt.append(title);
-    buildVoucherReceiptText(voucher).split('\n').forEach((line) => {
-      const paragraph = doc.createElement('p');
-      paragraph.textContent = line;
-      receipt.append(paragraph);
+  const printPartyStatement = () => {
+    if (!statement.ledger) {
+      window.print();
+      return;
+    }
+    const html = generateStatementPrintHtml({
+      profile,
+      statement,
+      displayedRows: displayedStatementRows,
+      fromDate: statementFromDate,
+      toDate: statementToDate,
     });
-    doc.body.append(receipt);
-    receiptWindow.setTimeout(() => receiptWindow.print(), 50);
+    const printWin = window.open('', '_blank', 'width=920,height=980');
+    if (!printWin) {
+      window.print();
+      return;
+    }
+    printWin.document.open();
+    printWin.document.write(html);
+    printWin.document.close();
+  };
+
+  const printEntryReceipt = (row, party) => {
+    if (!row || !party) return;
+    const amount = Number(row.debit || row.credit || Math.abs(row.balance) || 0);
+    const html = generateReceiptHtml({
+      profile,
+      party,
+      entry: row,
+      amount,
+      receiptNo: row.voucherId ? String(row.voucherId).replace(/^vch-/, '') : `REC-${Date.now()}`,
+      date: row.date && row.date !== 'Opening' ? row.date : (party?.createdAt ? String(party.createdAt).slice(0, 10) : new Date().toISOString().slice(0, 10)),
+      type: row.type || 'Receipt',
+      narration: row.narration || `${row.type} entry`,
+      closingBalance: row.balance !== undefined ? row.balance : statement.closingBalance,
+    });
+
+    const receiptWin = window.open('', '_blank', 'width=760,height=860');
+    if (!receiptWin) {
+      setStatus('Allow popups to print receipt/PDF');
+      return;
+    }
+    receiptWin.document.open();
+    receiptWin.document.write(html);
+    receiptWin.document.close();
   };
 
   const answerAiQuestion = (event) => {
@@ -11334,7 +11913,7 @@ export default function VoiceExpenseTrackerPreview() {
                     <button
                       type="button"
                       className="secondary-button compact-button"
-                      onClick={() => window.print()}
+                      onClick={printPartyStatement}
                       title="Print or export PDF statement"
                     >
                       🖨️ Print Statement
@@ -11390,54 +11969,71 @@ export default function VoiceExpenseTrackerPreview() {
                         className="saas-input"
                         style={{ backgroundColor: '#fff', color: '#111827', zIndex: 10, minHeight: '40px', width: '100%', appearance: 'auto', borderRadius: '6px', border: '1px solid #d1d5db', padding: '8px 12px', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}
                         value={effectiveStatementLedgerId}
-                        onChange={(event) => setStatementLedgerId(event.target.value)}
+                        onChange={(e) => {
+                          const nextId = e.target.value;
+                          setStatementLedgerId(nextId);
+                          window.location.hash = nextId ? `party-statement?id=${nextId}` : 'party-statement';
+                        }}
                       >
-                        {partyLedgers.map((ledger) => (
-                          <option key={ledger.id} value={ledger.id}>
-                            {ledger.name} ({ledger.group === 'Sundry Creditors' ? 'Supplier' : 'Customer'})
-                          </option>
-                        ))}
+                        <option value="">-- Choose Party Ledger --</option>
+                        <optgroup label="Customers (Sundry Debtors)">
+                          {partyLedgers
+                            .filter((l) => l.group === 'Sundry Debtors')
+                            .map((l) => (
+                              <option key={l.id} value={l.id}>
+                                {l.name} {formatPartyBalance(l, computeLedgerBalance(l.id, allEffectiveLedgers, activeVouchers, activeInvoices))}
+                              </option>
+                            ))}
+                        </optgroup>
+                        <optgroup label="Suppliers (Sundry Creditors)">
+                          {partyLedgers
+                            .filter((l) => l.group === 'Sundry Creditors')
+                            .map((l) => (
+                              <option key={l.id} value={l.id}>
+                                {l.name} {formatPartyBalance(l, computeLedgerBalance(l.id, allEffectiveLedgers, activeVouchers, activeInvoices))}
+                              </option>
+                            ))}
+                        </optgroup>
                       </select>
                     </div>
 
                     <div>
-                      <label style={{ marginBottom: '4px', display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                        Search Statement Entries
+                      <label className="field-label" htmlFor="statement-search" style={{ marginBottom: '4px', display: 'block', fontSize: '12px', fontWeight: 600 }}>
+                        Filter Transactions
                       </label>
                       <input
-                        type="text"
-                        placeholder="Search by narration, invoice #, type..."
+                        id="statement-search"
                         className="saas-input"
+                        placeholder="Search invoice #, narration, type..."
                         value={statementSearchQuery}
                         onChange={(e) => setStatementSearchQuery(e.target.value)}
-                        style={{ width: '100%', minHeight: '40px', padding: '8px 12px', fontSize: '13px' }}
                       />
                     </div>
                   </div>
 
                   {/* Period date filter */}
-                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '16px', background: 'var(--bg-secondary)', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '16px' }}>
                     <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Period:</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>From</span>
+                    <label style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                      From:
                       <input
                         type="date"
                         className="saas-input"
+                        style={{ width: 'auto', display: 'inline-block', marginLeft: '4px', padding: '4px 8px', fontSize: '12px' }}
                         value={statementFromDate}
                         onChange={(e) => setStatementFromDate(e.target.value)}
-                        style={{ padding: '4px 8px', fontSize: '12px' }}
                       />
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>To</span>
+                    </label>
+                    <label style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                      To:
                       <input
                         type="date"
                         className="saas-input"
+                        style={{ width: 'auto', display: 'inline-block', marginLeft: '4px', padding: '4px 8px', fontSize: '12px' }}
                         value={statementToDate}
                         onChange={(e) => setStatementToDate(e.target.value)}
-                        style={{ padding: '4px 8px', fontSize: '12px' }}
                       />
-                    </div>
+                    </label>
                     <button
                       type="button"
                       className="secondary-button compact-button"
@@ -11553,15 +12149,16 @@ export default function VoiceExpenseTrackerPreview() {
                           <th>Date</th>
                           <th>Type</th>
                           <th>Narration</th>
-                          <th>Debit (Dr)</th>
-                          <th>Credit (Cr)</th>
-                          <th>Running Balance</th>
+                          <th style={{ textAlign: 'right' }}>Debit (Dr)</th>
+                          <th style={{ textAlign: 'right' }}>Credit (Cr)</th>
+                          <th style={{ textAlign: 'right' }}>Running Balance</th>
+                          <th style={{ textAlign: 'center', width: '100px' }}>Action</th>
                         </tr>
                       </thead>
                       <tbody>
                         {displayedStatementRows.length === 0 ? (
                           <tr>
-                            <td colSpan={6} className="empty-state">
+                            <td colSpan={7} className="empty-state">
                               No statement entries found for this party.
                             </td>
                           </tr>
@@ -11571,9 +12168,20 @@ export default function VoiceExpenseTrackerPreview() {
                               <td>{row.date}</td>
                               <td><span className={`badge badge-${(row.type || '').toLowerCase().replace(/\s+/g, '-')}`}>{row.type}</span></td>
                               <td>{row.narration}</td>
-                              <td>{row.debit ? formatCurrency(row.debit) : '—'}</td>
-                              <td>{row.credit ? formatCurrency(row.credit) : '—'}</td>
-                              <td><strong>{formatCurrency(Math.abs(row.balance))} {row.balance > 0 ? (statement.ledger?.balanceType === 'credit' ? 'Cr' : 'Dr') : row.balance < 0 ? (statement.ledger?.balanceType === 'credit' ? 'Dr' : 'Cr') : ''}</strong></td>
+                              <td style={{ textAlign: 'right' }}>{row.debit ? formatCurrency(row.debit) : '—'}</td>
+                              <td style={{ textAlign: 'right' }}>{row.credit ? formatCurrency(row.credit) : '—'}</td>
+                              <td style={{ textAlign: 'right' }}><strong>{formatCurrency(Math.abs(row.balance))} {row.balance > 0 ? (statement.ledger?.balanceType === 'credit' ? 'Cr' : 'Dr') : row.balance < 0 ? (statement.ledger?.balanceType === 'credit' ? 'Dr' : 'Cr') : ''}</strong></td>
+                              <td style={{ textAlign: 'center' }}>
+                                <button
+                                  type="button"
+                                  className="compact-button secondary-button"
+                                  style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px' }}
+                                  onClick={() => printEntryReceipt(row, statement.ledger)}
+                                  title={`Print official receipt for this ${row.type} entry`}
+                                >
+                                  🖨️ Receipt
+                                </button>
+                              </td>
                             </tr>
                           ))
                         )}
@@ -12492,16 +13100,118 @@ export default function VoiceExpenseTrackerPreview() {
         
         <div className="print-meta-section">
           <h3>
-            {activeReportTab === 'pnl' ? 'Profit & Loss Statement' : 
+            {activeTab === 'party-statement' ? `${statement.ledger?.group === 'Sundry Creditors' ? 'Supplier' : 'Customer'} Statement of Account` :
+             activeReportTab === 'pnl' ? 'Profit & Loss Statement' : 
              activeReportTab === 'daybook' ? 'Day Book Report' : 
              activeReportTab === 'cashbook' ? 'Cash Book Statement' : 
              activeReportTab === 'customer' ? 'Customer Outstanding Statement' : 
              'Supplier Outstanding Statement'}
           </h3>
-          <p>Report Period: {dayBookFromDate} to {dayBookToDate} | Generated: {new Date().toLocaleString()} | Owner: {profile.owner}</p>
+          <p>
+            {activeTab === 'party-statement'
+              ? `Party: ${statement.ledger?.name || 'Party'} | Period: ${statementFromDate || 'Opening'} to ${statementToDate || new Date().toISOString().slice(0, 10)} | Closing Balance: ${formatPartyBalance(statement.ledger, statement.closingBalance)}`
+              : `Report Period: ${dayBookFromDate} to ${dayBookToDate} | Generated: ${new Date().toLocaleString()} | Owner: ${profile.owner}`}
+          </p>
         </div>
 
-        {activeReportTab === 'pnl' && (
+        {activeTab === 'party-statement' && statement.ledger && (
+          <div className="print-statement-sheet">
+            <div style={{ margin: '0 0 12px', padding: '10px 14px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11pt' }}>
+              <div>
+                <strong style={{ fontSize: '13pt', color: '#0f172a' }}>{statement.ledger.name}</strong>
+                <span style={{ color: '#475569', marginLeft: '8px', fontSize: '10pt' }}>
+                  ({statement.ledger.group === 'Sundry Creditors' ? 'Supplier Account' : 'Customer Account'})
+                </span>
+                {statement.ledger.phone && <div style={{ fontSize: '9pt', color: '#475569', marginTop: '2px' }}>📞 {statement.ledger.phone}</div>}
+                {statement.ledger.gst && <div style={{ fontSize: '9pt', color: '#475569' }}>GSTIN: <strong>{statement.ledger.gst}</strong></div>}
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '9pt', textTransform: 'uppercase', color: '#64748b', fontWeight: 600 }}>Closing Balance</div>
+                <div style={{ fontSize: '14pt', fontWeight: 'bold', color: statement.closingBalance > 0 ? '#16a34a' : '#dc2626' }}>
+                  {formatPartyBalance(statement.ledger, statement.closingBalance)}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', margin: '14px 0 18px', textAlign: 'center' }}>
+              <div style={{ border: '1px solid #cbd5e1', padding: '8px', borderRadius: '4px' }}>
+                <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase' }}>Opening Balance</div>
+                <div style={{ fontSize: '14px', fontWeight: 'bold' }}>
+                  {formatCurrency((() => {
+                    const isCred = statement.ledger.group === 'Sundry Creditors';
+                    const opRow = (statement.rows || []).find(r => r.type === 'Opening Balance');
+                    return opRow ? (isCred ? opRow.credit : opRow.debit) : (Number(statement.ledger.openingBalance) || 0);
+                  })())}
+                </div>
+              </div>
+              <div style={{ border: '1px solid #cbd5e1', padding: '8px', borderRadius: '4px' }}>
+                <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase' }}>
+                  {statement.ledger.group === 'Sundry Creditors' ? 'Total Purchases' : 'Total Sales'}
+                </div>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#2563eb' }}>
+                  {formatCurrency(displayedStatementRows.reduce((sum, r) => sum + (statement.ledger.group === 'Sundry Creditors' ? Number(r.credit || 0) : Number(r.debit || 0)), 0))}
+                </div>
+              </div>
+              <div style={{ border: '1px solid #cbd5e1', padding: '8px', borderRadius: '4px' }}>
+                <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase' }}>
+                  {statement.ledger.group === 'Sundry Creditors' ? 'Total Paid' : 'Total Received'}
+                </div>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#16a34a' }}>
+                  {formatCurrency(displayedStatementRows.reduce((sum, r) => sum + (statement.ledger.group === 'Sundry Creditors' ? Number(r.debit || 0) : Number(r.credit || 0)), 0))}
+                </div>
+              </div>
+              <div style={{ border: '1px solid #cbd5e1', padding: '8px', borderRadius: '4px', background: '#f8fafc' }}>
+                <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase' }}>Closing Balance</div>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', color: statement.closingBalance > 0 ? '#16a34a' : '#dc2626' }}>
+                  {formatPartyBalance(statement.ledger, statement.closingBalance)}
+                </div>
+              </div>
+            </div>
+
+            <table className="statement-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '90px' }}>Date</th>
+                  <th style={{ width: '110px' }}>Type</th>
+                  <th>Narration / Reference</th>
+                  <th style={{ width: '110px', textAlign: 'right' }}>Debit (Dr)</th>
+                  <th style={{ width: '110px', textAlign: 'right' }}>Credit (Cr)</th>
+                  <th style={{ width: '120px', textAlign: 'right' }}>Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayedStatementRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '16px' }}>No entries found for this party.</td>
+                  </tr>
+                ) : (
+                  displayedStatementRows.map((row, idx) => (
+                    <tr key={idx}>
+                      <td>{row.date}</td>
+                      <td>{row.type}</td>
+                      <td>{row.narration}</td>
+                      <td style={{ textAlign: 'right' }}>{row.debit ? formatCurrency(row.debit) : '—'}</td>
+                      <td style={{ textAlign: 'right' }}>{row.credit ? formatCurrency(row.credit) : '—'}</td>
+                      <td style={{ textAlign: 'right', fontWeight: 'bold' }}>
+                        {formatCurrency(Math.abs(row.balance))} {row.balance > 0 ? (statement.ledger?.balanceType === 'credit' ? 'Cr' : 'Dr') : row.balance < 0 ? (statement.ledger?.balanceType === 'credit' ? 'Dr' : 'Cr') : ''}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+              <tfoot>
+                <tr style={{ fontWeight: 'bold', background: '#f1f5f9' }}>
+                  <td colSpan={3} style={{ textAlign: 'right' }}>Period Total:</td>
+                  <td style={{ textAlign: 'right' }}>{formatCurrency(displayedStatementRows.reduce((s, r) => s + Number(r.debit || 0), 0))}</td>
+                  <td style={{ textAlign: 'right' }}>{formatCurrency(displayedStatementRows.reduce((s, r) => s + Number(r.credit || 0), 0))}</td>
+                  <td style={{ textAlign: 'right' }}>{formatPartyBalance(statement.ledger, statement.closingBalance)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+
+        {activeTab !== 'party-statement' && activeReportTab === 'pnl' && (
           <div className="print-pnl-sheet">
             <table className="statement-table font-mono">
               <thead>
@@ -12547,7 +13257,7 @@ export default function VoiceExpenseTrackerPreview() {
           </div>
         )}
 
-        {activeReportTab === 'daybook' && (
+        {activeTab !== 'party-statement' && activeReportTab === 'daybook' && (
           <table className="statement-table">
             <thead>
               <tr>
@@ -12576,7 +13286,7 @@ export default function VoiceExpenseTrackerPreview() {
           </table>
         )}
 
-        {activeReportTab === 'cashbook' && (
+        {activeTab !== 'party-statement' && activeReportTab === 'cashbook' && (
           <table className="statement-table">
             <thead>
               <tr>
@@ -12605,7 +13315,7 @@ export default function VoiceExpenseTrackerPreview() {
           </table>
         )}
 
-        {activeReportTab === 'customer' && (
+        {activeTab !== 'party-statement' && activeReportTab === 'customer' && (
           <table className="statement-table">
             <thead>
               <tr>
@@ -12632,7 +13342,7 @@ export default function VoiceExpenseTrackerPreview() {
           </table>
         )}
 
-        {activeReportTab === 'supplier' && (
+        {activeTab !== 'party-statement' && activeReportTab === 'supplier' && (
           <table className="statement-table">
             <thead>
               <tr>

@@ -1906,6 +1906,124 @@ export default function Phase3Ops({
     }
   };
 
+  const printPaymentReceipt = (payment) => {
+    if (!payment) return;
+    const companyName = profile?.name || 'TRINETR ENTERPRISE';
+    const companyAddress = profile?.address || 'GST Registered Enterprise';
+    const companyGstin = profile?.gstin || '';
+    const companyPhone = profile?.phone || '';
+    const companyEmail = profile?.email || '';
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Payment Receipt - ${payment.id || ''}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 24px; color: #0f172a; background: #ffffff; }
+    .receipt-box { max-width: 600px; margin: 0 auto; border: 2px solid #0f172a; border-radius: 8px; padding: 24px 28px; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 14px; margin-bottom: 16px; }
+    .company-title { font-size: 20px; font-weight: 800; color: #0f172a; margin: 0 0 4px; }
+    .company-meta { font-size: 11px; color: #475569; line-height: 1.4; }
+    .receipt-badge { font-size: 15px; font-weight: 800; text-transform: uppercase; background: #0f172a; color: #ffffff; padding: 4px 10px; border-radius: 4px; display: inline-block; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; font-size: 13px; }
+    .field-label { color: #64748b; font-size: 11px; text-transform: uppercase; font-weight: 600; }
+    .field-val { font-weight: 700; color: #0f172a; margin-top: 2px; }
+    .amount-card { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 16px; margin: 16px 0; text-align: center; }
+    .amount-label { font-size: 12px; font-weight: 600; color: #475569; text-transform: uppercase; }
+    .amount-val { font-size: 26px; font-weight: 900; color: #166534; margin-top: 4px; }
+    .footer { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 24px; padding-top: 14px; border-top: 1px dashed #cbd5e1; }
+    .sig-line { width: 140px; border-bottom: 1px solid #0f172a; margin-bottom: 4px; }
+    .no-print { max-width: 600px; margin: 0 auto 12px; display: flex; justify-content: space-between; }
+    @media print { .no-print { display: none !important; } body { padding: 0; } }
+  </style>
+</head>
+<body>
+  <div class="no-print">
+    <button onclick="window.print()" style="background:#2563eb;color:#fff;border:none;padding:6px 14px;border-radius:4px;cursor:pointer;font-weight:600;">🖨️ Print / Save as PDF</button>
+    <button onclick="window.close()" style="border:1px solid #cbd5e1;background:#fff;padding:6px 12px;border-radius:4px;cursor:pointer;">Close</button>
+  </div>
+  <div class="receipt-box">
+    <div class="header">
+      <div>
+        <div class="company-title">${companyName}</div>
+        <div class="company-meta">
+          ${companyAddress ? `${companyAddress}<br>` : ''}
+          ${companyGstin ? `GSTIN: <strong>${companyGstin}</strong><br>` : ''}
+          ${companyPhone ? `Mob: ${companyPhone}` : ''} ${companyEmail ? `· ${companyEmail}` : ''}
+        </div>
+      </div>
+      <div style="text-align: right;">
+        <div class="receipt-badge">PAYMENT RECEIPT</div>
+        <div style="font-size: 12px; color: #475569; margin-top: 4px;"># ${payment.id || ''}</div>
+        <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Date: ${payment.date || new Date().toISOString().slice(0, 10)}</div>
+      </div>
+    </div>
+    <div class="grid">
+      <div>
+        <div class="field-label">Received From (Customer)</div>
+        <div class="field-val" style="font-size: 14px;">${payment.customer || 'Customer'}</div>
+      </div>
+      <div style="text-align: right;">
+        <div class="field-label">Payment Mode</div>
+        <div class="field-val" style="color: #059669;">${payment.mode || 'UPI / Cash'}</div>
+      </div>
+      ${payment.invoiceNo ? `
+      <div>
+        <div class="field-label">Invoice Ref</div>
+        <div class="field-val" style="color: #1d4ed8;">${payment.invoiceNo}</div>
+      </div>` : ''}
+      ${payment.reference ? `
+      <div style="text-align: right;">
+        <div class="field-label">UTR / Transaction Ref</div>
+        <div class="field-val" style="font-family: monospace;">${payment.reference}</div>
+      </div>` : ''}
+      ${payment.notes ? `
+      <div style="grid-column: span 2;">
+        <div class="field-label">Notes / Remarks</div>
+        <div class="field-val" style="font-weight: 500; color: #475569;">${payment.notes}</div>
+      </div>` : ''}
+    </div>
+    <div class="amount-card">
+      <div class="amount-label">Amount Received</div>
+      <div class="amount-val">${formatCurrency(payment.amount)}</div>
+      <div style="font-size: 11px; color: #15803d; font-weight: 600; margin-top: 2px;">✓ Payment Verified & Reconciled</div>
+    </div>
+    <div class="footer">
+      <div style="font-size: 10px; color: #94a3b8; max-width: 220px;">Official computer generated payment acknowledgment.</div>
+      <div style="text-align: center;">
+        <div class="sig-line"></div>
+        <div style="font-size: 11px; font-weight: 700; color: #0f172a;">Authorized Signatory</div>
+        <div style="font-size: 10px; color: #64748b;">${companyName}</div>
+      </div>
+    </div>
+  </div>
+  <script>
+    function doPrint() {
+      window.focus();
+      window.print();
+    }
+    if (document.readyState === 'complete') {
+      setTimeout(doPrint, 150);
+    } else {
+      window.addEventListener('load', function() {
+        setTimeout(doPrint, 150);
+      });
+    }
+  </script>
+</body>
+</html>`;
+
+    const printWin = window.open('', '_blank', 'width=760,height=860');
+    if (!printWin) {
+      window.print();
+      return;
+    }
+    printWin.document.open();
+    printWin.document.write(html);
+    printWin.document.close();
+  };
+
   const savePaymentEdit = async (event) => {
     const targetForm = event.currentTarget;
     event.preventDefault();
@@ -2573,7 +2691,7 @@ export default function Phase3Ops({
                 <button
                   type="button"
                   className="manual-button"
-                  onClick={() => window.print()}
+                  onClick={() => printPaymentReceipt(receiptPayment)}
                   style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
                   🖨️ Print Receipt
