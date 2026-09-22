@@ -1007,3 +1007,87 @@ export function getPartySummary(ledgers, vouchers, invoices = []) {
     };
   });
 }
+
+export function computeTrialBalance(ledgers = [], vouchers = []) {
+  const effectiveLedgers = Array.isArray(ledgers) ? ledgers : [];
+  const safeVouchers = (Array.isArray(vouchers) ? vouchers : []).filter(
+    (v) => v && !v.deleted && !v.isDeleted && v.status !== 'deleted' && v.status !== 'cancelled'
+  );
+
+  let totalDebit = 0;
+  let totalCredit = 0;
+
+  const rows = effectiveLedgers.map((ledger) => {
+    let debits = 0;
+    let credits = 0;
+
+    safeVouchers.forEach((voucher) => {
+      (voucher.lines || []).forEach((line) => {
+        const lineMatches = PARTY_GROUPS.has(ledger.group)
+          ? isPartyVoucherLine(line, ledger, effectiveLedgers, voucher)
+          : line.ledgerId === ledger.id;
+
+        if (lineMatches) {
+          debits += Number(line.debit || 0);
+          credits += Number(line.credit || 0);
+        }
+      });
+    });
+
+    const opBal = Number(
+      ledger.profileOutstanding !== undefined && ledger.profileOutstanding !== null
+        ? ledger.profileOutstanding
+        : (ledger.openingBalance || 0)
+    );
+
+    const balanceType = ledger.balanceType || (
+      ['Cash-in-hand', 'Bank Accounts', 'Sundry Debtors', 'Direct Expenses', 'Indirect Expenses'].includes(ledger.group)
+        ? 'debit'
+        : 'credit'
+    );
+
+    let closingDr = 0;
+    let closingCr = 0;
+
+    if (balanceType === 'debit') {
+      const net = opBal + debits - credits;
+      if (net >= 0) {
+        closingDr = net;
+      } else {
+        closingCr = Math.abs(net);
+      }
+    } else {
+      const net = opBal + credits - debits;
+      if (net >= 0) {
+        closingCr = net;
+      } else {
+        closingDr = Math.abs(net);
+      }
+    }
+
+    totalDebit += closingDr;
+    totalCredit += closingCr;
+
+    return {
+      id: ledger.id,
+      name: ledger.name,
+      group: ledger.group,
+      balanceType,
+      openingBalance: opBal,
+      totalDebits: debits,
+      totalCredits: credits,
+      closingDebit: closingDr,
+      closingCredit: closingCr,
+      closingBalance: closingDr > 0 ? closingDr : closingCr,
+      closingBalanceType: closingDr >= closingCr ? 'Dr' : 'Cr',
+    };
+  });
+
+  return {
+    rows,
+    totalDebit,
+    totalCredit,
+    difference: Math.abs(totalDebit - totalCredit),
+    isBalanced: Math.abs(totalDebit - totalCredit) < 0.01,
+  };
+}

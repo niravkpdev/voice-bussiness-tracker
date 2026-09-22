@@ -3698,32 +3698,174 @@ export default function Phase2ERP({
         {activeTab === 'businesses' ? (
           <section className="content-grid">
             <article className="panel">
-              <h2>Business Switcher</h2>
-              <div className="compact-list">
-                <article className="compact-item"><strong>Default Business</strong><button className="share-entry-button" type="button" onClick={() => switchBusiness('default')}>Switch</button></article>
-                {businesses.map((business) => (
-                  <article className="compact-item" key={business.id}>
-                    <div><strong>{business.name}</strong><p>{business.type}</p></div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button className="share-entry-button" type="button" onClick={() => setEditingBusiness(business)} style={{ background: 'transparent', color: 'var(--erp-primary)', border: '1px solid var(--erp-primary)' }}>Edit</button>
-                      <button className="share-entry-button" type="button" onClick={() => switchBusiness(business.id)}>Switch</button>
-                    </div>
-                  </article>
-                ))}
+              <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <div>
+                  <h2 style={{ margin: 0 }}>Business Workspaces &amp; Branches</h2>
+                  <p className="panel-hint" style={{ margin: '4px 0 0' }}>
+                    Switch between distinct legal entities, stores, or branches with isolated books.
+                  </p>
+                </div>
+                <span className="status-pill active" style={{ fontSize: '12px', padding: '4px 10px' }}>
+                  {1 + businesses.length} Total {1 + businesses.length === 1 ? 'Workspace' : 'Workspaces'}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {/* Default Business Card */}
+                {(() => {
+                  const isDefaultActive = !activeBusinessId || activeBusinessId === 'default';
+                  return (
+                    <article
+                      className="compact-item"
+                      style={{
+                        padding: '14px 16px',
+                        borderRadius: '8px',
+                        background: isDefaultActive ? 'rgba(37, 99, 235, 0.08)' : 'var(--bg-primary)',
+                        border: isDefaultActive ? '1.5px solid #2563eb' : '1px solid var(--border-subtle)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '12px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: isDefaultActive ? '#2563eb' : '#475569', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '14px' }}>
+                          {(profile?.name || 'D').slice(0, 1).toUpperCase()}
+                        </div>
+                        <div>
+                          <strong style={{ fontSize: '14px', display: 'block' }}>{profile?.name || 'Default Business'}</strong>
+                          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            {profile?.tagline || 'Main Company Workspace'} · Default
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        {isDefaultActive ? (
+                          <span className="status-pill active" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', fontWeight: 700, padding: '4px 12px', borderRadius: '16px', fontSize: '12px' }}>
+                            ● Active Workspace
+                          </span>
+                        ) : (
+                          <button className="primary-button compact-button" type="button" onClick={() => switchBusiness('default')}>
+                            Switch
+                          </button>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })()}
+
+                {/* Other Businesses Cards */}
+                {businesses.map((business) => {
+                  const isCurrentActive = activeBusinessId === business.id;
+                  return (
+                    <article
+                      className="compact-item"
+                      key={business.id}
+                      style={{
+                        padding: '14px 16px',
+                        borderRadius: '8px',
+                        background: isCurrentActive ? 'rgba(37, 99, 235, 0.08)' : 'var(--bg-primary)',
+                        border: isCurrentActive ? '1.5px solid #2563eb' : '1px solid var(--border-subtle)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '12px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: isCurrentActive ? '#2563eb' : '#64748b', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '14px' }}>
+                          {(business.name || 'B').slice(0, 1).toUpperCase()}
+                        </div>
+                        <div>
+                          <strong style={{ fontSize: '14px', display: 'block' }}>{business.name}</strong>
+                          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            {business.type || 'Branch / Sister Firm'}
+                          </span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {isCurrentActive ? (
+                          <span className="status-pill active" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', fontWeight: 700, padding: '4px 12px', borderRadius: '16px', fontSize: '12px' }}>
+                            ● Active Workspace
+                          </span>
+                        ) : (
+                          <button className="primary-button compact-button" type="button" onClick={() => switchBusiness(business.id)}>
+                            Switch
+                          </button>
+                        )}
+                        <button
+                          className="secondary-button compact-button"
+                          type="button"
+                          onClick={() => setEditingBusiness(business)}
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
             </article>
+
             <article className="panel">
-              <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h2>{editingBusiness ? 'Edit Business' : 'Add Business'}</h2>
-                {editingBusiness && <button className="share-entry-button" style={{ background: 'transparent', color: '#666', border: '1px solid #ccc' }} onClick={() => setEditingBusiness(null)}>Cancel</button>}
+              <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                <div>
+                  <h2 style={{ margin: 0 }}>{editingBusiness ? 'Edit Business Workspace' : 'Add New Business / Branch'}</h2>
+                  <p className="panel-hint" style={{ margin: '4px 0 0' }}>
+                    {editingBusiness ? 'Update workspace identity or trade type.' : 'Create a separate ledger and transaction workspace.'}
+                  </p>
+                </div>
+                {editingBusiness && (
+                  <button className="secondary-button compact-button" type="button" onClick={() => setEditingBusiness(null)}>
+                    Cancel
+                  </button>
+                )}
               </div>
-              <form onSubmit={addBusiness} key={editingBusiness ? editingBusiness.id : 'new'}>
-                <input id="business-name" name="name" autoComplete="organization" placeholder="Resin Art Studio / Trading Business" defaultValue={editingBusiness?.name || ''} />
-                <input id="business-type" name="type" autoComplete="off" placeholder="Business type" defaultValue={editingBusiness?.type || ''} />
-                <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
-                  <button className="manual-button" type="submit" style={{ flex: 1 }}>{editingBusiness ? 'Update Business' : 'Add Business'}</button>
+              <form onSubmit={addBusiness} key={editingBusiness ? editingBusiness.id : 'new'} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div>
+                  <label className="field-label" htmlFor="business-name" style={{ display: 'block', marginBottom: '4px', fontWeight: 600, fontSize: '13px' }}>
+                    Business / Branch Name *
+                  </label>
+                  <input
+                    id="business-name"
+                    name="name"
+                    autoComplete="organization"
+                    placeholder="e.g. Resin Art Studio / Trading Business"
+                    defaultValue={editingBusiness?.name || ''}
+                    required
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', border: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                  />
+                </div>
+                <div>
+                  <label className="field-label" htmlFor="business-type" style={{ display: 'block', marginBottom: '4px', fontWeight: 600, fontSize: '13px' }}>
+                    Business / Trade Type
+                  </label>
+                  <input
+                    id="business-type"
+                    name="type"
+                    autoComplete="off"
+                    placeholder="e.g. Manufacturing, Retail Store, Wholesale, Services"
+                    defaultValue={editingBusiness?.type || ''}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', border: '1px solid var(--border-subtle)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                  <button className="primary-button" type="submit" style={{ flex: 1 }}>
+                    {editingBusiness ? 'Update Business Workspace' : '+ Create Business Workspace'}
+                  </button>
                   {editingBusiness && (
-                    <button className="manual-button" type="button" onClick={() => deleteBusiness(editingBusiness.id)} style={{ flex: '0 0 auto', background: '#fef2f2', color: '#dc2626', borderColor: '#fecaca' }}>Delete</button>
+                    <button
+                      className="delete-entry-button"
+                      type="button"
+                      onClick={() => {
+                        if (confirm(`Are you sure you want to delete workspace "${editingBusiness.name}"?`)) {
+                          deleteBusiness(editingBusiness.id);
+                        }
+                      }}
+                      style={{ padding: '0 16px' }}
+                    >
+                      Delete
+                    </button>
                   )}
                 </div>
               </form>

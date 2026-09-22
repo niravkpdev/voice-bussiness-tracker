@@ -1,7 +1,7 @@
 import { useVoiceManager } from './hooks/useVoiceManager';
 import { useIsMobile } from './hooks/useIsMobile';
 import PreferencesPanel from './PreferencesPanel.jsx';
-import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { 
   Activity, ArrowUpRight, ArrowDownRight, DollarSign, CreditCard, 
   TrendingUp, Users, Package, FileText, Bell, CheckSquare, 
@@ -24,6 +24,7 @@ import {
   buildPaymentLines,
   buildReceiptLines,
   computeLedgerBalance,
+  computeTrialBalance,
   createVoucher,
   createVoucherId,
   DEFAULT_LEDGERS,
@@ -2434,6 +2435,10 @@ export default function VoiceExpenseTrackerPreview() {
   const [khataPartyFilter, setKhataPartyFilter] = useState('all');
   const [khataPartySearch, setKhataPartySearch] = useState('');
   const [dayBookFilter, setDayBookFilter] = useState('');
+  const [dayBookSearch, setDayBookSearch] = useState('');
+  const [dayBookPreset, setDayBookPreset] = useState('this-month');
+  const [trialBalanceGroupFilter, setTrialBalanceGroupFilter] = useState('all');
+  const [trialBalanceSearch, setTrialBalanceSearch] = useState('');
   const [dayBookFromDate, setDayBookFromDate] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
@@ -2571,17 +2576,29 @@ export default function VoiceExpenseTrackerPreview() {
     window.addEventListener('trinetr-preferences-updated', handlePreferencesUpdate);
     
     // Also listen for system theme changes if set to system
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleSystemThemeChange = () => {
-      if (userPreferences.themeMode === 'system') {
-        setUserPreferences(prev => ({ ...prev })); // trigger re-render
+    let mediaQuery = null;
+    let handleSystemThemeChange = null;
+    if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+      try {
+        mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        handleSystemThemeChange = () => {
+          if (userPreferences.themeMode === 'system') {
+            setUserPreferences((prev) => ({ ...prev })); // trigger re-render
+          }
+        };
+        if (mediaQuery && mediaQuery.addEventListener) {
+          mediaQuery.addEventListener('change', handleSystemThemeChange);
+        }
+      } catch {
+        // Safe fallback for environments lacking matchMedia
       }
-    };
-    mediaQuery.addEventListener('change', handleSystemThemeChange);
+    }
 
     return () => {
       window.removeEventListener('trinetr-preferences-updated', handlePreferencesUpdate);
-      mediaQuery.removeEventListener('change', handleSystemThemeChange);
+      if (mediaQuery && handleSystemThemeChange && mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener('change', handleSystemThemeChange);
+      }
     };
   }, [userPreferences.themeMode]);
 
@@ -5808,12 +5825,146 @@ export default function VoiceExpenseTrackerPreview() {
     return { rows, closingBalance: running };
   }, [cashLedgers, ledgers, vouchers]);
 
-  const filteredVouchers = useMemo(() => {
-    if (!dayBookFilter) {
-      return vouchers;
+  const counterLabel = useCallback((voucher) => {
+    if (!voucher || !voucher.lines) return '—';
+    const cashIds = new Set((cashLedgers || []).map((ledger) => ledger.id));
+    const nonCashLines = voucher.lines.filter((line) => !cashIds.has(line.ledgerId));
+    if (nonCashLines.length === 0) {
+      return '—';
     }
-    return vouchers.filter((voucher) => voucher.date === dayBookFilter);
-  }, [vouchers, dayBookFilter]);
+    return nonCashLines.map((line) => getLedgerById(ledgers, line.ledgerId)?.name || '?').join(' / ');
+  }, [cashLedgers, ledgers]);
+
+  const applyDayBookPreset = (preset) => {
+    setDayBookPreset(preset);
+    const now = new Date();
+    const todayStr = now.toISOString().slice(0, 10);
+    if (preset === 'today') {
+      setDayBookFromDate(todayStr);
+      setDayBookToDate(todayStr);
+    } else if (preset === 'yesterday') {
+      const y = new Date(now);
+      y.setDate(y.getDate() - 1);
+      const yStr = y.toISOString().slice(0, 10);
+      setDayBookFromDate(yStr);
+      setDayBookToDate(yStr);
+    } else if (preset === 'this-week') {
+      const d = new Date(now);
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      const mon = new Date(d.setDate(diff));
+      setDayBookFromDate(mon.toISOString().slice(0, 10));
+      setDayBookToDate(todayStr);
+    } else if (preset === 'this-month') {
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+      setDayBookFromDate(firstDay);
+      setDayBookToDate(todayStr);
+    } else if (preset === 'all') {
+      setDayBookFromDate('2020-01-01');
+      setDayBookToDate(todayStr);
+    }
+  };
+
+  const dayBookVouchers = useMemo(() => {
+    return (Array.isArray(vouchers) ? vouchers : [])
+      .filter((v) => {
+        if (!v || v.deleted || v.isDeleted || v.status === 'deleted' || v.status === 'cancelled') return false;
+        if (dayBookFromDate && v.date < dayBookFromDate) return false;
+        if (dayBookToDate && v.date > dayBookToDate) return false;
+        if (dayBookFilter && v.date !== dayBookFilter) return false;
+        if (dayBookSearch) {
+          const q = dayBookSearch.toLowerCase();
+          const pName = (counterLabel(v) || '').toLowerCase();
+          const narr = (v.narration || '').toLowerCase();
+          const vType = (v.type || '').toLowerCase();
+          const vId = (v.id || '').toLowerCase();
+          const amt = String(v.amount || '');
+          if (!pName.includes(q) && !narr.includes(q) && !vType.includes(q) && !vId.includes(q) && !amt.includes(q)) {
+            return false;
+          }
+        }
+        return true;
+      })
+      .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.dateTime || '').localeCompare(a.dateTime || ''));
+  }, [vouchers, dayBookFromDate, dayBookToDate, dayBookFilter, dayBookSearch, counterLabel]);
+
+  const filteredVouchers = dayBookVouchers;
+
+  const dayBookMetrics = useMemo(() => {
+    let totalInflow = 0;
+    let totalOutflow = 0;
+    dayBookVouchers.forEach((v) => {
+      const amt = Number(v.amount || 0);
+      if (v.type === 'Receipt' || v.type === 'Sales') {
+        totalInflow += amt;
+      } else if (v.type === 'Payment' || v.type === 'Purchase') {
+        totalOutflow += amt;
+      }
+    });
+    return {
+      count: dayBookVouchers.length,
+      inflow: totalInflow,
+      outflow: totalOutflow,
+      net: totalInflow - totalOutflow,
+    };
+  }, [dayBookVouchers]);
+
+  const trialBalanceData = useMemo(() => {
+    return computeTrialBalance(allEffectiveLedgers, activeVouchers);
+  }, [allEffectiveLedgers, activeVouchers]);
+
+  const filteredTrialBalanceRows = useMemo(() => {
+    return trialBalanceData.rows.filter((r) => {
+      if (trialBalanceGroupFilter !== 'all') {
+        if (trialBalanceGroupFilter === 'assets') {
+          if (!['Cash-in-hand', 'Bank Accounts', 'Sundry Debtors'].includes(r.group)) return false;
+        } else if (trialBalanceGroupFilter === 'liabilities') {
+          if (!['Sundry Creditors', 'Duties & Taxes'].includes(r.group)) return false;
+        } else if (trialBalanceGroupFilter === 'income') {
+          if (!['Sales Accounts', 'Direct Incomes', 'Indirect Incomes'].includes(r.group)) return false;
+        } else if (trialBalanceGroupFilter === 'expenses') {
+          if (!['Purchase Accounts', 'Direct Expenses', 'Indirect Expenses'].includes(r.group)) return false;
+        } else if (trialBalanceGroupFilter === 'capital') {
+          if (!['Capital Account', 'Reserves & Surplus'].includes(r.group)) return false;
+        }
+      }
+      if (trialBalanceSearch) {
+        const q = trialBalanceSearch.toLowerCase();
+        if (!r.name.toLowerCase().includes(q) && !r.group.toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+  }, [trialBalanceData.rows, trialBalanceGroupFilter, trialBalanceSearch]);
+
+  const exportTrialBalanceCsv = () => {
+    const headers = ['Ledger Name', 'Group', 'Opening Balance', 'Debit (Dr)', 'Credit (Cr)', 'Closing Balance', 'Nature'];
+    const rows = filteredTrialBalanceRows.map((r) => [
+      `"${(r.name || '').replace(/"/g, '""')}"`,
+      `"${(r.group || '').replace(/"/g, '""')}"`,
+      r.openingBalance,
+      r.closingDebit,
+      r.closingCredit,
+      r.closingBalance,
+      r.closingBalanceType,
+    ]);
+    const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
+    downloadCsv(`trial-balance-${new Date().toISOString().slice(0, 10)}.csv`, csvContent);
+    setStatus('Trial Balance exported to CSV');
+  };
+
+  const setupReadiness = useMemo(() => {
+    const checks = [
+      { id: 'name', label: 'Business Name & Brand', done: Boolean(profile.name && profile.name !== 'Default Business') },
+      { id: 'owner', label: 'Owner & Primary Contact', done: Boolean(profile.owner) },
+      { id: 'gstin', label: 'GSTIN / Tax Identification', done: Boolean(profile.gstin) },
+      { id: 'address', label: 'Official Business Address', done: Boolean(profile.address) },
+      { id: 'ledgers', label: 'Default Ledgers Configured', done: (ledgers.length >= 5) },
+      { id: 'vouchers', label: 'First Transaction Recorded', done: (vouchers.length > 0) },
+    ];
+    const completed = checks.filter((c) => c.done).length;
+    const pct = Math.round((completed / checks.length) * 100);
+    return { checks, completed, total: checks.length, pct };
+  }, [profile, ledgers, vouchers]);
 
   const recentVouchers = useMemo(() => {
     return sortVouchersNewestFirst(vouchers).slice(0, 8);
@@ -6820,8 +6971,9 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const exportVouchersCsv = () => {
-    const rows = voucherToCsvRows(vouchers, ledgers);
-    downloadCsv(`day-book-${new Date().toISOString().slice(0, 10)}.csv`, rows);
+    const targetVouchers = (dayBookVouchers && dayBookVouchers.length > 0) ? dayBookVouchers : vouchers;
+    const rows = voucherToCsvRows(targetVouchers, ledgers);
+    downloadCsv(`day-book-${dayBookFromDate}-to-${dayBookToDate}.csv`, rows);
     setStatus('Day book exported to CSV (open in Excel)');
   };
 
@@ -6891,15 +7043,6 @@ export default function VoiceExpenseTrackerPreview() {
     link.click();
     URL.revokeObjectURL(url);
     setStatus('Full backup downloaded');
-  };
-
-  const counterLabel = (voucher) => {
-    const cashIds = new Set(cashLedgers.map((ledger) => ledger.id));
-    const nonCashLines = voucher.lines.filter((line) => !cashIds.has(line.ledgerId));
-    if (nonCashLines.length === 0) {
-      return '—';
-    }
-    return nonCashLines.map((line) => getLedgerById(ledgers, line.ledgerId)?.name || '?').join(' / ');
   };
 
   const buildVoucherReceiptText = (voucher) => [
@@ -8454,6 +8597,236 @@ export default function VoiceExpenseTrackerPreview() {
       </main>
     );
   }
+
+  const renderUnifiedDayBook = (isStandalone = false) => (
+    <div className="unified-daybook-view">
+      <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+        <div>
+          <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>☷</span> Day Book &amp; Voucher Register
+          </h2>
+          <p className="panel-hint" style={{ margin: '4px 0 0' }}>
+            Chronological register of all sales, purchases, payments, receipts, and journal vouchers ({dayBookFromDate} to {dayBookToDate}).
+          </p>
+        </div>
+        <div className="inline-actions topbar-actions" style={{ display: 'flex', gap: '8px' }}>
+          <button className="secondary-button" type="button" onClick={exportVouchersCsv}>
+            Export Day Book CSV
+          </button>
+          <button className="warning-button" type="button" onClick={printReport}>
+            Print Day Book
+          </button>
+        </div>
+      </div>
+
+      {isStandalone && (
+        <div className="reports-sub-nav" style={{ marginBottom: '16px' }}>
+          <button className="active" type="button">Day Book</button>
+          <button type="button" onClick={() => navigateToTab('reports', 'pnl')}>Profit &amp; Loss</button>
+          <button type="button" onClick={() => navigateToTab('reports', 'cashbook')}>Cash Book</button>
+          <button type="button" onClick={() => navigateToTab('reports', 'customer')}>Customer Outstanding</button>
+          <button type="button" onClick={() => navigateToTab('reports', 'supplier')}>Supplier Outstanding</button>
+        </div>
+      )}
+
+      {/* Date Presets Row */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+        <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Quick Presets:</span>
+        {[
+          ['today', 'Today'],
+          ['yesterday', 'Yesterday'],
+          ['this-week', 'This Week'],
+          ['this-month', 'This Month'],
+          ['all', 'All Time'],
+        ].map(([presetKey, presetLabel]) => (
+          <button
+            key={presetKey}
+            type="button"
+            className={`btn ${dayBookPreset === presetKey ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => applyDayBookPreset(presetKey)}
+            style={{
+              padding: '4px 10px',
+              fontSize: '12px',
+              borderRadius: '16px',
+              border: dayBookPreset === presetKey ? '1px solid #2563eb' : '1px solid var(--border-subtle)',
+              background: dayBookPreset === presetKey ? '#2563eb' : 'var(--bg-secondary)',
+              color: dayBookPreset === presetKey ? '#fff' : 'var(--text-secondary)',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            {presetLabel}
+          </button>
+        ))}
+      </div>
+
+      {/* Date Range & Search Filter Row */}
+      <div className="reports-filter-row" style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', alignItems: 'flex-end', marginBottom: '16px' }}>
+        <div>
+          <label className="field-label" htmlFor="daybook-from-date">From Date</label>
+          <input id="daybook-from-date" type="date" value={dayBookFromDate} onChange={(e) => { setDayBookFromDate(e.target.value); setDayBookPreset('custom'); }} />
+        </div>
+        <div>
+          <label className="field-label" htmlFor="daybook-to-date">To Date</label>
+          <input id="daybook-to-date" type="date" value={dayBookToDate} onChange={(e) => { setDayBookToDate(e.target.value); setDayBookPreset('custom'); }} />
+        </div>
+        <div style={{ flex: 1, minWidth: '220px' }}>
+          <label className="field-label" htmlFor="daybook-search">Search Day Book</label>
+          <input
+            id="daybook-search"
+            type="text"
+            placeholder="Search party, narration, ID, amount..."
+            value={dayBookSearch}
+            onChange={(e) => setDayBookSearch(e.target.value)}
+          />
+        </div>
+        {(dayBookSearch || dayBookPreset !== 'this-month' || dayBookFilter) && (
+          <div>
+            <button
+              className="delete-entry-button"
+              type="button"
+              onClick={() => {
+                setDayBookSearch('');
+                setDayBookFilter('');
+                applyDayBookPreset('this-month');
+              }}
+              style={{ height: '38px', padding: '0 12px' }}
+            >
+              Reset Filters
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Summary KPI Cards */}
+      <div className="summary-grid report-summary" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '20px' }}>
+        <div className="summary-card" style={{ padding: '14px', borderRadius: '8px', background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>Total Vouchers</span>
+          <strong style={{ display: 'block', fontSize: '20px', marginTop: '4px' }}>{dayBookMetrics.count}</strong>
+          <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>In selected period</span>
+        </div>
+        <div className="summary-card" style={{ padding: '14px', borderRadius: '8px', background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>Total Inflows (Receipts/Sales)</span>
+          <strong style={{ display: 'block', fontSize: '20px', marginTop: '4px', color: '#10b981' }}>{formatCurrency(dayBookMetrics.inflow)}</strong>
+          <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Total cash/bank receipts</span>
+        </div>
+        <div className="summary-card" style={{ padding: '14px', borderRadius: '8px', background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>Total Outflows (Payments/Purchases)</span>
+          <strong style={{ display: 'block', fontSize: '20px', marginTop: '4px', color: '#ef4444' }}>{formatCurrency(dayBookMetrics.outflow)}</strong>
+          <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Total cash/bank expenses</span>
+        </div>
+        <div className="summary-card" style={{ padding: '14px', borderRadius: '8px', background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>Net Movement</span>
+          <strong style={{ display: 'block', fontSize: '20px', marginTop: '4px', color: dayBookMetrics.net >= 0 ? '#10b981' : '#ef4444' }}>
+            {formatCurrency(dayBookMetrics.net)}
+          </strong>
+          <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{dayBookMetrics.net >= 0 ? 'Net positive inflow' : 'Net cash outflow'}</span>
+        </div>
+      </div>
+
+      {transactionsLoading && (
+        <div className="notice" style={{ marginBottom: '16px' }}>
+          Loading day book transactions from Supabase...
+        </div>
+      )}
+
+      {/* Main Vouchers Table */}
+      <div className="daybook-report-view">
+        <div className="table-responsive" style={{ overflowX: 'auto' }}>
+          <table className="statement-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: 'var(--bg-secondary)' }}>
+                <th style={{ padding: '10px 12px', textAlign: 'left' }}>Date</th>
+                <th style={{ padding: '10px 12px', textAlign: 'left' }}>Voucher ID</th>
+                <th style={{ padding: '10px 12px', textAlign: 'left' }}>Type</th>
+                <th style={{ padding: '10px 12px', textAlign: 'left' }}>Particulars / Party</th>
+                <th style={{ padding: '10px 12px', textAlign: 'left' }}>Narration</th>
+                <th style={{ padding: '10px 12px', textAlign: 'right' }}>Amount</th>
+                <th style={{ padding: '10px 12px', textAlign: 'center' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {dayBookVouchers.length === 0 ? (
+                <tr>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '36px 16px' }}>
+                    <div className="empty-state" style={{ padding: '12px' }}>
+                      <p style={{ margin: 0, fontWeight: 600, fontSize: '15px' }}>No vouchers recorded for this period.</p>
+                      <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                        Use Quick Add (+), press F2 for Quick Sales Bill, or create a Payment / Receipt voucher.
+                      </p>
+                      <div style={{ marginTop: '12px', display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                        <button type="button" className="btn btn-primary" onClick={() => navigateToTab('sales-entry')}>
+                          + Sales Bill (F2)
+                        </button>
+                        <button type="button" className="btn btn-secondary" onClick={() => navigateToTab('voucher-entry')}>
+                          + Record Voucher
+                        </button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                dayBookVouchers.map((voucher) => (
+                  <tr key={voucher.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                    <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{voucher.date}</td>
+                    <td style={{ padding: '10px 12px' }}>
+                      <code className="text-muted" title={voucher.id}>{voucher.id.slice(0, 10)}</code>
+                    </td>
+                    <td style={{ padding: '10px 12px' }}>
+                      <span className={`badge badge-${(voucher.type || 'journal').toLowerCase()}`}>
+                        {voucher.type}
+                      </span>
+                    </td>
+                    <td style={{ padding: '10px 12px' }}>
+                      <strong>{counterLabel(voucher)}</strong>
+                      {voucher.source && <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)' }}>{voucher.source}</span>}
+                    </td>
+                    <td style={{ padding: '10px 12px', maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {voucher.narration || '—'}
+                    </td>
+                    <td style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+                      <strong>{formatCurrency(voucher.amount)}</strong>
+                    </td>
+                    <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                      <div style={{ display: 'inline-flex', gap: '4px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                        <button className="share-entry-button" style={{ padding: '3px 8px', fontSize: '11px' }} type="button" onClick={() => editVoucher(voucher)}>
+                          Edit
+                        </button>
+                        <button className="share-entry-button" style={{ padding: '3px 8px', fontSize: '11px' }} type="button" onClick={() => printVoucherReceipt(voucher)}>
+                          PDF
+                        </button>
+                        <button className="share-entry-button" style={{ padding: '3px 8px', fontSize: '11px' }} type="button" onClick={() => shareVoucherToWhatsApp(voucher)}>
+                          WhatsApp
+                        </button>
+                        <button className="delete-entry-button" style={{ padding: '3px 8px', fontSize: '11px' }} type="button" onClick={() => removeVoucher(voucher.id)}>
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+            {dayBookVouchers.length > 0 && (
+              <tfoot style={{ background: 'var(--bg-secondary)', borderTop: '2px solid var(--border-subtle)', fontWeight: 700 }}>
+                <tr>
+                  <td style={{ padding: '10px 12px' }}>TOTAL</td>
+                  <td style={{ padding: '10px 12px' }}>{dayBookVouchers.length} Vouchers</td>
+                  <td colSpan={3} style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--text-secondary)' }}>
+                    Inflow: <span style={{ color: '#10b981' }}>{formatCurrency(dayBookMetrics.inflow)}</span> | Outflow: <span style={{ color: '#ef4444' }}>{formatCurrency(dayBookMetrics.outflow)}</span>
+                  </td>
+                  <td style={{ padding: '10px 12px', textAlign: 'right', fontFamily: 'monospace' }}>
+                    <strong>{formatCurrency(dayBookVouchers.reduce((s, v) => s + Number(v.amount || 0), 0))}</strong>
+                  </td>
+                  <td style={{ padding: '10px 12px', textAlign: 'center' }}>—</td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className={`app-frame ${mobileNavOpen ? 'nav-open' : ''}`}>
@@ -11782,37 +12155,7 @@ export default function VoiceExpenseTrackerPreview() {
                   </div>
                 )}
 
-                {activeReportTab === 'daybook' && (
-                  <div className="daybook-report-view">
-                    <h3 className="report-view-title">Day Book Report ({dayBookFromDate} to {dayBookToDate})</h3>
-                    <table className="statement-table">
-                      <thead>
-                        <tr>
-                          <th>Date</th>
-                          <th>Voucher ID</th>
-                          <th>Type</th>
-                          <th>Particulars</th>
-                          <th>Narration</th>
-                          <th>Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {vouchers
-                          .filter(v => v.date >= dayBookFromDate && v.date <= dayBookToDate)
-                          .map(v => (
-                            <tr key={v.id}>
-                              <td>{v.date}</td>
-                              <td><code className="text-muted">{v.id.slice(0, 10)}</code></td>
-                              <td><span className={`badge badge-${v.type.toLowerCase()}`}>{v.type}</span></td>
-                              <td>{counterLabel(v)}</td>
-                              <td>{v.narration}</td>
-                              <td><strong>{formatCurrency(v.amount)}</strong></td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                {activeReportTab === 'daybook' && renderUnifiedDayBook(false)}
 
                 {activeReportTab === 'cashbook' && (
                   <div className="cashbook-report-view">
@@ -11956,67 +12299,8 @@ export default function VoiceExpenseTrackerPreview() {
           )}
 
           {activeTab === 'day-book' && (
-            <section className="panel fade-in" id="day-book">
-              <div className="section-header">
-                <h2>Day Book Overview</h2>
-              </div>
-              <label className="field-label" htmlFor="daybook-filter">
-                Filter Day Book by Date
-              </label>
-              <input
-                id="daybook-filter"
-                type="date"
-                value={dayBookFilter}
-                onChange={(event) => setDayBookFilter(event.target.value)}
-              />
-              {dayBookFilter && (
-                <button className="delete-entry-button" style={{ marginTop: '10px' }} type="button" onClick={() => setDayBookFilter('')}>
-                  Clear Filter
-                </button>
-              )}
-              {transactionsLoading && (
-                <div className="notice" style={{ marginTop: '16px' }}>
-                  Loading day book transactions from Supabase...
-                </div>
-              )}
-              <div className="activity-list" style={{ marginTop: '20px' }}>
-                {filteredVouchers.length === 0 ? (
-                  <div className="empty-state">No vouchers recorded for this date.</div>
-                ) : (
-                  filteredVouchers.map((voucher) => (
-                    <article className="activity-item" key={voucher.id}>
-                      <div>
-                        <p className={`activity-type voucher-${voucher.type.toLowerCase()}`}>{voucher.type}</p>
-                        <p className="voucher-narration">{voucher.narration}</p>
-                        <p className="voucher-meta">
-                          {voucher.date} · {counterLabel(voucher)} · {voucher.source}
-                        </p>
-                      </div>
-                      <strong>{formatCurrency(voucher.amount)}</strong>
-                      <div className="voucher-actions">
-                        <button className="share-entry-button" type="button" onClick={() => shareVoucher(voucher)}>
-                          Share
-                        </button>
-                        <button className="share-entry-button" type="button" onClick={() => editVoucher(voucher)}>
-                          Edit
-                        </button>
-                        <button className="share-entry-button" type="button" onClick={() => shareVoucherToWhatsApp(voucher)}>
-                          WhatsApp
-                        </button>
-                        <button className="share-entry-button" type="button" onClick={() => shareVoucherToFacebook(voucher)}>
-                          Facebook
-                        </button>
-                        <button className="share-entry-button" type="button" onClick={() => printVoucherReceipt(voucher)}>
-                          PDF Receipt
-                        </button>
-                        <button className="delete-entry-button" type="button" onClick={() => removeVoucher(voucher.id)}>
-                          Delete
-                        </button>
-                      </div>
-                    </article>
-                  ))
-                )}
-              </div>
+            <section className="panel reports-panel fade-in" id="day-book">
+              {renderUnifiedDayBook(true)}
             </section>
           )}
 
@@ -12318,35 +12602,111 @@ export default function VoiceExpenseTrackerPreview() {
             <section className="phase2-stack fade-in" id="company-setup">
               <div className="erp-hero">
                 <div>
-                  <span className="eyebrow">Company / Business Setup</span>
-                  <h2>Modern accounting foundation for your business</h2>
+                  <span className="eyebrow">Enterprise Governance &amp; Profile</span>
+                  <h2>Company Setup &amp; Financial Year</h2>
+                  <p style={{ margin: '4px 0 0', opacity: 0.85, fontSize: '13px' }}>
+                    Configure corporate identity, tax registration, financial periods, and readiness checklist.
+                  </p>
                 </div>
-                <div className="erp-hero-actions"><strong>{profile.name}</strong><span>{profile.gstin || 'GST not set'}</span></div>
+                <div className="erp-hero-actions" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <button className="primary-button" type="button" onClick={() => navigateToTab('profile-settings')}>
+                    Edit Business Profile
+                  </button>
+                  <button className="secondary-button" type="button" onClick={downloadFullBackup}>
+                    Export System Backup
+                  </button>
+                </div>
               </div>
+
+              {/* Readiness Banner */}
+              <div className="panel" style={{ marginBottom: '16px', background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
+                  <div>
+                    <strong style={{ fontSize: '15px' }}>Business Setup &amp; Accounting Readiness</strong>
+                    <span style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                      {setupReadiness.completed} of {setupReadiness.total} essential business components ready
+                    </span>
+                  </div>
+                  <span className="status-pill active" style={{ fontSize: '13px', fontWeight: 700, padding: '4px 12px' }}>
+                    {setupReadiness.pct}% Completed
+                  </span>
+                </div>
+                {/* Progress Bar */}
+                <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden', marginBottom: '14px' }}>
+                  <div style={{ width: `${setupReadiness.pct}%`, height: '100%', background: 'linear-gradient(90deg, #3b82f6, #10b981)', borderRadius: '4px', transition: 'width 0.4s ease' }} />
+                </div>
+                {/* Checklist Chips */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '8px' }}>
+                  {setupReadiness.checks.map((c) => (
+                    <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', padding: '6px 10px', background: 'var(--bg-primary)', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}>
+                      <span style={{ color: c.done ? '#10b981' : '#f59e0b', fontWeight: 700 }}>{c.done ? '✓' : '○'}</span>
+                      <span style={{ color: c.done ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{c.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <section className="content-grid">
                 <article className="panel">
-                  <h2>Business Identity</h2>
-                  <div className="account-detail-grid">
-                    <div><dt>Business name</dt><dd>{profile.name}</dd></div>
-                    <div><dt>Owner name</dt><dd>{profile.owner}</dd></div>
-                    <div><dt>GST number</dt><dd>{profile.gstin || 'Not provided'}</dd></div>
-                    <div><dt>Address</dt><dd>{profile.address || 'Not provided'}</dd></div>
-                    <div><dt>Financial year</dt><dd>April to March</dd></div>
-                    <div><dt>Currency</dt><dd>INR</dd></div>
-                    <div><dt>Business type</dt><dd>{profile.tagline || 'Small business'}</dd></div>
+                  <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <h2 style={{ margin: 0 }}>Business Identity</h2>
+                    <a className="compact-link" href="#profile-settings" onClick={(e) => { e.preventDefault(); navigateToTab('profile-settings'); }}>
+                      Modify ✎
+                    </a>
                   </div>
-                  <div className="inline-actions">
-                    <a className="manual-button compact-link" href="#profile-settings">Edit Profile</a>
-                    <button className="secondary-button compact-button" type="button" onClick={downloadFullBackup}>Backup / Export</button>
+                  <div className="account-detail-grid">
+                    <div><dt>Business Name</dt><dd>{profile.name || 'Default Business'}</dd></div>
+                    <div><dt>Owner / Director</dt><dd>{profile.owner || 'Not specified'}</dd></div>
+                    <div><dt>GST Number (GSTIN)</dt><dd>{profile.gstin ? <span className="status-pill active">{profile.gstin}</span> : <span className="status-pill warning">Not Registered</span>}</dd></div>
+                    <div><dt>Registered Address</dt><dd>{profile.address || 'Not provided'}</dd></div>
+                    <div><dt>Email Address</dt><dd>{profile.email || authUser?.email || 'Not configured'}</dd></div>
+                    <div><dt>Contact Phone</dt><dd>{profile.phone || 'Not provided'}</dd></div>
+                    <div><dt>Business Type</dt><dd>{profile.tagline || 'Trading & Services'}</dd></div>
+                  </div>
+                  <div className="inline-actions" style={{ marginTop: '16px' }}>
+                    <a className="manual-button compact-link" href="#profile-settings" onClick={(e) => { e.preventDefault(); navigateToTab('profile-settings'); }}>
+                      Edit Business Profile
+                    </a>
+                    <a className="secondary-button compact-link" href="#businesses" onClick={(e) => { e.preventDefault(); navigateToTab('businesses'); }}>
+                      Branches &amp; Multi-Business
+                    </a>
                   </div>
                 </article>
+
                 <article className="panel">
-                  <h2>Accounting Readiness</h2>
-                  <div className="summary-grid report-summary">
-                    <div className="summary-card"><span>Ledgers</span><strong>{ledgers.length}</strong></div>
-                    <div className="summary-card"><span>Vouchers</span><strong>{vouchers.length}</strong></div>
-                    <div className="summary-card"><span>Customers</span><strong>{cloudCustomers.length}</strong></div>
-                    <div className="summary-card"><span>Suppliers</span><strong>{cloudSuppliers.length}</strong></div>
+                  <div className="section-header" style={{ marginBottom: '12px' }}>
+                    <h2 style={{ margin: 0 }}>Financial Year &amp; Controls</h2>
+                  </div>
+                  <div className="account-detail-grid">
+                    <div><dt>Current Financial Year</dt><dd><strong>2026-2027</strong></dd></div>
+                    <div><dt>Period</dt><dd>01-Apr-2026 to 31-Mar-2027</dd></div>
+                    <div><dt>Base Currency</dt><dd>INR (₹ Indian Rupee)</dd></div>
+                    <div><dt>Accounting Method</dt><dd>Accrual &amp; Cash Basis (Hybrid)</dd></div>
+                    <div><dt>Books Locking Date</dt><dd>None (Books Open)</dd></div>
+                    <div><dt>Active Workspace</dt><dd>{authUser?.businessId || 'Default Workspace'}</dd></div>
+                  </div>
+                  <div style={{ marginTop: '20px' }}>
+                    <h3 style={{ fontSize: '13px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                      Operational Volume
+                    </h3>
+                    <div className="summary-grid report-summary" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+                      <div className="summary-card" style={{ padding: '10px 14px' }}>
+                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Ledgers Active</span>
+                        <strong style={{ fontSize: '18px' }}>{allEffectiveLedgers.length}</strong>
+                      </div>
+                      <div className="summary-card" style={{ padding: '10px 14px' }}>
+                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Total Vouchers</span>
+                        <strong style={{ fontSize: '18px' }}>{vouchers.length}</strong>
+                      </div>
+                      <div className="summary-card" style={{ padding: '10px 14px' }}>
+                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Customers</span>
+                        <strong style={{ fontSize: '18px' }}>{cloudCustomers.length}</strong>
+                      </div>
+                      <div className="summary-card" style={{ padding: '10px 14px' }}>
+                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Suppliers</span>
+                        <strong style={{ fontSize: '18px' }}>{cloudSuppliers.length}</strong>
+                      </div>
+                    </div>
                   </div>
                 </article>
               </section>
@@ -12400,27 +12760,213 @@ export default function VoiceExpenseTrackerPreview() {
 
           {activeTab === 'accounting-ledgers' && (
             <section className="phase2-stack fade-in" id="accounting-ledgers">
-              <div className="erp-hero"><div><span className="eyebrow">Accounting / Ledger System</span><h2>Debit-credit ledgers powering customers, suppliers, cash, bank, income, and expense reports</h2></div></div>
-              <section className="content-grid">
-                <article className="panel">
-                  <h2>Ledger Groups</h2>
-                  <div className="compact-list">
-                    {['Cash-in-hand', 'Bank Accounts', 'Sales Accounts', 'Purchase Accounts', 'Indirect Expenses', 'Sundry Debtors', 'Sundry Creditors'].map((group) => (
-                      <article className="compact-item" key={group}><strong>{group}</strong><span className="status-pill draft">{ledgers.filter((ledger) => ledger.group === group).length}</span></article>
-                    ))}
+              <div className="erp-hero">
+                <div>
+                  <span className="eyebrow">Double-Entry Accounting &amp; Ledger Master</span>
+                  <h2>Accounting Ledgers &amp; Trial Balance</h2>
+                  <p style={{ margin: '4px 0 0', opacity: 0.85, fontSize: '13px' }}>
+                    Audit real-time debit and credit balances, examine ledger groups, and drill down to individual party statements.
+                  </p>
+                </div>
+                <div className="inline-actions topbar-actions" style={{ display: 'flex', gap: '8px' }}>
+                  <button className="secondary-button" type="button" onClick={exportTrialBalanceCsv}>
+                    Export Trial Balance CSV
+                  </button>
+                  <button className="warning-button" type="button" onClick={printReport}>
+                    Print Trial Balance
+                  </button>
+                </div>
+              </div>
+
+              {/* KPI Summary Cards */}
+              <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '20px' }}>
+                <div className="kpi-card-modern" style={{ padding: '16px', background: 'var(--bg-secondary)', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>Total Ledgers</span>
+                  <strong style={{ display: 'block', fontSize: '22px', marginTop: '4px' }}>{allEffectiveLedgers.length}</strong>
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Across all active groups</span>
+                </div>
+                <div className="kpi-card-modern" style={{ padding: '16px', background: 'var(--bg-secondary)', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>Total Debits (Dr)</span>
+                  <strong style={{ display: 'block', fontSize: '22px', marginTop: '4px', color: '#3b82f6' }}>{formatCurrency(trialBalanceData.totalDebit)}</strong>
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Assets, Receivables &amp; Expenses</span>
+                </div>
+                <div className="kpi-card-modern" style={{ padding: '16px', background: 'var(--bg-secondary)', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>Total Credits (Cr)</span>
+                  <strong style={{ display: 'block', fontSize: '22px', marginTop: '4px', color: '#10b981' }}>{formatCurrency(trialBalanceData.totalCredit)}</strong>
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Liabilities, Payables &amp; Revenue</span>
+                </div>
+                <div className="kpi-card-modern" style={{ padding: '16px', background: 'var(--bg-secondary)', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>Balance Verification</span>
+                  <div style={{ marginTop: '6px' }}>
+                    {trialBalanceData.isBalanced ? (
+                      <span className="status-pill active" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '4px 10px', borderRadius: '20px', fontWeight: 700, fontSize: '12px' }}>
+                        ✓ Books Balanced
+                      </span>
+                    ) : (
+                      <span className="status-pill warning" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', padding: '4px 10px', borderRadius: '20px', fontWeight: 700, fontSize: '12px' }}>
+                        Diff: {formatCurrency(trialBalanceData.difference)}
+                      </span>
+                    )}
                   </div>
-                </article>
-                <article className="panel">
-                  <h2>Ledger Reports</h2>
-                  <div className="tally-quick-links">
-                    <a href="#party-statement">Customer ledger</a>
-                    <a href="#party-statement">Supplier ledger</a>
-                    <a href="#reports">Expense ledger</a>
-                    <a href="#reports">Payment ledger</a>
-                    <a href="#reports">Cash / Bank ledger</a>
-                  </div>
-                </article>
-              </section>
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Double-entry reconciliation</span>
+                </div>
+              </div>
+
+              {/* Filter Controls */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {[
+                    ['all', 'All Ledgers'],
+                    ['assets', 'Assets (Bank, Cash, Debtors)'],
+                    ['liabilities', 'Liabilities & Creditors'],
+                    ['income', 'Revenue & Sales'],
+                    ['expenses', 'Expenses & Purchases'],
+                    ['capital', 'Capital / Equity'],
+                  ].map(([val, lbl]) => (
+                    <button
+                      key={val}
+                      type="button"
+                      className={`btn ${trialBalanceGroupFilter === val ? 'btn-primary' : 'btn-ghost'}`}
+                      onClick={() => setTrialBalanceGroupFilter(val)}
+                      style={{
+                        padding: '5px 12px',
+                        fontSize: '12px',
+                        borderRadius: '20px',
+                        border: trialBalanceGroupFilter === val ? '1px solid #2563eb' : '1px solid var(--border-subtle)',
+                        background: trialBalanceGroupFilter === val ? '#2563eb' : 'var(--bg-secondary)',
+                        color: trialBalanceGroupFilter === val ? '#fff' : 'var(--text-secondary)',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {lbl}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ minWidth: '240px' }}>
+                  <input
+                    type="text"
+                    placeholder="Search ledger or group..."
+                    value={trialBalanceSearch}
+                    onChange={(e) => setTrialBalanceSearch(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '7px 12px',
+                      fontSize: '13px',
+                      borderRadius: '8px',
+                      border: '1px solid var(--border-subtle)',
+                      background: 'var(--bg-primary)',
+                      color: 'var(--text-primary)',
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Trial Balance Table */}
+              <div className="panel" style={{ padding: 0, overflow: 'hidden' }}>
+                <div className="table-responsive" style={{ overflowX: 'auto' }}>
+                  <table className="statement-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-subtle)' }}>
+                        <th style={{ padding: '12px 14px', textAlign: 'left' }}>Ledger Particulars</th>
+                        <th style={{ padding: '12px 14px', textAlign: 'left' }}>Group Head</th>
+                        <th style={{ padding: '12px 14px', textAlign: 'right' }}>Opening (₹)</th>
+                        <th style={{ padding: '12px 14px', textAlign: 'right', color: '#3b82f6' }}>Debit (Dr)</th>
+                        <th style={{ padding: '12px 14px', textAlign: 'right', color: '#10b981' }}>Credit (Cr)</th>
+                        <th style={{ padding: '12px 14px', textAlign: 'right' }}>Closing Balance</th>
+                        <th style={{ padding: '12px 14px', textAlign: 'center' }}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredTrialBalanceRows.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} style={{ textAlign: 'center', padding: '32px' }}>
+                            <div className="empty-state">No ledgers match the selected filter.</div>
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredTrialBalanceRows.map((row) => (
+                          <tr key={row.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                            <td style={{ padding: '10px 14px' }}>
+                              <strong style={{ color: 'var(--text-primary)' }}>{row.name}</strong>
+                              <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)' }}>ID: {row.id}</span>
+                            </td>
+                            <td style={{ padding: '10px 14px' }}>
+                              <span className="status-pill" style={{ fontSize: '11px', background: 'var(--bg-primary)', border: '1px solid var(--border-subtle)', padding: '2px 8px', borderRadius: '4px' }}>
+                                {row.group}
+                              </span>
+                            </td>
+                            <td style={{ padding: '10px 14px', textAlign: 'right', fontFamily: 'monospace' }}>
+                              {row.openingBalance > 0 ? formatCurrency(row.openingBalance) : '—'}
+                            </td>
+                            <td style={{ padding: '10px 14px', textAlign: 'right', fontFamily: 'monospace', color: row.closingDebit > 0 ? '#3b82f6' : 'var(--text-secondary)', fontWeight: row.closingDebit > 0 ? 600 : 400 }}>
+                              {row.closingDebit > 0 ? formatCurrency(row.closingDebit) : '—'}
+                            </td>
+                            <td style={{ padding: '10px 14px', textAlign: 'right', fontFamily: 'monospace', color: row.closingCredit > 0 ? '#10b981' : 'var(--text-secondary)', fontWeight: row.closingCredit > 0 ? 600 : 400 }}>
+                              {row.closingCredit > 0 ? formatCurrency(row.closingCredit) : '—'}
+                            </td>
+                            <td style={{ padding: '10px 14px', textAlign: 'right', fontFamily: 'monospace' }}>
+                              <strong>{formatCurrency(row.closingBalance)}</strong>
+                              <span style={{ marginLeft: '4px', fontSize: '11px', color: row.closingBalanceType === 'Dr' ? '#3b82f6' : '#10b981', fontWeight: 700 }}>
+                                {row.closingBalanceType}
+                              </span>
+                            </td>
+                            <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                className="share-entry-button"
+                                style={{ fontSize: '11px', padding: '4px 8px' }}
+                                onClick={() => {
+                                  setStatementLedgerId(row.id);
+                                  navigateToTab('party-statement');
+                                }}
+                              >
+                                Statement ↗
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                    <tfoot style={{ background: 'var(--bg-secondary)', borderTop: '2px solid var(--border-subtle)', fontWeight: 700 }}>
+                      <tr>
+                        <td style={{ padding: '12px 14px' }}>TOTAL</td>
+                        <td style={{ padding: '12px 14px' }}>{filteredTrialBalanceRows.length} Ledgers</td>
+                        <td style={{ padding: '12px 14px', textAlign: 'right' }}>—</td>
+                        <td style={{ padding: '12px 14px', textAlign: 'right', color: '#3b82f6', fontFamily: 'monospace' }}>
+                          {formatCurrency(filteredTrialBalanceRows.reduce((sum, r) => sum + r.closingDebit, 0))}
+                        </td>
+                        <td style={{ padding: '12px 14px', textAlign: 'right', color: '#10b981', fontFamily: 'monospace' }}>
+                          {formatCurrency(filteredTrialBalanceRows.reduce((sum, r) => sum + r.closingCredit, 0))}
+                        </td>
+                        <td style={{ padding: '12px 14px', textAlign: 'right', fontFamily: 'monospace' }}>
+                          {trialBalanceData.isBalanced ? '✓ Balanced' : `Diff: ${formatCurrency(trialBalanceData.difference)}`}
+                        </td>
+                        <td style={{ padding: '12px 14px', textAlign: 'center' }}>—</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+
+              {/* Quick Accounting Navigation Cards */}
+              <div style={{ marginTop: '20px' }}>
+                <h3 style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Accounting Shortcuts &amp; Statements
+                </h3>
+                <div className="tally-module-grid">
+                  {[
+                    ['Customer Ledger Statement', 'Audit party debits, credits, invoices and dues', 'party-statement'],
+                    ['Supplier Ledger Statement', 'Vendor balances, purchases, and payments', 'party-statement'],
+                    ['Day Book Register', 'Complete daily cash, bank, and journal log', 'day-book'],
+                    ['Profit & Loss Report', 'Gross revenue, expenses, and net profit audit', 'reports'],
+                  ].map(([title, body, href]) => (
+                    <a className="tally-module-card" href={`#${href}`} key={title} onClick={(e) => { e.preventDefault(); navigateToTab(href); }}>
+                      <strong>{title}</strong><p>{body}</p><span>Open ↗</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
             </section>
           )}
 
