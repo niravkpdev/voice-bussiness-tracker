@@ -194,7 +194,7 @@ export function deleteVoucher(voucherId) {
   return vouchers;
 }
 
-export function addPartyLedger(name, partyType, currentLedgers = null) {
+export function addPartyLedger(name, partyType, currentLedgers = null, initialBalance = 0) {
   const trimmed = name.trim();
   if (!trimmed) {
     throw new Error('Party name is required');
@@ -202,6 +202,7 @@ export function addPartyLedger(name, partyType, currentLedgers = null) {
 
   const group = partyType === 'supplier' ? 'Sundry Creditors' : 'Sundry Debtors';
   const balanceType = partyType === 'supplier' ? 'credit' : 'debit';
+  const parsedBalance = Number(initialBalance || 0);
   
   // Merge default ledgers, stored ledgers, and any current in-memory ledgers to guarantee no lost parties
   const storedLedgers = readLedgers();
@@ -222,6 +223,16 @@ export function addPartyLedger(name, partyType, currentLedgers = null) {
   );
 
   if (duplicate) {
+    if (parsedBalance > 0 || !duplicate.openingBalance) {
+      const updated = {
+        ...duplicate,
+        openingBalance: parsedBalance !== 0 ? parsedBalance : (duplicate.openingBalance || 0),
+        profileOutstanding: parsedBalance !== 0 ? parsedBalance : (duplicate.profileOutstanding || duplicate.openingBalance || 0),
+      };
+      const nextLedgers = ledgers.map((l) => (l.id === duplicate.id ? updated : l));
+      writeSavedArray(LEDGERS_KEY, nextLedgers);
+      return { ledgers: nextLedgers, ledger: updated };
+    }
     return { ledgers, ledger: duplicate };
   }
 
@@ -229,7 +240,8 @@ export function addPartyLedger(name, partyType, currentLedgers = null) {
     id: createLedgerId(trimmed),
     name: trimmed,
     group,
-    openingBalance: 0,
+    openingBalance: parsedBalance,
+    profileOutstanding: parsedBalance,
     balanceType,
   };
 
@@ -370,10 +382,14 @@ export function computeLedgerBalance(ledgerId, ledgers, vouchers) {
     });
   });
 
-  const opBal = Number(ledger.openingBalance || 0);
+  const baseBal = Number(
+    ledger.profileOutstanding !== undefined && ledger.profileOutstanding !== null
+      ? ledger.profileOutstanding
+      : (ledger.openingBalance || 0)
+  );
   const net = ledger.balanceType === 'debit'
-    ? (debits - credits + opBal)
-    : (credits - debits + opBal);
+    ? (debits - credits + baseBal)
+    : (credits - debits + baseBal);
   return net;
 }
 
@@ -866,7 +882,16 @@ export function getPartySummary(ledgers, vouchers, invoices = []) {
       });
     }
 
-    const opBal = Number(ledger.openingBalance ?? ledger.profileOutstanding ?? 0);
+    const baseOutstanding = Number(
+      ledger.profileOutstanding !== undefined && ledger.profileOutstanding !== null
+        ? ledger.profileOutstanding
+        : (ledger.openingBalance || 0)
+    );
+    const opBal = Number(
+      ledger.openingBalance !== undefined && ledger.openingBalance !== null
+        ? ledger.openingBalance
+        : baseOutstanding
+    );
     const voucherBalance = computeLedgerBalance(ledger.id, ledgers, vouchers);
 
     let totalSales = 0;
@@ -876,12 +901,12 @@ export function getPartySummary(ledgers, vouchers, invoices = []) {
     if (ledger.group === 'Sundry Debtors') {
       totalSales = opBal + voucherSales + invoiceSales;
       totalPayments = voucherPayments + invoicePayments;
-      outstandingAmount = (opBal + voucherSales + invoiceSales) - (voucherPayments + invoicePayments);
+      outstandingAmount = (baseOutstanding + voucherSales + invoiceSales) - (voucherPayments + invoicePayments);
     } else {
       // Sundry Creditors (Suppliers)
       totalSales = opBal + voucherSales;
       totalPayments = voucherPayments;
-      outstandingAmount = voucherBalance !== 0 ? voucherBalance : opBal;
+      outstandingAmount = voucherBalance !== 0 ? voucherBalance : baseOutstanding;
     }
 
     if (lastDate === '—' && (ledger.createdAt || ledger.date)) {

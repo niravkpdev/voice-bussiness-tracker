@@ -432,13 +432,20 @@ export function rowToAppRecord(row, tableName) {
   // Apply table-specific normalizations
   if (tableName === 'transactions') {
     normalized = normalizeTransaction(row);    } else if (tableName === 'customers' || tableName === 'suppliers') {
+      const isCust = (data.type || "customer") === "customer" || tableName === 'customers';
+      const opBal = Number(data.openingBalance ?? data.opening_balance ?? 0);
+      const outBal = Number(data.outstandingAmount ?? data.outstanding ?? data.payableAmount ?? data.payable ?? data.balance ?? opBal);
       normalized = {
         ...normalized,
         name: data.name || data.customerName || data.partyName || "Unnamed",
-        type: data.type || "customer",
-        group: data.group || "Sundry Debtors",
+        type: data.type || (isCust ? "customer" : "supplier"),
+        group: data.group || (isCust ? "Sundry Debtors" : "Sundry Creditors"),
         phone: data.phone || data.mobile || "",
-        balance: Number(data.balance || data.opening_balance || 0),
+        openingBalance: opBal,
+        outstandingAmount: isCust ? outBal : Number(data.outstandingAmount || 0),
+        payableAmount: !isCust ? outBal : Number(data.payableAmount || 0),
+        profileOutstanding: outBal,
+        balance: outBal,
         company_id: data.company_id || null,
         business_id: data.business_id,
         ownerUid: data.ownerUid || row.user_id,

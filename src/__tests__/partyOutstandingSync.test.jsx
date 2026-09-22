@@ -174,4 +174,47 @@ describe('Party Outstanding Balance Sync & Navigation Cleanup', () => {
       screen.queryByText(/All customer accounts are settled! There are currently no outstanding receivables/i)
     ).not.toBeInTheDocument();
   });
+
+  it('correctly calculates outstanding amount 200 and total sales 500 when openingBalance is 500 and profileOutstanding is 200', () => {
+    const ledgers = [
+      {
+        id: 'cus-nirav-500-200',
+        name: 'NIRAVKUMAR KANTILAL PRAJAPATI',
+        group: 'Sundry Debtors',
+        balanceType: 'debit',
+        openingBalance: 500,
+        profileOutstanding: 200,
+      },
+    ];
+    const vouchers = [];
+    const invoices = [];
+
+    const summary = getPartySummary(ledgers, vouchers, invoices);
+    expect(summary).toHaveLength(1);
+    expect(summary[0].name).toBe('NIRAVKUMAR KANTILAL PRAJAPATI');
+    expect(summary[0].totalSales).toBe(500);
+    expect(summary[0].totalPayments).toBe(0);
+    expect(summary[0].outstandingAmount).toBe(200);
+  });
+
+  it('renders customer with outstanding balance on the main Dashboard section', async () => {
+    const mockCustomers = [
+      {
+        id: 'cus-nirav-dash',
+        name: 'NIRAVKUMAR KANTILAL PRAJAPATI',
+        openingBalance: 500,
+        outstandingAmount: 200,
+        phone: '+918488943771',
+      },
+    ];
+
+    localStorage.setItem('erpCustomers', JSON.stringify(mockCustomers));
+    window.location.hash = '#dashboard';
+
+    render(<VoiceExpenseTrackerPreview />);
+
+    // Dashboard Outstanding card should display ₹200 and '1 Pending'
+    expect(screen.getAllByText(/₹200/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/1 Pending/i).length).toBeGreaterThan(0);
+  });
 });

@@ -292,6 +292,16 @@ export default function Phase2ERP({
     }
   }, [cloudSuppliers]);
   useEffect(() => {
+    if (selectedCrmPerson?.id) {
+      const isCustomer = peopleTab === 'customers';
+      const currentList = isCustomer ? customers : suppliers;
+      const latest = currentList?.find((p) => p.id === selectedCrmPerson.id);
+      if (latest && (latest.outstandingAmount !== selectedCrmPerson.outstandingAmount || latest.openingBalance !== selectedCrmPerson.openingBalance || latest.name !== selectedCrmPerson.name || latest.balance !== selectedCrmPerson.balance)) {
+        setSelectedCrmPerson(latest);
+      }
+    }
+  }, [customers, suppliers, peopleTab, selectedCrmPerson]);
+  useEffect(() => {
     if (Array.isArray(ledgers) && ledgers.length > 0) {
       const creditorLedgers = ledgers.filter((l) => l.group === 'Sundry Creditors');
       if (creditorLedgers.length > 0) {
@@ -938,9 +948,13 @@ export default function Phase2ERP({
     const name = sanitizeText(form.get('name'), 120);
     const phone = sanitizeText(form.get('phone'), 24);
     const email = sanitizeEmail(form.get('email'));
-    const openingBalance = normalizeAmount(form.get('openingBalance'));
+    const rawOpeningBalance = form.get('openingBalance')?.trim();
+    const openingBalance = normalizeAmount(rawOpeningBalance);
     const amountField = isCustomer ? 'outstandingAmount' : 'payableAmount';
-    const amountValue = normalizeAmount(form.get(amountField));
+    const rawAmountValue = form.get(amountField)?.trim();
+    const amountValue = (rawAmountValue !== '' && rawAmountValue !== undefined)
+      ? normalizeAmount(rawAmountValue)
+      : openingBalance;
     const collectionName = isCustomer ? 'customers' : 'suppliers';
     const path = cloudUserId ? `users/${cloudUserId}/${collectionName}/${id}` : `${collectionName}/${id}`;
 
@@ -973,6 +987,8 @@ export default function Phase2ERP({
       gst: sanitizeText(form.get('gst'), 32),
       openingBalance,
       [amountField]: amountValue,
+      balance: amountValue,
+      profileOutstanding: amountValue,
       type: kind,
       notes: sanitizeText(form.get('notes'), 500),
       createdAt: current?.createdAt || new Date().toISOString(),
@@ -998,6 +1014,9 @@ export default function Phase2ERP({
         writeArray(SUPPLIER_KEY, nextSuppliers);
         onSuppliersChange?.(nextSuppliers);
         debugDatabase(current ? 'SUPPLIER_UPDATE_SUCCESS' : 'SUPPLIER_SAVE_SUCCESS', { path, supplierId: id });
+      }
+      if (selectedCrmPerson?.id === id) {
+        setSelectedCrmPerson(person);
       }
       setEditingPerson(null);
       try {
@@ -2554,6 +2573,10 @@ export default function Phase2ERP({
 
     const getPartyBalance = (item) => {
       if (!item) return 0;
+      const profileBal = isCustomer
+        ? safeMoney(item.outstandingAmount ?? item.outstanding ?? item.balance ?? item.openingBalance ?? 0)
+        : safeMoney(item.payableAmount ?? item.payable ?? item.balance ?? item.openingBalance ?? 0);
+
       if (Array.isArray(partySummary) && partySummary.length > 0) {
         const match = partySummary.find(
           (p) =>
@@ -2561,12 +2584,16 @@ export default function Phase2ERP({
             (p.name && item.name && p.name.toLowerCase().trim() === item.name.toLowerCase().trim())
         );
         if (match && typeof match.outstandingAmount === 'number') {
+          if (match.outstandingAmount > 0 || (match.totalPayments > 0 && match.totalSales > 0)) {
+            return match.outstandingAmount;
+          }
+          if (match.totalSales === 0 && profileBal > 0) {
+            return profileBal;
+          }
           return match.outstandingAmount;
         }
       }
-      return isCustomer
-        ? safeMoney(item.outstandingAmount ?? item.outstanding ?? item.balance ?? item.openingBalance ?? 0)
-        : safeMoney(item.payableAmount ?? item.payable ?? item.balance ?? item.openingBalance ?? 0);
+      return profileBal;
     };
 
     let baseList = (isCustomer ? scopedCustomers : scopedSuppliers)?.filter(personMatchesSearch) || [];
@@ -2723,12 +2750,18 @@ export default function Phase2ERP({
                       <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', marginBottom: '4px', display: 'block' }}>Business Details</label>
                       <input name="gst" defaultValue={currentEdit?.gst || ''} placeholder="GSTIN (Optional)" style={{ width: '100%', marginBottom: '12px' }} />
                       <div style={{ display: 'flex', gap: '12px' }}>
-                        <input name="openingBalance" type="number" defaultValue={currentEdit?.openingBalance || ''} placeholder="Opening Balance" style={{ flex: 1 }} />
-                        {isCustomer ? (
-                          <input name="outstandingAmount" type="number" defaultValue={currentEdit?.outstandingAmount ?? currentEdit?.outstanding ?? ''} placeholder="Current Outstanding" style={{ flex: 1 }} />
-                        ) : (
-                          <input name="payableAmount" type="number" defaultValue={currentEdit?.payableAmount || ''} placeholder="Current Payable" style={{ flex: 1 }} />
-                        )}
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px', display: 'block' }}>Opening Balance</label>
+                          <input name="openingBalance" type="number" defaultValue={currentEdit?.openingBalance !== undefined ? currentEdit.openingBalance : ''} placeholder="Opening Balance" style={{ width: '100%' }} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px', display: 'block' }}>{isCustomer ? 'Current Outstanding' : 'Current Payable'}</label>
+                          {isCustomer ? (
+                            <input name="outstandingAmount" type="number" defaultValue={currentEdit?.outstandingAmount ?? currentEdit?.outstanding ?? currentEdit?.openingBalance ?? ''} placeholder="Current Outstanding" style={{ width: '100%' }} />
+                          ) : (
+                            <input name="payableAmount" type="number" defaultValue={currentEdit?.payableAmount ?? currentEdit?.payable ?? currentEdit?.openingBalance ?? ''} placeholder="Current Payable" style={{ width: '100%' }} />
+                          )}
+                        </div>
                       </div>
                     </div>
                     

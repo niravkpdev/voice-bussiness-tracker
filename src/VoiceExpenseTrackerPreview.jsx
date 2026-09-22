@@ -1612,7 +1612,8 @@ export default function VoiceExpenseTrackerPreview() {
       const { person, kind } = event.detail || {};
       if (person?.name) {
         try {
-          const { ledgers: nextL } = addPartyLedger(person.name, kind || (person.type === 'supplier' ? 'supplier' : 'customer'), ledgers);
+          const bal = Number(person.outstandingAmount ?? person.outstanding ?? person.payableAmount ?? person.payable ?? person.openingBalance ?? 0);
+          const { ledgers: nextL } = addPartyLedger(person.name, kind || (person.type === 'supplier' ? 'supplier' : 'customer'), ledgers, bal);
           setLedgers(nextL);
           if (kind === 'supplier') {
             setCloudSuppliers((prev) => [person, ...(Array.isArray(prev) ? prev.filter((s) => s.id !== person.id) : [])]);
@@ -4008,7 +4009,8 @@ export default function VoiceExpenseTrackerPreview() {
     (Array.isArray(cloudCustomers) ? cloudCustomers : []).forEach((c) => {
       if (c && c.name && !c.deleted && !c.isDeleted && c.status !== 'deleted' && c.status !== 'cancelled') {
         const key = c.name.toLowerCase().trim();
-        const profileBalance = Number(c.outstandingAmount ?? c.outstanding ?? c.balance ?? c.openingBalance ?? 0);
+        const profileBal = Number(c.outstandingAmount ?? c.outstanding ?? (c.openingBalance !== undefined ? c.openingBalance : c.balance) ?? 0);
+        const opBal = Number(c.openingBalance !== undefined && c.openingBalance !== null ? c.openingBalance : profileBal);
         const existing = map.get(key);
         if (!existing) {
           map.set(key, {
@@ -4017,15 +4019,16 @@ export default function VoiceExpenseTrackerPreview() {
             group: 'Sundry Debtors',
             balanceType: 'debit',
             phone: c.phone || c.mobile || '',
-            openingBalance: profileBalance,
-            profileOutstanding: profileBalance,
+            openingBalance: opBal,
+            profileOutstanding: profileBal,
             createdAt: c.createdAt || c.date || '',
           });
-        } else if ((!existing.openingBalance || existing.openingBalance === 0) && profileBalance !== 0) {
+        } else {
           map.set(key, {
             ...existing,
-            openingBalance: profileBalance,
-            profileOutstanding: profileBalance,
+            phone: c.phone || c.mobile || existing.phone || '',
+            openingBalance: opBal !== 0 ? opBal : (existing.openingBalance || 0),
+            profileOutstanding: profileBal !== 0 ? profileBal : (existing.profileOutstanding !== undefined ? existing.profileOutstanding : existing.openingBalance || 0),
             createdAt: existing.createdAt || c.createdAt || c.date || '',
           });
         }
@@ -4046,7 +4049,8 @@ export default function VoiceExpenseTrackerPreview() {
     (Array.isArray(cloudSuppliers) ? cloudSuppliers : []).forEach((s) => {
       if (s && s.name && !s.deleted && !s.isDeleted && s.status !== 'deleted' && s.status !== 'cancelled') {
         const key = s.name.toLowerCase().trim();
-        const profileBalance = Number(s.payableAmount ?? s.payable ?? s.balance ?? s.openingBalance ?? 0);
+        const profileBal = Number(s.payableAmount ?? s.payable ?? (s.openingBalance !== undefined ? s.openingBalance : s.balance) ?? 0);
+        const opBal = Number(s.openingBalance !== undefined && s.openingBalance !== null ? s.openingBalance : profileBal);
         const existing = map.get(key);
         if (!existing) {
           map.set(key, {
@@ -4055,15 +4059,16 @@ export default function VoiceExpenseTrackerPreview() {
             group: 'Sundry Creditors',
             balanceType: 'credit',
             phone: s.phone || s.mobile || '',
-            openingBalance: profileBalance,
-            profileOutstanding: profileBalance,
+            openingBalance: opBal,
+            profileOutstanding: profileBal,
             createdAt: s.createdAt || s.date || '',
           });
-        } else if ((!existing.openingBalance || existing.openingBalance === 0) && profileBalance !== 0) {
+        } else {
           map.set(key, {
             ...existing,
-            openingBalance: profileBalance,
-            profileOutstanding: profileBalance,
+            phone: s.phone || s.mobile || existing.phone || '',
+            openingBalance: opBal !== 0 ? opBal : (existing.openingBalance || 0),
+            profileOutstanding: profileBal !== 0 ? profileBal : (existing.profileOutstanding !== undefined ? existing.profileOutstanding : existing.openingBalance || 0),
             createdAt: existing.createdAt || s.createdAt || s.date || '',
           });
         }
@@ -4080,10 +4085,16 @@ export default function VoiceExpenseTrackerPreview() {
         if (l?.id) map.set(l.id, l);
       });
     customerParties.forEach((c) => {
-      if (c?.id && !map.has(c.id)) map.set(c.id, c);
+      if (c?.id) {
+        const existing = map.get(c.id);
+        map.set(c.id, existing ? { ...existing, ...c } : c);
+      }
     });
     supplierParties.forEach((s) => {
-      if (s?.id && !map.has(s.id)) map.set(s.id, s);
+      if (s?.id) {
+        const existing = map.get(s.id);
+        map.set(s.id, existing ? { ...existing, ...s } : s);
+      }
     });
     return Array.from(map.values());
   }, [ledgers, customerParties, supplierParties]);
@@ -4094,7 +4105,10 @@ export default function VoiceExpenseTrackerPreview() {
       if (l?.id) map.set(l.id, l);
     });
     partyLedgers.forEach((p) => {
-      if (p?.id && !map.has(p.id)) map.set(p.id, p);
+      if (p?.id) {
+        const existing = map.get(p.id);
+        map.set(p.id, existing ? { ...existing, ...p } : p);
+      }
     });
     return Array.from(map.values());
   }, [ledgers, partyLedgers]);
@@ -4256,8 +4270,24 @@ export default function VoiceExpenseTrackerPreview() {
       0
     );
 
-    const combinedOutstanding = debtorOutstanding + invoiceOutstanding;
-    const pendingCount = partySummary.filter((p) => p.group === 'Sundry Debtors' && p.outstandingAmount > 0).length + unlinkedUnpaidInvoices.length;
+    // Also include any customer from cloudCustomers whose profile has an outstanding balance
+    // if not already represented in partySummary with outstanding > 0
+    const uncountedCustomers = (Array.isArray(cloudCustomers) ? cloudCustomers : []).filter((c) => {
+      if (!c || c.deleted || c.isDeleted || c.status === 'deleted' || c.status === 'cancelled') return false;
+      const cBal = Number(c.outstandingAmount ?? c.outstanding ?? (c.openingBalance !== undefined ? c.openingBalance : c.balance) ?? 0);
+      if (cBal <= 0) return false;
+      const cName = (c.name || '').toLowerCase().trim();
+      const party = partySummary.find((p) => p.id === c.id || (p.name && p.name.toLowerCase().trim() === cName));
+      return !party || party.outstandingAmount <= 0;
+    });
+
+    const uncountedCustomerBal = uncountedCustomers.reduce(
+      (sum, c) => sum + Number(c.outstandingAmount ?? c.outstanding ?? (c.openingBalance !== undefined ? c.openingBalance : c.balance) ?? 0),
+      0
+    );
+
+    const combinedOutstanding = debtorOutstanding + invoiceOutstanding + uncountedCustomerBal;
+    const pendingCount = partySummary.filter((p) => p.group === 'Sundry Debtors' && p.outstandingAmount > 0).length + unlinkedUnpaidInvoices.length + uncountedCustomers.length;
 
     // 6. Inventory Value
     const invItems = Array.isArray(cloudInventory) ? cloudInventory : [];
@@ -4308,7 +4338,7 @@ export default function VoiceExpenseTrackerPreview() {
       attendancePct,
       dynamicHealth
     };
-  }, [activeVouchers, activeInvoices, activeOrders, partySummary, cloudInventory, cloudEmployees, cloudAttendance, cashInHand]);
+  }, [activeVouchers, activeInvoices, activeOrders, partySummary, cloudInventory, cloudEmployees, cloudAttendance, cashInHand, cloudCustomers]);
 
   const dynamicAIInsights = useMemo(() => {
     const list = [];
