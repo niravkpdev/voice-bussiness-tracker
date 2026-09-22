@@ -108,19 +108,34 @@ function InvoiceQr({ value }) {
   );
 }
 
-function SmallBars({ data, valueKey, colorClass = 'primary' }) {
+function SmallBars({ data = [], valueKey, colorClass = 'primary', emptyMessage = 'No data recorded for this period.' }) {
+  if (!Array.isArray(data) || data.length === 0) {
+    return (
+      <div style={{ padding: '24px 12px', textAlign: 'center', color: '#64748b' }}>
+        <p style={{ margin: 0, fontSize: '0.85rem' }}>{emptyMessage}</p>
+      </div>
+    );
+  }
   const maxValue = Math.max(...data.map((item) => Math.abs(Number(item[valueKey]) || 0)), 1);
   return (
     <div className="erp-bars">
-      {data.map((item) => (
-        <div className="erp-bar-row" key={item.label}>
-          <span>{item.label}</span>
-          <div>
-            <i className={colorClass} style={{ width: `${Math.max(4, (Math.abs(item[valueKey]) / maxValue) * 100)}%` }} />
+      {data.map((item, idx) => {
+        const val = Number(item[valueKey]) || 0;
+        const absVal = Math.abs(val);
+        const pct = maxValue > 0 && absVal > 0 ? Math.max(3, (absVal / maxValue) * 100) : 0;
+        const barColor = val < 0 ? 'danger' : colorClass;
+        return (
+          <div className="erp-bar-row" key={`${item.label || item.key || idx}`}>
+            <span title={item.label}>{item.label}</span>
+            <div>
+              <i className={barColor} style={{ width: `${pct}%` }} />
+            </div>
+            <strong style={{ color: val < 0 ? '#dc2626' : undefined }}>
+              {val < 0 ? `-${formatCurrency(absVal)}` : formatCurrency(val)}
+            </strong>
           </div>
-          <strong>{formatCurrency(item[valueKey])}</strong>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -554,11 +569,13 @@ export default function Phase2ERP({
 
     let buckets = [];
     let filterDate = () => true;
+    let periodLabel = '';
 
     if (analyticsPeriod === 'daily') {
       const todayStr = now.toISOString().slice(0, 10);
       filterDate = (dStr) => dStr.startsWith(todayStr);
       buckets = [{ key: todayStr, label: 'Today', revenue: 0, expense: 0, profit: 0 }];
+      periodLabel = `Today (${now.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })})`;
     } else if (analyticsPeriod === 'weekly') {
       filterDate = (dStr) => {
         const d = new Date(dStr);
@@ -572,6 +589,7 @@ export default function Phase2ERP({
         d.setDate(mon.getDate() + i);
         buckets.push({ key: d.toISOString().slice(0, 10), label: d.toLocaleString('en-IN', { weekday: 'short' }), revenue: 0, expense: 0, profit: 0 });
       }
+      periodLabel = `Current Week (Week ${currentWeek}, ${currentYear})`;
     } else if (analyticsPeriod === 'monthly') {
       filterDate = (dStr) => {
         const d = new Date(dStr);
@@ -583,6 +601,7 @@ export default function Phase2ERP({
         { key: 'W3', label: 'Week 3', revenue: 0, expense: 0, profit: 0 },
         { key: 'W4', label: 'Week 4+', revenue: 0, expense: 0, profit: 0 }
       ];
+      periodLabel = `${now.toLocaleString('en-IN', { month: 'long', year: 'numeric' })}`;
     } else if (analyticsPeriod === 'quarterly') {
       filterDate = (dStr) => {
         const d = new Date(dStr);
@@ -593,6 +612,7 @@ export default function Phase2ERP({
         const d = new Date(currentYear, startMonth + i, 1);
         buckets.push({ key: d.toISOString().slice(0, 7), label: d.toLocaleString('en-IN', { month: 'short' }), revenue: 0, expense: 0, profit: 0 });
       }
+      periodLabel = `Q${currentQuarter + 1} (${currentYear})`;
     } else if (analyticsPeriod === 'yearly') {
       filterDate = (dStr) => {
         const d = new Date(dStr);
@@ -602,64 +622,157 @@ export default function Phase2ERP({
         const d = new Date(currentYear, i, 1);
         buckets.push({ key: d.toISOString().slice(0, 7), label: d.toLocaleString('en-IN', { month: 'short' }), revenue: 0, expense: 0, profit: 0 });
       }
+      periodLabel = `Financial Year ${currentYear}`;
     }
 
     const filteredInvoices = scopedInvoices.filter(i => filterDate(i.date || today()));
-    const filteredVouchers = vouchers.filter(v => (v.type === 'Payment' || v.type === 'Purchase') && filterDate(v.date || today()));
+    const filteredSalesVouchers = (vouchers || []).filter(v => v.type === 'Sales' && filterDate(v.date || today()));
+    const filteredExpenseVouchers = (vouchers || []).filter(v => (v.type === 'Payment' || v.type === 'Purchase' || v.type === 'Expense') && filterDate(v.date || today()));
+
+    const getBucketKey = (dateStr) => {
+      const d = new Date(dateStr || today());
+      if (analyticsPeriod === 'daily') return d.toISOString().slice(0, 10);
+      if (analyticsPeriod === 'weekly') return d.toISOString().slice(0, 10);
+      if (analyticsPeriod === 'monthly') {
+        const wk = Math.min(Math.floor((d.getDate() - 1) / 7) + 1, 4);
+        return `W${wk}`;
+      }
+      return d.toISOString().slice(0, 7);
+    };
+
+    const customerSpending = {};
+    let salesCount = 0;
 
     filteredInvoices.forEach(invoice => {
-      let bucketKey;
-      const d = new Date(invoice.date || today());
-      if (analyticsPeriod === 'daily') bucketKey = d.toISOString().slice(0, 10);
-      else if (analyticsPeriod === 'weekly') bucketKey = d.toISOString().slice(0, 10);
-      else if (analyticsPeriod === 'monthly') {
-        const wk = Math.min(Math.floor((d.getDate() - 1) / 7) + 1, 4);
-        bucketKey = `W${wk}`;
-      }
-      else if (analyticsPeriod === 'quarterly' || analyticsPeriod === 'yearly') bucketKey = d.toISOString().slice(0, 7);
-      
+      const bucketKey = getBucketKey(invoice.date);
       const bucket = buckets.find(b => b.key === bucketKey);
-      if (bucket) bucket.revenue += invoice.total;
+      const amt = Number(invoice.total !== undefined ? invoice.total : (invoice.amount || 0));
+      if (bucket) bucket.revenue += amt;
+      salesCount++;
+
+      const cName = invoice.customerName || invoice.customer || 'Walk-in Customer';
+      customerSpending[cName] = (customerSpending[cName] || 0) + amt;
     });
 
-    filteredVouchers.forEach(voucher => {
-      let bucketKey;
-      const d = new Date(voucher.date || today());
-      if (analyticsPeriod === 'daily') bucketKey = d.toISOString().slice(0, 10);
-      else if (analyticsPeriod === 'weekly') bucketKey = d.toISOString().slice(0, 10);
-      else if (analyticsPeriod === 'monthly') {
-        const wk = Math.min(Math.floor((d.getDate() - 1) / 7) + 1, 4);
-        bucketKey = `W${wk}`;
-      }
-      else if (analyticsPeriod === 'quarterly' || analyticsPeriod === 'yearly') bucketKey = d.toISOString().slice(0, 7);
-      
+    filteredSalesVouchers.forEach(voucher => {
+      const bucketKey = getBucketKey(voucher.date);
       const bucket = buckets.find(b => b.key === bucketKey);
-      if (bucket) bucket.expense += voucher.amount;
+      const amt = Number(voucher.amount || 0);
+      if (bucket) bucket.revenue += amt;
+      salesCount++;
+
+      const cName = voucher.customerName || voucher.partyName || voucher.narration?.slice(0, 24) || 'Direct Sale';
+      customerSpending[cName] = (customerSpending[cName] || 0) + amt;
     });
 
-    buckets.forEach(b => b.profit = b.revenue - b.expense);
+    filteredExpenseVouchers.forEach(voucher => {
+      const bucketKey = getBucketKey(voucher.date);
+      const bucket = buckets.find(b => b.key === bucketKey);
+      if (bucket) bucket.expense += Number(voucher.amount || 0);
+    });
+
+    buckets.forEach(b => {
+      b.profit = b.revenue - b.expense;
+    });
 
     const byProduct = {};
     filteredInvoices.forEach((invoice) => {
       (invoice.lines || []).forEach((line) => {
-        byProduct[line.productId] = (byProduct[line.productId] || 0) + Number(line.qty || 0);
+        const pId = line.productId || line.id;
+        if (pId) {
+          byProduct[pId] = (byProduct[pId] || 0) + Number(line.qty || 0);
+        }
       });
     });
-    
-    const productPerf = scopedProducts
-      .map((product) => ({
-        label: product.name,
-        value: (byProduct[product.id] || 0) * product.sellingPrice,
-      }))
+
+    let productPerf = scopedProducts
+      .map((product) => {
+        const qtySold = byProduct[product.id] || 0;
+        const totalVal = qtySold * Number(product.sellingPrice || 0);
+        return {
+          label: product.name,
+          value: totalVal,
+          qtySold,
+          stock: product.currentStock || 0,
+          unit: product.unit || 'pkts'
+        };
+      })
+      .filter(p => p.value > 0)
       .sort((a, b) => b.value - a.value)
       .slice(0, 5);
 
-    return { buckets, productPerf, hasData: filteredInvoices.length > 0 || filteredVouchers.length > 0 };
+    const isShowingCatalogFallback = productPerf.length === 0 && scopedProducts.length > 0;
+    if (isShowingCatalogFallback) {
+      productPerf = scopedProducts
+        .map(p => ({
+          label: p.name,
+          value: (Number(p.currentStock) || 0) * (Number(p.sellingPrice) || Number(p.purchasePrice) || 0),
+          stock: p.currentStock || 0,
+          unit: p.unit || 'pkts',
+          isInventoryValuation: true,
+        }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5);
+    }
+
+    const topCustomers = Object.entries(customerSpending)
+      .map(([name, value]) => ({ label: name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+
+    const totalRevenue = buckets.reduce((sum, b) => sum + b.revenue, 0);
+    const totalExpense = buckets.reduce((sum, b) => sum + b.expense, 0);
+    const totalProfit = totalRevenue - totalExpense;
+    const netMargin = totalRevenue > 0 ? Math.round((totalProfit / totalRevenue) * 100) : 0;
+    const activeCustomersCount = Object.keys(customerSpending).length;
+    const avgTicket = salesCount > 0 ? Math.round(totalRevenue / salesCount) : 0;
+
+    return {
+      buckets,
+      productPerf,
+      isShowingCatalogFallback,
+      topCustomers,
+      totalRevenue,
+      totalExpense,
+      totalProfit,
+      netMargin,
+      salesCount,
+      activeCustomersCount,
+      avgTicket,
+      periodLabel,
+      hasData: totalRevenue > 0 || totalExpense > 0
+    };
   }, [analyticsPeriod, scopedInvoices, vouchers, scopedProducts]);
 
   const analytics = analyticsData.buckets;
   const productPerformance = analyticsData.productPerf;
   const hasAnalyticsData = analyticsData.hasData;
+
+  const handleExportAnalyticsCSV = () => {
+    try {
+      const headers = ['Period / Time Bucket', 'Revenue (INR)', 'Expense (INR)', 'Net Profit (INR)'];
+      const rows = analyticsData.buckets.map(b => [
+        `"${b.label}"`,
+        b.revenue.toFixed(2),
+        b.expense.toFixed(2),
+        b.profit.toFixed(2)
+      ]);
+      rows.push(['"Total"', analyticsData.totalRevenue.toFixed(2), analyticsData.totalExpense.toFixed(2), analyticsData.totalProfit.toFixed(2)]);
+      const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `trinetr-analytics-${analyticsPeriod}-${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      onStatus?.('Analytics report downloaded successfully');
+    } catch (e) {
+      onStatus?.(e?.message || 'Export failed');
+    }
+  };
 
   const [showImportModal, setShowImportModal] = useState(false);
   const [importErrors, setImportErrors] = useState([]);
@@ -3247,19 +3360,233 @@ export default function Phase2ERP({
   if (activeTab === 'analytics') {
     return (
       <section className="phase2-stack fade-in" id="analytics">
-        <div className="erp-hero"><div><span className="eyebrow">Analytics Center</span><h2>Revenue, expense, profit, customer growth, and product performance</h2></div></div>
-        <div className="analytics-filter" style={{ overflowX: 'auto', whiteSpace: 'nowrap', display: 'flex', gap: '8px' }}>
+        <div className="erp-hero" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+          <div>
+            <span className="eyebrow">Analytics Center</span>
+            <h2>Revenue, expense, profit, customer growth, and product performance</h2>
+            <p className="text-secondary" style={{ margin: '4px 0 0', fontSize: '13px' }}>
+              Showing {analyticsData.periodLabel} • Real-time double-entry transactions and invoice analytics
+            </p>
+          </div>
+          <div className="erp-hero-actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="secondary-button compact-button"
+              onClick={handleExportAnalyticsCSV}
+              title="Download CSV spreadsheet of period analytics"
+            >
+              ⬇️ Export CSV
+            </button>
+            <button
+              type="button"
+              className="secondary-button compact-button"
+              onClick={() => window.print()}
+              title="Print analytics report"
+            >
+              🖨️ Print
+            </button>
+          </div>
+        </div>
+
+        <div className="analytics-filter" style={{ overflowX: 'auto', whiteSpace: 'nowrap', display: 'flex', gap: '8px', marginBottom: '8px' }}>
           <button type="button" className={analyticsPeriod === 'daily' ? 'active' : ''} onClick={() => setAnalyticsPeriod('daily')}>Daily</button>
           <button type="button" className={analyticsPeriod === 'weekly' ? 'active' : ''} onClick={() => setAnalyticsPeriod('weekly')}>Weekly</button>
           <button type="button" className={analyticsPeriod === 'monthly' ? 'active' : ''} onClick={() => setAnalyticsPeriod('monthly')}>Monthly</button>
           <button type="button" className={analyticsPeriod === 'quarterly' ? 'active' : ''} onClick={() => setAnalyticsPeriod('quarterly')}>Quarterly</button>
           <button type="button" className={analyticsPeriod === 'yearly' ? 'active' : ''} onClick={() => setAnalyticsPeriod('yearly')}>Yearly</button>
         </div>
+
+        {/* Top Summary KPI Cards */}
+        <div className="inventory-kpi-grid" style={{ marginBottom: '16px' }}>
+          <div className="kpi-card">
+            <div className="kpi-icon-wrap" style={{ background: '#eff6ff', color: '#2563eb' }}>📈</div>
+            <div className="kpi-content">
+              <span>Total Revenue</span>
+              <strong className="kpi-value">{formatCurrency(analyticsData.totalRevenue)}</strong>
+              <div className="kpi-trend trend-neutral">{analyticsData.salesCount} sales transaction(s)</div>
+            </div>
+          </div>
+          <div className="kpi-card">
+            <div className="kpi-icon-wrap" style={{ background: '#fef2f2', color: '#dc2626' }}>💳</div>
+            <div className="kpi-content">
+              <span>Total Expenses</span>
+              <strong className="kpi-value">{formatCurrency(analyticsData.totalExpense)}</strong>
+              <div className="kpi-trend trend-down">
+                {analyticsData.totalRevenue > 0 ? `${Math.round((analyticsData.totalExpense / analyticsData.totalRevenue) * 100)}% of revenue` : 'Operating expenses'}
+              </div>
+            </div>
+          </div>
+          <div className="kpi-card">
+            <div className="kpi-icon-wrap" style={{ background: analyticsData.totalProfit >= 0 ? '#f0fdf4' : '#fef2f2', color: analyticsData.totalProfit >= 0 ? '#16a34a' : '#dc2626' }}>💰</div>
+            <div className="kpi-content">
+              <span>Net Profit</span>
+              <strong className="kpi-value" style={{ color: analyticsData.totalProfit < 0 ? '#dc2626' : undefined }}>
+                {analyticsData.totalProfit < 0 ? `-${formatCurrency(Math.abs(analyticsData.totalProfit))}` : formatCurrency(analyticsData.totalProfit)}
+              </strong>
+              <div className={`kpi-trend ${analyticsData.totalProfit >= 0 ? 'trend-up' : 'trend-down'}`}>
+                {analyticsData.netMargin}% margin ({analyticsData.totalProfit >= 0 ? 'Profitable' : 'Net Deficit'})
+              </div>
+            </div>
+          </div>
+          <div className="kpi-card">
+            <div className="kpi-icon-wrap" style={{ background: '#faf5ff', color: '#9333ea' }}>👥</div>
+            <div className="kpi-content">
+              <span>Active Customers</span>
+              <strong className="kpi-value">{analyticsData.activeCustomersCount}</strong>
+              <div className="kpi-trend trend-neutral">
+                {analyticsData.avgTicket > 0 ? `Avg: ${formatCurrency(analyticsData.avgTicket)} / bill` : 'Customer base'}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Content Grid */}
         <section className="content-grid" style={{ marginTop: '16px' }}>
-          <article className="panel"><h2>Revenue Trend</h2><SmallBars data={analytics} valueKey="revenue" /></article>
-          <article className="panel"><h2>Expense Trend</h2><SmallBars data={analytics} valueKey="expense" colorClass="danger" /></article>
-          <article className="panel"><h2>Profit Trend</h2><SmallBars data={analytics} valueKey="profit" colorClass="success" /></article>
-          <article className="panel"><h2>Product Performance</h2><SmallBars data={productPerformance} valueKey="value" colorClass="warning" /></article>
+          <article className="panel">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <h2 style={{ margin: 0 }}>Revenue Trend</h2>
+              <span className="status-pill verified">{formatCurrency(analyticsData.totalRevenue)}</span>
+            </div>
+            <SmallBars data={analytics} valueKey="revenue" emptyMessage="No revenue transactions recorded for this period." />
+          </article>
+
+          <article className="panel">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <h2 style={{ margin: 0 }}>Expense Trend</h2>
+              <span className="status-pill pending" style={{ background: '#fef2f2', color: '#dc2626' }}>{formatCurrency(analyticsData.totalExpense)}</span>
+            </div>
+            <SmallBars data={analytics} valueKey="expense" colorClass="danger" emptyMessage="No expenses recorded for this period." />
+          </article>
+
+          <article className="panel">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <h2 style={{ margin: 0 }}>Profit Trend</h2>
+              <span className={`status-pill ${analyticsData.totalProfit >= 0 ? 'verified' : 'draft'}`} style={{ color: analyticsData.totalProfit < 0 ? '#dc2626' : undefined }}>
+                {analyticsData.totalProfit < 0 ? `-${formatCurrency(Math.abs(analyticsData.totalProfit))}` : formatCurrency(analyticsData.totalProfit)}
+              </span>
+            </div>
+            <SmallBars data={analytics} valueKey="profit" colorClass="success" emptyMessage="No profit/loss data for this period." />
+          </article>
+
+          <article className="panel">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <h2 style={{ margin: 0 }}>Product Performance</h2>
+              {analyticsData.isShowingCatalogFallback && (
+                <span className="status-pill draft" title="Showing current stock valuation">Inventory Catalog</span>
+              )}
+            </div>
+            {analyticsData.isShowingCatalogFallback && (
+              <p className="text-secondary" style={{ fontSize: '12px', marginTop: 0, marginBottom: '10px' }}>
+                No product sales recorded in this period. Showing top catalog items by stock valuation:
+              </p>
+            )}
+            <SmallBars
+              data={productPerformance}
+              valueKey="value"
+              colorClass="warning"
+              emptyMessage="No products catalogued yet. Add items in Inventory to track product performance."
+            />
+            {productPerformance.length === 0 && (
+              <div style={{ marginTop: '12px', textAlign: 'center' }}>
+                <button
+                  type="button"
+                  className="secondary-button compact-button"
+                  onClick={() => {
+                    window.location.hash = 'inventory';
+                  }}
+                >
+                  + Add Products in Inventory
+                </button>
+              </div>
+            )}
+          </article>
+
+          <article className="panel">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <h2 style={{ margin: 0 }}>Customer Performance & Growth</h2>
+              <span className="status-pill verified">{analyticsData.activeCustomersCount} Active</span>
+            </div>
+            <SmallBars
+              data={analyticsData.topCustomers}
+              valueKey="value"
+              colorClass="primary"
+              emptyMessage="No customer sales recorded for this period."
+            />
+            {analyticsData.topCustomers.length === 0 && (
+              <div style={{ marginTop: '12px', textAlign: 'center' }}>
+                <button
+                  type="button"
+                  className="secondary-button compact-button"
+                  onClick={() => {
+                    window.location.hash = 'invoices';
+                  }}
+                >
+                  + Create First Bill
+                </button>
+              </div>
+            )}
+          </article>
+
+          <article className="panel">
+            <h2 style={{ marginBottom: '12px' }}>Analytics Summary & Insights</h2>
+            <div className="compact-list">
+              <div className="compact-item" style={{ padding: '10px 12px' }}>
+                <div>
+                  <strong>Operational Profitability</strong>
+                  <p style={{ margin: '2px 0 0', fontSize: '13px', color: '#64748b' }}>
+                    {analyticsData.totalRevenue > 0
+                      ? `Net margin is ${analyticsData.netMargin}%. ${analyticsData.totalProfit >= 0 ? 'Operations are profitable.' : 'Expenses exceed revenue.'}`
+                      : 'No revenue yet recorded this period.'}
+                  </p>
+                </div>
+                <span className={`status-pill ${analyticsData.totalProfit >= 0 ? 'verified' : 'draft'}`}>
+                  {analyticsData.totalProfit >= 0 ? 'Profitable' : 'Deficit'}
+                </span>
+              </div>
+              <div className="compact-item" style={{ padding: '10px 12px' }}>
+                <div>
+                  <strong>Expense Ratio</strong>
+                  <p style={{ margin: '2px 0 0', fontSize: '13px', color: '#64748b' }}>
+                    {analyticsData.totalRevenue > 0
+                      ? `${Math.round((analyticsData.totalExpense / analyticsData.totalRevenue) * 100)}% of revenue consumed by expenses.`
+                      : 'Zero expense overhead.'}
+                  </p>
+                </div>
+                <span className="status-pill draft">
+                  {analyticsData.totalRevenue > 0 && (analyticsData.totalExpense / analyticsData.totalRevenue) > 0.8 ? 'Watch' : 'Disciplined'}
+                </span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '16px' }}>
+              <button
+                type="button"
+                className="primary-button compact-button"
+                onClick={() => {
+                  window.location.hash = 'invoices';
+                }}
+              >
+                + New Invoice
+              </button>
+              <button
+                type="button"
+                className="secondary-button compact-button"
+                onClick={() => {
+                  window.location.hash = 'voucher-entry';
+                }}
+              >
+                + Voucher Entry
+              </button>
+              <button
+                type="button"
+                className="secondary-button compact-button"
+                onClick={() => {
+                  window.location.hash = 'party-statement';
+                }}
+              >
+                ↗ Statement
+              </button>
+            </div>
+          </article>
         </section>
       </section>
     );
