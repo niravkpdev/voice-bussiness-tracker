@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { STORE_INFO, PRODUCTS } from '../data/namkeenData';
 import { formatWhatsAppPhone } from '../../security.js';
+import { fetchMenuItems } from '../../supabaseClient.js';
 
 const StoreCartContext = createContext(null);
 
@@ -778,7 +779,54 @@ export function StoreCartProvider({ children, storeProfile, customInventory, isO
     closeDeliveryModal,
     updateProduct,
     resetProductOverride,
-    updateStoreProfile
+    updateStoreProfile,
+    fetchMenuItemsPaginated: async ({ page = 1, pageSize = 20, category = 'all', searchQuery = '' } = {}) => {
+      try {
+        const res = await fetchMenuItems({ page, pageSize, category });
+        if (res && res.menuItems && res.menuItems.length > 0) {
+          return res;
+        }
+      } catch {}
+
+      let filtered = products;
+      if (category && category !== 'all') {
+        filtered = filtered.filter(p => p.category === category);
+      }
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        filtered = filtered.filter(p => (p.name || '').toLowerCase().includes(q) || (p.categoryLabel || '').toLowerCase().includes(q));
+      }
+
+      const total = filtered.length;
+      const totalPages = Math.ceil(total / pageSize) || (total > 0 ? 1 : 0);
+      const from = Math.max(0, (page - 1) * pageSize);
+      const to = from + pageSize;
+      const slice = filtered.slice(from, to).map(item => ({
+        id: item.id,
+        title: item.name,
+        name: item.name,
+        price: item.variants?.[0]?.price ?? 100,
+        image_url: item.image,
+        image: item.image,
+        category: item.category,
+        categoryLabel: item.categoryLabel,
+        description: item.description,
+        variants: item.variants,
+        isTopSeller: item.isTopSeller,
+        isNotForJain: item.isNotForJain,
+        isOutOfStock: item.isOutOfStock,
+      }));
+
+      return {
+        menuItems: slice,
+        count: total,
+        page,
+        pageSize,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      };
+    },
   };
 
   return (

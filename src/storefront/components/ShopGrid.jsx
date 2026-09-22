@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { LayoutGrid, List, SlidersHorizontal, ArrowUpDown, X, Filter } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { LayoutGrid, List, SlidersHorizontal, ArrowUpDown, X, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useStoreCart } from '../context/StoreCartContext';
 import { CATEGORIES } from '../data/namkeenData';
 import { ProductCard } from './ProductCard';
@@ -67,6 +67,20 @@ export function ShopGrid() {
 
     return result;
   }, [products, activeCategory, searchQuery, inStockOnly, dietaryFilter, maxPrice, sortBy, wishlist]);
+
+  // Pagination state (20 items per page)
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 20;
+
+  // Auto-reset to page 1 on filter, search, or sort change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeCategory, searchQuery, dietaryFilter, inStockOnly, maxPrice, sortBy]);
+
+  const totalPages = Math.ceil(filteredProducts.length / pageSize) || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, filteredProducts.length);
+  const pagedProducts = filteredProducts.slice(startIndex, endIndex);
 
   return (
     <div className="trinetr-shop-page-wrapper">
@@ -312,11 +326,55 @@ export function ShopGrid() {
               </button>
             </div>
           ) : (
-            <div className={`trinetr-products-grid ${viewMode === 'list' ? 'list-mode' : ''}`}>
-              {filteredProducts.map(product => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
+            <>
+              <div className={`trinetr-products-grid ${viewMode === 'list' ? 'list-mode' : ''}`}>
+                {pagedProducts.map(product => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+
+              {/* Pagination Bar (20 items per page) */}
+              {filteredProducts.length > 0 && (
+                <div className="trinetr-pagination-bar" data-testid="shop-pagination">
+                  <div className="trinetr-pagination-info">
+                    Showing <strong>{startIndex + 1}–{endIndex}</strong> of <strong>{filteredProducts.length}</strong> products
+                  </div>
+                  <div className="trinetr-pagination-actions">
+                    <button
+                      type="button"
+                      className="trinetr-page-btn"
+                      onClick={() => {
+                        setCurrentPage(prev => Math.max(1, prev - 1));
+                        window.scrollTo({ top: 200, behavior: 'smooth' });
+                      }}
+                      disabled={currentPage <= 1}
+                      aria-label="Previous Page"
+                      data-testid="shop-prev-page"
+                    >
+                      <ChevronLeft size={16} />
+                      <span>Previous</span>
+                    </button>
+                    <span className="trinetr-page-indicator">
+                      Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      className="trinetr-page-btn"
+                      onClick={() => {
+                        setCurrentPage(prev => Math.min(totalPages, prev + 1));
+                        window.scrollTo({ top: 200, behavior: 'smooth' });
+                      }}
+                      disabled={currentPage >= totalPages}
+                      aria-label="Next Page"
+                      data-testid="shop-next-page"
+                    >
+                      <span>Next</span>
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </main>
       </div>

@@ -5503,4 +5503,96 @@ button[type="submit"].btn-save-delivery:hover span {
   }
 }
 
+/* ==========================================================================
+   Storefront & Menu Pagination Bar (20 Items Per Page)
+   ========================================================================== */
+.trinetr-pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 28px;
+  padding: 16px 20px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.trinetr-pagination-info {
+  font-size: 13.5px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.trinetr-pagination-info strong {
+  color: #1e293b;
+  font-weight: 700;
+}
+
+.trinetr-pagination-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.trinetr-page-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #f8fafc;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+
+.trinetr-page-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+  transform: translateY(-1px);
+}
+
+.trinetr-page-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.trinetr-page-indicator {
+  font-size: 13px;
+  color: #475569;
+  padding: 4px 10px;
+  background: #f1f5f9;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.trinetr-page-indicator strong {
+  color: #0f172a;
+  font-weight: 800;
+}
+
+@media (max-width: 640px) {
+  .trinetr-pagination-bar {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+    padding: 14px;
+    gap: 12px;
+  }
+  .trinetr-pagination-actions {
+    justify-content: space-between;
+  }
+}
+
+
 

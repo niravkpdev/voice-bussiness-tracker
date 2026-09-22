@@ -14,6 +14,7 @@ const CLOUD_TABLES = new Set([
   'stock_transactions',
   'invoices',
   'orders',
+  'menu_items',
   'employees',
   'attendance',
   'leave_balances',
@@ -143,6 +144,10 @@ export function getSupabaseClient() {
   }
 
   return supabaseClient;
+}
+
+export function setSupabaseClientForTesting(client) {
+  supabaseClient = client;
 }
 
 function normalizeSupabaseEmail(email) {
@@ -504,6 +509,16 @@ export function rowToAppRecord(row, tableName) {
       orderNo: normalized.order_number || normalized.orderNo,
       customerName: normalized.customer_name || normalized.customerName || normalized.customer,
       total: normalized.total || normalized.amount || 0,
+    };
+  } else if (tableName === 'menu_items') {
+    normalized = {
+      ...normalized,
+      title: row.title || normalized.title || normalized.name || '',
+      name: row.title || normalized.title || normalized.name || '',
+      price: Number(row.price ?? normalized.price ?? 0),
+      image_url: row.image_url || normalized.image_url || normalized.image || '',
+      image: row.image_url || normalized.image_url || normalized.image || '',
+      category: row.category || normalized.category || 'all',
     };
   } else if (tableName === 'payments') {
     normalized = {
@@ -1017,7 +1032,7 @@ export async function runSupabaseDebugTest() {
     });
 
     const { data, error } = await withCloudTimeout(
-      client.from('debug_tests').select('*').eq('user_id', uid).eq('id', 'test').single(),
+      client.from('debug_tests').select('id, user_id, data, created_at, updated_at').eq('user_id', uid).eq('id', 'test').single(),
       { path, uid, currentSupabaseUserUid: uid, operation: 'select:debugTestVerify' }
     );
     if (error) throw error;
@@ -1554,8 +1569,11 @@ export async function saveCloudRecord(uid, tableName, id, data) {
       throw error;
     }
 
+    const verifyCols = tableName === 'menu_items'
+      ? 'id, title, price, image_url, category, data, created_at, updated_at'
+      : 'id, user_id, data, created_at, updated_at';
     const { data: savedRow, error: verifyError } = await withCloudTimeout(
-      client.from(tableName).select('*').eq('user_id', uid).eq('id', id).single(),
+      client.from(tableName).select(verifyCols).eq('user_id', uid).eq('id', id).single(),
       { path, uid, currentSupabaseUserUid: currentUid, operation: `select:${tableName}:verify` }
     );
     if (verifyError) {
@@ -1845,6 +1863,230 @@ export async function loadCloudCollection(uid, tableName) {
   return (data || []).map((row) => rowToAppRecord(row, tableName)).filter(Boolean);
 }
 
+export async function loadCloudCollectionPaginated(uid, tableName, options = {}) {
+  const {
+    page = 1,
+    pageSize = 20,
+    columns = null,
+    orderColumn = 'updated_at',
+    ascending = false,
+  } = options;
+
+  const client = getSupabaseClient() || (typeof window !== 'undefined' ? window.supabase : null);
+  const user = await getCurrentSupabaseUser(client);
+  if (!client || !uid || !CLOUD_TABLES.has(tableName)) {
+    return {
+      data: [],
+      count: 0,
+      page,
+      pageSize,
+      totalPages: 0,
+      hasNextPage: false,
+      hasPrevPage: false,
+    };
+  }
+
+  const path = pathFor(uid, tableName);
+  const from = Math.max(0, (page - 1) * pageSize);
+  const to = from + pageSize - 1;
+
+  let selectedColumns = columns;
+  if (!selectedColumns) {
+    if (tableName === 'menu_items') {
+      selectedColumns = 'id, title, price, image_url, category, data, created_at, updated_at';
+    } else {
+      selectedColumns = 'id, user_id, data, created_at, updated_at';
+    }
+  }
+
+  let data;
+  let count = 0;
+  let error;
+  try {
+    let query = client
+      .from(tableName)
+      .select(selectedColumns, { count: 'exact' })
+      .eq('user_id', uid);
+
+    if (orderColumn && typeof query.order === 'function') {
+      query = query.order(orderColumn, { ascending });
+    }
+
+    if (typeof query.range === 'function') {
+      query = query.range(from, to);
+    }
+
+    const result = await withCloudTimeout(query, {
+      path,
+      uid,
+      currentSupabaseUserUid: user?.id || null,
+      operation: `selectPaginated:${tableName}`,
+    });
+    data = result.data;
+    count = result.count ?? (result.data ? result.data.length : 0);
+    error = result.error;
+  } catch (caughtError) {
+    cloudError('SUPABASE_PAGINATED_LOAD_ERROR', {
+      tableName,
+      code: caughtError?.code || null,
+      message: caughtError?.message || String(caughtError),
+    });
+    throw caughtError;
+  }
+
+  if (error) {
+    cloudError('SUPABASE_PAGINATED_LOAD_ERROR', {
+      tableName,
+      code: error?.code || null,
+      message: error?.message || String(error),
+    });
+    throw error;
+  }
+
+  const normalizedRows = (data || []).map((row) => rowToAppRecord(row, tableName)).filter(Boolean);
+  const totalPages = Math.ceil(count / pageSize) || (normalizedRows.length > 0 ? 1 : 0);
+
+  return {
+    data: normalizedRows,
+    count,
+    page,
+    pageSize,
+    totalPages,
+    hasNextPage: page < totalPages,
+    hasPrevPage: page > 1,
+  };
+}
+
+export async function fetchMenuItems(options = {}) {
+  const {
+    page = 1,
+    pageSize = 20,
+    uid = null,
+    category = 'all',
+  } = options;
+
+  const client = getSupabaseClient() || (typeof window !== 'undefined' ? window.supabase : null);
+  const from = Math.max(0, (page - 1) * pageSize);
+  const to = from + pageSize - 1;
+
+  if (client) {
+    try {
+      let query = client
+        .from('menu_items')
+        .select('id, title, price, image_url, category', { count: 'exact' });
+
+      if (uid) {
+        query = query.eq('user_id', uid);
+      }
+      if (category && category !== 'all') {
+        query = query.eq('category', category);
+      }
+
+      if (typeof query.range === 'function') {
+        query = query.range(from, to);
+      }
+
+      const { data, count, error } = await query;
+      if (!error && Array.isArray(data)) {
+        const total = count ?? data.length;
+        const totalPages = Math.ceil(total / pageSize) || (data.length > 0 ? 1 : 0);
+        return {
+          menuItems: data.map((item) => ({
+            id: item.id,
+            title: item.title,
+            name: item.title,
+            price: Number(item.price || 0),
+            image_url: item.image_url,
+            image: item.image_url,
+            category: item.category || 'all',
+          })),
+          count: total,
+          page,
+          pageSize,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        };
+      }
+    } catch (e) {
+      cloudError('FETCH_MENU_ITEMS_ERROR', e);
+    }
+  }
+
+  return {
+    menuItems: [],
+    count: 0,
+    page,
+    pageSize,
+    totalPages: 0,
+    hasNextPage: false,
+    hasPrevPage: false,
+  };
+}
+
+export async function fetchOrders(options = {}) {
+  const {
+    page = 1,
+    pageSize = 20,
+    uid = null,
+    status = 'all',
+  } = options;
+
+  const client = getSupabaseClient() || (typeof window !== 'undefined' ? window.supabase : null);
+  const from = Math.max(0, (page - 1) * pageSize);
+  const to = from + pageSize - 1;
+
+  if (client) {
+    try {
+      let query = client
+        .from('orders')
+        .select('id, user_id, data, created_at, updated_at', { count: 'exact' });
+
+      if (uid) {
+        query = query.eq('user_id', uid);
+      }
+      if (typeof query.order === 'function') {
+        query = query.order('updated_at', { ascending: false });
+      }
+      if (typeof query.range === 'function') {
+        query = query.range(from, to);
+      }
+
+      const { data, count, error } = await query;
+      if (!error && Array.isArray(data)) {
+        const total = count ?? data.length;
+        const totalPages = Math.ceil(total / pageSize) || (data.length > 0 ? 1 : 0);
+        const normalized = data.map((row) => rowToAppRecord(row, 'orders')).filter(Boolean);
+        const filtered = status && status !== 'all'
+          ? normalized.filter((o) => (status === 'active' ? o.status !== 'Invoiced' && o.status !== 'Delivered' : o.status === 'Invoiced'))
+          : normalized;
+
+        return {
+          orders: filtered,
+          count: total,
+          page,
+          pageSize,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        };
+      }
+    } catch (e) {
+      cloudError('FETCH_ORDERS_ERROR', e);
+    }
+  }
+
+  return {
+    orders: [],
+    count: 0,
+    page,
+    pageSize,
+    totalPages: 0,
+    hasNextPage: false,
+    hasPrevPage: false,
+  };
+}
+
 function normalizeCompanyMember(row) {
   if (!row) return null;
   return {
@@ -2090,7 +2332,7 @@ export async function loadUserProfileSettings(uid) {
 
   const path = pathFor(uid, 'settings', 'profile');
   const { data, error } = await withCloudTimeout(
-    client.from('settings').select('*').eq('user_id', uid).eq('id', 'profile').maybeSingle(),
+    client.from('settings').select('id, user_id, data, created_at, updated_at').eq('user_id', uid).eq('id', 'profile').maybeSingle(),
     { path, uid, currentSupabaseUserUid: user?.id || null, operation: 'select:settings:profile' }
   );
   if (error) throw error;

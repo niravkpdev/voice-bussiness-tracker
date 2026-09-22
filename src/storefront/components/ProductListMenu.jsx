@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ShoppingBag, Check, Plus, Minus, Search, Sparkles, Filter } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ShoppingBag, Check, Plus, Minus, Search, Sparkles, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useStoreCart } from '../context/StoreCartContext';
 import { CATEGORIES } from '../data/namkeenData';
 
@@ -8,6 +8,13 @@ export function ProductListMenu() {
   const [activeCategoryFilter, setActiveCategoryFilter] = useState('all');
   const [menuSearch, setMenuSearch] = useState('');
   const [selectedVariants, setSelectedVariants] = useState({}); // { [productId]: variantIndex }
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 20;
+
+  // Reset to page 1 on filter or search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeCategoryFilter, menuSearch]);
 
   // Filter products
   const filteredProducts = products.filter(item => {
@@ -18,10 +25,16 @@ export function ProductListMenu() {
     return matchesCat && matchesSearch;
   });
 
-  // Group products by category for restaurant-style menu organization
+  // Paginate filtered products in pages of 20 items
+  const totalPages = Math.ceil(filteredProducts.length / pageSize) || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, filteredProducts.length);
+  const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
+
+  // Group paginated products by category for restaurant-style menu organization
   const groupedCategories = CATEGORIES.filter(c => c.id !== 'all').map(cat => ({
     ...cat,
-    items: filteredProducts.filter(p => p.category === cat.id)
+    items: paginatedProducts.filter(p => p.category === cat.id)
   })).filter(cat => cat.items.length > 0);
 
   const getSelectedVariant = (product) => {
@@ -204,6 +217,48 @@ export function ProductListMenu() {
           ))
         )}
       </div>
+
+      {/* Pagination Bar (20 items per page) */}
+      {filteredProducts.length > 0 && (
+        <div className="trinetr-pagination-bar" data-testid="menu-pagination">
+          <div className="trinetr-pagination-info">
+            Showing <strong>{startIndex + 1}–{endIndex}</strong> of <strong>{filteredProducts.length}</strong> items
+          </div>
+          <div className="trinetr-pagination-actions">
+            <button
+              type="button"
+              className="trinetr-page-btn"
+              onClick={() => {
+                setCurrentPage(prev => Math.max(1, prev - 1));
+                window.scrollTo({ top: 250, behavior: 'smooth' });
+              }}
+              disabled={currentPage <= 1}
+              aria-label="Previous Page"
+              data-testid="menu-prev-page"
+            >
+              <ChevronLeft size={16} />
+              <span>Previous</span>
+            </button>
+            <span className="trinetr-page-indicator">
+              Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
+            </span>
+            <button
+              type="button"
+              className="trinetr-page-btn"
+              onClick={() => {
+                setCurrentPage(prev => Math.min(totalPages, prev + 1));
+                window.scrollTo({ top: 250, behavior: 'smooth' });
+              }}
+              disabled={currentPage >= totalPages}
+              aria-label="Next Page"
+              data-testid="menu-next-page"
+            >
+              <span>Next</span>
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

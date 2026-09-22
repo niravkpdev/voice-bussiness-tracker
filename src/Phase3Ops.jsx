@@ -925,6 +925,8 @@ export default function Phase3Ops({
   const [offlineQueue, setOfflineQueue] = useState(() => readArray(OFFLINE_QUEUE_KEY));
   const [editingOrder, setEditingOrder] = useState(null);
   const [orderFilter, setOrderFilter] = useState('all');
+  const [orderPage, setOrderPage] = useState(1);
+  const orderPageSize = 20;
   const [editingEmployee, setEditingEmployee] = useState(null);
   const [requestUpdateModal, setRequestUpdateModal] = useState(null);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
@@ -1220,6 +1222,16 @@ export default function Phase3Ops({
       return true;
     });
   }, [orders, orderFilter]);
+
+  // Reset order page when filter or orders list changes
+  useEffect(() => {
+    setOrderPage(1);
+  }, [orderFilter, orders.length]);
+
+  const orderPageCount = Math.max(1, Math.ceil(filteredOrders.length / orderPageSize));
+  const orderStartIndex = (orderPage - 1) * orderPageSize;
+  const orderEndIndex = Math.min(orderStartIndex + orderPageSize, filteredOrders.length);
+  const paginatedOrders = filteredOrders.slice(orderStartIndex, orderEndIndex);
 
   const activeOrdersCount = useMemo(
     () => orders.filter((o) => o.status !== 'Invoiced' && o.status !== 'Delivered').length,
@@ -3438,7 +3450,7 @@ export default function Phase3Ops({
             {filteredOrders.length === 0 ? (
               <p style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>No orders found for the selected filter.</p>
             ) : (
-              filteredOrders.map((order) => (
+              paginatedOrders.map((order) => (
                 <article className="compact-item" key={order.id}>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -3473,6 +3485,54 @@ export default function Phase3Ops({
               ))
             )}
           </div>
+
+          {/* Orders Pagination Controls (20 orders per page) */}
+          {filteredOrders.length > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '12px',
+                marginTop: '16px',
+                padding: '12px 16px',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+              }}
+              data-testid="orders-pagination"
+            >
+              <div style={{ fontSize: '13px', color: '#64748b' }}>
+                Showing <strong>{orderStartIndex + 1}–{orderEndIndex}</strong> of <strong>{filteredOrders.length}</strong> orders
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <button
+                  type="button"
+                  className="secondary-button compact-button"
+                  onClick={() => setOrderPage((p) => Math.max(1, p - 1))}
+                  disabled={orderPage <= 1}
+                  style={{ opacity: orderPage <= 1 ? 0.45 : 1, cursor: orderPage <= 1 ? 'not-allowed' : 'pointer' }}
+                  data-testid="orders-prev-page"
+                >
+                  Previous
+                </button>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>
+                  Page <strong>{orderPage}</strong> of <strong>{orderPageCount}</strong>
+                </span>
+                <button
+                  type="button"
+                  className="secondary-button compact-button"
+                  onClick={() => setOrderPage((p) => Math.min(orderPageCount, p + 1))}
+                  disabled={orderPage >= orderPageCount}
+                  style={{ opacity: orderPage >= orderPageCount ? 0.45 : 1, cursor: orderPage >= orderPageCount ? 'not-allowed' : 'pointer' }}
+                  data-testid="orders-next-page"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </section>
       </section>
     );
