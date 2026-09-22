@@ -689,6 +689,54 @@ function formatPartyBalance(ledger, balance) {
   return formatCurrency(balance);
 }
 
+function downloadStatementCSV(statement, profile) {
+  if (!statement || !statement.ledger) return;
+  const ledger = statement.ledger;
+  const company = profile?.name || 'Trinetr ERP';
+  const headers = ['Date', 'Type', 'Narration', 'Debit (Dr)', 'Credit (Cr)', 'Running Balance'];
+  const lines = [
+    `"STATEMENT OF ACCOUNT"`,
+    `"Company: ${String(company).replace(/"/g, '""')}"`,
+    `"Party: ${String(ledger.name || '').replace(/"/g, '""')}"`,
+    `"Account Type: ${ledger.group === 'Sundry Creditors' ? 'Supplier' : 'Customer'}"`,
+    `"Phone: ${String(ledger.phone || 'N/A').replace(/"/g, '""')}"`,
+    `"GSTIN: ${String(ledger.gst || 'N/A').replace(/"/g, '""')}"`,
+    `"Closing Balance: ${String(formatPartyBalance(ledger, statement.closingBalance)).replace(/"/g, '""')}"`,
+    '',
+    headers.join(','),
+  ];
+  (statement.rows || []).forEach((r) => {
+    lines.push([
+      `"${r.date || ''}"`,
+      `"${r.type || ''}"`,
+      `"${(r.narration || '').replace(/"/g, '""')}"`,
+      r.debit ? Number(r.debit).toFixed(2) : '0.00',
+      r.credit ? Number(r.credit).toFixed(2) : '0.00',
+      r.balance !== undefined ? Number(r.balance).toFixed(2) : '0.00',
+    ].join(','));
+  });
+  const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `Statement_${String(ledger.name || 'party').replace(/[^a-zA-Z0-9_-]/g, '_')}_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function sendStatementWhatsApp(statement, profile) {
+  if (!statement || !statement.ledger) return;
+  const ledger = statement.ledger;
+  const phone = formatWhatsAppPhone(ledger.phone || ledger.mobile || '');
+  if (!phone) return;
+  const company = profile?.name || 'Our Company';
+  const balanceText = formatPartyBalance(ledger, statement.closingBalance);
+  const message = `Hello ${ledger.name},\n\nThis is your account statement from *${company}*.\n\n*Current Balance:* ${balanceText}\n\nThank you for doing business with us!`;
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
+}
+
 function getBusinessHealthLabel(score) {
   if (score >= 80) {
     return 'Strong';
@@ -1823,7 +1871,23 @@ export default function VoiceExpenseTrackerPreview() {
   const [voucherFormSuccess, setVoucherFormSuccess] = useState('');
   const [voucherFilterType, setVoucherFilterType] = useState('All');
 
-  const [statementLedgerId, setStatementLedgerId] = useState('');
+  const [statementLedgerId, setStatementLedgerId] = useState(() => {
+    try {
+      if (typeof window !== 'undefined' && window.location.hash.includes('party-statement')) {
+        const queryIndex = window.location.hash.indexOf('?');
+        if (queryIndex !== -1) {
+          const params = new URLSearchParams(window.location.hash.slice(queryIndex + 1));
+          return params.get('id') || params.get('partyId') || '';
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return '';
+  });
+  const [statementFromDate, setStatementFromDate] = useState('');
+  const [statementToDate, setStatementToDate] = useState('');
+  const [statementSearchQuery, setStatementSearchQuery] = useState('');
   const [newPartyName, setNewPartyName] = useState('');
   const [newPartyType, setNewPartyType] = useState('customer');
   const [khataPartyFilter, setKhataPartyFilter] = useState('all');
@@ -2201,7 +2265,9 @@ export default function VoiceExpenseTrackerPreview() {
 
   useEffect(() => {
     const handleHashChange = () => {
-      let hash = window.location.hash.slice(1);
+      const rawHash = window.location.hash.slice(1);
+      const [rawTab, queryString] = rawHash.split('?');
+      let hash = rawTab;
       if (hash === 'storefront') hash = 'store';
       if (hash === 'help-center') hash = 'help';
       if (hash === 'party-management' || hash === 'parties') hash = 'crm';
@@ -2210,6 +2276,19 @@ export default function VoiceExpenseTrackerPreview() {
       if (hash === 'vouchers-hub') hash = 'voucher-entry';
       if (hash === 'masters') hash = 'crm';
       if (hash === 'production-stock') hash = 'inventory';
+
+      if (hash === 'party-statement' && queryString) {
+        try {
+          const params = new URLSearchParams(queryString);
+          const partyId = params.get('id') || params.get('partyId');
+          if (partyId) {
+            setStatementLedgerId(partyId);
+          }
+        } catch {
+          // ignore
+        }
+      }
+
       if (hash && APP_TABS.includes(hash)) {
         setActiveTab(hash);
         const section = SIDEBAR_SECTIONS.find((group) => group.children.some((child) => child.tab === hash));
@@ -4144,9 +4223,29 @@ export default function VoiceExpenseTrackerPreview() {
   const totals = useMemo(() => voucherCashTotals(activeVouchers), [activeVouchers]);
 
   const statement = useMemo(
-    () => getLedgerStatement(effectiveStatementLedgerId, allEffectiveLedgers, activeVouchers),
-    [effectiveStatementLedgerId, allEffectiveLedgers, activeVouchers]
+    () => getLedgerStatement(effectiveStatementLedgerId, allEffectiveLedgers, activeVouchers, activeInvoices),
+    [effectiveStatementLedgerId, allEffectiveLedgers, activeVouchers, activeInvoices]
   );
+
+  const displayedStatementRows = useMemo(() => {
+    if (!statement.rows || statement.rows.length === 0) return [];
+    return statement.rows.filter((row) => {
+      if (statementFromDate && row.date && row.date !== 'Opening' && row.date < statementFromDate) {
+        return false;
+      }
+      if (statementToDate && row.date && row.date !== 'Opening' && row.date > statementToDate) {
+        return false;
+      }
+      if (statementSearchQuery.trim()) {
+        const q = statementSearchQuery.toLowerCase().trim();
+        const narration = (row.narration || '').toLowerCase();
+        const type = (row.type || '').toLowerCase();
+        const date = (row.date || '').toLowerCase();
+        return narration.includes(q) || type.includes(q) || date.includes(q);
+      }
+      return true;
+    });
+  }, [statement.rows, statementFromDate, statementToDate, statementSearchQuery]);
 
   const partySummary = useMemo(() => getPartySummary(allEffectiveLedgers, activeVouchers, activeInvoices), [allEffectiveLedgers, activeVouchers, activeInvoices]);
 
@@ -9857,6 +9956,11 @@ export default function VoiceExpenseTrackerPreview() {
                 onCloudDelete={deleteAuthenticatedCloudRecord}
                 onAtomicInvoiceWithStock={saveAtomicInvoiceWithStock}
                 onCloudSnapshot={saveCloudDataSnapshot}
+                onSelectPartyStatement={(partyId) => {
+                  setStatementLedgerId(partyId);
+                  setActiveTab('party-statement');
+                  window.location.hash = `party-statement?id=${partyId}`;
+                }}
               />
             </Suspense>
           )}
@@ -11067,7 +11171,22 @@ export default function VoiceExpenseTrackerPreview() {
                             .filter(p => p.group === 'Sundry Debtors' && p.outstandingAmount > 0)
                             .map(p => (
                               <tr key={p.id}>
-                                <td><strong>{p.name}</strong></td>
+                                <td>
+                                  <strong>{p.name}</strong>
+                                  <button
+                                    type="button"
+                                    className="compact-button secondary-button"
+                                    style={{ marginLeft: '8px', fontSize: '11px', padding: '2px 8px', borderRadius: '4px' }}
+                                    onClick={() => {
+                                      setStatementLedgerId(p.id);
+                                      setActiveTab('party-statement');
+                                      window.location.hash = `party-statement?id=${p.id}`;
+                                    }}
+                                    title="View ledger statement for this customer"
+                                  >
+                                    Statement ↗
+                                  </button>
+                                </td>
                                 <td>{formatCurrency(p.totalSales)}</td>
                                 <td>{formatCurrency(p.totalPayments)}</td>
                                 <td><strong className="text-amber">{formatCurrency(p.outstandingAmount)}</strong></td>
@@ -11105,7 +11224,22 @@ export default function VoiceExpenseTrackerPreview() {
                             .filter(p => p.group === 'Sundry Creditors' && p.outstandingAmount > 0)
                             .map(p => (
                               <tr key={p.id}>
-                                <td><strong>{p.name}</strong></td>
+                                <td>
+                                  <strong>{p.name}</strong>
+                                  <button
+                                    type="button"
+                                    className="compact-button secondary-button"
+                                    style={{ marginLeft: '8px', fontSize: '11px', padding: '2px 8px', borderRadius: '4px' }}
+                                    onClick={() => {
+                                      setStatementLedgerId(p.id);
+                                      setActiveTab('party-statement');
+                                      window.location.hash = `party-statement?id=${p.id}`;
+                                    }}
+                                    title="View ledger statement for this supplier"
+                                  >
+                                    Statement ↗
+                                  </button>
+                                </td>
                                 <td>{formatCurrency(p.totalSales)}</td>
                                 <td>{formatCurrency(p.totalPayments)}</td>
                                 <td><strong className="text-red">{formatCurrency(Math.abs(p.outstandingAmount))}</strong></td>
@@ -11188,38 +11322,230 @@ export default function VoiceExpenseTrackerPreview() {
 
           {activeTab === 'party-statement' && (
             <section className="panel fade-in" id="party-statement">
-              <h2>Party Statement Ledger</h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+                <div>
+                  <h2 style={{ margin: 0 }}>Party Statement Ledger</h2>
+                  <p className="text-secondary" style={{ margin: '4px 0 0', fontSize: '13px' }}>
+                    Complete audit trail, invoices, vouchers, and running balance for customers and suppliers.
+                  </p>
+                </div>
+                {statement.ledger && (
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      className="secondary-button compact-button"
+                      onClick={() => window.print()}
+                      title="Print or export PDF statement"
+                    >
+                      🖨️ Print Statement
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary-button compact-button"
+                      onClick={() => downloadStatementCSV(statement, profile)}
+                      title="Export statement as CSV spreadsheet"
+                    >
+                      ⬇️ Export CSV
+                    </button>
+                    {Boolean(statement.ledger.phone || statement.ledger.mobile) && (
+                      <button
+                        type="button"
+                        className="secondary-button compact-button"
+                        style={{ color: '#16a34a', borderColor: '#86efac' }}
+                        onClick={() => sendStatementWhatsApp(statement, profile)}
+                        title="Send statement balance to party via WhatsApp"
+                      >
+                        💬 WhatsApp
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="primary-button compact-button"
+                      onClick={() => {
+                        setVoucherPartyId(statement.ledger.id);
+                        setUseSalesInsteadOfParty(false);
+                        setUseExpenseInsteadOfSupplier(false);
+                        setVoucherType(statement.ledger.group === 'Sundry Creditors' ? 'Payment' : 'Receipt');
+                        setActiveTab('voucher-entry');
+                        window.location.hash = 'voucher-entry';
+                      }}
+                    >
+                      + Record {statement.ledger.group === 'Sundry Creditors' ? 'Payment' : 'Receipt'}
+                    </button>
+                  </div>
+                )}
+              </div>
+
               {partyLedgers.length === 0 ? (
-                <p className="panel-hint">Add a customer or supplier party in Voucher Entry to check statement ledgers.</p>
+                <p className="panel-hint">Add a customer or supplier party in CRM or Voucher Entry to check statement ledgers.</p>
               ) : (
                 <>
-                  <label className="field-label" htmlFor="statement-party">
-                    Select Party
-                  </label>
-                  <select
-                    id="statement-party"
-                    className="saas-input"
-                    style={{ backgroundColor: '#fff', color: '#111827', zIndex: 10, minHeight: '44px', width: '100%', appearance: 'auto', borderRadius: '6px', border: '1px solid #d1d5db', padding: '8px 12px', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}
-                    value={effectiveStatementLedgerId}
-                    onChange={(event) => setStatementLedgerId(event.target.value)}
-                  >
-                    {partyLedgers.map((ledger) => (
-                      <option key={ledger.id} value={ledger.id}>
-                        {ledger.name} ({ledger.group === 'Sundry Creditors' ? 'Supplier' : 'Customer'})
-                      </option>
-                    ))}
-                  </select>
-                  {statement.ledger && (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', margin: '12px 0' }}>
-                      <p className="statement-balance" style={{ margin: 0, fontWeight: 700, fontSize: '15px', color: '#0f172a' }}>
-                        Closing balance: <span style={{ color: statement.closingBalance > 0 ? '#16a34a' : statement.closingBalance < 0 ? '#dc2626' : '#64748b' }}>{formatPartyBalance(statement.ledger, statement.closingBalance)}</span>
-                      </p>
-                      <span className="badge" style={{ backgroundColor: '#f1f5f9', color: '#475569', fontSize: '12px', padding: '4px 10px', borderRadius: '4px' }}>
-                        {statement.ledger.group === 'Sundry Creditors' ? 'Supplier Account' : 'Customer Account'}
-                        {statement.ledger.phone ? ` • 📞 ${statement.ledger.phone}` : ''}
-                      </span>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+                    <div>
+                      <label className="field-label" htmlFor="statement-party" style={{ marginBottom: '4px', display: 'block', fontSize: '12px', fontWeight: 600 }}>
+                        Select Customer / Supplier Party
+                      </label>
+                      <select
+                        id="statement-party"
+                        className="saas-input"
+                        style={{ backgroundColor: '#fff', color: '#111827', zIndex: 10, minHeight: '40px', width: '100%', appearance: 'auto', borderRadius: '6px', border: '1px solid #d1d5db', padding: '8px 12px', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}
+                        value={effectiveStatementLedgerId}
+                        onChange={(event) => setStatementLedgerId(event.target.value)}
+                      >
+                        {partyLedgers.map((ledger) => (
+                          <option key={ledger.id} value={ledger.id}>
+                            {ledger.name} ({ledger.group === 'Sundry Creditors' ? 'Supplier' : 'Customer'})
+                          </option>
+                        ))}
+                      </select>
                     </div>
+
+                    <div>
+                      <label style={{ marginBottom: '4px', display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                        Search Statement Entries
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Search by narration, invoice #, type..."
+                        className="saas-input"
+                        value={statementSearchQuery}
+                        onChange={(e) => setStatementSearchQuery(e.target.value)}
+                        style={{ width: '100%', minHeight: '40px', padding: '8px 12px', fontSize: '13px' }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Period date filter */}
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '16px', background: 'var(--bg-secondary)', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Period:</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>From</span>
+                      <input
+                        type="date"
+                        className="saas-input"
+                        value={statementFromDate}
+                        onChange={(e) => setStatementFromDate(e.target.value)}
+                        style={{ padding: '4px 8px', fontSize: '12px' }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>To</span>
+                      <input
+                        type="date"
+                        className="saas-input"
+                        value={statementToDate}
+                        onChange={(e) => setStatementToDate(e.target.value)}
+                        style={{ padding: '4px 8px', fontSize: '12px' }}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      className="secondary-button compact-button"
+                      style={{ fontSize: '11px', padding: '4px 8px' }}
+                      onClick={() => {
+                        const now = new Date();
+                        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+                        setStatementFromDate(firstDay);
+                        setStatementToDate(now.toISOString().slice(0, 10));
+                      }}
+                    >
+                      This Month
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary-button compact-button"
+                      style={{ fontSize: '11px', padding: '4px 8px' }}
+                      onClick={() => {
+                        setStatementFromDate('');
+                        setStatementToDate('');
+                      }}
+                    >
+                      All Time
+                    </button>
+                    {(statementFromDate || statementToDate || statementSearchQuery) && (
+                      <button
+                        type="button"
+                        className="secondary-button compact-button"
+                        style={{ fontSize: '11px', padding: '4px 8px', color: 'var(--danger)' }}
+                        onClick={() => {
+                          setStatementFromDate('');
+                          setStatementToDate('');
+                          setStatementSearchQuery('');
+                        }}
+                      >
+                        Reset Filters
+                      </button>
+                    )}
+                  </div>
+
+                  {statement.ledger && (
+                    <>
+                      {/* Financial KPI Highlights */}
+                      {(() => {
+                        const isCreditor = statement.ledger.group === 'Sundry Creditors';
+                        const opBalRow = statement.rows.find((r) => r.type === 'Opening Balance');
+                        const opVal = opBalRow ? (isCreditor ? opBalRow.credit : opBalRow.debit) : (Number(statement.ledger.openingBalance) || 0);
+                        const otherRows = statement.rows.filter((r) => r.type !== 'Opening Balance');
+                        const periodDebits = otherRows.reduce((sum, r) => sum + Number(r.debit || 0), 0);
+                        const periodCredits = otherRows.reduce((sum, r) => sum + Number(r.credit || 0), 0);
+
+                        return (
+                          <div className="dashboard-kpi-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', margin: '0 0 16px' }}>
+                            <div className="kpi-card" style={{ padding: '14px 16px' }}>
+                              <span className="text-secondary" style={{ fontSize: '12px', fontWeight: 500 }}>Opening Balance</span>
+                              <div className="kpi-value" style={{ fontSize: '20px', margin: '6px 0 2px' }}>
+                                {formatCurrency(opVal)}
+                              </div>
+                              <div className="kpi-trend trend-neutral" style={{ fontSize: '11px' }}>Account initialized</div>
+                            </div>
+                            <div className="kpi-card" style={{ padding: '14px 16px' }}>
+                              <span className="text-secondary" style={{ fontSize: '12px', fontWeight: 500 }}>
+                                {isCreditor ? 'Total Purchases / Credits' : 'Total Sales / Debits'}
+                              </span>
+                              <div className="kpi-value" style={{ fontSize: '20px', margin: '6px 0 2px', color: '#2563eb' }}>
+                                {formatCurrency(isCreditor ? periodCredits : periodDebits)}
+                              </div>
+                              <div className="kpi-trend trend-neutral" style={{ fontSize: '11px' }}>{isCreditor ? 'Purchases from supplier' : 'Sales to customer'}</div>
+                            </div>
+                            <div className="kpi-card" style={{ padding: '14px 16px' }}>
+                              <span className="text-secondary" style={{ fontSize: '12px', fontWeight: 500 }}>
+                                {isCreditor ? 'Total Payments Made' : 'Total Payments Received'}
+                              </span>
+                              <div className="kpi-value" style={{ fontSize: '20px', margin: '6px 0 2px', color: '#16a34a' }}>
+                                {formatCurrency(isCreditor ? periodDebits : periodCredits)}
+                              </div>
+                              <div className="kpi-trend trend-neutral" style={{ fontSize: '11px' }}>Settled payments</div>
+                            </div>
+                            <div className="kpi-card" style={{ padding: '14px 16px', background: statement.closingBalance > 0 ? 'rgba(239, 68, 68, 0.05)' : 'rgba(16, 185, 129, 0.05)', border: statement.closingBalance > 0 ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(16, 185, 129, 0.2)' }}>
+                              <span className="text-secondary" style={{ fontSize: '12px', fontWeight: 500 }}>Closing Balance</span>
+                              <div className="kpi-value" style={{ fontSize: '20px', margin: '6px 0 2px', color: statement.closingBalance > 0 ? '#dc2626' : statement.closingBalance < 0 ? '#16a34a' : '#64748b' }}>
+                                {formatPartyBalance(statement.ledger, statement.closingBalance)}
+                              </div>
+                              <div className="kpi-trend" style={{ fontSize: '11px', color: statement.closingBalance > 0 ? '#dc2626' : '#16a34a' }}>
+                                {statement.closingBalance > 0 ? (isCreditor ? 'Payable to Supplier' : 'Receivable from Customer') : statement.closingBalance < 0 ? 'Advance Balance' : 'Account Settled'}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Party details banner */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', margin: '0 0 12px', padding: '10px 14px', background: 'var(--bg-secondary)', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                          <span className="badge" style={{ backgroundColor: '#e0f2fe', color: '#0369a1', fontSize: '12px', padding: '4px 10px', borderRadius: '4px' }}>
+                            {statement.ledger.group === 'Sundry Creditors' ? 'Supplier Account' : 'Customer Account'}
+                          </span>
+                          {statement.ledger.phone ? <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>📞 {statement.ledger.phone}</span> : null}
+                          {statement.ledger.email ? <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>✉️ {statement.ledger.email}</span> : null}
+                          {statement.ledger.gst ? <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>GST: <strong>{statement.ledger.gst}</strong></span> : null}
+                        </div>
+                        <p className="statement-balance" style={{ margin: 0, fontWeight: 700, fontSize: '14px', color: '#0f172a' }}>
+                          Closing balance: <span style={{ color: statement.closingBalance > 0 ? '#16a34a' : statement.closingBalance < 0 ? '#dc2626' : '#64748b' }}>{formatPartyBalance(statement.ledger, statement.closingBalance)}</span>
+                        </p>
+                      </div>
+                    </>
                   )}
+
                   <div className="statement-table-wrap">
                     <table className="statement-table">
                       <thead>
@@ -11233,21 +11559,21 @@ export default function VoiceExpenseTrackerPreview() {
                         </tr>
                       </thead>
                       <tbody>
-                        {statement.rows.length === 0 ? (
+                        {displayedStatementRows.length === 0 ? (
                           <tr>
                             <td colSpan={6} className="empty-state">
                               No statement entries found for this party.
                             </td>
                           </tr>
                         ) : (
-                          statement.rows.map((row, index) => (
+                          displayedStatementRows.map((row, index) => (
                             <tr key={index}>
                               <td>{row.date}</td>
-                              <td><span className={`badge badge-${row.type.toLowerCase()}`}>{row.type}</span></td>
+                              <td><span className={`badge badge-${(row.type || '').toLowerCase().replace(/\s+/g, '-')}`}>{row.type}</span></td>
                               <td>{row.narration}</td>
                               <td>{row.debit ? formatCurrency(row.debit) : '—'}</td>
                               <td>{row.credit ? formatCurrency(row.credit) : '—'}</td>
-                              <td><strong>{formatCurrency(row.balance)}</strong></td>
+                              <td><strong>{formatCurrency(Math.abs(row.balance))} {row.balance > 0 ? (statement.ledger?.balanceType === 'credit' ? 'Cr' : 'Dr') : row.balance < 0 ? (statement.ledger?.balanceType === 'credit' ? 'Dr' : 'Cr') : ''}</strong></td>
                             </tr>
                           ))
                         )}

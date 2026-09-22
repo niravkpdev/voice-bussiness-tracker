@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { getPartySummary, computeLedgerBalance } from '../accounting.js';
+import { getPartySummary, computeLedgerBalance, getLedgerStatement } from '../accounting.js';
 import VoiceExpenseTrackerPreview, { navigationConfig } from '../VoiceExpenseTrackerPreview.jsx';
 
 describe('Party Outstanding Balance Sync & Navigation Cleanup', () => {
@@ -216,5 +216,79 @@ describe('Party Outstanding Balance Sync & Navigation Cleanup', () => {
     // Dashboard Outstanding card should display ₹200 and '1 Pending'
     expect(screen.getAllByText(/₹200/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/1 Pending/i).length).toBeGreaterThan(0);
+  });
+
+  it('generates Opening Balance statement row and computes closing balance for customer and supplier', () => {
+    const customerLedger = {
+      id: 'cus-nirav-statement',
+      name: 'NIRAV PRAJAPATI',
+      group: 'Sundry Debtors',
+      balanceType: 'debit',
+      openingBalance: 500,
+      createdAt: '2026-09-01',
+    };
+    const invoices = [
+      {
+        id: 'inv-101',
+        invoiceNo: 'INV-101',
+        customerId: 'cus-nirav-statement',
+        date: '2026-09-10',
+        total: 1200,
+        paid: 800,
+        status: 'Partial Paid',
+      },
+    ];
+
+    const customerStatement = getLedgerStatement(customerLedger.id, [customerLedger], [], invoices);
+    expect(customerStatement.rows).toHaveLength(3);
+    expect(customerStatement.rows[0].type).toBe('Opening Balance');
+    expect(customerStatement.rows[0].debit).toBe(500);
+    expect(customerStatement.rows[0].balance).toBe(500);
+    expect(customerStatement.rows[1].type).toBe('Sales');
+    expect(customerStatement.rows[1].debit).toBe(1200);
+    expect(customerStatement.rows[1].balance).toBe(1700);
+    expect(customerStatement.rows[2].type).toBe('Receipt');
+    expect(customerStatement.rows[2].credit).toBe(800);
+    expect(customerStatement.rows[2].balance).toBe(900);
+    expect(customerStatement.closingBalance).toBe(900);
+
+    const supplierLedger = {
+      id: 'sup-textile',
+      name: 'Surat Textiles',
+      group: 'Sundry Creditors',
+      balanceType: 'credit',
+      openingBalance: 450,
+      createdAt: '2026-09-01',
+    };
+    const supplierStatement = getLedgerStatement(supplierLedger.id, [supplierLedger], []);
+    expect(supplierStatement.rows).toHaveLength(1);
+    expect(supplierStatement.rows[0].type).toBe('Opening Balance');
+    expect(supplierStatement.rows[0].credit).toBe(450);
+    expect(supplierStatement.rows[0].balance).toBe(450);
+    expect(supplierStatement.closingBalance).toBe(450);
+  });
+
+  it('renders enhanced Party Statement Ledger UI with KPI stats, export buttons, and opening balance row', () => {
+    const mockCustomers = [
+      {
+        id: 'cus-nirav-ui',
+        name: 'NIRAV PRAJAPATI',
+        openingBalance: 500,
+        outstandingAmount: 500,
+        phone: '8488943771',
+      },
+    ];
+
+    localStorage.setItem('erpCustomers', JSON.stringify(mockCustomers));
+    window.location.hash = '#party-statement';
+
+    render(<VoiceExpenseTrackerPreview />);
+
+    expect(screen.getByText('Party Statement Ledger')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Print Statement/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Export CSV/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /WhatsApp/i })).toBeInTheDocument();
+    expect(screen.getAllByText('Initial opening balance').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Opening Balance').length).toBeGreaterThan(0);
   });
 });

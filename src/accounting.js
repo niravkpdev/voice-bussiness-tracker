@@ -393,53 +393,135 @@ export function computeLedgerBalance(ledgerId, ledgers, vouchers) {
   return net;
 }
 
-export function getLedgerStatement(ledgerId, ledgers, vouchers) {
+export function getLedgerStatement(ledgerId, ledgers, vouchers, invoices = []) {
   const ledger = getLedgerById(ledgers, ledgerId);
   if (!ledger) {
     return { ledger: null, rows: [], closingBalance: 0 };
   }
 
   const rows = [];
-  let running =
-    ledger.balanceType === 'debit' ? ledger.openingBalance || 0 : -(ledger.openingBalance || 0);
+  const baseBal = Number(
+    ledger.profileOutstanding !== undefined && ledger.profileOutstanding !== null
+      ? ledger.profileOutstanding
+      : (ledger.openingBalance || 0)
+  );
+  const opBal = Number(ledger.openingBalance !== undefined ? ledger.openingBalance : baseBal);
+  let running = opBal;
 
-  const sorted = [...vouchers].sort((a, b) => {
-    const dateCompare = a.date.localeCompare(b.date);
-    if (dateCompare !== 0) {
-      return dateCompare;
-    }
-    return (a.dateTime || '').localeCompare(b.dateTime || '');
+  // Add initial opening balance row if non-zero
+  if (opBal > 0) {
+    rows.push({
+      voucherId: `opbal-${ledger.id}`,
+      date: ledger.createdAt ? String(ledger.createdAt).slice(0, 10) : 'Opening',
+      dateTime: '',
+      type: 'Opening Balance',
+      narration: 'Initial opening balance',
+      debit: ledger.balanceType === 'debit' ? opBal : 0,
+      credit: ledger.balanceType === 'credit' ? opBal : 0,
+      balance: opBal,
+    });
+  }
+
+  // To avoid duplicate entries if a voucher already represents an invoice, track invoice references
+  const invoiceBillNosInVouchers = new Set();
+  (Array.isArray(vouchers) ? vouchers : []).forEach((vch) => {
+    if (vch.invoiceNo) invoiceBillNosInVouchers.add(vch.invoiceNo);
+    if (vch.invoiceId) invoiceBillNosInVouchers.add(vch.invoiceId);
+    if (vch.billNo) invoiceBillNosInVouchers.add(vch.billNo);
   });
 
-  sorted.forEach((voucher) => {
-    voucher.lines.forEach((line) => {
+  const events = [];
+
+  (Array.isArray(vouchers) ? vouchers : []).forEach((voucher) => {
+    (voucher.lines || []).forEach((line) => {
       const lineMatches = PARTY_GROUPS.has(ledger.group)
         ? isPartyVoucherLine(line, ledger, ledgers, voucher)
         : line.ledgerId === ledgerId;
 
-      if (!lineMatches) {
-        return;
-      }
+      if (!lineMatches) return;
 
-      const debit = line.debit || 0;
-      const credit = line.credit || 0;
+      const debit = Number(line.debit || 0);
+      const credit = Number(line.credit || 0);
 
-      if (ledger.balanceType === 'debit') {
-        running += debit - credit;
-      } else {
-        running += credit - debit;
-      }
-
-      rows.push({
-        voucherId: voucher.id,
-        date: voucher.date,
-        dateTime: voucher.dateTime,
-        type: voucher.type,
-        narration: voucher.narration,
+      events.push({
+        id: voucher.id,
+        date: voucher.date || '',
+        dateTime: voucher.dateTime || voucher.date || '',
+        type: voucher.type || 'Journal',
+        narration: voucher.narration || `${voucher.type} voucher`,
         debit,
         credit,
-        balance: running,
       });
+    });
+  });
+
+  if (ledger.group === 'Sundry Debtors' && Array.isArray(invoices) && invoices.length > 0) {
+    const targetName = ledger.name ? ledger.name.toLowerCase().trim() : '';
+    invoices.forEach((inv) => {
+      if (!inv || inv.deleted || inv.isDeleted || inv.status === 'Deleted' || inv.status === 'Cancelled') return;
+      const invCustName = (inv.customerName || inv.customer_name || '').toLowerCase().trim();
+      const matches =
+        inv.customerId === ledger.id ||
+        inv.customer_id === ledger.id ||
+        (invCustName && invCustName === targetName);
+
+      if (!matches) return;
+
+      const invNo = inv.invoiceNo || inv.invoiceNumber || inv.id || '';
+      if (invNo && (invoiceBillNosInVouchers.has(invNo) || invoiceBillNosInVouchers.has(inv.id))) return;
+
+      const invTotal = Number(inv.total || inv.grandTotal || inv.amount || 0);
+      const invPaid = Number(inv.paid || inv.paid_amount || inv.paidAmount || 0);
+      const invDate = inv.date || inv.invoice_date || (inv.createdAt ? String(inv.createdAt).slice(0, 10) : '') || '';
+
+      if (invTotal > 0) {
+        events.push({
+          id: `inv-${inv.id}`,
+          date: invDate,
+          dateTime: inv.createdAt || invDate,
+          type: 'Sales',
+          narration: `Invoice #${invNo}`,
+          debit: invTotal,
+          credit: 0,
+        });
+      }
+
+      if (invPaid > 0) {
+        events.push({
+          id: `inv-pay-${inv.id}`,
+          date: invDate,
+          dateTime: inv.createdAt || invDate,
+          type: 'Receipt',
+          narration: `Payment received for Invoice #${invNo}`,
+          debit: 0,
+          credit: invPaid,
+        });
+      }
+    });
+  }
+
+  events.sort((a, b) => {
+    const dComp = (a.date || '').localeCompare(b.date || '');
+    if (dComp !== 0) return dComp;
+    return (a.dateTime || '').localeCompare(b.dateTime || '');
+  });
+
+  events.forEach((ev) => {
+    if (ledger.balanceType === 'debit') {
+      running += ev.debit - ev.credit;
+    } else {
+      running += ev.credit - ev.debit;
+    }
+
+    rows.push({
+      voucherId: ev.id,
+      date: ev.date,
+      dateTime: ev.dateTime,
+      type: ev.type,
+      narration: ev.narration,
+      debit: ev.debit,
+      credit: ev.credit,
+      balance: running,
     });
   });
 

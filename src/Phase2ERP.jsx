@@ -165,7 +165,18 @@ export default function Phase2ERP({
   onAtomicInvoiceWithStock,
   onCloudSnapshot,
   onInvoicesChange,
+  onSelectPartyStatement,
+  onLimitReached,
 }) {
+  const handleOpenPartyStatement = (party) => {
+    if (!party) return;
+    if (typeof onSelectPartyStatement === 'function') {
+      onSelectPartyStatement(party.id);
+    } else {
+      window.location.hash = `party-statement?id=${party.id}`;
+    }
+  };
+
   const [products, setProducts] = useState(() => {
     if (Array.isArray(cloudInventory)) return cloudInventory;
     const raw = readScopedString(PRODUCT_KEY);
@@ -2676,6 +2687,16 @@ export default function Phase2ERP({
                 >
                   <Search size={16} className="text-secondary" /> View Profile
                 </button>
+                <button 
+                  style={{ padding: '16px', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid var(--border-subtle)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}
+                  onClick={() => {
+                    const party = partyActionMenu.item;
+                    setPartyActionMenu(null);
+                    handleOpenPartyStatement(party);
+                  }}
+                >
+                  <FileText size={16} className="text-secondary" /> View Ledger Statement
+                </button>
                 {contactPhone(partyActionMenu.item) && (
                   <button 
                     style={{ padding: '16px', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid var(--border-subtle)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}
@@ -3051,6 +3072,11 @@ export default function Phase2ERP({
                      if (selectedCrmPerson?.email) window.location.href = `mailto:${selectedCrmPerson.email}`;
                      else onStatus('Email not available');
                    }}><Mail size={16} /> Send Email</button>
+                   <button className="secondary-button" style={{ width: '100%', justifyContent: 'center', color: 'var(--brand-primary)', borderColor: 'var(--brand-primary)' }} onClick={() => {
+                     const person = selectedCrmPerson;
+                     setSelectedCrmPerson(null);
+                     handleOpenPartyStatement(person);
+                   }}><FileText size={16} /> View Ledger Statement</button>
                  </div>
               </div>
               
@@ -3101,8 +3127,74 @@ export default function Phase2ERP({
                     <h3 style={{ fontSize: '16px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <Activity size={18} className="text-brand" /> CRM Activity
                     </h3>
-                    <div className="timeline">
-                      <p className="text-secondary" style={{ fontSize: '13px' }}>No activity yet</p>
+                    <div className="timeline" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {(() => {
+                        const activities = [];
+                        const targetName = (selectedCrmPerson?.name || '').toLowerCase().trim();
+                        const targetId = selectedCrmPerson?.id || '';
+
+                        // 1. Account Initialization / Opening Balance
+                        if (selectedCrmPerson?.createdAt || selectedCrmPerson?.openingBalance > 0) {
+                          activities.push({
+                            id: 'init',
+                            date: selectedCrmPerson?.createdAt ? String(selectedCrmPerson.createdAt).slice(0, 10) : 'Initial',
+                            title: 'Account Initialized',
+                            desc: selectedCrmPerson?.openingBalance > 0
+                              ? `Profile created with Opening Balance of ${formatCurrency(selectedCrmPerson.openingBalance)}`
+                              : 'Profile created in database',
+                            badge: 'Profile',
+                            color: 'var(--brand-primary)'
+                          });
+                        }
+
+                        // 2. Invoices
+                        (invoices || []).forEach((inv) => {
+                          const cName = (inv.customerName || inv.customer_name || '').toLowerCase().trim();
+                          if (inv.customerId === targetId || inv.customer_id === targetId || (cName && cName === targetName)) {
+                            activities.push({
+                              id: `inv-${inv.id}`,
+                              date: inv.date || (inv.createdAt ? String(inv.createdAt).slice(0, 10) : ''),
+                              title: `Invoice #${inv.invoiceNo || inv.id}`,
+                              desc: `Billed ${formatCurrency(inv.total || 0)} (${inv.status || 'Pending'})`,
+                              badge: 'Invoice',
+                              color: '#f59e0b'
+                            });
+                          }
+                        });
+
+                        // 3. Vouchers
+                        (vouchers || []).forEach((vch) => {
+                          const pName = (vch.partyName || vch.party_name || '').toLowerCase().trim();
+                          const matches = vch.partyId === targetId || vch.party_id === targetId || (pName && pName === targetName);
+                          if (matches) {
+                            activities.push({
+                              id: `vch-${vch.id}`,
+                              date: vch.date || '',
+                              title: `${vch.type} Voucher`,
+                              desc: `${vch.narration || ''} • ${formatCurrency(vch.amount || 0)}`,
+                              badge: vch.type,
+                              color: vch.type === 'Receipt' ? '#10b981' : '#6366f1'
+                            });
+                          }
+                        });
+
+                        if (activities.length === 0) {
+                          return <p className="text-secondary" style={{ fontSize: '13px' }}>No activity yet</p>;
+                        }
+
+                        return activities.map((act) => (
+                          <div key={act.id} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', paddingBottom: '10px', borderBottom: '1px solid var(--border-subtle)' }}>
+                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: act.color, marginTop: '6px', flexShrink: 0 }} />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                                <span style={{ fontSize: '13px', fontWeight: '600' }}>{act.title}</span>
+                                <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{act.date}</span>
+                              </div>
+                              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{act.desc}</div>
+                            </div>
+                          </div>
+                        ));
+                      })()}
                     </div>
                   </div>
                   
