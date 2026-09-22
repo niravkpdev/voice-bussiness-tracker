@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { X, Upload, Link, Plus, Trash2, Check, Sparkles, RefreshCw, AlertCircle, Image as ImageIcon, Globe } from 'lucide-react';
 import { useStoreCart } from '../context/StoreCartContext';
 import { CATEGORIES } from '../data/namkeenData';
+import { compressFoodImage } from '../../imageCompression.js';
+import { uploadStorefrontImage, getSupabaseClient, getCurrentSupabaseUser, isSupabaseConfigured } from '../../supabaseClient.js';
 
 export function ProductEditModal() {
   const { 
@@ -21,6 +23,8 @@ export function ProductEditModal() {
   const [formData, setFormData] = useState(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [compressionStats, setCompressionStats] = useState(null);
 
   useEffect(() => {
     if (editingProduct && isOwner) {
@@ -53,8 +57,8 @@ export function ProductEditModal() {
     setEditingProduct(null);
   };
 
-  // Image Upload handler: reads local file into Data URL
-  const handleImageFileUpload = (e) => {
+  // Image Upload handler: client-side compression (max 500x500, <=150KB JPEG) + Supabase Storage upload
+  const handleImageFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -63,24 +67,65 @@ export function ProductEditModal() {
       return;
     }
 
-    // Limit size to 4MB for localStorage resilience
-    if (file.size > 4 * 1024 * 1024) {
-      setErrorMessage('Image file is too large. Please select an image under 4MB.');
-      return;
-    }
+    setErrorMessage('');
+    setIsCompressing(true);
+    setCompressionStats(null);
 
-    const reader = new FileReader();
-    reader.onload = (uploadEvent) => {
-      const result = uploadEvent.target?.result;
-      if (result) {
-        setFormData(prev => ({ ...prev, image: result }));
-        setErrorMessage('');
+    try {
+      // 1. Automatically compress food image on client side:
+      // Resizes to max resolution 500x500 px (aspect ratio maintained)
+      // Limits max compressed size to 150 KB with JPEG format
+      const compressionResult = await compressFoodImage(file, {
+        maxDimension: 500,
+        maxSizeBytes: 150 * 1024,
+        mimeType: 'image/jpeg',
+        fileName: file.name || `food-${formData?.id || 'item'}.jpg`,
+      });
+
+      const { blob, dataUrl, width, height, size } = compressionResult;
+      const sizeKb = Math.round(size / 1024);
+      setCompressionStats({
+        sizeKb,
+        width,
+        height,
+        reductionPercent: compressionResult.reductionPercent,
+      });
+
+      // 2. Pass compressed Blob directly to Supabase storage upload call if configured & authenticated
+      let finalImageUrl = dataUrl;
+      try {
+        if (isSupabaseConfigured()) {
+          const client = getSupabaseClient();
+          const sessionRes = client ? await Promise.race([
+            client.auth.getSession(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Session check timeout')), 400))
+          ]).catch(() => null) : null;
+          const uid = sessionRes?.data?.session?.user?.id;
+          if (uid) {
+            const uploadRes = await uploadStorefrontImage({
+              uid,
+              file: blob,
+              itemId: formData?.id || 'food-item',
+            });
+            if (uploadRes?.publicUrl) {
+              finalImageUrl = uploadRes.publicUrl;
+            }
+          }
+        }
+      } catch (uploadError) {
+        // Fallback gracefully to high-res compressed JPEG dataUrl (<= 150 KB)
+        console.warn('Supabase storage direct upload fallback to compressed dataUrl:', uploadError);
       }
-    };
-    reader.onerror = () => {
-      setErrorMessage('Failed to read image file.');
-    };
-    reader.readAsDataURL(file);
+
+      setFormData(prev => ({ ...prev, image: finalImageUrl }));
+      setErrorMessage('');
+    } catch (err) {
+      console.error('Image compression or upload failed:', err);
+      setErrorMessage(err?.message || 'Failed to compress and upload image.');
+    } finally {
+      setIsCompressing(false);
+      if (e.target) e.target.value = '';
+    }
   };
 
   // Variant management
@@ -253,17 +298,31 @@ export function ProductEditModal() {
 
               {/* Upload file button */}
               <div className="trinetr-edit-upload-box">
-                <label className="trinetr-file-upload-btn">
-                  <Upload size={16} />
-                  <span>Upload Image From Device</span>
+                <label 
+                  className="trinetr-file-upload-btn" 
+                  style={{ 
+                    opacity: isCompressing ? 0.75 : 1, 
+                    pointerEvents: isCompressing ? 'none' : 'auto',
+                    cursor: isCompressing ? 'wait' : 'pointer'
+                  }}
+                >
+                  {isCompressing ? <RefreshCw size={16} className="spin-icon" /> : <Upload size={16} />}
+                  <span>{isCompressing ? 'Compressing & Uploading...' : 'Upload Image From Device'}</span>
                   <input 
                     type="file" 
                     accept="image/*" 
                     onChange={handleImageFileUpload} 
+                    disabled={isCompressing}
                     style={{ display: 'none' }} 
                   />
                 </label>
-                <span className="trinetr-upload-tip">Supports JPG, PNG, WEBP from phone or PC</span>
+                {compressionStats && (
+                  <div style={{ marginTop: '6px', fontSize: '12px', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', fontWeight: 600 }}>
+                    <Check size={13} />
+                    <span>Auto-Compressed: {compressionStats.sizeKb} KB ({compressionStats.width}×{compressionStats.height} JPEG{compressionStats.reductionPercent > 0 ? ` • ${compressionStats.reductionPercent}% smaller` : ''})</span>
+                  </div>
+                )}
+                <span className="trinetr-upload-tip">Auto-compressed to max 500×500 px, max 150 KB JPEG for Supabase Storage</span>
               </div>
 
               {/* URL input */}

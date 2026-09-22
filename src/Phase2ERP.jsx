@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { formatWhatsAppPhone, normalizeAmount, sanitizeEmail, sanitizeText, validateEmail, validatePhone } from './security.js';
 import { readScopedString, writeScopedString } from './storageScope.js';
+import { compressFoodImage } from './imageCompression.js';
+import { uploadStorefrontImage, getSupabaseClient, getCurrentSupabaseUser, isSupabaseConfigured } from './supabaseClient.js';
 
 const PRODUCT_KEY = 'erpProducts';
 const STOCK_TXN_KEY = 'erpStockTransactions';
@@ -917,6 +919,42 @@ export default function Phase2ERP({
     const form = new FormData(event.currentTarget);
     const image = form.get('image');
     const current = editingProduct;
+
+    let finalImageUrl = current?.image || '';
+    if (image && image.size) {
+      try {
+        const compressed = await compressFoodImage(image, {
+          maxDimension: 500,
+          maxSizeBytes: 150 * 1024,
+          mimeType: 'image/jpeg',
+          fileName: image.name || 'product.jpg',
+        });
+        finalImageUrl = compressed.dataUrl;
+
+        try {
+          if (isSupabaseConfigured()) {
+            const client = getSupabaseClient();
+            const user = client ? await getCurrentSupabaseUser(client).catch(() => null) : null;
+            if (user?.id) {
+              const uploadRes = await uploadStorefrontImage({
+                uid: user.id,
+                file: compressed.blob,
+                itemId: current?.id || 'prd',
+              });
+              if (uploadRes?.publicUrl) {
+                finalImageUrl = uploadRes.publicUrl;
+              }
+            }
+          }
+        } catch (uploadErr) {
+          console.warn('ERP product image upload fallback to compressed dataUrl:', uploadErr);
+        }
+      } catch (err) {
+        console.warn('Image compression fallback:', err);
+        finalImageUrl = await fileToDataUrl(image);
+      }
+    }
+
     const product = {
       ...(current || {}),
       id: current?.id || createId('prd'),
@@ -924,7 +962,7 @@ export default function Phase2ERP({
       name: sanitizeText(form.get('name'), 120),
       category: sanitizeText(form.get('category'), 80) || 'General',
       sku: sanitizeText(form.get('sku'), 60) || `SKU-${Date.now().toString().slice(-5)}`,
-      image: image?.size ? await fileToDataUrl(image) : current?.image || '',
+      image: finalImageUrl,
       purchasePrice: normalizeAmount(form.get('purchasePrice')),
       sellingPrice: normalizeAmount(form.get('sellingPrice')),
       currentStock: normalizeAmount(form.get('currentStock')),

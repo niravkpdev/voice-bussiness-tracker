@@ -37,6 +37,7 @@ const CLOUD_TABLES = new Set([
 const CLOUD_TIMEOUT_MS = 25_000;
 const CLOUD_TIMEOUT_MESSAGE = 'Supabase write timed out. Please check Supabase project, RLS policies, API keys, or env variables.';
 const HRMS_DOCUMENT_BUCKET = import.meta.env.VITE_SUPABASE_HRMS_BUCKET || 'hrms-documents';
+export const STOREFRONT_IMAGE_BUCKET = import.meta.env.VITE_SUPABASE_STOREFRONT_BUCKET || 'storefront-images';
 
 let supabaseClient;
 let projectLogged = false;
@@ -175,7 +176,7 @@ function withCloudTimeout(promise, meta) {
   });
 }
 
-async function getCurrentSupabaseUser(client = getSupabaseClient()) {
+export async function getCurrentSupabaseUser(client = getSupabaseClient()) {
   if (!client) {
     return null;
   }
@@ -1696,6 +1697,69 @@ export async function createHrmsDocumentSignedUrl({ uid, path, expiresIn = 300 }
   );
   if (error) throw error;
   return data?.signedUrl || '';
+}
+
+export function buildStorefrontStoragePath({ uid, itemId, fileName = 'food.jpg' }) {
+  const safeName = safeStorageSegment(fileName, 'food.jpg').replace(/\.[^.]+$/, '') + '.jpg';
+  return [
+    safeStorageSegment(uid, 'public'),
+    'storefront',
+    safeStorageSegment(itemId, 'items'),
+    `${Date.now()}-${safeName}`,
+  ].join('/');
+}
+
+export async function uploadStorefrontImage({ uid, path, file, bucket = STOREFRONT_IMAGE_BUCKET }) {
+  const client = getSupabaseClient();
+  if (!client || !file) {
+    throw new Error('Missing Supabase client or file to upload.');
+  }
+
+  const effectivePath = path || buildStorefrontStoragePath({ uid, itemId: 'food', fileName: file?.name || 'food.jpg' });
+  const contentType = file?.type || 'image/jpeg';
+
+  const { data, error } = await withCloudTimeout(
+    client.storage.from(bucket).upload(effectivePath, file, {
+      cacheControl: '31536000',
+      upsert: true,
+      contentType,
+    }),
+    { path: `${bucket}/${effectivePath}`, uid: uid || null, operation: 'storage:upload_image' }
+  );
+
+  if (error) {
+    // If dedicated storefront-images bucket does not exist, attempt fallback to HRMS_DOCUMENT_BUCKET
+    if (bucket !== HRMS_DOCUMENT_BUCKET) {
+      try {
+        const fallbackUpload = await withCloudTimeout(
+          client.storage.from(HRMS_DOCUMENT_BUCKET).upload(effectivePath, file, {
+            cacheControl: '31536000',
+            upsert: true,
+            contentType,
+          }),
+          { path: `${HRMS_DOCUMENT_BUCKET}/${effectivePath}`, uid: uid || null, operation: 'storage:upload_image_fallback' }
+        );
+        if (fallbackUpload && !fallbackUpload.error) {
+          const { data: publicData } = client.storage.from(HRMS_DOCUMENT_BUCKET).getPublicUrl(effectivePath);
+          return {
+            bucket: HRMS_DOCUMENT_BUCKET,
+            path: effectivePath,
+            publicUrl: publicData?.publicUrl || '',
+            data: fallbackUpload.data,
+          };
+        }
+      } catch {}
+    }
+    throw error;
+  }
+
+  const { data: publicData } = client.storage.from(bucket).getPublicUrl(effectivePath);
+  return {
+    bucket,
+    path: effectivePath,
+    publicUrl: publicData?.publicUrl || '',
+    data,
+  };
 }
 
 export async function saveEmployeeSelfServiceRecord(ownerUid, tableName, id, data) {

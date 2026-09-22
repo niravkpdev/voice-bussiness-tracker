@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Sparkles, Check, RefreshCw, Upload, Image as ImageIcon } from 'lucide-react';
 import { useStoreCart } from '../context/StoreCartContext';
+import { compressFoodImage } from '../../imageCompression.js';
+import { uploadStorefrontImage, getSupabaseClient, getCurrentSupabaseUser, isSupabaseConfigured } from '../../supabaseClient.js';
 
 const DEFAULT_BANNER_IMAGE = 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=700&auto=format&fit=crop&q=80';
 
@@ -31,10 +33,11 @@ export function BannerEditModal({ isOpen, onClose, onUpdateProfile }) {
   const [tagline, setTagline] = useState(storeInfo?.tagline || 'AUTHENTIC FRESH FOODS & SNACKS');
   const [bannerImage, setBannerImage] = useState(storeInfo?.bannerImage || DEFAULT_BANNER_IMAGE);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    if (storeInfo) {
+    if (storeInfo && isOpen) {
       setHeadline(storeInfo.bannerOffer || 'FLAT 20% OFF');
       setRegion(storeInfo.bannerRegion || "For All Gujarat and Mumbai City's Customers");
       setTagline(storeInfo.tagline || 'AUTHENTIC FRESH FOODS & SNACKS');
@@ -46,16 +49,46 @@ export function BannerEditModal({ isOpen, onClose, onUpdateProfile }) {
     return null;
   }
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (loadEvt) => {
-        if (loadEvt.target?.result) {
-          setBannerImage(loadEvt.target.result);
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      // Compress banner image (max 500x500 px, <= 150 KB JPEG)
+      const compressed = await compressFoodImage(file, {
+        maxDimension: 500,
+        maxSizeBytes: 150 * 1024,
+        mimeType: 'image/jpeg',
+        fileName: file.name || 'banner.jpg'
+      });
+
+      let finalUrl = compressed.dataUrl;
+      try {
+        if (isSupabaseConfigured()) {
+          const client = getSupabaseClient();
+          const user = client ? await getCurrentSupabaseUser(client).catch(() => null) : null;
+          if (user?.id) {
+            const uploadRes = await uploadStorefrontImage({
+              uid: user.id,
+              file: compressed.blob,
+              itemId: 'banner'
+            });
+            if (uploadRes?.publicUrl) {
+              finalUrl = uploadRes.publicUrl;
+            }
+          }
         }
-      };
-      reader.readAsDataURL(file);
+      } catch (uploadError) {
+        console.warn('Banner upload fallback to dataUrl:', uploadError);
+      }
+
+      setBannerImage(finalUrl);
+    } catch (err) {
+      console.error('Failed to compress/upload banner:', err);
+    } finally {
+      setIsUploading(false);
+      if (e.target) e.target.value = '';
     }
   };
 
@@ -183,11 +216,12 @@ export function BannerEditModal({ isOpen, onClose, onUpdateProfile }) {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
                     className="trinetr-reset-btn"
-                    style={{ padding: '5px 10px', fontSize: 11, background: '#f8fafc' }}
+                    style={{ padding: '5px 10px', fontSize: 11, background: '#f8fafc', opacity: isUploading ? 0.75 : 1 }}
                   >
-                    <Upload size={13} />
-                    <span>Upload From Device</span>
+                    {isUploading ? <RefreshCw size={13} className="spin-icon" /> : <Upload size={13} />}
+                    <span>{isUploading ? 'Compressing (500x500)...' : 'Upload From Device'}</span>
                   </button>
                 </div>
               </div>
