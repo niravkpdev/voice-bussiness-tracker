@@ -9,7 +9,7 @@ export default function VoiceCommandButton({
   className = '',
   containerClassName = ''
 }) {
-  if (import.meta.env.VITE_ENABLE_VOICE_ASSISTANT !== 'true') {
+  if (import.meta.env.VITE_ENABLE_VOICE_ASSISTANT === 'false') {
     return null;
   }
   const [isListening, setIsListening] = useState(false);
@@ -165,7 +165,7 @@ export default function VoiceCommandButton({
                 {isListening ? (
                   <span style={{ display: 'inline-flex', width: '10px', height: '10px', borderRadius: '50%', background: '#ef4444', animation: 'micPulseDot 1s infinite' }} />
                 ) : (
-                  successText ? <CheckCircle2 size={16} color="#16a34a" /> : <Sparkles size={16} color="#5b4fe9" />
+                  successText ? <CheckCircle2 size={16} color="#16a34a" /> : <Sparkles size={16} color="#2563eb" />
                 )}
                 <strong style={{ fontSize: '13px', color: error ? '#b91c1c' : (successText ? '#15803d' : '#0f172a') }}>
                   {error ? 'Microphone Notice' : (successText ? 'Command Processed' : (isListening ? 'Listening... Speak now' : 'Voice Assistant'))}
@@ -200,40 +200,52 @@ export default function VoiceCommandButton({
           </div>
         )}
 
-        {/* Circular Mic Button */}
+        {/* Circular Mic Button matching user sketch */}
         <button
           type="button"
           onClick={toggleListening}
           className={`floating-mic-btn ${isListening ? 'listening' : ''} ${className}`}
           style={{
             pointerEvents: 'auto',
-            width: '58px',
-            height: '58px',
+            width: '62px',
+            height: '62px',
             borderRadius: '50%',
             background: isListening 
               ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' 
-              : 'linear-gradient(135deg, #5b4fe9 0%, #4338ca 100%)',
-            border: '2.5px solid rgba(255, 255, 255, 0.35)',
+              : 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+            border: '2.5px solid rgba(255, 255, 255, 0.45)',
             boxShadow: isListening 
-              ? '0 0 0 8px rgba(239, 68, 68, 0.25), 0 12px 28px rgba(220, 38, 38, 0.45)' 
-              : '0 8px 24px rgba(91, 79, 233, 0.42), 0 2px 8px rgba(0, 0, 0, 0.1)',
+              ? '0 0 0 8px rgba(239, 68, 68, 0.28), 0 12px 28px rgba(220, 38, 38, 0.45)' 
+              : '0 8px 24px rgba(37, 99, 235, 0.42), 0 2px 8px rgba(0, 0, 0, 0.12)',
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
+            gap: '2px',
             cursor: 'pointer',
             transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
             padding: 0,
             outline: 'none',
             flexShrink: 0
           }}
-          title={isListening ? 'Click to stop listening' : 'Voice Command Bookkeeper (Click & Speak)'}
+          title={isListening ? 'Click to stop listening' : 'Voice Command Mic (Click & Speak)'}
           aria-label="Voice Command Mic"
         >
           {isListening ? (
-            <MicOff size={26} color="#ffffff" strokeWidth={2.3} />
+            <MicOff size={22} color="#ffffff" strokeWidth={2.4} />
           ) : (
-            <Mic size={26} color="#ffffff" strokeWidth={2.3} />
+            <Mic size={22} color="#ffffff" strokeWidth={2.4} />
           )}
+          <span style={{ 
+            fontSize: '9.5px', 
+            fontWeight: 800, 
+            letterSpacing: '0.8px', 
+            color: '#ffffff', 
+            textTransform: 'uppercase', 
+            lineHeight: 1 
+          }}>
+            {isListening ? 'LIVE' : 'MIC'}
+          </span>
         </button>
       </div>
     );

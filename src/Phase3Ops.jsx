@@ -1,9 +1,27 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import QRCode from 'qrcode';
+import { 
+  Mic, 
+  MicOff, 
+  Sparkles, 
+  CheckCircle2, 
+  TrendingUp, 
+  Users, 
+  AlertCircle, 
+  ArrowRight, 
+  Zap, 
+  RefreshCw, 
+  Volume2, 
+  ShieldCheck, 
+  Check, 
+  DollarSign, 
+  Clock 
+} from 'lucide-react';
 import { formatWhatsAppPhone, normalizeAmount, sanitizeText, validateEmail, validatePhone } from './security.js';
+import { parseVoiceCommand } from './accounting.js';
 import { readScopedString, writeScopedString } from './storageScope.js';
 import { createEmployeeLogin, resetEmployeePassword, disableEmployeeLogin, getSupabaseClient } from './supabaseClient.js';
 import VoiceCommandButton from './VoiceCommandButton.jsx';
@@ -206,6 +224,634 @@ function RealQrThumbnail({ uri, size = 64 }) {
       alt="UPI QR"
       style={{ width: size, height: size, borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff', objectFit: 'contain', padding: 2 }}
     />
+  );
+}
+
+function VoiceBookkeeperStudio({
+  onVoiceCommandRecognized,
+  partyLedgers = [],
+  partySummary = [],
+  vouchers = [],
+  invoices = [],
+  products = [],
+  pendingCollections = [],
+  businessIssues = [],
+  formatCurrency,
+  today
+}) {
+  const [isListening, setIsListening] = useState(false);
+  const [liveTranscript, setLiveTranscript] = useState('');
+  const [recognitionError, setRecognitionError] = useState('');
+  const [parsedResult, setParsedResult] = useState(null);
+  const [appliedNotice, setAppliedNotice] = useState('');
+  const recognitionRef = useRef(null);
+
+  const samplePhrases = [
+    { text: 'Add payment 500 cash for tea', type: 'Payment', icon: '☕', tag: 'Expense' },
+    { text: 'Sales 1500 Ramesh credit', type: 'Sales', icon: '🛍️', tag: 'Customer' },
+    { text: 'Received 2000 cash from Nirav', type: 'Receipt', icon: '💵', tag: 'Inward' },
+    { text: 'Purchase 3500 raw materials bank', type: 'Purchase', icon: '📦', tag: 'Supplier' },
+    { text: 'Payment 1200 rent online', type: 'Payment', icon: '🏢', tag: 'Office' }
+  ];
+
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    const rec = new SpeechRecognition();
+    rec.lang = 'en-IN';
+    rec.interimResults = true;
+    rec.continuous = false;
+    rec.maxAlternatives = 1;
+
+    rec.onstart = () => {
+      setIsListening(true);
+      setRecognitionError('');
+      setLiveTranscript('');
+      setAppliedNotice('');
+    };
+
+    rec.onresult = (event) => {
+      let interim = '';
+      let final = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          final += event.results[i][0].transcript;
+        } else {
+          interim += event.results[i][0].transcript;
+        }
+      }
+      const spoken = (final || interim).trim();
+      if (spoken) setLiveTranscript(spoken);
+
+      if (final && final.trim()) {
+        const textToProcess = final.trim();
+        const parsed = parseVoiceCommand(textToProcess, partyLedgers);
+        const isBank = /\b(bank|upi|online|card|rtgs|neft)\b/i.test(textToProcess);
+        const resultPayload = {
+          originalText: textToProcess,
+          ...parsed,
+          isBank
+        };
+        setParsedResult(resultPayload);
+        setIsListening(false);
+      }
+    };
+
+    rec.onerror = (e) => {
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+        setRecognitionError('Microphone permission blocked. Please allow mic in browser settings.');
+      } else if (e.error !== 'no-speech') {
+        setRecognitionError(`Speech notice: ${e.error}`);
+      }
+      setIsListening(false);
+    };
+
+    rec.onend = () => {
+      setIsListening(false);
+    };
+
+    recognitionRef.current = rec;
+  }, [partyLedgers]);
+
+  const toggleMic = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setRecognitionError('Speech recognition is not supported in this browser. Please use Google Chrome or Microsoft Edge.');
+      return;
+    }
+
+    if (isListening) {
+      try { recognitionRef.current?.stop(); } catch (e) {}
+      setIsListening(false);
+    } else {
+      setRecognitionError('');
+      setLiveTranscript('');
+      setParsedResult(null);
+      setAppliedNotice('');
+      try {
+        recognitionRef.current?.start();
+      } catch (err) {
+        try {
+          recognitionRef.current?.stop();
+          setTimeout(() => recognitionRef.current?.start(), 150);
+        } catch (e) {}
+      }
+    }
+  };
+
+  const handleTestPhrase = (phraseText) => {
+    setLiveTranscript(phraseText);
+    setRecognitionError('');
+    const parsed = parseVoiceCommand(phraseText, partyLedgers);
+    const isBank = /\b(bank|upi|online|card|rtgs|neft)\b/i.test(phraseText);
+    const resultPayload = {
+      originalText: phraseText,
+      ...parsed,
+      isBank
+    };
+    setParsedResult(resultPayload);
+  };
+
+  const handleApplyCommand = () => {
+    if (!parsedResult) return;
+    setAppliedNotice(`Applying "${parsedResult.originalText}" to Voucher Entry...`);
+    setTimeout(() => {
+      onVoiceCommandRecognized?.(parsedResult);
+    }, 300);
+  };
+
+  const monthlyProfit = useMemo(() => {
+    const monthPrefix = (typeof today === 'function' ? today() : new Date().toISOString().slice(0, 10)).slice(0, 7);
+    return (vouchers || [])
+      .filter((v) => (v.date || '').slice(0, 7) === monthPrefix)
+      .reduce((sum, v) => sum + (v.type === 'Receipt' || v.type === 'Sales' ? Number(v.amount || 0) : -Number(v.amount || 0)), 0);
+  }, [vouchers, today]);
+
+  const topDebtor = pendingCollections.length > 0 ? pendingCollections[0] : null;
+
+  return (
+    <section className="phase3-stack fade-in" id="voice-bookkeeper">
+      {/* Modern Studio Header */}
+      <div className="phase3-hero" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', color: '#ffffff', borderRadius: '16px', padding: '28px 32px' }}>
+        <div style={{ maxWidth: '680px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
+            <span className="eyebrow" style={{ color: '#38bdf8', fontWeight: 700, letterSpacing: '1px' }}>LOCAL VOICE BOOKKEEPER</span>
+            <span style={{ fontSize: '11px', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.3)', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
+              ⚡ 100% Offline Browser Speech
+            </span>
+            <span style={{ fontSize: '11px', background: 'rgba(52, 211, 153, 0.15)', color: '#34d399', border: '1px solid rgba(52, 211, 153, 0.3)', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
+              🔒 100% Private (In-Browser)
+            </span>
+          </div>
+          <h2 style={{ fontSize: '26px', fontWeight: 800, margin: '0 0 10px 0', color: '#ffffff' }}>
+            Record Vouchers & Analyze Finances Using Natural Voice
+          </h2>
+          <p style={{ fontSize: '14px', color: '#94a3b8', lineHeight: 1.6, margin: 0 }}>
+            Speak naturally in English or Hinglish to record payments, sales, purchases, and receipts. The in-browser speech engine automatically extracts amounts, ledgers, and payment modes with zero latency.
+          </p>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+          <span style={{ fontSize: '12px', color: '#cbd5e1', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <ShieldCheck size={16} color="#34d399" /> Zero server cost & instant processing
+          </span>
+          <a 
+            href="#voucher-entry" 
+            className="secondary-button"
+            style={{ background: 'rgba(255,255,255,0.12)', color: '#ffffff', border: '1px solid rgba(255,255,255,0.25)', fontSize: '13px', padding: '8px 16px', borderRadius: '8px', textDecoration: 'none' }}
+          >
+            Direct Voucher Entry →
+          </a>
+        </div>
+      </div>
+
+      {/* Main Interactive Voice Recording Studio Card */}
+      <section className="panel" style={{ padding: '28px', borderRadius: '16px', border: '1.5px solid #e2e8f0', background: '#ffffff', boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.05)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '28px', alignItems: 'center' }}>
+          {/* Left: Interactive Mic & Soundwave Station */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '20px', background: '#f8fafc', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
+            {/* Big Mic Button with Pulses */}
+            <div style={{ position: 'relative', margin: '12px 0 16px 0' }}>
+              <button
+                type="button"
+                onClick={toggleMic}
+                style={{
+                  width: '78px',
+                  height: '78px',
+                  borderRadius: '50%',
+                  background: isListening 
+                    ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' 
+                    : 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                  border: '3px solid #ffffff',
+                  boxShadow: isListening 
+                    ? '0 0 0 10px rgba(239, 68, 68, 0.25), 0 12px 28px rgba(220, 38, 38, 0.45)' 
+                    : '0 8px 24px rgba(37, 99, 235, 0.4), 0 2px 8px rgba(0, 0, 0, 0.1)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '3px',
+                  cursor: 'pointer',
+                  transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                  outline: 'none',
+                  animation: isListening ? 'micPulseRipple 1.5s infinite' : 'none'
+                }}
+                title={isListening ? 'Click to stop listening' : 'Click to Speak Voice Command'}
+                aria-label="Voice Studio Mic"
+              >
+                {isListening ? (
+                  <MicOff size={28} color="#ffffff" strokeWidth={2.4} />
+                ) : (
+                  <Mic size={28} color="#ffffff" strokeWidth={2.4} />
+                )}
+                <span style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '0.8px', color: '#ffffff', textTransform: 'uppercase', lineHeight: 1 }}>
+                  {isListening ? 'STOP' : 'SPEAK'}
+                </span>
+              </button>
+            </div>
+
+            {/* Equalizer Waveform Bars (animated while listening) */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', height: '32px', margin: '4px 0 10px 0' }}>
+              {[0, 1, 2, 3, 4].map((i) => (
+                <span
+                  key={i}
+                  style={{
+                    display: 'inline-block',
+                    width: '5px',
+                    height: isListening ? '24px' : '6px',
+                    borderRadius: '3px',
+                    background: isListening ? '#ef4444' : '#94a3b8',
+                    transition: 'all 0.15s ease',
+                    animation: isListening ? `soundWaveBar 0.8s ease-in-out infinite alternate ${i * 0.15}s` : 'none'
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Status Pill */}
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '4px 12px',
+              borderRadius: '20px',
+              fontSize: '12px',
+              fontWeight: 650,
+              background: isListening ? '#fee2e2' : '#e0e7ff',
+              color: isListening ? '#b91c1c' : '#3730a3'
+            }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: isListening ? '#ef4444' : '#4f46e5', animation: isListening ? 'micPulseDot 1s infinite' : 'none' }} />
+              {isListening ? 'Listening... Speak clearly into your mic' : 'Microphone Ready · Click to Speak'}
+            </div>
+
+            {recognitionError && (
+              <p style={{ color: '#dc2626', fontSize: '12px', marginTop: '10px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <AlertCircle size={14} /> {recognitionError}
+              </p>
+            )}
+          </div>
+
+          {/* Right: Live Transcript Viewport & Parsed Voucher Preview */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#64748b' }}>
+                  Live Voice Transcript
+                </span>
+                {liveTranscript && (
+                  <button
+                    type="button"
+                    onClick={() => { setLiveTranscript(''); setParsedResult(null); setAppliedNotice(''); }}
+                    style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '11.5px', fontWeight: 600 }}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <div style={{
+                fontSize: '15px',
+                fontWeight: liveTranscript ? 600 : 400,
+                color: liveTranscript ? '#0f172a' : '#94a3b8',
+                fontStyle: liveTranscript ? 'normal' : 'italic',
+                minHeight: '44px',
+                lineHeight: 1.5,
+                display: 'flex',
+                alignItems: 'center'
+              }}>
+                {liveTranscript || 'Spoken words appear here in real time... (e.g. "Add payment 500 cash for tea")'}
+              </div>
+            </div>
+
+            {/* Parsed Result Box (when command recognized or tested) */}
+            {parsedResult ? (
+              <div style={{
+                background: '#f0fdf4',
+                border: '1.5px solid #86efac',
+                borderRadius: '12px',
+                padding: '16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                animation: 'slideUpFade 0.25s ease-out'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <CheckCircle2 size={18} color="#16a34a" />
+                    <strong style={{ fontSize: '13.5px', color: '#15803d' }}>
+                      Command Recognized: {parsedResult.type} Voucher
+                    </strong>
+                  </div>
+                  <span style={{
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    padding: '2px 10px',
+                    borderRadius: '12px',
+                    background: parsedResult.type === 'Payment' ? '#fee2e2' : (parsedResult.type === 'Sales' ? '#dcfce7' : (parsedResult.type === 'Receipt' ? '#dbeafe' : '#f3e8ff')),
+                    color: parsedResult.type === 'Payment' ? '#b91c1c' : (parsedResult.type === 'Sales' ? '#15803d' : (parsedResult.type === 'Receipt' ? '#1d4ed8' : '#6b21a8'))
+                  }}>
+                    {parsedResult.type}
+                  </span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '8px', background: '#ffffff', padding: '12px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
+                  <div>
+                    <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Amount</span>
+                    <strong style={{ fontSize: '16px', color: '#0f172a' }}>{formatCurrency(parsedResult.amount)}</strong>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Party / Ledger</span>
+                    <strong style={{ fontSize: '13px', color: '#0f172a' }}>{parsedResult.partyName || 'Cash / Counter'}</strong>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Payment Mode</span>
+                    <strong style={{ fontSize: '13px', color: '#0f172a' }}>{parsedResult.isBank ? 'Bank / Online' : 'Cash'}</strong>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={handleApplyCommand}
+                    className="primary-button"
+                    style={{
+                      background: '#16a34a',
+                      color: '#ffffff',
+                      border: 'none',
+                      padding: '8px 18px',
+                      borderRadius: '8px',
+                      fontWeight: 700,
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      boxShadow: '0 4px 12px rgba(22, 163, 74, 0.3)'
+                    }}
+                  >
+                    <Check size={16} /> Open & Pre-fill in Voucher Entry
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setParsedResult(null); setLiveTranscript(''); setAppliedNotice(''); }}
+                    className="secondary-button"
+                    style={{ fontSize: '12.5px', padding: '8px 14px' }}
+                  >
+                    Reset
+                  </button>
+                </div>
+
+                {appliedNotice && (
+                  <div style={{ fontSize: '12.5px', color: '#15803d', fontWeight: 600 }}>
+                    {appliedNotice}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Quick "Try Saying" Interactive Test Chips */
+              <div>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>
+                  Try Saying (Click any chip to simulate & test parsing):
+                </span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {samplePhrases.map((phrase) => (
+                    <button
+                      key={phrase.text}
+                      type="button"
+                      onClick={() => handleTestPhrase(phrase.text)}
+                      className="voice-chip"
+                      style={{
+                        background: '#ffffff',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '20px',
+                        padding: '6px 12px',
+                        fontSize: '12.5px',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                      }}
+                    >
+                      <span>{phrase.icon}</span>
+                      <span style={{ fontWeight: 600 }}>"{phrase.text}"</span>
+                      <span style={{ fontSize: '10px', background: '#f1f5f9', color: '#64748b', padding: '1px 6px', borderRadius: '10px' }}>
+                        {phrase.tag}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* 4 Upgraded Intelligence & KPI Cards (replacing the plain cards in Image 2) */}
+      <section className="panel" style={{ padding: '24px', borderRadius: '16px' }}>
+        <h3 style={{ fontSize: '17px', fontWeight: 800, margin: '0 0 16px 0', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Sparkles size={18} color="#2563eb" /> Voice Business Intelligence & Actions
+        </h3>
+        
+        <div className="voice-card-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+          {/* Card 1: Record Voucher Automation */}
+          <article className="voice-smart-card" style={{ background: '#ffffff', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Zap size={20} color="#2563eb" />
+                </div>
+                <div>
+                  <strong style={{ fontSize: '15px', color: '#0f172a', display: 'block' }}>Voice Voucher Command</strong>
+                  <span style={{ fontSize: '12px', color: '#64748b' }}>Instant 3-Step Automation</span>
+                </div>
+              </div>
+              <span style={{ fontSize: '11px', background: '#dbeafe', color: '#1e40af', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
+                1-Click Save
+              </span>
+            </div>
+            
+            <p style={{ fontSize: '13px', color: '#475569', lineHeight: 1.5, margin: 0 }}>
+              "Add payment 500 cash for tea" instantly opens the Voucher Entry screen, fills it, and prepares it for your final save.
+            </p>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', color: '#64748b', background: '#f8fafc', padding: '8px 12px', borderRadius: '8px' }}>
+              <span>🎙️ Speak</span> ➔ <span>⚡ Auto-parsed</span> ➔ <span>💾 Saved</span>
+            </div>
+
+            <a 
+              href="#voucher-entry" 
+              className="primary-button" 
+              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '9px 16px', borderRadius: '8px', textDecoration: 'none', fontWeight: 650, fontSize: '13px' }}
+            >
+              Go to Voucher Entry <ArrowRight size={15} />
+            </a>
+          </article>
+
+          {/* Card 2: Profit Question & Pulse */}
+          <article className="voice-smart-card" style={{ background: '#ffffff', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <TrendingUp size={20} color="#16a34a" />
+                </div>
+                <div>
+                  <strong style={{ fontSize: '15px', color: '#0f172a', display: 'block' }}>Monthly Net Profit</strong>
+                  <span style={{ fontSize: '12px', color: '#64748b' }}>Current Month P&L Pulse</span>
+                </div>
+              </div>
+              <span style={{
+                fontSize: '11px',
+                background: monthlyProfit >= 0 ? '#dcfce7' : '#fee2e2',
+                color: monthlyProfit >= 0 ? '#15803d' : '#b91c1c',
+                padding: '2px 8px',
+                borderRadius: '12px',
+                fontWeight: 700
+              }}>
+                {monthlyProfit >= 0 ? 'Profitable' : 'Deficit'}
+              </span>
+            </div>
+
+            <div style={{ margin: '4px 0' }}>
+              <span style={{ fontSize: '28px', fontWeight: 800, color: monthlyProfit >= 0 ? '#16a34a' : '#dc2626' }}>
+                {formatCurrency(monthlyProfit)}
+              </span>
+              <p style={{ fontSize: '12.5px', color: '#64748b', margin: '4px 0 0 0' }}>
+                Monthly profit is calculated from local vouchers and invoices.
+              </p>
+            </div>
+
+            <a 
+              href="#analytics" 
+              className="secondary-button" 
+              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '9px 16px', borderRadius: '8px', textDecoration: 'none', fontWeight: 650, fontSize: '13px' }}
+            >
+              Open Analytics Center <ArrowRight size={15} />
+            </a>
+          </article>
+
+          {/* Card 3: Pending Collections */}
+          <article className="voice-smart-card" style={{ background: '#ffffff', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Users size={20} color="#d97706" />
+                </div>
+                <div>
+                  <strong style={{ fontSize: '15px', color: '#0f172a', display: 'block' }}>Pending Collections</strong>
+                  <span style={{ fontSize: '12px', color: '#64748b' }}>Debtor Khata Follow-up</span>
+                </div>
+              </div>
+              <span style={{ fontSize: '11px', background: '#fef3c7', color: '#b45309', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
+                {pendingCollections.length} Pending
+              </span>
+            </div>
+
+            <div>
+              <strong style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', display: 'block' }}>
+                {pendingCollections.length} Customers
+              </strong>
+              <p style={{ fontSize: '12.5px', color: '#64748b', margin: '4px 0 0 0' }}>
+                {topDebtor ? (
+                  <span>Top due: <strong style={{ color: '#0f172a' }}>{topDebtor.name}</strong> ({formatCurrency(topDebtor.outstandingAmount)})</span>
+                ) : (
+                  'All customer accounts are clear and up-to-date.'
+                )}
+              </p>
+            </div>
+
+            <a 
+              href="#crm" 
+              className="secondary-button" 
+              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '9px 16px', borderRadius: '8px', textDecoration: 'none', fontWeight: 650, fontSize: '13px' }}
+            >
+              Open CRM <ArrowRight size={15} />
+            </a>
+          </article>
+
+          {/* Card 4: Issues Needing Attention */}
+          <article className="voice-smart-card" style={{ background: '#ffffff', border: '1.5px solid #e2e8f0', borderRadius: '14px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <AlertCircle size={20} color="#dc2626" />
+                </div>
+                <div>
+                  <strong style={{ fontSize: '15px', color: '#0f172a', display: 'block' }}>Issues Needing Attention</strong>
+                  <span style={{ fontSize: '12px', color: '#64748b' }}>Operational Alerts</span>
+                </div>
+              </div>
+              <span style={{ fontSize: '11px', background: '#fee2e2', color: '#b91c1c', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
+                {businessIssues.length} Alerts
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minHeight: '60px' }}>
+              {businessIssues.length ? (
+                businessIssues.slice(0, 3).map((issue, idx) => (
+                  <div key={idx} style={{ fontSize: '12.5px', color: '#334155', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ef4444', flexShrink: 0 }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{issue}</span>
+                  </div>
+                ))
+              ) : (
+                <p style={{ fontSize: '13px', color: '#16a34a', margin: '4px 0 0 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <CheckCircle2 size={16} /> No urgent issues detected. Everything is healthy.
+                </p>
+              )}
+            </div>
+
+            <a 
+              href="#accounting-dashboard" 
+              className="secondary-button" 
+              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '9px 16px', borderRadius: '8px', textDecoration: 'none', fontWeight: 650, fontSize: '13px' }}
+            >
+              Review Diagnostics <ArrowRight size={15} />
+            </a>
+          </article>
+        </div>
+      </section>
+
+      {/* Voice Command Cheat Sheet Section */}
+      <section className="panel" style={{ padding: '24px', borderRadius: '16px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+        <h4 style={{ fontSize: '15px', fontWeight: 800, margin: '0 0 12px 0', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Volume2 size={17} color="#4f46e5" /> Voice Command Reference & Syntax Guide
+        </h4>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+          <div style={{ background: '#ffffff', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#dc2626', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Payment / Expenses</span>
+            <p style={{ fontSize: '12.5px', color: '#334155', margin: '6px 0 0 0', lineHeight: 1.4 }}>
+              <strong>"Payment 500 cash for tea"</strong><br />
+              <strong>"Paid 2000 rent bank"</strong><br />
+              <span style={{ color: '#64748b' }}>Auto selects Payment voucher & cash/bank ledger</span>
+            </p>
+          </div>
+          <div style={{ background: '#ffffff', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Sales / Credit</span>
+            <p style={{ fontSize: '12.5px', color: '#334155', margin: '6px 0 0 0', lineHeight: 1.4 }}>
+              <strong>"Sales 1500 Ramesh credit"</strong><br />
+              <strong>"Sold 3000 goods to Priya"</strong><br />
+              <span style={{ color: '#64748b' }}>Matches customer from your existing Khata ledgers</span>
+            </p>
+          </div>
+          <div style={{ background: '#ffffff', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Receipt / Income</span>
+            <p style={{ fontSize: '12.5px', color: '#334155', margin: '6px 0 0 0', lineHeight: 1.4 }}>
+              <strong>"Received 2000 cash from Nirav"</strong><br />
+              <strong>"Mila 5000 UPI Rahul se"</strong><br />
+              <span style={{ color: '#64748b' }}>Credits customer ledger and debits cash or bank</span>
+            </p>
+          </div>
+          <div style={{ background: '#ffffff', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Purchase / Material</span>
+            <p style={{ fontSize: '12.5px', color: '#334155', margin: '6px 0 0 0', lineHeight: 1.4 }}>
+              <strong>"Purchase 3500 raw materials bank"</strong><br />
+              <strong>"Bought 4500 stock from ABC"</strong><br />
+              <span style={{ color: '#64748b' }}>Debits Purchase and credits supplier ledger</span>
+            </p>
+          </div>
+        </div>
+      </section>
+    </section>
   );
 }
 
@@ -2834,30 +3480,18 @@ export default function Phase3Ops({
 
   if (activeTab === 'voice-bookkeeper') {
     return (
-      <section className="phase3-stack fade-in" id="voice-bookkeeper">
-        <div className="phase3-hero">
-          <div>
-            <span className="eyebrow">Local Voice Bookkeeper</span>
-            <h2>Record vouchers using offline browser speech recognition</h2>
-            <VoiceCommandButton 
-              onCommandRecognized={onVoiceCommandRecognized} 
-              existingParties={partyLedgers} 
-            />
-          </div>
-        </div>
-        <section className="panel">
-          <div className="phase3-grid">
-            <article className="phase3-card">
-              <strong>Record Voucher Command</strong>
-              <p>"Add payment 500 cash for tea" instantly opens the Voucher Entry screen, fills it, and prepares it for your final save.</p>
-              <a href="#voucher-entry">Go to Voucher Entry</a>
-            </article>
-            <article className="phase3-card"><strong>Profit question</strong><p>Monthly profit is calculated from local vouchers and invoices.</p><strong>{formatCurrency(vouchers.filter((v) => (v.date || '').slice(0, 7) === today().slice(0, 7)).reduce((sum, v) => sum + (v.type === 'Receipt' || v.type === 'Sales' ? v.amount : -v.amount), 0))}</strong></article>
-            <article className="phase3-card"><strong>Pending collections</strong><p>{pendingCollections.length} customers need collection follow-up.</p><a href="#crm">Open CRM</a></article>
-            <article className="phase3-card"><strong>Issues needing attention</strong>{businessIssues.length ? businessIssues.map((issue) => <p key={issue}>{issue}</p>) : <p>No urgent issues detected.</p>}</article>
-          </div>
-        </section>
-      </section>
+      <VoiceBookkeeperStudio
+        onVoiceCommandRecognized={onVoiceCommandRecognized}
+        partyLedgers={partyLedgers}
+        partySummary={partySummary}
+        vouchers={vouchers}
+        invoices={invoices}
+        products={products}
+        pendingCollections={pendingCollections}
+        businessIssues={businessIssues}
+        formatCurrency={formatCurrency}
+        today={today}
+      />
     );
   }
 

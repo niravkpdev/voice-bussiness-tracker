@@ -736,17 +736,6 @@ export function parseVoiceCommand(text, existingParties = []) {
   } else if (normalized.includes('purchased') || normalized.includes('purchase') || normalized.includes('bought')) {
     type = 'Purchase';
   } else if (
-    normalized.includes('paid') ||
-    normalized.includes('spent') ||
-    normalized.includes('expense') ||
-    normalized.includes('kharch') ||
-    normalized.includes('payment to') ||
-    normalized.includes('pay to') ||
-    normalized.includes('de rahe hain') ||
-    normalized.includes('diya')
-  ) {
-    type = 'Payment';
-  } else if (
     normalized.includes('received') ||
     normalized.includes('receipt') ||
     normalized.includes('income') ||
@@ -756,6 +745,17 @@ export function parseVoiceCommand(text, existingParties = []) {
     normalized.includes('pay kiya')
   ) {
     type = 'Receipt';
+  } else if (
+    normalized.includes('payment') ||
+    normalized.includes('paid') ||
+    normalized.includes('spent') ||
+    normalized.includes('expense') ||
+    normalized.includes('kharch') ||
+    normalized.includes('pay to') ||
+    normalized.includes('de rahe hain') ||
+    normalized.includes('diya')
+  ) {
+    type = 'Payment';
   }
 
   // 3. Detect Party Name
