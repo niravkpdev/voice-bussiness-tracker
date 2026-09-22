@@ -5114,8 +5114,14 @@ export default function VoiceExpenseTrackerPreview() {
 
     // Health Score calculation
     let healthScore = 50;
-    healthScore += (stats.monthlySales > stats.monthlyExpenses ? 15 : -15);
-    healthScore += (cashInHand > 0 ? 15 : -20);
+    if (stats.monthlySales > 0 || stats.monthlyExpenses > 0) {
+      healthScore += (stats.monthlySales >= stats.monthlyExpenses ? 15 : -15);
+    }
+    if (cashInHand > 0) {
+      healthScore += 15;
+    } else if (cashInHand < 0) {
+      healthScore -= 20;
+    }
     healthScore += Math.round(expenseControlScore * 0.2);
     healthScore += Math.round(collectionEfficiency * 0.2);
     healthScore = Math.max(0, Math.min(100, healthScore));
@@ -5123,12 +5129,12 @@ export default function VoiceExpenseTrackerPreview() {
     // Dynamic suggestions based on data
     const dynamicSuggestions = [];
     if (stats.expenseGrowth > 10) {
-      dynamicSuggestions.push(`Expenses increased ${stats.expenseGrowth}% this month. Check where cash is going.`);
+      dynamicSuggestions.push(`Expenses increased ${stats.expenseGrowth}% this month. Review discretionary spending.`);
     }
     if (stats.salesGrowth < -5) {
-      dynamicSuggestions.push(`Sales growth is slowing down (${stats.salesGrowth}% this month). Focus on collection and customer outreach.`);
+      dynamicSuggestions.push(`Sales growth slowed down (${stats.salesGrowth}% this month). Accelerate collections and customer outreach.`);
     } else if (stats.salesGrowth > 10) {
-      dynamicSuggestions.push(`Good job! Sales increased by ${stats.salesGrowth}% MoM.`);
+      dynamicSuggestions.push(`Solid sales progress: revenue grew by ${stats.salesGrowth}% MoM.`);
     }
 
     // Top pending payments
@@ -5136,9 +5142,10 @@ export default function VoiceExpenseTrackerPreview() {
       .filter(p => p.group === 'Sundry Debtors' && p.outstandingAmount > 0)
       .sort((a, b) => b.outstandingAmount - a.outstandingAmount);
     
-    if (pendingCustomers.length > 0) {
-      const topPending = pendingCustomers[0];
-      dynamicSuggestions.push(`${topPending.name} has pending payment of ${formatCurrency(topPending.outstandingAmount)}.`);
+    const topPendingCustomer = pendingCustomers.length > 0 ? pendingCustomers[0] : null;
+
+    if (topPendingCustomer) {
+      dynamicSuggestions.push(`${topPendingCustomer.name} has pending dues of ${formatCurrency(topPendingCustomer.outstandingAmount)}.`);
     }
 
     // Check material cost or specific ledger categories
@@ -5159,11 +5166,11 @@ export default function VoiceExpenseTrackerPreview() {
 
     if (materialCostThisMonth > materialCostPrevMonth && materialCostPrevMonth > 0) {
       const pct = Math.round(((materialCostThisMonth - materialCostPrevMonth) / materialCostPrevMonth) * 100);
-      dynamicSuggestions.push(`Material cost is increasing (${pct}% MoM). Check supplier rates.`);
+      dynamicSuggestions.push(`Material cost is increasing (${pct}% MoM). Review supplier purchase rates.`);
     }
 
-    if (dynamicSuggestions.length < 3) {
-      dynamicSuggestions.push('All accounts are balanced. Keep recording voice notes regularly.');
+    if (dynamicSuggestions.length < 2) {
+      dynamicSuggestions.push('All accounts are balanced. Keep recording transactions and receipts regularly.');
     }
 
     return {
@@ -5173,7 +5180,8 @@ export default function VoiceExpenseTrackerPreview() {
       cashFlowStatus,
       collectionEfficiency,
       expenseControlScore,
-      suggestions: dynamicSuggestions
+      suggestions: dynamicSuggestions,
+      topPendingCustomer
     };
   }, [stats, cashInHand, partySummary, vouchers, netProfitGrowth]);
 
@@ -7016,8 +7024,13 @@ export default function VoiceExpenseTrackerPreview() {
     receiptWin.document.close();
   };
 
-  const answerAiQuestion = (event) => {
-    event.preventDefault();
+  const answerAiQuestion = (event, customQuestion = null) => {
+    if (event && typeof event.preventDefault === 'function') {
+      event.preventDefault();
+    }
+    if (customQuestion !== null) {
+      setAiQuestion(customQuestion);
+    }
     if (!requireSensitiveAccess('AI assistant')) {
       return;
     }
@@ -7028,23 +7041,23 @@ export default function VoiceExpenseTrackerPreview() {
       return;
     }
 
-    const question = sanitizeText(aiQuestion, 280);
+    const questionInput = customQuestion !== null ? customQuestion : aiQuestion;
+    const question = sanitizeText(questionInput, 280);
     const lowerQuestion = question.toLowerCase();
     const mathResult = safeMathAnswer(question);
 
     if (!question) {
-      setAiAnswer('Question ya calculation type karo.');
+      setAiAnswer('Please enter a question or math expression (e.g. 5000 * 1.18).');
       return;
     }
 
     if (mathResult !== null) {
-      setAiAnswer(`AI Calculator answer: ${formatCurrency(mathResult)} (${mathResult})`);
+      setAiAnswer(`AI Calculator Result: ${formatCurrency(mathResult)} (${mathResult})`);
       return;
     }
 
     const erpProducts = readSavedArray('erpProducts');
     const erpInvoices = readSavedArray('erpInvoices');
-    const erpCustomers = readSavedArray('erpCustomers');
     const overdueInvoices = erpInvoices.filter((invoice) => invoice.status !== 'Paid' && invoice.dueDate < new Date().toISOString().slice(0, 10));
     const productSales = erpProducts
       .map((product) => ({
@@ -7071,73 +7084,77 @@ export default function VoiceExpenseTrackerPreview() {
     if (lowerQuestion.includes('profit') || lowerQuestion.includes('loss') || lowerQuestion.includes('nuksan')) {
       setAiAnswer(
         monthlyNetProfit >= 0
-          ? `Business profit side par hai. Monthly net profit: ${formatCurrency(monthlyNetProfit)}. Health Score: ${aiInsights.score}/100.`
-          : `Business loss side par hai. Monthly net loss: ${formatCurrency(Math.abs(monthlyNetProfit))}. Expenses check karo.`
+          ? `Business is operating at a net profit of ${formatCurrency(monthlyNetProfit)} this month. Health Score: ${aiInsights.score}/100.`
+          : `Business is operating at a net loss of ${formatCurrency(Math.abs(monthlyNetProfit))} this month. Review expenses and collection cycles.`
+      );
+      return;
+    }
+
+    if (lowerQuestion.includes('owes') || lowerQuestion.includes('most') || lowerQuestion.includes('pending') || lowerQuestion.includes('due') || lowerQuestion.includes('debtor')) {
+      const topCustomer = partySummary
+        .filter((party) => party.group === 'Sundry Debtors' && party.outstandingAmount > 0)
+        .sort((a, b) => b.outstandingAmount - a.outstandingAmount)[0];
+      setAiAnswer(
+        topCustomer
+          ? `${topCustomer.name} has the highest pending balance: ${formatCurrency(topCustomer.outstandingAmount)}.`
+          : 'Zero overdue customer dues. All customer debtor accounts are settled.'
       );
       return;
     }
 
     if (lowerQuestion.includes('product') || lowerQuestion.includes('sell best') || lowerQuestion.includes('best sell')) {
       const best = productSales.find((product) => product.sold > 0);
-      setAiAnswer(best ? `Best selling product: ${best.name}, ${best.sold} units sold.` : 'Product sales history abhi available nahi hai.');
+      setAiAnswer(best ? `Best selling product: ${best.name} (${best.sold} units sold).` : 'No product sales recorded yet.');
       return;
     }
 
     if (lowerQuestion.includes('inventory') || lowerQuestion.includes('stock')) {
       const inventoryValue = erpProducts.reduce((sum, product) => sum + (Number(product.currentStock) || 0) * (Number(product.purchasePrice) || 0), 0);
       const lowStock = erpProducts.filter((product) => Number(product.currentStock) <= Number(product.minStock)).length;
-      setAiAnswer(`Inventory summary: ${erpProducts.length} products, value ${formatCurrency(inventoryValue)}, low stock items ${lowStock}.`);
+      setAiAnswer(`Inventory summary: ${erpProducts.length} products tracked, total valuation ${formatCurrency(inventoryValue)}, ${lowStock} item(s) low on stock.`);
       return;
     }
 
     if (lowerQuestion.includes('overdue') || lowerQuestion.includes('invoice')) {
       setAiAnswer(
         overdueInvoices.length > 0
-          ? `${overdueInvoices.length} overdue invoices. Highest overdue: ${overdueInvoices[0]?.invoiceNo || 'invoice'} ${formatCurrency(overdueInvoices[0]?.balance || overdueInvoices[0]?.total || 0)}.`
-          : 'Koi overdue invoice nahi mila.'
+          ? `${overdueInvoices.length} overdue invoice(s). Highest balance: ${overdueInvoices[0]?.invoiceNo || 'invoice'} (${formatCurrency(overdueInvoices[0]?.balance || overdueInvoices[0]?.total || 0)}).`
+          : 'No overdue invoices found. All invoices are currently clear.'
       );
       return;
     }
 
     if (lowerQuestion.includes('compare') || lowerQuestion.includes('last month')) {
       const change = lastMonthSales === 0 ? (thisMonthSales > 0 ? 100 : 0) : Math.round(((thisMonthSales - lastMonthSales) / lastMonthSales) * 100);
-      setAiAnswer(`This month sales ${formatCurrency(thisMonthSales)} vs last month ${formatCurrency(lastMonthSales)}. Change: ${change}%.`);
+      setAiAnswer(`This month sales ${formatCurrency(thisMonthSales)} vs last month ${formatCurrency(lastMonthSales)}. Growth: ${change}%.`);
       return;
     }
 
     if (lowerQuestion.includes('predict') || lowerQuestion.includes('next month')) {
       const predicted = Math.round((thisMonthSales * 0.65 + lastMonthSales * 0.35) || monthlyNetProfit + stats.monthlySales);
-      setAiAnswer(`Next month sales prediction: around ${formatCurrency(predicted)} based on current and previous month trend.`);
+      setAiAnswer(`Next month sales forecast: approximately ${formatCurrency(predicted)} based on recent monthly trends.`);
       return;
     }
 
-    if (lowerQuestion.includes('owes') || lowerQuestion.includes('most')) {
-      const topCustomer = partySummary
-        .filter((party) => party.group === 'Sundry Debtors')
-        .sort((a, b) => b.outstandingAmount - a.outstandingAmount)[0];
-      setAiAnswer(topCustomer ? `${topCustomer.name} owes the most: ${formatCurrency(topCustomer.outstandingAmount)}.` : 'Customer outstanding abhi available nahi hai.');
+    if (lowerQuestion.includes('cash') || lowerQuestion.includes('bank')) {
+      setAiAnswer(`Current liquid cash & bank balance: ${formatCurrency(cashInHand)}.`);
       return;
     }
 
     if (lowerQuestion.includes('balance') || lowerQuestion.includes('sheet') || lowerQuestion.includes('check')) {
       setAiAnswer(
-        `Balance snapshot: Cash in hand ${formatCurrency(cashInHand)}, Receivable ${formatCurrency(receivableTotal)}, Payable ${formatCurrency(payableTotal)}.`
+        `Financial snapshot: Liquid Cash ${formatCurrency(cashInHand)}, Receivables ${formatCurrency(receivableTotal)}, Payables ${formatCurrency(payableTotal)}.`
       );
       return;
     }
 
-    if (lowerQuestion.includes('cash')) {
-      setAiAnswer(`Current cash/bank balance: ${formatCurrency(cashInHand)}.`);
-      return;
-    }
-
     if (lowerQuestion.includes('receive') || lowerQuestion.includes('customer') || lowerQuestion.includes('party')) {
-      setAiAnswer(`Customer receivable total: ${formatCurrency(receivableTotal)}. Supplier payable total: ${formatCurrency(payableTotal)}.`);
+      setAiAnswer(`Customer receivables: ${formatCurrency(receivableTotal)}. Supplier payables: ${formatCurrency(payableTotal)}.`);
       return;
     }
 
     setAiAnswer(
-      `AI summary: Health ${aiInsights.health} (${aiInsights.score}/100), Monthly profit ${formatCurrency(monthlyNetProfit)}, Cash in hand ${formatCurrency(cashInHand)}.`
+      `AI Summary: Health ${aiInsights.health} (${aiInsights.score}/100) | Net Profit ${formatCurrency(monthlyNetProfit)} | Liquid Cash ${formatCurrency(cashInHand)}.`
     );
   };
 
@@ -10396,7 +10413,9 @@ export default function VoiceExpenseTrackerPreview() {
                 </div>
                 <div className="health-badge-wrap">
                   <CircularHealthScore score={aiInsights.score} />
-                  <span className="health-score-value">{aiInsights.health} ({aiInsights.score}/100)</span>
+                  <span className={`health-score-value health-${(aiInsights.health || 'stable').toLowerCase()}`}>
+                    {aiInsights.health} ({aiInsights.score}/100)
+                  </span>
                 </div>
               </div>
 
@@ -10421,7 +10440,7 @@ export default function VoiceExpenseTrackerPreview() {
                   </div>
                   <div className="insight-progress-bar">
                     <div 
-                      className="insight-progress-fill primary" 
+                      className={`insight-progress-fill ${aiInsights.cashFlowStatus === 'Healthy' ? 'primary' : aiInsights.cashFlowStatus === 'Strained' ? 'warning' : 'danger'}`} 
                       style={{ width: `${aiInsights.cashFlowStatus === 'Healthy' ? 100 : aiInsights.cashFlowStatus === 'Strained' ? 60 : 25}%` }} 
                     />
                   </div>
@@ -10457,21 +10476,86 @@ export default function VoiceExpenseTrackerPreview() {
               <div className="ai-checker-grid">
                 <div className="ai-list good">
                   <h3>AI Positive Indicators</h3>
-                  <p>• Sabhi accounts double-entry standards me mathematically check ho rahe hain.</p>
-                  {aiInsights.score >= 60 ? (
-                    <p>• Health score strong hai. Working capital cycles regular hain.</p>
-                  ) : (
-                    <p>• Working capital constraints warning level pe hai.</p>
+                  <p>• All ledger accounts adhere to mathematical double-entry balance integrity.</p>
+                  {aiInsights.score >= 60 && (
+                    <p>• Overall financial health is stable. Working capital cycles are regular.</p>
                   )}
                   {cashInHand >= 0 && (
-                    <p>• Liquid cash positions stable hain. Short-term payables easily addressable hain.</p>
+                    <p>• Liquid cash positions are healthy ({formatCurrency(cashInHand)}). Short-term payables are well covered.</p>
+                  )}
+                  {stats.monthlyExpenses <= stats.monthlySales && (
+                    <p>• Expense control is disciplined within monthly revenue limits.</p>
+                  )}
+                  {payableTotal === 0 && (
+                    <p>• Zero overdue liabilities or pending supplier debts.</p>
                   )}
                 </div>
                 <div className="ai-list watch">
                   <h3>AI Suggestions & Warnings</h3>
+                  {aiInsights.score < 60 && (
+                    <p>• ⚠️ Working capital constraints are at warning level ({aiInsights.score}/100). Focus on accelerating collections.</p>
+                  )}
+                  {cashInHand < 0 && (
+                    <p>• ⚠️ Cash in hand is running in deficit ({formatCurrency(cashInHand)}). Review upcoming voucher payments.</p>
+                  )}
                   {aiInsights.suggestions.map((text, idx) => (
                     <p key={idx}>• {text}</p>
                   ))}
+
+                  {aiInsights.topPendingCustomer && (
+                    <div className="ai-action-card">
+                      <div className="ai-action-card-header">
+                        <span className="ai-action-card-title">
+                          ⚡ Priority Collection: <strong>{aiInsights.topPendingCustomer.name}</strong> ({formatCurrency(aiInsights.topPendingCustomer.outstandingAmount)})
+                        </span>
+                      </div>
+                      <div className="ai-action-card-buttons">
+                        <button
+                          type="button"
+                          className="ai-action-btn whatsapp"
+                          onClick={() => {
+                            const cleanPhone = formatWhatsAppPhone(aiInsights.topPendingCustomer.phone || '');
+                            const companyName = profile?.name || 'our business';
+                            const message = `Hello ${aiInsights.topPendingCustomer.name},\n\nThis is a friendly payment reminder from *${companyName}*.\n\nPending Balance: *${formatCurrency(aiInsights.topPendingCustomer.outstandingAmount)}*.\n\nPlease arrange for settlement at your earliest convenience. Thank you!`;
+                            const url = cleanPhone
+                              ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
+                              : `https://wa.me/?text=${encodeURIComponent(message)}`;
+                            window.open(url, '_blank', 'noopener,noreferrer');
+                          }}
+                          title="Send payment reminder via WhatsApp"
+                        >
+                          💬 WhatsApp Reminder
+                        </button>
+                        <button
+                          type="button"
+                          className="ai-action-btn primary"
+                          onClick={() => {
+                            setStatementLedgerId(aiInsights.topPendingCustomer.id);
+                            setActiveTab('party-statement');
+                            window.location.hash = `party-statement?id=${aiInsights.topPendingCustomer.id}`;
+                          }}
+                          title="Open detailed party statement"
+                        >
+                          ↗ View Statement
+                        </button>
+                        <button
+                          type="button"
+                          className="ai-action-btn"
+                          onClick={() => {
+                            setVoucherPartyId(aiInsights.topPendingCustomer.id);
+                            setUseSalesInsteadOfParty(false);
+                            setUseExpenseInsteadOfSupplier(false);
+                            setVoucherType('Receipt');
+                            setActiveTab('voucher-entry');
+                            window.location.hash = 'voucher-entry';
+                          }}
+                          title="Record payment receipt from this customer"
+                        >
+                          + Record Receipt
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -10488,6 +10572,43 @@ export default function VoiceExpenseTrackerPreview() {
                   />
                   <button className="manual-button" type="submit">
                     Ask AI
+                  </button>
+                </div>
+                <div className="ai-prompt-chips">
+                  <button
+                    type="button"
+                    className="ai-prompt-chip"
+                    onClick={() => answerAiQuestion(null, 'cash balance')}
+                  >
+                    💰 Cash Balance
+                  </button>
+                  <button
+                    type="button"
+                    className="ai-prompt-chip"
+                    onClick={() => answerAiQuestion(null, 'who owes the most')}
+                  >
+                    👥 Top Pending Dues
+                  </button>
+                  <button
+                    type="button"
+                    className="ai-prompt-chip"
+                    onClick={() => answerAiQuestion(null, 'monthly profit')}
+                  >
+                    📊 Monthly Profit
+                  </button>
+                  <button
+                    type="button"
+                    className="ai-prompt-chip"
+                    onClick={() => answerAiQuestion(null, 'inventory stock')}
+                  >
+                    📦 Inventory Value
+                  </button>
+                  <button
+                    type="button"
+                    className="ai-prompt-chip"
+                    onClick={() => answerAiQuestion(null, '5000 * 1.18')}
+                  >
+                    🧮 5000 * 1.18 (GST)
                   </button>
                 </div>
                 <div className="ai-answer">{aiAnswer}</div>

@@ -1673,6 +1673,112 @@ button,
   font-weight: 800;
 }
 
+.ai-prompt-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ai-prompt-chip {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.ai-prompt-chip:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  color: #0f172a;
+  transform: translateY(-1px);
+}
+
+.ai-prompt-chip:active {
+  transform: translateY(0);
+}
+
+.ai-action-card {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: #ffffff;
+  border: 1px solid #fed7aa;
+  border-left: 4px solid #f97316;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ai-action-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ai-action-card-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #9a3412;
+}
+
+.ai-action-card-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ai-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.ai-action-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.ai-action-btn.whatsapp {
+  background: #f0fdf4;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.ai-action-btn.whatsapp:hover {
+  background: #dcfce7;
+  border-color: #4ade80;
+}
+
+.ai-action-btn.primary {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+
+.ai-action-btn.primary:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
 .voucher-actions {
   display: flex;
   flex: 0 0 auto;
@@ -2017,16 +2123,37 @@ body {
   align-items: center;
   justify-content: center;
   min-height: 34px;
-  border: 1px solid #047857;
   border-radius: 12px;
   padding: 8px 14px;
-  background: #10b981;
   font-size: 0.82rem;
   font-weight: 800;
   text-transform: uppercase;
   color: #ffffff;
   white-space: nowrap;
   -webkit-text-fill-color: #ffffff;
+  border: 1px solid transparent;
+  background: #2563eb;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.health-score-value.health-strong {
+  background: #10b981;
+  border-color: #047857;
+}
+
+.health-score-value.health-stable {
+  background: #2563eb;
+  border-color: #1d4ed8;
+}
+
+.health-score-value.health-watch {
+  background: #d97706;
+  border-color: #b45309;
+}
+
+.health-score-value.health-risk {
+  background: #dc2626;
+  border-color: #b91c1c;
 }
 
 /* ================================================================

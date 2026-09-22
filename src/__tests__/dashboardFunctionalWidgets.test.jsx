@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import VoiceExpenseTrackerPreview from '../VoiceExpenseTrackerPreview';
 
 describe('Functional Dashboard Widgets (Recent Activity, Upcoming Tasks, Low Stock, Employee Overview)', () => {
@@ -115,5 +115,67 @@ describe('Functional Dashboard Widgets (Recent Activity, Upcoming Tasks, Low Sto
     const hasReconciliation = screen.queryByText(/Monthly Books Reconciliation/i);
     const hasTaxFiling = screen.queryByText(/Tax Filing Preparation/i);
     expect(hasReconciliation || hasTaxFiling).not.toBeNull();
+  });
+
+  it('renders AI Business Console with dynamic health score, sanitized positive indicators, and prompt chips', () => {
+    window.location.hash = '#ai-assistant';
+    render(<VoiceExpenseTrackerPreview />);
+
+    // Header & Diagnostics presence
+    expect(screen.getByText('AI Business Console')).toBeDefined();
+    expect(screen.getByText('Business Health Diagnostics')).toBeDefined();
+
+    // Health badge should have dynamic health class (e.g. health-strong or health-stable)
+    const badge = document.querySelector('.health-score-value');
+    expect(badge).not.toBeNull();
+    expect(badge.className).toMatch(/health-(strong|stable|watch|risk)/);
+
+    // AI Positive Indicators should NOT contain warning level text
+    const goodList = document.querySelector('.ai-list.good');
+    expect(goodList).not.toBeNull();
+    expect(goodList.textContent).not.toContain('warning level pe hai');
+    expect(goodList.textContent).not.toContain('constraints warning');
+
+    // Prompt chips exist
+    expect(screen.getByText('💰 Cash Balance')).toBeDefined();
+    expect(screen.getByText('👥 Top Pending Dues')).toBeDefined();
+    expect(screen.getByText('📊 Monthly Profit')).toBeDefined();
+    expect(screen.getByText('📦 Inventory Value')).toBeDefined();
+    expect(screen.getByText('🧮 5000 * 1.18 (GST)')).toBeDefined();
+
+    // Clicking a chip updates answer immediately
+    fireEvent.click(screen.getByText('💰 Cash Balance'));
+    const answer = document.querySelector('.ai-answer');
+    expect(answer.textContent).toContain('Current liquid cash & bank balance');
+  });
+
+  it('renders actionable priority collection card with WhatsApp, Statement, and Receipt buttons when pending dues exist', () => {
+    window.location.hash = '#ai-assistant';
+    const mockCustomerLedgers = [
+      {
+        id: 'cust-101',
+        name: 'Sharma Traders',
+        group: 'Sundry Debtors',
+        phone: '9876543210',
+        openingBalance: 15000,
+        profileOutstanding: 15000,
+      }
+    ];
+    localStorage.setItem('businessLedgers', JSON.stringify(mockCustomerLedgers));
+
+    render(<VoiceExpenseTrackerPreview />);
+
+    // Priority collection card should render for Sharma Traders
+    expect(screen.getByText(/Priority Collection:/)).toBeDefined();
+    expect(screen.getByText('Sharma Traders')).toBeDefined();
+
+    // Action buttons should exist
+    expect(screen.getByText('💬 WhatsApp Reminder')).toBeDefined();
+    expect(screen.getByText('↗ View Statement')).toBeDefined();
+    expect(screen.getByText('+ Record Receipt')).toBeDefined();
+
+    // Clicking View Statement routes to party-statement
+    fireEvent.click(screen.getByText('↗ View Statement'));
+    expect(window.location.hash).toContain('party-statement');
   });
 });
