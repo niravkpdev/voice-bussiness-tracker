@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Search, ShoppingBag, Heart, Phone, Menu, X, ChevronDown, Sparkles, SlidersHorizontal, ArrowRight, Globe, Truck } from 'lucide-react';
 import { useStoreCart } from '../context/StoreCartContext';
 import { CATEGORIES } from '../data/namkeenData';
+import { useDebouncedCallback } from '../utils/debounce.js';
 
 export function StoreHeader({
   currentTab,
@@ -35,6 +36,23 @@ export function StoreHeader({
   const [deptDropdownOpen, setDeptDropdownOpen] = useState(false);
   const [currencyDropdownOpen, setCurrencyDropdownOpen] = useState(false);
   const currencyRef = useRef(null);
+
+  // 300ms debounced search input handling
+  const [localSearch, setLocalSearch] = useState(searchQuery || '');
+
+  useEffect(() => {
+    setLocalSearch(searchQuery || '');
+  }, [searchQuery]);
+
+  const debouncedSetSearchQuery = useDebouncedCallback((val) => {
+    setSearchQuery(val);
+  }, 300);
+
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    setLocalSearch(val);
+    debouncedSetSearchQuery(val);
+  };
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -89,10 +107,11 @@ export function StoreHeader({
             <div className="trinetr-search-input-wrap">
               <input
                 type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={localSearch}
+                onChange={handleSearchChange}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
+                    setSearchQuery(localSearch);
                     onNavigate('shop');
                   }
                 }}
@@ -102,7 +121,10 @@ export function StoreHeader({
               <button 
                 type="button" 
                 className="trinetr-search-submit"
-                onClick={() => onNavigate('shop')}
+                onClick={() => {
+                  setSearchQuery(localSearch);
+                  onNavigate('shop');
+                }}
                 aria-label="Submit search"
               >
                 <Search size={18} />

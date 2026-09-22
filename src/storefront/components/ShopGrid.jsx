@@ -3,6 +3,7 @@ import { LayoutGrid, List, SlidersHorizontal, ArrowUpDown, X, Filter, ChevronLef
 import { useStoreCart } from '../context/StoreCartContext';
 import { CATEGORIES } from '../data/namkeenData';
 import { ProductCard } from './ProductCard';
+import { useDebouncedCallback } from '../utils/debounce.js';
 
 export function ShopGrid() {
   const { products, activeCategory, setActiveCategory, searchQuery, setSearchQuery, dietaryFilter, setDietaryFilter, wishlist, formatPrice } = useStoreCart();
@@ -13,8 +14,13 @@ export function ShopGrid() {
 
   // Filter states
   const [maxPrice, setMaxPrice] = useState(500);
+  const [localPrice, setLocalPrice] = useState(500);
   const [inStockOnly, setInStockOnly] = useState(false);
   const [sortBy, setSortBy] = useState('default'); // 'default', 'price-asc', 'price-desc', 'rating'
+
+  const debouncedSetMaxPrice = useDebouncedCallback((val) => {
+    setMaxPrice(val);
+  }, 300);
 
   // Filtered & Sorted products
   const filteredProducts = useMemo(() => {
@@ -128,12 +134,16 @@ export function ShopGrid() {
                 min="50"
                 max="500"
                 step="10"
-                value={maxPrice}
-                onChange={(e) => setMaxPrice(Number(e.target.value))}
+                value={localPrice}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  setLocalPrice(val);
+                  debouncedSetMaxPrice(val);
+                }}
                 className="trinetr-range-slider"
               />
               <div className="trinetr-slider-values">
-                <span>Range: {formatPrice(50)} - {formatPrice(maxPrice)}</span>
+                <span>Range: {formatPrice(50)} - {formatPrice(localPrice)}</span>
               </div>
             </div>
           </div>

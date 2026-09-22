@@ -3,7 +3,7 @@ import { X, Upload, Link, Plus, Trash2, Check, Sparkles, RefreshCw, AlertCircle,
 import { useStoreCart } from '../context/StoreCartContext';
 import { CATEGORIES } from '../data/namkeenData';
 import { compressFoodImage } from '../../imageCompression.js';
-import { uploadStorefrontImage, getSupabaseClient, getCurrentSupabaseUser, isSupabaseConfigured } from '../../supabaseClient.js';
+import { uploadStorefrontImage, getSupabaseClient, getCurrentSupabaseUser, isSupabaseConfigured, clearStorefrontMenuCache } from '../../supabaseClient.js';
 
 export function ProductEditModal() {
   const { 
@@ -210,6 +210,7 @@ export function ProductEditModal() {
       variants: formData.variants
     });
 
+    clearStorefrontMenuCache();
     setSaveSuccess(true);
     setTimeout(() => {
       setSaveSuccess(false);
@@ -220,6 +221,7 @@ export function ProductEditModal() {
   const handleReset = () => {
     if (window.confirm('Reset this product to its original default details and prices?')) {
       resetProductOverride(formData.id);
+      clearStorefrontMenuCache();
       handleClose();
     }
   };

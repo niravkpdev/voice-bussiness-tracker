@@ -2,14 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { ShoppingBag, Check, Plus, Minus, Search, Sparkles, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useStoreCart } from '../context/StoreCartContext';
 import { CATEGORIES } from '../data/namkeenData';
+import { useDebouncedCallback } from '../utils/debounce.js';
 
 export function ProductListMenu() {
   const { products, addToCart, cart, updateQuantity, currentCurrency, convertPrice } = useStoreCart();
   const [activeCategoryFilter, setActiveCategoryFilter] = useState('all');
   const [menuSearch, setMenuSearch] = useState('');
+  const [localSearch, setLocalSearch] = useState('');
   const [selectedVariants, setSelectedVariants] = useState({}); // { [productId]: variantIndex }
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 20;
+
+  const debouncedSetMenuSearch = useDebouncedCallback((val) => {
+    setMenuSearch(val);
+  }, 300);
 
   // Reset to page 1 on filter or search change
   useEffect(() => {
@@ -73,8 +79,12 @@ export function ProductListMenu() {
             <Search size={18} />
             <input
               type="text"
-              value={menuSearch}
-              onChange={(e) => setMenuSearch(e.target.value)}
+              value={localSearch}
+              onChange={(e) => {
+                const val = e.target.value;
+                setLocalSearch(val);
+                debouncedSetMenuSearch(val);
+              }}
               placeholder="Search in menu..."
             />
           </div>

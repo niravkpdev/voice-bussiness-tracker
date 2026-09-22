@@ -1,5 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 import { sanitizeEmail, sanitizeText } from './security.js';
+import {
+  cachedSupabaseRequest,
+  clearStorefrontMenuCache,
+  MENU_CACHE_PREFIX,
+  DEFAULT_MENU_CACHE_TTL_MS,
+} from './storefront/utils/cache.js';
+
+export { clearStorefrontMenuCache, cachedSupabaseRequest };
 
 const supabaseConfig = {
   url: import.meta.env.VITE_SUPABASE_URL,
@@ -1963,65 +1971,75 @@ export async function fetchMenuItems(options = {}) {
     pageSize = 20,
     uid = null,
     category = 'all',
+    forceRefresh = false,
   } = options;
 
-  const client = getSupabaseClient() || (typeof window !== 'undefined' ? window.supabase : null);
-  const from = Math.max(0, (page - 1) * pageSize);
-  const to = from + pageSize - 1;
+  const cacheKey = `${MENU_CACHE_PREFIX}${uid || 'all'}_${category || 'all'}_p${page}_s${pageSize}`;
 
-  if (client) {
-    try {
-      let query = client
-        .from('menu_items')
-        .select('id, title, price, image_url, category', { count: 'exact' });
+  return cachedSupabaseRequest(
+    cacheKey,
+    async () => {
+      const client = getSupabaseClient() || (typeof window !== 'undefined' ? window.supabase : null);
+      const from = Math.max(0, (page - 1) * pageSize);
+      const to = from + pageSize - 1;
 
-      if (uid) {
-        query = query.eq('user_id', uid);
+      if (client) {
+        try {
+          let query = client
+            .from('menu_items')
+            .select('id, title, price, image_url, category', { count: 'exact' });
+
+          if (uid) {
+            query = query.eq('user_id', uid);
+          }
+          if (category && category !== 'all') {
+            query = query.eq('category', category);
+          }
+
+          if (typeof query.range === 'function') {
+            query = query.range(from, to);
+          }
+
+          const { data, count, error } = await query;
+          if (!error && Array.isArray(data)) {
+            const total = count ?? data.length;
+            const totalPages = Math.ceil(total / pageSize) || (data.length > 0 ? 1 : 0);
+            return {
+              menuItems: data.map((item) => ({
+                id: item.id,
+                title: item.title,
+                name: item.title,
+                price: Number(item.price || 0),
+                image_url: item.image_url,
+                image: item.image_url,
+                category: item.category || 'all',
+              })),
+              count: total,
+              page,
+              pageSize,
+              totalPages,
+              hasNextPage: page < totalPages,
+              hasPrevPage: page > 1,
+            };
+          }
+        } catch (e) {
+          cloudError('FETCH_MENU_ITEMS_ERROR', e);
+        }
       }
-      if (category && category !== 'all') {
-        query = query.eq('category', category);
-      }
 
-      if (typeof query.range === 'function') {
-        query = query.range(from, to);
-      }
-
-      const { data, count, error } = await query;
-      if (!error && Array.isArray(data)) {
-        const total = count ?? data.length;
-        const totalPages = Math.ceil(total / pageSize) || (data.length > 0 ? 1 : 0);
-        return {
-          menuItems: data.map((item) => ({
-            id: item.id,
-            title: item.title,
-            name: item.title,
-            price: Number(item.price || 0),
-            image_url: item.image_url,
-            image: item.image_url,
-            category: item.category || 'all',
-          })),
-          count: total,
-          page,
-          pageSize,
-          totalPages,
-          hasNextPage: page < totalPages,
-          hasPrevPage: page > 1,
-        };
-      }
-    } catch (e) {
-      cloudError('FETCH_MENU_ITEMS_ERROR', e);
-    }
-  }
-
-  return {
-    menuItems: [],
-    count: 0,
-    page,
-    pageSize,
-    totalPages: 0,
-    hasNextPage: false,
-    hasPrevPage: false,
-  };
+      return {
+        menuItems: [],
+        count: 0,
+        page,
+        pageSize,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPrevPage: false,
+      };
+    },
+    DEFAULT_MENU_CACHE_TTL_MS,
+    forceRefresh
+  );
 }
 
 export async function fetchOrders(options = {}) {
