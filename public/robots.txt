@@ -5,19 +5,8 @@ Allow: /react.html
 Allow: /assets/
 Allow: /manifest.webmanifest
 
-# Disallow private authenticated ERP actions and internal business data
+# Disallow backend/api endpoints
 Disallow: /api/
-Disallow: /*?auth=*
-Disallow: /*#dashboard
-Disallow: /*#sales-entry
-Disallow: /*#voucher-entry
-Disallow: /*#inventory
-Disallow: /*#invoices
-Disallow: /*#gst
-Disallow: /*#party-statement
-Disallow: /*#day-book
-Disallow: /*#profile-settings
-Disallow: /*#app-settings
 
 # Sitemap Location
 Sitemap: https://voice-bussiness-tracker.vercel.app/sitemap.xml
