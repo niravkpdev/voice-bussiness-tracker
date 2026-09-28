@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Upload, Link, Plus, Trash2, Check, Sparkles, RefreshCw, AlertCircle, Image as ImageIcon, Globe } from 'lucide-react';
 import { useStoreCart } from '../context/StoreCartContext';
 import { CATEGORIES } from '../data/namkeenData';
-import { compressFoodImage } from '../../imageCompression.js';
+import { compressFoodImage, blobToDataUrl } from '../../imageCompression.js';
 import { uploadStorefrontImage, getSupabaseClient, getCurrentSupabaseUser, isSupabaseConfigured, clearStorefrontMenuCache } from '../../supabaseClient.js';
 
 export function ProductEditModal() {
@@ -72,27 +72,41 @@ export function ProductEditModal() {
     setCompressionStats(null);
 
     try {
-      // 1. Automatically compress food image on client side:
-      // Resizes to max resolution 500x500 px (aspect ratio maintained)
-      // Limits max compressed size to 150 KB with JPEG format
-      const compressionResult = await compressFoodImage(file, {
-        maxDimension: 500,
-        maxSizeBytes: 150 * 1024,
-        mimeType: 'image/jpeg',
-        fileName: file.name || `food-${formData?.id || 'item'}.jpg`,
-      });
+      let uploadBlob = file;
+      let uploadDataUrl = '';
+      let stats = null;
 
-      const { blob, dataUrl, width, height, size } = compressionResult;
-      const sizeKb = Math.round(size / 1024);
-      setCompressionStats({
-        sizeKb,
-        width,
-        height,
-        reductionPercent: compressionResult.reductionPercent,
-      });
+      try {
+        // 1. Automatically compress food image on client side:
+        // Resizes to max resolution 500x500 px (aspect ratio maintained)
+        // Limits max compressed size to 150 KB with JPEG format
+        const compressionResult = await compressFoodImage(file, {
+          maxDimension: 500,
+          maxSizeBytes: 150 * 1024,
+          mimeType: 'image/jpeg',
+          fileName: file.name || `food-${formData?.id || 'item'}.jpg`,
+        });
+
+        uploadBlob = compressionResult.blob;
+        uploadDataUrl = compressionResult.dataUrl;
+        stats = {
+          sizeKb: Math.round(compressionResult.size / 1024),
+          width: compressionResult.width,
+          height: compressionResult.height,
+          reductionPercent: compressionResult.reductionPercent,
+        };
+      } catch (compErr) {
+        console.warn('Client image compression fallback to original file:', compErr);
+        uploadBlob = file;
+        uploadDataUrl = await blobToDataUrl(file).catch(() => '');
+      }
+
+      if (stats) {
+        setCompressionStats(stats);
+      }
 
       // 2. Pass compressed Blob directly to Supabase storage upload call if configured & authenticated
-      let finalImageUrl = dataUrl;
+      let finalImageUrl = uploadDataUrl;
       try {
         if (isSupabaseConfigured()) {
           const client = getSupabaseClient();
@@ -104,7 +118,7 @@ export function ProductEditModal() {
           if (uid) {
             const uploadRes = await uploadStorefrontImage({
               uid,
-              file: blob,
+              file: uploadBlob,
               itemId: formData?.id || 'food-item',
             });
             if (uploadRes?.publicUrl) {
@@ -113,15 +127,17 @@ export function ProductEditModal() {
           }
         }
       } catch (uploadError) {
-        // Fallback gracefully to high-res compressed JPEG dataUrl (<= 150 KB)
-        console.warn('Supabase storage direct upload fallback to compressed dataUrl:', uploadError);
+        // Fallback gracefully to dataUrl
+        console.warn('Supabase storage direct upload fallback to dataUrl:', uploadError);
       }
 
-      setFormData(prev => ({ ...prev, image: finalImageUrl }));
+      if (finalImageUrl) {
+        setFormData(prev => ({ ...prev, image: finalImageUrl }));
+      }
       setErrorMessage('');
     } catch (err) {
       console.error('Image compression or upload failed:', err);
-      setErrorMessage(err?.message || 'Failed to compress and upload image.');
+      setErrorMessage(err?.message || 'Failed to process and upload image.');
     } finally {
       setIsCompressing(false);
       if (e.target) e.target.value = '';

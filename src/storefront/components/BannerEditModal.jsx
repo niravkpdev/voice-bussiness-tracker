@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Sparkles, Check, RefreshCw, Upload, Image as ImageIcon } from 'lucide-react';
 import { useStoreCart } from '../context/StoreCartContext';
-import { compressFoodImage } from '../../imageCompression.js';
+import { compressFoodImage, blobToDataUrl } from '../../imageCompression.js';
 import { uploadStorefrontImage, getSupabaseClient, getCurrentSupabaseUser, isSupabaseConfigured } from '../../supabaseClient.js';
 
 const DEFAULT_BANNER_IMAGE = 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=700&auto=format&fit=crop&q=80';
@@ -55,15 +55,25 @@ export function BannerEditModal({ isOpen, onClose, onUpdateProfile }) {
 
     setIsUploading(true);
     try {
-      // Compress banner image (max 500x500 px, <= 150 KB JPEG)
-      const compressed = await compressFoodImage(file, {
-        maxDimension: 500,
-        maxSizeBytes: 150 * 1024,
-        mimeType: 'image/jpeg',
-        fileName: file.name || 'banner.jpg'
-      });
+      let uploadBlob = file;
+      let finalUrl = '';
 
-      let finalUrl = compressed.dataUrl;
+      try {
+        // Compress banner image (max 500x500 px, <= 150 KB JPEG)
+        const compressed = await compressFoodImage(file, {
+          maxDimension: 500,
+          maxSizeBytes: 150 * 1024,
+          mimeType: 'image/jpeg',
+          fileName: file.name || 'banner.jpg'
+        });
+        uploadBlob = compressed.blob;
+        finalUrl = compressed.dataUrl;
+      } catch (compErr) {
+        console.warn('Banner compression fallback to original file:', compErr);
+        uploadBlob = file;
+        finalUrl = await blobToDataUrl(file).catch(() => '');
+      }
+
       try {
         if (isSupabaseConfigured()) {
           const client = getSupabaseClient();
@@ -71,7 +81,7 @@ export function BannerEditModal({ isOpen, onClose, onUpdateProfile }) {
           if (user?.id) {
             const uploadRes = await uploadStorefrontImage({
               uid: user.id,
-              file: compressed.blob,
+              file: uploadBlob,
               itemId: 'banner'
             });
             if (uploadRes?.publicUrl) {
@@ -83,7 +93,9 @@ export function BannerEditModal({ isOpen, onClose, onUpdateProfile }) {
         console.warn('Banner upload fallback to dataUrl:', uploadError);
       }
 
-      setBannerImage(finalUrl);
+      if (finalUrl) {
+        setBannerImage(finalUrl);
+      }
     } catch (err) {
       console.error('Failed to compress/upload banner:', err);
     } finally {

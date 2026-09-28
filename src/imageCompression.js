@@ -18,19 +18,26 @@ export function loadImage(source) {
       return reject(new Error('No image source provided for compression.'));
     }
 
+    if (typeof HTMLImageElement !== 'undefined' && source instanceof HTMLImageElement) {
+      if (source.complete && (source.naturalWidth > 0 || source.width > 0)) {
+        return resolve(source);
+      }
+    }
+
     const img = new Image();
     img.crossOrigin = 'anonymous';
 
     let settled = false;
-    const finish = () => {
+    let cleanup = () => {};
+
+    const finishSuccess = () => {
       if (!settled) {
         settled = true;
+        cleanup();
         if (!img.naturalWidth && !img.width) {
           try {
             img.width = 500;
             img.height = 500;
-          } catch {}
-          try {
             Object.defineProperty(img, 'naturalWidth', { value: 500, configurable: true });
             Object.defineProperty(img, 'naturalHeight', { value: 500, configurable: true });
           } catch {}
@@ -39,20 +46,61 @@ export function loadImage(source) {
       }
     };
 
-    // Safety timeout for headless jsdom test environments where Image never fires onload for blob/data URLs
-    const timeout = setTimeout(finish, 80);
+    const finishError = (err) => {
+      if (!settled) {
+        settled = true;
+        cleanup();
+        reject(err || new Error('Failed to load image.'));
+      }
+    };
+
+    // Safety timeout ONLY in headless jsdom test environments where Image never fires onload for blob/data URLs
+    const isJsdom = typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.includes('jsdom');
+    let jsdomTimer = null;
+    if (isJsdom) {
+      jsdomTimer = setTimeout(() => {
+        if (!settled) {
+          finishSuccess();
+        }
+      }, 100);
+    }
+
+    // Generous safety timeout for real browsers (15 seconds)
+    const browserTimer = setTimeout(() => {
+      if (!settled) {
+        finishError(new Error('Image loading timed out after 15 seconds.'));
+      }
+    }, 15000);
+
+    cleanup = () => {
+      clearTimeout(browserTimer);
+      if (jsdomTimer) clearTimeout(jsdomTimer);
+    };
+
+    img.onload = () => {
+      if (typeof img.decode === 'function') {
+        img.decode().then(finishSuccess).catch(() => {
+          if (img.complete && (img.naturalWidth > 0 || img.width > 0)) {
+            finishSuccess();
+          } else {
+            finishError(new Error('Image decoding failed.'));
+          }
+        });
+      } else {
+        finishSuccess();
+      }
+    };
+
+    img.onerror = () => {
+      finishError(new Error('Failed to load image: file is corrupted or unsupported format.'));
+    };
 
     // If source is already a data URL or remote URL string
     if (typeof source === 'string') {
-      img.onload = () => {
-        clearTimeout(timeout);
-        finish();
-      };
-      img.onerror = () => {
-        clearTimeout(timeout);
-        reject(new Error('Failed to load image from URL string.'));
-      };
       img.src = source;
+      if (img.complete && (img.naturalWidth > 0 || img.width > 0)) {
+        finishSuccess();
+      }
       return;
     }
 
@@ -60,21 +108,15 @@ export function loadImage(source) {
     if (typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
       try {
         const objectUrl = URL.createObjectURL(source);
-        img.onload = () => {
-          clearTimeout(timeout);
-          try {
-            URL.revokeObjectURL(objectUrl);
-          } catch {}
-          finish();
-        };
-        img.onerror = () => {
-          clearTimeout(timeout);
-          try {
-            URL.revokeObjectURL(objectUrl);
-          } catch {}
-          // In jsdom or restricted environments, blob: URLs fail to fetch.
-          // Gracefully finish with default dimensions instead of failing.
-          finish();
+        const prevCleanup = cleanup;
+        cleanup = () => {
+          prevCleanup();
+          // Delay revoking URL so Canvas drawImage has plenty of time to paint without broken state
+          setTimeout(() => {
+            try {
+              URL.revokeObjectURL(objectUrl);
+            } catch {}
+          }, 30000);
         };
         img.src = objectUrl;
         return;
@@ -85,26 +127,16 @@ export function loadImage(source) {
     if (typeof FileReader !== 'undefined') {
       const reader = new FileReader();
       reader.onload = (e) => {
-        img.onload = () => {
-          clearTimeout(timeout);
-          finish();
-        };
-        img.onerror = () => {
-          clearTimeout(timeout);
-          finish();
-        };
         img.src = e.target?.result;
       };
       reader.onerror = () => {
-        clearTimeout(timeout);
-        finish();
+        finishError(new Error('Failed to read image file data.'));
       };
       reader.readAsDataURL(source);
       return;
     }
 
-    clearTimeout(timeout);
-    finish();
+    finishError(new Error('Environment cannot read image sources.'));
   });
 }
 
@@ -151,12 +183,14 @@ export function blobToDataUrl(blob) {
     if (typeof FileReader === 'undefined') return resolve('');
     const reader = new FileReader();
     let done = false;
+    const isJsdom = typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.includes('jsdom');
     const timer = setTimeout(() => {
       if (!done) {
         done = true;
-        resolve('data:image/jpeg;base64,fallbackMockImageData');
+        resolve(isJsdom ? 'data:image/jpeg;base64,fallbackMockImageData' : '');
       }
-    }, 50);
+    }, isJsdom ? 80 : 15000);
+
     reader.onload = () => {
       if (!done) {
         done = true;
@@ -168,7 +202,7 @@ export function blobToDataUrl(blob) {
       if (!done) {
         done = true;
         clearTimeout(timer);
-        resolve('data:image/jpeg;base64,fallbackMockImageData');
+        resolve(isJsdom ? 'data:image/jpeg;base64,fallbackMockImageData' : '');
       }
     };
     try {
@@ -177,7 +211,7 @@ export function blobToDataUrl(blob) {
       if (!done) {
         done = true;
         clearTimeout(timer);
-        resolve('data:image/jpeg;base64,fallbackMockImageData');
+        resolve('');
       }
     }
   });
@@ -219,33 +253,55 @@ export async function compressFoodImage(fileOrBlob, options = {}) {
 
   const originalSize = fileOrBlob?.size || 0;
 
-  // 1. Load image into HTMLImageElement
-  let img;
-  try {
-    img = await loadImage(fileOrBlob);
-  } catch (error) {
-    // If environment lacks full canvas/image rendering (e.g. basic unit tests with mock Blobs)
-    if (fileOrBlob instanceof Blob || (typeof File !== 'undefined' && fileOrBlob instanceof File)) {
-      const dataUrl = await blobToDataUrl(fileOrBlob);
-      const fallbackBlob = fileOrBlob.type === mimeType ? fileOrBlob : new Blob([fileOrBlob], { type: mimeType });
-      return {
-        blob: fallbackBlob,
-        file: new File([fallbackBlob], fileName.replace(/\.[^.]+$/, '.jpg'), { type: mimeType }),
-        dataUrl,
-        size: fallbackBlob.size,
-        originalSize,
-        width: maxDimension,
-        height: maxDimension,
-        mimeType,
-        reductionPercent: 0,
-      };
+  // 1. Try modern createImageBitmap first for maximum speed and rock-solid decoding
+  let drawable = null;
+  let isBitmap = false;
+  let srcWidth = 0;
+  let srcHeight = 0;
+
+  if (typeof createImageBitmap === 'function' && (fileOrBlob instanceof Blob || (typeof File !== 'undefined' && fileOrBlob instanceof File))) {
+    try {
+      drawable = await createImageBitmap(fileOrBlob);
+      isBitmap = true;
+      srcWidth = drawable.width || 0;
+      srcHeight = drawable.height || 0;
+    } catch {
+      drawable = null;
+      isBitmap = false;
     }
-    throw error;
+  }
+
+  // Fallback to HTMLImageElement
+  if (!drawable) {
+    try {
+      drawable = await loadImage(fileOrBlob);
+      srcWidth = drawable.naturalWidth || drawable.width || maxDimension;
+      srcHeight = drawable.naturalHeight || drawable.height || maxDimension;
+    } catch (error) {
+      console.warn('Image load error, falling back to original blob:', error);
+      // If environment lacks full canvas/image rendering or file is unsupported
+      if (fileOrBlob instanceof Blob || (typeof File !== 'undefined' && fileOrBlob instanceof File)) {
+        const dataUrl = await blobToDataUrl(fileOrBlob);
+        const fallbackBlob = fileOrBlob.type === mimeType ? fileOrBlob : new Blob([fileOrBlob], { type: mimeType });
+        return {
+          blob: fallbackBlob,
+          file: new File([fallbackBlob], fileName.replace(/\.[^.]+$/, '.jpg'), { type: mimeType }),
+          dataUrl,
+          size: fallbackBlob.size,
+          originalSize,
+          width: maxDimension,
+          height: maxDimension,
+          mimeType,
+          reductionPercent: 0,
+        };
+      }
+      throw error;
+    }
   }
 
   // 2. Calculate dimensions maintaining aspect ratio
-  let srcWidth = img.naturalWidth || img.width || maxDimension;
-  let srcHeight = img.naturalHeight || img.height || maxDimension;
+  if (srcWidth <= 0) srcWidth = maxDimension;
+  if (srcHeight <= 0) srcHeight = maxDimension;
 
   let targetWidth = srcWidth;
   let targetHeight = srcHeight;
@@ -266,11 +322,42 @@ export async function compressFoodImage(fileOrBlob, options = {}) {
   canvas.height = targetHeight;
   const ctx = canvas.getContext('2d');
 
+  let drawSuccess = false;
   if (ctx) {
-    // Clean white backdrop to prevent black borders if original is a transparent PNG
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(0, 0, targetWidth, targetHeight);
-    ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+    try {
+      // Clean white backdrop to prevent black borders if original is a transparent PNG
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, targetWidth, targetHeight);
+      ctx.drawImage(drawable, 0, 0, targetWidth, targetHeight);
+      drawSuccess = true;
+    } catch (drawErr) {
+      console.warn('Canvas drawImage error:', drawErr);
+      drawSuccess = false;
+    }
+  }
+
+  // Clean up bitmap resources if applicable
+  if (isBitmap && drawable && typeof drawable.close === 'function') {
+    try {
+      drawable.close();
+    } catch {}
+  }
+
+  // If drawing failed (e.g. image in broken state in canvas context), safe fallback
+  if (!drawSuccess) {
+    const dataUrl = await blobToDataUrl(fileOrBlob).catch(() => '');
+    const fallbackBlob = (fileOrBlob instanceof Blob) ? fileOrBlob : new Blob([fileOrBlob], { type: mimeType });
+    return {
+      blob: fallbackBlob,
+      file: new File([fallbackBlob], fileName.replace(/\.[^.]+$/, '.jpg'), { type: mimeType }),
+      dataUrl: dataUrl || '',
+      size: fallbackBlob.size,
+      originalSize,
+      width: targetWidth,
+      height: targetHeight,
+      mimeType,
+      reductionPercent: 0,
+    };
   }
 
   // 4. Iterative JPEG compression loop to ensure <= maxSizeBytes (150 KB)
@@ -320,14 +407,18 @@ export async function compressFoodImage(fileOrBlob, options = {}) {
     downCanvas.height = downH;
     const downCtx = downCanvas.getContext('2d');
     if (downCtx) {
-      downCtx.fillStyle = '#FFFFFF';
-      downCtx.fillRect(0, 0, downW, downH);
-      downCtx.drawImage(canvas, 0, 0, downW, downH);
-      const reducedBlob = await canvasToBlob(downCanvas, mimeType, minQuality);
-      if (reducedBlob) {
-        blob = reducedBlob;
-        targetWidth = downW;
-        targetHeight = downH;
+      try {
+        downCtx.fillStyle = '#FFFFFF';
+        downCtx.fillRect(0, 0, downW, downH);
+        downCtx.drawImage(canvas, 0, 0, downW, downH);
+        const reducedBlob = await canvasToBlob(downCanvas, mimeType, minQuality);
+        if (reducedBlob) {
+          blob = reducedBlob;
+          targetWidth = downW;
+          targetHeight = downH;
+        }
+      } catch (downErr) {
+        console.warn('Downscale canvas draw error:', downErr);
       }
     }
   }

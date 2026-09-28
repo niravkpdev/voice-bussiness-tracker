@@ -339,5 +339,32 @@ describe('Client-Side Food Image Compression & Supabase Storage Pipeline', () =>
 
       window.Image = originalImage;
     });
+
+    it('gracefully recovers without crashing when drawImage throws broken HTMLImageElement error', async () => {
+      const originalCreateElement = document.createElement.bind(document);
+      vi.spyOn(document, 'createElement').mockImplementation((tagName) => {
+        const el = originalCreateElement(tagName);
+        if (tagName.toLowerCase() === 'canvas') {
+          el.getContext = () => ({
+            fillStyle: '#FFFFFF',
+            fillRect: vi.fn(),
+            drawImage: () => {
+              throw new Error("Failed to execute 'drawImage' on 'CanvasRenderingContext2D': The HTMLImageElement provided is in the 'broken' state.");
+            },
+          });
+        }
+        return el;
+      });
+
+      const sampleBlob = new Blob(['sample-food-image-bytes'], { type: 'image/jpeg' });
+      sampleBlob.name = 'broken-image-recovery.jpg';
+
+      const result = await compressFoodImage(sampleBlob);
+
+      expect(result).toBeDefined();
+      expect(result.blob).toBeDefined();
+      expect(result.file).toBeDefined();
+      expect(result.file.name).toBe('broken-image-recovery.jpg');
+    });
   });
 });
