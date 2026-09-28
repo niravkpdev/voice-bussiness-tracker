@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { STORE_INFO, PRODUCTS } from '../data/namkeenData';
 import { formatWhatsAppPhone } from '../../security.js';
-import { fetchMenuItems } from '../../supabaseClient.js';
+import { fetchMenuItems, clearStorefrontMenuCache } from '../../supabaseClient.js';
 
 const StoreCartContext = createContext(null);
 
@@ -32,15 +32,47 @@ export const DEFAULT_DELIVERY_CONFIG = {
 };
 
 function applyProductOverrides(items) {
+  if (!Array.isArray(items)) return [];
   let overrides = {};
   try {
     const raw = localStorage.getItem(PRODUCT_OVERRIDES_KEY);
     if (raw) overrides = JSON.parse(raw) || {};
   } catch {}
 
+  const overrideKeys = Object.keys(overrides);
+  if (overrideKeys.length === 0) {
+    return items;
+  }
+
+  const overrideValues = Object.values(overrides);
+
   return items.map(item => {
-    if (overrides[item.id]) {
-      return { ...item, ...overrides[item.id] };
+    if (!item) return item;
+    // 1. Direct ID match
+    let matchedOverride = overrides[item.id];
+
+    // 2. Direct normalized name match
+    const normName = item.name ? item.name.toLowerCase().trim() : '';
+    if (!matchedOverride && normName) {
+      matchedOverride = overrides[normName];
+    }
+
+    // 3. Search through values if key was different ID/alias
+    if (!matchedOverride) {
+      const foundVal = overrideValues.find(val => {
+        if (!val || typeof val !== 'object') return false;
+        if (val.id && item.id && val.id === item.id) return true;
+        if (normName && val.name && val.name.toLowerCase().trim() === normName) return true;
+        return false;
+      });
+      if (foundVal) {
+        matchedOverride = foundVal;
+      }
+    }
+
+    if (matchedOverride) {
+      const { id: _ignoredId, ...overrideFields } = matchedOverride;
+      return { ...item, ...overrideFields, id: item.id };
     }
     return item;
   });
@@ -638,65 +670,100 @@ export function StoreCartProvider({ children, storeProfile, customInventory, isO
       console.warn('Unauthorized: Storefront product updates are restricted to registered owners.');
       return;
     }
+
+    const normUpdatedName = updatedFields.name ? updatedFields.name.toLowerCase().trim() : '';
+
+    // 1. Save override in localStorage by ID and normalized name
+    try {
+      const raw = localStorage.getItem(PRODUCT_OVERRIDES_KEY);
+      const overrides = raw ? JSON.parse(raw) : {};
+      const overrideData = {
+        ...(overrides[productId] || {}),
+        ...updatedFields,
+        id: productId,
+      };
+      overrides[productId] = overrideData;
+      if (normUpdatedName) {
+        overrides[normUpdatedName] = overrideData;
+      }
+      localStorage.setItem(PRODUCT_OVERRIDES_KEY, JSON.stringify(overrides));
+    } catch (e) {
+      console.error('Failed to save product override', e);
+    }
+
+    // 2. Sync to erpProducts
+    let syncedErpProduct = null;
+    try {
+      const fromErp = localStorage.getItem('erpProducts');
+      let erpItems = fromErp ? JSON.parse(fromErp) : [];
+      if (Array.isArray(erpItems)) {
+        const idx = erpItems.findIndex(e => e.id === productId || (normUpdatedName && e.name && e.name.toLowerCase().trim() === normUpdatedName));
+        if (idx >= 0) {
+          erpItems[idx] = {
+            ...erpItems[idx],
+            name: updatedFields.name || erpItems[idx].name,
+            category: updatedFields.categoryLabel || updatedFields.category || erpItems[idx].category,
+            sellingPrice: updatedFields.variants?.[0]?.price ?? erpItems[idx].sellingPrice,
+            image: updatedFields.image || erpItems[idx].image,
+            details: updatedFields.description || erpItems[idx].details,
+            isTopSeller: Boolean(updatedFields.isTopSeller),
+            isNotForJain: Boolean(updatedFields.isNotForJain),
+            unit: updatedFields.variants?.[0]?.weight || erpItems[idx].unit
+          };
+          syncedErpProduct = erpItems[idx];
+        } else {
+          syncedErpProduct = {
+            id: productId,
+            name: updatedFields.name,
+            category: updatedFields.categoryLabel || updatedFields.category || 'Namkeen',
+            sellingPrice: updatedFields.variants?.[0]?.price || 100,
+            currentStock: updatedFields.isOutOfStock ? 0 : 50,
+            image: updatedFields.image,
+            details: updatedFields.description,
+            isTopSeller: Boolean(updatedFields.isTopSeller),
+            isNotForJain: Boolean(updatedFields.isNotForJain),
+            unit: updatedFields.variants?.[0]?.weight || '250 GM'
+          };
+          erpItems.push(syncedErpProduct);
+        }
+        localStorage.setItem('erpProducts', JSON.stringify(erpItems));
+      }
+    } catch (e) {
+      console.error('Failed to sync product to ERP', e);
+    }
+
+    // 3. Dispatch global sync event with both formats
+    const fullProduct = syncedErpProduct || { id: productId, ...updatedFields };
+    window.dispatchEvent(new CustomEvent('trinetr-inventory-updated', {
+      detail: {
+        id: productId,
+        productId,
+        product: fullProduct,
+        updatedFields
+      }
+    }));
+
+    // Invalidate menu cache
+    try {
+      clearStorefrontMenuCache();
+    } catch {}
+
+    // 4. Update products state
     setProducts(prevProducts => {
+      let found = false;
       const updatedList = prevProducts.map(p => {
-        if (p.id === productId) {
+        const matchesId = p.id === productId;
+        const matchesName = normUpdatedName && p.name && p.name.toLowerCase().trim() === normUpdatedName;
+        if (matchesId || matchesName) {
+          found = true;
           return { ...p, ...updatedFields };
         }
         return p;
       });
 
-      // 1. Save override in localStorage
-      try {
-        const raw = localStorage.getItem(PRODUCT_OVERRIDES_KEY);
-        const overrides = raw ? JSON.parse(raw) : {};
-        overrides[productId] = { ...(overrides[productId] || {}), ...updatedFields };
-        localStorage.setItem(PRODUCT_OVERRIDES_KEY, JSON.stringify(overrides));
-      } catch (e) {
-        console.error('Failed to save product override', e);
+      if (!found) {
+        return [{ id: productId, ...updatedFields }, ...updatedList];
       }
-
-      // 2. Sync to erpProducts
-      try {
-        const fromErp = localStorage.getItem('erpProducts');
-        let erpItems = fromErp ? JSON.parse(fromErp) : [];
-        if (Array.isArray(erpItems)) {
-          const idx = erpItems.findIndex(e => e.id === productId || (e.name && e.name.toLowerCase() === updatedFields.name?.toLowerCase()));
-          if (idx >= 0) {
-            erpItems[idx] = {
-              ...erpItems[idx],
-              name: updatedFields.name || erpItems[idx].name,
-              category: updatedFields.categoryLabel || updatedFields.category || erpItems[idx].category,
-              sellingPrice: updatedFields.variants?.[0]?.price ?? erpItems[idx].sellingPrice,
-              image: updatedFields.image || erpItems[idx].image,
-              details: updatedFields.description || erpItems[idx].details,
-              isTopSeller: Boolean(updatedFields.isTopSeller),
-              isNotForJain: Boolean(updatedFields.isNotForJain),
-              unit: updatedFields.variants?.[0]?.weight || erpItems[idx].unit
-            };
-          } else {
-            erpItems.push({
-              id: productId,
-              name: updatedFields.name,
-              category: updatedFields.categoryLabel || updatedFields.category || 'Namkeen',
-              sellingPrice: updatedFields.variants?.[0]?.price || 100,
-              currentStock: updatedFields.isOutOfStock ? 0 : 50,
-              image: updatedFields.image,
-              details: updatedFields.description,
-              isTopSeller: Boolean(updatedFields.isTopSeller),
-              isNotForJain: Boolean(updatedFields.isNotForJain),
-              unit: updatedFields.variants?.[0]?.weight || '250 GM'
-            });
-          }
-          localStorage.setItem('erpProducts', JSON.stringify(erpItems));
-        }
-      } catch (e) {
-        console.error('Failed to sync product to ERP', e);
-      }
-
-      // 3. Dispatch global sync event
-      window.dispatchEvent(new CustomEvent('trinetr-inventory-updated', { detail: { productId, updatedFields } }));
-
       return updatedList;
     });
 
@@ -718,7 +785,7 @@ export function StoreCartProvider({ children, storeProfile, customInventory, isO
   };
 
   // Reset product back to its defaults
-  const resetProductOverride = (productId) => {
+  const resetProductOverride = (productId, productName = '') => {
     if (!isOwner) {
       console.warn('Unauthorized: Resetting product overrides is restricted to registered owners.');
       return;
@@ -728,14 +795,26 @@ export function StoreCartProvider({ children, storeProfile, customInventory, isO
       if (raw) {
         const overrides = JSON.parse(raw);
         delete overrides[productId];
+        if (productName) {
+          delete overrides[productName.toLowerCase().trim()];
+        }
+        Object.keys(overrides).forEach(k => {
+          if (overrides[k]?.id === productId) {
+            delete overrides[k];
+          }
+        });
         localStorage.setItem(PRODUCT_OVERRIDES_KEY, JSON.stringify(overrides));
       }
     } catch (e) {
       console.error('Failed to reset product override', e);
     }
 
+    try {
+      clearStorefrontMenuCache();
+    } catch {}
+
     setProducts(resolveInventoryItems(customInventory));
-    window.dispatchEvent(new CustomEvent('trinetr-inventory-updated', { detail: { productId, reset: true } }));
+    window.dispatchEvent(new CustomEvent('trinetr-inventory-updated', { detail: { id: productId, productId, reset: true } }));
   };
 
   const value = {

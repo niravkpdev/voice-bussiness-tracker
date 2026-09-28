@@ -3,7 +3,7 @@ import { X, Upload, Link, Plus, Trash2, Check, Sparkles, RefreshCw, AlertCircle,
 import { useStoreCart } from '../context/StoreCartContext';
 import { CATEGORIES } from '../data/namkeenData';
 import { compressFoodImage, blobToDataUrl } from '../../imageCompression.js';
-import { uploadStorefrontImage, getSupabaseClient, getCurrentSupabaseUser, isSupabaseConfigured, clearStorefrontMenuCache } from '../../supabaseClient.js';
+import { uploadStorefrontImage, getSupabaseClient, getCurrentSupabaseUser, isSupabaseConfigured, clearStorefrontMenuCache, saveCloudRecord } from '../../supabaseClient.js';
 
 export function ProductEditModal() {
   const { 
@@ -112,7 +112,7 @@ export function ProductEditModal() {
           const client = getSupabaseClient();
           const sessionRes = client ? await Promise.race([
             client.auth.getSession(),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Session check timeout')), 400))
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Session check timeout')), 2500))
           ]).catch(() => null) : null;
           const uid = sessionRes?.data?.session?.user?.id;
           if (uid) {
@@ -214,7 +214,7 @@ export function ProductEditModal() {
       return;
     }
 
-    updateProduct(formData.id, {
+    const updatedProduct = {
       name: formData.name.trim(),
       category: formData.category,
       categoryLabel: formData.categoryLabel.trim() || formData.category,
@@ -224,7 +224,40 @@ export function ProductEditModal() {
       isNotForJain: formData.isNotForJain,
       isOutOfStock: formData.isOutOfStock,
       variants: formData.variants
-    });
+    };
+
+    updateProduct(formData.id, updatedProduct);
+
+    // Sync to Supabase menu_items and inventory if configured & authenticated
+    try {
+      if (isSupabaseConfigured()) {
+        const client = getSupabaseClient();
+        client?.auth?.getSession().then(({ data }) => {
+          const uid = data?.session?.user?.id;
+          if (uid) {
+            saveCloudRecord(uid, 'menu_items', formData.id, {
+              title: updatedProduct.name,
+              name: updatedProduct.name,
+              price: updatedProduct.variants?.[0]?.price || 100,
+              image_url: updatedProduct.image,
+              image: updatedProduct.image,
+              category: updatedProduct.category,
+            }).catch(() => {});
+
+            saveCloudRecord(uid, 'inventory', formData.id, {
+              name: updatedProduct.name,
+              category: updatedProduct.categoryLabel || updatedProduct.category,
+              sellingPrice: updatedProduct.variants?.[0]?.price || 100,
+              image: updatedProduct.image,
+              details: updatedProduct.description,
+              isTopSeller: Boolean(updatedProduct.isTopSeller),
+              isNotForJain: Boolean(updatedProduct.isNotForJain),
+              unit: updatedProduct.variants?.[0]?.weight || '250 GM',
+            }).catch(() => {});
+          }
+        }).catch(() => {});
+      }
+    } catch {}
 
     clearStorefrontMenuCache();
     setSaveSuccess(true);
@@ -236,7 +269,7 @@ export function ProductEditModal() {
 
   const handleReset = () => {
     if (window.confirm('Reset this product to its original default details and prices?')) {
-      resetProductOverride(formData.id);
+      resetProductOverride(formData.id, formData.name);
       clearStorefrontMenuCache();
       handleClose();
     }

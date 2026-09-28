@@ -2228,11 +2228,18 @@ export default function VoiceExpenseTrackerPreview() {
       });
     };
     const handleInventoryChange = (event) => {
-      const { id, product } = event.detail || {};
-      if (product) {
-        setCloudInventory((prev) => [product, ...(Array.isArray(prev) ? prev.filter((p) => p.id !== product.id) : [])]);
-      } else if (id) {
-        setCloudInventory((prev) => (Array.isArray(prev) ? prev.filter((p) => p.id !== id) : []));
+      const { id, productId, product, updatedFields } = event.detail || {};
+      const targetId = id || productId;
+      const targetProduct = product || (targetId && updatedFields ? { id: targetId, ...updatedFields } : null);
+
+      if (targetProduct) {
+        const prodName = targetProduct.name ? targetProduct.name.toLowerCase().trim() : '';
+        setCloudInventory((prev) => [
+          targetProduct,
+          ...(Array.isArray(prev) ? prev.filter((p) => p.id !== targetProduct.id && p.id !== targetId && (!prodName || p.name?.toLowerCase().trim() !== prodName)) : [])
+        ]);
+      } else if (targetId) {
+        setCloudInventory((prev) => (Array.isArray(prev) ? prev.filter((p) => p.id !== targetId) : []));
       }
     };
     window.addEventListener('trinetr-party-updated', handlePartyUpdate);

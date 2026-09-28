@@ -554,8 +554,8 @@ export function rowToAppRecord(row, tableName) {
   };
 }
 
-function buildRow(uid, id, data) {
-  return {
+function buildRow(uid, id, data, tableName = '') {
+  const row = {
     id,
     user_id: uid,
     data: {
@@ -567,6 +567,23 @@ function buildRow(uid, id, data) {
     },
     updated_at: new Date().toISOString(),
   };
+
+  if (tableName === 'menu_items' && data) {
+    if (data.title || data.name) {
+      row.title = data.title || data.name;
+    }
+    if (data.price !== undefined && data.price !== null) {
+      row.price = Number(data.price) || 0;
+    }
+    if (data.image_url || data.image) {
+      row.image_url = data.image_url || data.image;
+    }
+    if (data.category) {
+      row.category = data.category;
+    }
+  }
+
+  return row;
 }
 
 async function syncUserProfileBestEffort(uid, profile) {
@@ -1544,7 +1561,7 @@ export async function saveCloudRecord(uid, tableName, id, data) {
     throw error;
   }
 
-  const row = buildRow(uid, id, data);
+  const row = buildRow(uid, id, data, tableName);
   cloudInfo('SUPABASE_PATH_USED', {
     projectId: getSupabaseProjectHost() || null,
     authDomain: supabaseConfig.url || null,
