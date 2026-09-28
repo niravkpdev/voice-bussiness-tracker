@@ -2202,7 +2202,7 @@ export default function VoiceExpenseTrackerPreview() {
       const { person, kind } = event.detail || {};
       if (person?.name) {
         try {
-          const bal = Number(person.outstandingAmount ?? person.outstanding ?? person.payableAmount ?? person.payable ?? person.openingBalance ?? 0);
+          const bal = Number(person.openingBalance !== undefined && person.openingBalance !== null ? person.openingBalance : (person.opening_balance ?? 0));
           const { ledgers: nextL } = addPartyLedger(person.name, kind || (person.type === 'supplier' ? 'supplier' : 'customer'), ledgers, bal);
           setLedgers(nextL);
           if (kind === 'supplier') {
@@ -3469,6 +3469,10 @@ export default function VoiceExpenseTrackerPreview() {
       case 'invoices':
         removeCloudListRecord(setCloudInvoices, id);
         break;
+      case 'transactions':
+      case 'vouchers':
+        removeCloudListRecord(setVouchers, id);
+        break;
       case 'orders':
         removeCloudListRecord(setCloudOrders, id);
         break;
@@ -4644,10 +4648,13 @@ export default function VoiceExpenseTrackerPreview() {
         }
       });
     (Array.isArray(cloudCustomers) ? cloudCustomers : []).forEach((c) => {
-      if (c && c.name && !c.deleted && !c.isDeleted && c.status !== 'deleted' && c.status !== 'cancelled') {
+      if (c && c.name && !c.deleted && !c.isDeleted && !c.is_deleted && !c.deleted_at && !c.deletedAt && String(c.status || '').toLowerCase() !== 'deleted' && String(c.status || '').toLowerCase() !== 'cancelled') {
         const key = c.name.toLowerCase().trim();
-        const profileBal = Number(c.outstandingAmount ?? c.outstanding ?? (c.openingBalance !== undefined ? c.openingBalance : c.balance) ?? 0);
-        const opBal = Number(c.openingBalance !== undefined && c.openingBalance !== null ? c.openingBalance : profileBal);
+        const explicitOp = (c.openingBalance !== undefined && c.openingBalance !== null)
+          ? Number(c.openingBalance)
+          : ((c.opening_balance !== undefined && c.opening_balance !== null) ? Number(c.opening_balance) : null);
+        const opBal = explicitOp !== null ? explicitOp : Number(c.outstandingAmount ?? c.outstanding ?? c.balance ?? 0);
+        const profileBal = Number(c.outstandingAmount ?? c.outstanding ?? (explicitOp !== null ? explicitOp : 0));
         const existing = map.get(key);
         if (!existing) {
           map.set(key, {
@@ -4664,8 +4671,8 @@ export default function VoiceExpenseTrackerPreview() {
           map.set(key, {
             ...existing,
             phone: c.phone || c.mobile || existing.phone || '',
-            openingBalance: opBal !== 0 ? opBal : (existing.openingBalance || 0),
-            profileOutstanding: profileBal !== 0 ? profileBal : (existing.profileOutstanding !== undefined ? existing.profileOutstanding : existing.openingBalance || 0),
+            openingBalance: explicitOp !== null ? explicitOp : (existing.openingBalance || 0),
+            profileOutstanding: profileBal,
             createdAt: existing.createdAt || c.createdAt || c.date || '',
           });
         }
@@ -4684,10 +4691,13 @@ export default function VoiceExpenseTrackerPreview() {
         }
       });
     (Array.isArray(cloudSuppliers) ? cloudSuppliers : []).forEach((s) => {
-      if (s && s.name && !s.deleted && !s.isDeleted && s.status !== 'deleted' && s.status !== 'cancelled') {
+      if (s && s.name && !s.deleted && !s.isDeleted && !s.is_deleted && !s.deleted_at && !s.deletedAt && String(s.status || '').toLowerCase() !== 'deleted' && String(s.status || '').toLowerCase() !== 'cancelled') {
         const key = s.name.toLowerCase().trim();
-        const profileBal = Number(s.payableAmount ?? s.payable ?? (s.openingBalance !== undefined ? s.openingBalance : s.balance) ?? 0);
-        const opBal = Number(s.openingBalance !== undefined && s.openingBalance !== null ? s.openingBalance : profileBal);
+        const explicitOp = (s.openingBalance !== undefined && s.openingBalance !== null)
+          ? Number(s.openingBalance)
+          : ((s.opening_balance !== undefined && s.opening_balance !== null) ? Number(s.opening_balance) : null);
+        const opBal = explicitOp !== null ? explicitOp : Number(s.payableAmount ?? s.payable ?? s.balance ?? 0);
+        const profileBal = Number(s.payableAmount ?? s.payable ?? (explicitOp !== null ? explicitOp : 0));
         const existing = map.get(key);
         if (!existing) {
           map.set(key, {
@@ -4704,8 +4714,8 @@ export default function VoiceExpenseTrackerPreview() {
           map.set(key, {
             ...existing,
             phone: s.phone || s.mobile || existing.phone || '',
-            openingBalance: opBal !== 0 ? opBal : (existing.openingBalance || 0),
-            profileOutstanding: profileBal !== 0 ? profileBal : (existing.profileOutstanding !== undefined ? existing.profileOutstanding : existing.openingBalance || 0),
+            openingBalance: explicitOp !== null ? explicitOp : (existing.openingBalance || 0),
+            profileOutstanding: profileBal,
             createdAt: existing.createdAt || s.createdAt || s.date || '',
           });
         }
@@ -4762,19 +4772,19 @@ export default function VoiceExpenseTrackerPreview() {
 
   const activeVouchers = useMemo(() => {
     return (Array.isArray(vouchers) ? vouchers : []).filter(
-      (v) => v && !v.deleted && !v.isDeleted && v.status !== 'deleted' && v.status !== 'cancelled'
+      (v) => v && !v.deleted && !v.isDeleted && !v.is_deleted && !v.deleted_at && !v.deletedAt && String(v.status || '').toLowerCase() !== 'deleted' && String(v.status || '').toLowerCase() !== 'cancelled'
     );
   }, [vouchers]);
 
   const activeInvoices = useMemo(() => {
     return (Array.isArray(cloudInvoices) ? cloudInvoices : []).filter(
-      (i) => i && !i.deleted && !i.isDeleted && i.status !== 'Deleted' && i.status !== 'Cancelled'
+      (i) => i && !i.deleted && !i.isDeleted && !i.is_deleted && !i.deleted_at && !i.deletedAt && String(i.status || '').toLowerCase() !== 'deleted' && String(i.status || '').toLowerCase() !== 'cancelled'
     );
   }, [cloudInvoices]);
 
   const activeOrders = useMemo(() => {
     return (Array.isArray(cloudOrders) ? cloudOrders : []).filter(
-      (o) => o && !o.deleted && !o.isDeleted && o.status !== 'Deleted' && o.status !== 'Cancelled'
+      (o) => o && !o.deleted && !o.isDeleted && !o.is_deleted && !o.deleted_at && !o.deletedAt && String(o.status || '').toLowerCase() !== 'deleted' && String(o.status || '').toLowerCase() !== 'cancelled'
     );
   }, [cloudOrders]);
 
@@ -4927,19 +4937,19 @@ export default function VoiceExpenseTrackerPreview() {
       0
     );
 
-    // Also include any customer from cloudCustomers whose profile has an outstanding balance
-    // if not already represented in partySummary with outstanding > 0
+    // Also include any customer from cloudCustomers whose profile has an opening balance
+    // ONLY if not already represented in partySummary
     const uncountedCustomers = (Array.isArray(cloudCustomers) ? cloudCustomers : []).filter((c) => {
-      if (!c || c.deleted || c.isDeleted || c.status === 'deleted' || c.status === 'cancelled') return false;
-      const cBal = Number(c.outstandingAmount ?? c.outstanding ?? (c.openingBalance !== undefined ? c.openingBalance : c.balance) ?? 0);
-      if (cBal <= 0) return false;
+      if (!c || c.deleted || c.isDeleted || c.is_deleted || c.deleted_at || c.deletedAt || String(c.status || '').toLowerCase() === 'deleted' || String(c.status || '').toLowerCase() === 'cancelled') return false;
       const cName = (c.name || '').toLowerCase().trim();
       const party = partySummary.find((p) => p.id === c.id || (p.name && p.name.toLowerCase().trim() === cName));
-      return !party || party.outstandingAmount <= 0;
+      if (party) return false;
+      const cBal = Number(c.openingBalance !== undefined && c.openingBalance !== null ? c.openingBalance : (c.opening_balance ?? 0));
+      return cBal > 0;
     });
 
     const uncountedCustomerBal = uncountedCustomers.reduce(
-      (sum, c) => sum + Number(c.outstandingAmount ?? c.outstanding ?? (c.openingBalance !== undefined ? c.openingBalance : c.balance) ?? 0),
+      (sum, c) => sum + Number(c.openingBalance !== undefined && c.openingBalance !== null ? c.openingBalance : (c.opening_balance ?? 0)),
       0
     );
 
@@ -6772,18 +6782,26 @@ export default function VoiceExpenseTrackerPreview() {
   };
 
   const clearAllData = () => {
-    if (!confirm('Clear all vouchers, logs, and reset ledgers to defaults?')) {
+    if (!confirm('Clear all vouchers, logs, invoices, and reset balances to defaults?')) {
       return;
     }
 
     removeScopedValue(STORAGE_KEY);
     removeScopedValue(VOUCHERS_KEY);
     removeScopedValue(LEDGERS_KEY);
+    try {
+      localStorage.removeItem('erpInvoices');
+      localStorage.removeItem('erpOrders');
+    } catch (e) {}
     const freshLedgers = ensureDefaultLedgers();
     setLogs([]);
     setLedgers(freshLedgers);
     setVouchers([]);
-    setStatus('All accounting data cleared');
+    setCloudInvoices([]);
+    setCloudOrders([]);
+    setCloudCustomers((prev) => (Array.isArray(prev) ? prev.map(c => ({ ...c, outstandingAmount: 0, outstanding: 0, balance: 0, profileOutstanding: 0, openingBalance: 0, opening_balance: 0 })) : []));
+    setCloudSuppliers((prev) => (Array.isArray(prev) ? prev.map(s => ({ ...s, payableAmount: 0, payable: 0, balance: 0, profileOutstanding: 0, openingBalance: 0, opening_balance: 0 })) : []));
+    setStatus('All accounting data and balances cleared');
     saveCloudDataSnapshot('data_cleared');
   };
 
@@ -11144,7 +11162,46 @@ export default function VoiceExpenseTrackerPreview() {
                   setStatus(`Sales invoice ${newInv.invoiceNo || 'Sale'} saved successfully.`);
                 }}
                 onDeleteInvoice={async (invId) => {
-                  setCloudInvoices((prev) => (Array.isArray(prev) ? prev.filter(i => i.id !== invId) : []));
+                  const deletedInv = (Array.isArray(cloudInvoices) ? cloudInvoices : []).find(i => i.id === invId);
+                  const nextInvoices = (Array.isArray(cloudInvoices) ? cloudInvoices : []).filter(i => i.id !== invId);
+                  setCloudInvoices(nextInvoices);
+
+                  // Automatically recalculate remaining customer balance when an invoice is deleted
+                  if (deletedInv && (deletedInv.customerId || deletedInv.customer_id || deletedInv.customerName || deletedInv.customer)) {
+                    const custId = deletedInv.customerId || deletedInv.customer_id;
+                    const custName = (deletedInv.customerName || deletedInv.customer || '').toLowerCase().trim();
+                    const targetCust = (Array.isArray(cloudCustomers) ? cloudCustomers : []).find(c => (custId && c.id === custId) || (c.name && c.name.toLowerCase().trim() === custName));
+                    if (targetCust) {
+                      const remainingCustInvoices = nextInvoices.filter(i =>
+                        !i.deleted && !i.isDeleted && !i.is_deleted && !i.deleted_at && !i.deletedAt &&
+                        String(i.status || '').toLowerCase() !== 'deleted' && String(i.status || '').toLowerCase() !== 'cancelled' &&
+                        ((targetCust.id && (i.customerId === targetCust.id || i.customer_id === targetCust.id)) ||
+                         ((i.customerName || i.customer || '').toLowerCase().trim() === (targetCust.name || '').toLowerCase().trim()))
+                      );
+                      const remainingBal = remainingCustInvoices.reduce((sum, inv) => {
+                        const bal = Number(inv.balance !== undefined ? inv.balance : (Number(inv.total || inv.grandTotal || 0) - Number(inv.paidAmount || 0)));
+                        return sum + Math.max(0, bal);
+                      }, 0);
+                      const trueOpBal = Math.max(0, Number(targetCust.openingBalance ?? targetCust.opening_balance ?? 0));
+                      const newOutstanding = trueOpBal + remainingBal;
+                      const updatedCust = {
+                        ...targetCust,
+                        outstandingAmount: newOutstanding,
+                        outstanding: newOutstanding,
+                        balance: newOutstanding,
+                        profileOutstanding: newOutstanding,
+                      };
+                      setCloudCustomers(prev => (Array.isArray(prev) ? prev.map(c => c.id === targetCust.id ? updatedCust : c) : []));
+                      if (supabaseEnabled && saveAuthenticatedCloudRecord) {
+                        try {
+                          await saveAuthenticatedCloudRecord('customers', targetCust.id, updatedCust);
+                        } catch (e) {
+                          console.warn('Could not sync customer balance to cloud:', e);
+                        }
+                      }
+                    }
+                  }
+
                   if (supabaseEnabled && deleteAuthenticatedCloudRecord) {
                     try {
                       await deleteAuthenticatedCloudRecord('invoices', invId);
@@ -12229,6 +12286,27 @@ export default function VoiceExpenseTrackerPreview() {
                                   >
                                     Statement ↗
                                   </button>
+                                  <button
+                                    type="button"
+                                    className="compact-button secondary-button"
+                                    style={{ marginLeft: '6px', fontSize: '11px', padding: '2px 8px', borderRadius: '4px', color: 'var(--text-danger, #ef4444)' }}
+                                    onClick={async () => {
+                                      if (!window.confirm(`Reset outstanding balance for "${p.name}" to ₹0?`)) return;
+                                      try {
+                                        setCloudCustomers((prev) => (Array.isArray(prev) ? prev.map((c) => (c.id === p.id || c.name?.toLowerCase().trim() === p.name?.toLowerCase().trim()) ? { ...c, openingBalance: 0, opening_balance: 0, outstandingAmount: 0, outstanding: 0, balance: 0, profileOutstanding: 0 } : c) : []));
+                                        setLedgers((prev) => (Array.isArray(prev) ? prev.map((l) => (l.id === p.id || l.name?.toLowerCase().trim() === p.name?.toLowerCase().trim()) ? { ...l, openingBalance: 0, opening_balance: 0, profileOutstanding: 0 } : l) : []));
+                                        if (supabaseEnabled && saveAuthenticatedCloudRecord) {
+                                          await saveAuthenticatedCloudRecord('customers', p.id, { id: p.id, name: p.name, openingBalance: 0, opening_balance: 0, outstandingAmount: 0, outstanding: 0, balance: 0 });
+                                        }
+                                        setStatus(`Customer "${p.name}" balance reset to ₹0.`);
+                                      } catch (err) {
+                                        console.warn('Could not reset customer balance:', err);
+                                      }
+                                    }}
+                                    title="Reset opening and outstanding balance to ₹0"
+                                  >
+                                    Clear to ₹0
+                                  </button>
                                 </td>
                                 <td>{formatCurrency(p.totalSales)}</td>
                                 <td>{formatCurrency(p.totalPayments)}</td>
@@ -12281,6 +12359,27 @@ export default function VoiceExpenseTrackerPreview() {
                                     title="View ledger statement for this supplier"
                                   >
                                     Statement ↗
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="compact-button secondary-button"
+                                    style={{ marginLeft: '6px', fontSize: '11px', padding: '2px 8px', borderRadius: '4px', color: 'var(--text-danger, #ef4444)' }}
+                                    onClick={async () => {
+                                      if (!window.confirm(`Reset outstanding payable for "${p.name}" to ₹0?`)) return;
+                                      try {
+                                        setCloudSuppliers((prev) => (Array.isArray(prev) ? prev.map((s) => (s.id === p.id || s.name?.toLowerCase().trim() === p.name?.toLowerCase().trim()) ? { ...s, openingBalance: 0, opening_balance: 0, payableAmount: 0, payable: 0, balance: 0, profileOutstanding: 0 } : s) : []));
+                                        setLedgers((prev) => (Array.isArray(prev) ? prev.map((l) => (l.id === p.id || l.name?.toLowerCase().trim() === p.name?.toLowerCase().trim()) ? { ...l, openingBalance: 0, opening_balance: 0, profileOutstanding: 0 } : l) : []));
+                                        if (supabaseEnabled && saveAuthenticatedCloudRecord) {
+                                          await saveAuthenticatedCloudRecord('suppliers', p.id, { id: p.id, name: p.name, openingBalance: 0, opening_balance: 0, payableAmount: 0, payable: 0, balance: 0 });
+                                        }
+                                        setStatus(`Supplier "${p.name}" balance reset to ₹0.`);
+                                      } catch (err) {
+                                        console.warn('Could not reset supplier balance:', err);
+                                      }
+                                    }}
+                                    title="Reset opening and payable balance to ₹0"
+                                  >
+                                    Clear to ₹0
                                   </button>
                                 </td>
                                 <td>{formatCurrency(p.totalSales)}</td>

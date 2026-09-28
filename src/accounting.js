@@ -964,31 +964,60 @@ export function getPartySummary(ledgers, vouchers, invoices = []) {
       });
     }
 
-    const baseOutstanding = Number(
-      ledger.profileOutstanding !== undefined && ledger.profileOutstanding !== null
-        ? ledger.profileOutstanding
-        : (ledger.openingBalance || 0)
-    );
-    const opBal = Number(
+    const trueOpeningBal = Number(
       ledger.openingBalance !== undefined && ledger.openingBalance !== null
         ? ledger.openingBalance
-        : baseOutstanding
+        : (ledger.opening_balance || 0)
+    );
+    const profileBal = Number(
+      ledger.profileOutstanding !== undefined && ledger.profileOutstanding !== null
+        ? ledger.profileOutstanding
+        : trueOpeningBal
     );
     const voucherBalance = computeLedgerBalance(ledger.id, ledgers, vouchers);
+    const hasTransactions = voucherSales > 0 || invoiceSales > 0 || voucherPayments > 0 || invoicePayments > 0;
 
     let totalSales = 0;
     let totalPayments = 0;
     let outstandingAmount = 0;
 
     if (ledger.group === 'Sundry Debtors') {
-      totalSales = opBal + voucherSales + invoiceSales;
-      totalPayments = voucherPayments + invoicePayments;
-      outstandingAmount = (baseOutstanding + voucherSales + invoiceSales) - (voucherPayments + invoicePayments);
+      if (hasTransactions) {
+        const baseStarting = trueOpeningBal;
+        totalSales = baseStarting + voucherSales + invoiceSales;
+        totalPayments = voucherPayments + invoicePayments;
+        outstandingAmount = totalSales - totalPayments;
+      } else {
+        // Zero transactions: if customer has explicit 0 opening balance, outstanding is 0.
+        // If they had an explicit positive opening balance or positive profile balance without explicit 0, honor it.
+        const isExplicitZero = ledger.openingBalance === 0 || ledger.opening_balance === 0;
+        const baseStarting = isExplicitZero
+          ? 0
+          : (trueOpeningBal > 0
+              ? ((ledger.profileOutstanding !== undefined && ledger.profileOutstanding !== null) ? profileBal : trueOpeningBal)
+              : (profileBal > 0 ? profileBal : 0));
+        totalSales = isExplicitZero ? 0 : (trueOpeningBal > 0 ? trueOpeningBal : baseStarting);
+        totalPayments = 0;
+        outstandingAmount = baseStarting;
+      }
     } else {
       // Sundry Creditors (Suppliers)
-      totalSales = opBal + voucherSales;
-      totalPayments = voucherPayments;
-      outstandingAmount = voucherBalance !== 0 ? voucherBalance : baseOutstanding;
+      if (hasTransactions) {
+        const baseStarting = trueOpeningBal;
+        totalSales = baseStarting + voucherSales;
+        totalPayments = voucherPayments;
+        outstandingAmount = voucherBalance !== 0 ? voucherBalance : (totalSales - totalPayments);
+      } else {
+        const isExplicitZero = ledger.openingBalance === 0 || ledger.opening_balance === 0;
+        const baseStarting = isExplicitZero
+          ? 0
+          : (trueOpeningBal > 0
+              ? ((ledger.profileOutstanding !== undefined && ledger.profileOutstanding !== null) ? profileBal : trueOpeningBal)
+              : (profileBal > 0 ? profileBal : 0));
+        totalSales = isExplicitZero ? 0 : (trueOpeningBal > 0 ? trueOpeningBal : baseStarting);
+        totalPayments = 0;
+        outstandingAmount = baseStarting;
+      }
     }
 
     if (lastDate === '—' && (ledger.createdAt || ledger.date)) {

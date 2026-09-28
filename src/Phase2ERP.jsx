@@ -1530,11 +1530,49 @@ export default function Phase2ERP({
 
   const deleteInvoice = async (invoiceId) => {
     try {
+      const invToDelete = invoices.find((inv) => inv.id === invoiceId);
       if (onCloudDelete) await onCloudDelete('invoices', invoiceId);
       const nextInvoices = invoices.filter((invoice) => invoice.id !== invoiceId);
       setInvoices(nextInvoices);
       writeArray(INVOICE_KEY, nextInvoices);
       onInvoicesChange?.(nextInvoices);
+
+      // Automatically recalculate and clear phantom customer balances when invoice is deleted
+      if (invToDelete && (invToDelete.customerId || invToDelete.customerName)) {
+        const custId = invToDelete.customerId;
+        const custName = (invToDelete.customerName || '').toLowerCase().trim();
+        const custObj = customers.find(c => c.id === custId || (c.name && c.name.toLowerCase().trim() === custName));
+        if (custObj) {
+          const remainingInvoices = nextInvoices.filter(i => 
+            i.customerId === custObj.id || 
+            (i.customerName && i.customerName.toLowerCase().trim() === (custObj.name || '').toLowerCase().trim())
+          );
+          const remainingUnpaidBal = remainingInvoices.reduce((sum, i) => {
+            const bal = Number(i.balance !== undefined ? i.balance : (Number(i.total || 0) - Number(i.paid || 0)));
+            return sum + Math.max(0, bal);
+          }, 0);
+          const trueOpBal = Number(custObj.openingBalance ?? custObj.opening_balance ?? 0);
+          const newOutstanding = trueOpBal + remainingUnpaidBal;
+          const updatedCust = {
+            ...custObj,
+            outstandingAmount: newOutstanding,
+            profileOutstanding: newOutstanding,
+            balance: newOutstanding,
+          };
+          const nextCustomers = customers.map(c => c.id === custObj.id ? updatedCust : c);
+          setCustomers(nextCustomers);
+          writeArray(CUSTOMER_KEY, nextCustomers);
+          onCustomersChange?.(nextCustomers);
+          if (onCloudRecord) {
+            try {
+              await onCloudRecord('customers', custObj.id, updatedCust);
+            } catch (e) {
+              console.warn('Could not sync updated customer balance on invoice delete:', e);
+            }
+          }
+        }
+      }
+
       onStatus('Invoice deleted');
     } catch (error) {
       onStatus(error?.message || 'Invoice delete failed');
@@ -2746,12 +2784,6 @@ export default function Phase2ERP({
             (p.name && item.name && p.name.toLowerCase().trim() === item.name.toLowerCase().trim())
         );
         if (match && typeof match.outstandingAmount === 'number') {
-          if (match.outstandingAmount > 0 || (match.totalPayments > 0 && match.totalSales > 0)) {
-            return match.outstandingAmount;
-          }
-          if (match.totalSales === 0 && profileBal > 0) {
-            return profileBal;
-          }
           return match.outstandingAmount;
         }
       }

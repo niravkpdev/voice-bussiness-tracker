@@ -291,4 +291,49 @@ describe('Party Outstanding Balance Sync & Navigation Cleanup', () => {
     expect(screen.getAllByText('Initial opening balance').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Opening Balance').length).toBeGreaterThan(0);
   });
+
+  it('returns 0 outstanding when all entries are deleted and customer has 0 opening balance even if profile had 50', () => {
+    const ledgers = [
+      {
+        id: 'cus-deleted-entries',
+        name: 'NIRAVKUMAR KANTILAL PRAJAPATI',
+        group: 'Sundry Debtors',
+        balanceType: 'debit',
+        openingBalance: 0,
+        profileOutstanding: 50,
+      },
+    ];
+    const vouchers = [];
+    const invoices = [];
+
+    const summary = getPartySummary(ledgers, vouchers, invoices);
+    expect(summary).toHaveLength(1);
+    expect(summary[0].name).toBe('NIRAVKUMAR KANTILAL PRAJAPATI');
+    expect(summary[0].totalSales).toBe(0);
+    expect(summary[0].totalPayments).toBe(0);
+    expect(summary[0].outstandingAmount).toBe(0);
+  });
+
+  it('displays ₹0 and 0 Pending on Dashboard when customer entries are deleted and openingBalance is 0', () => {
+    const mockCustomers = [
+      {
+        id: 'cus-zero-dash',
+        name: 'NIRAVKUMAR KANTILAL PRAJAPATI',
+        openingBalance: 0,
+        outstandingAmount: 50,
+        balance: 50,
+        phone: '+918488943771',
+      },
+    ];
+
+    localStorage.setItem('erpCustomers', JSON.stringify(mockCustomers));
+    localStorage.setItem('erpInvoices', JSON.stringify([]));
+    window.location.hash = '#dashboard';
+
+    render(<VoiceExpenseTrackerPreview />);
+
+    // Should show All Cleared, NOT 1 Pending
+    expect(screen.queryByText(/1 Pending/i)).not.toBeInTheDocument();
+    expect(screen.getAllByText(/All Cleared/i).length).toBeGreaterThan(0);
+  });
 });
