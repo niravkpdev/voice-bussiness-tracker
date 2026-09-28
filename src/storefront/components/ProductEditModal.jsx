@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Upload, Link, Plus, Trash2, Check, Sparkles, RefreshCw, AlertCircle, Image as ImageIcon, Globe } from 'lucide-react';
-import { useStoreCart } from '../context/StoreCartContext';
+import { useStoreCart, isFishImage, sanitizeSnackImage, DEFAULT_SNACK_IMAGE } from '../context/StoreCartContext';
 import { CATEGORIES } from '../data/namkeenData';
 import { compressFoodImage, blobToDataUrl } from '../../imageCompression.js';
 import { uploadStorefrontImage, getSupabaseClient, getCurrentSupabaseUser, isSupabaseConfigured, clearStorefrontMenuCache, saveCloudRecord } from '../../supabaseClient.js';
@@ -28,13 +28,14 @@ export function ProductEditModal() {
 
   useEffect(() => {
     if (editingProduct && isOwner) {
+      const initialImage = isFishImage(editingProduct.image) ? '' : (editingProduct.image || '');
       setFormData({
         id: editingProduct.id,
         name: editingProduct.name || '',
         category: editingProduct.category || 'mix-namkeen',
         categoryLabel: editingProduct.categoryLabel || editingProduct.category || '',
         description: editingProduct.description || '',
-        image: editingProduct.image || '',
+        image: initialImage,
         isTopSeller: Boolean(editingProduct.isTopSeller),
         isNotForJain: Boolean(editingProduct.isNotForJain),
         isOutOfStock: Boolean(editingProduct.isOutOfStock),
@@ -214,12 +215,13 @@ export function ProductEditModal() {
       return;
     }
 
+    const cleanImage = sanitizeSnackImage(formData.image?.trim(), DEFAULT_SNACK_IMAGE);
     const updatedProduct = {
       name: formData.name.trim(),
       category: formData.category,
       categoryLabel: formData.categoryLabel.trim() || formData.category,
       description: formData.description.trim(),
-      image: formData.image || 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=500&auto=format&fit=crop&q=80',
+      image: cleanImage,
       isTopSeller: formData.isTopSeller,
       isNotForJain: formData.isNotForJain,
       isOutOfStock: formData.isOutOfStock,
@@ -329,14 +331,14 @@ export function ProductEditModal() {
               <label className="trinetr-edit-label">Product Image Preview</label>
               
               <div className="trinetr-edit-img-preview-box">
-                {formData.image ? (
+                {formData.image && !isFishImage(formData.image) ? (
                   <img 
                     src={formData.image} 
                     alt={formData.name} 
                     className="trinetr-edit-preview-img"
                     onError={(e) => {
                       e.target.onerror = null;
-                      e.target.src = 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=500&auto=format&fit=crop&q=80';
+                      e.target.src = DEFAULT_SNACK_IMAGE;
                     }}
                   />
                 ) : (
@@ -385,7 +387,7 @@ export function ProductEditModal() {
                 <input 
                   type="text" 
                   className="trinetr-edit-input" 
-                  value={formData.image} 
+                  value={isFishImage(formData.image) ? '' : formData.image} 
                   onChange={(e) => setFormData(prev => ({ ...prev, image: e.target.value }))}
                   placeholder="https://example.com/product-image.jpg"
                 />

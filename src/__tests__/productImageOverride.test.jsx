@@ -1,14 +1,15 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import { PRODUCTS } from '../storefront/data/namkeenData.js';
-import { StoreCartProvider, useStoreCart } from '../storefront/context/StoreCartContext.jsx';
+import { PRODUCTS, CATEGORIES } from '../storefront/data/namkeenData.js';
+import { StoreCartProvider, useStoreCart, purgeFishImagesFromStorage, isFishImage, sanitizeSnackImage, DEFAULT_SNACK_IMAGE } from '../storefront/context/StoreCartContext.jsx';
 import { ProductCard } from '../storefront/components/ProductCard.jsx';
 import { ProductEditModal } from '../storefront/components/ProductEditModal.jsx';
 import { saveCloudRecord, getSupabaseClient, setSupabaseClientForTesting } from '../supabaseClient.js';
 
 const FISH_IMAGE_FRAGMENT = 'photo-1626082927389-6cd097cdc6ec';
 const DHANIYA_IMAGE_URL = 'https://images.unsplash.com/photo-fresh-dhaniya-coriander.jpg';
+const CHANA_CUSTOM_IMAGE_URL = 'https://images.unsplash.com/photo-fresh-chana-masala.jpg';
 
 // Helper component to inspect products from context
 function StorefrontCatalogInspector({ onProducts }) {
@@ -34,10 +35,18 @@ describe('Product Image Override & Expression in Storefront', () => {
     sessionStorage.clear();
   });
 
-  describe('1. Default Catalog Integrity', () => {
+  describe('1. Default Catalog & Category Integrity', () => {
     it('does not contain any fish aquarium images in PRODUCTS catalog', () => {
       const fishItems = PRODUCTS.filter((p) => p.image && p.image.includes(FISH_IMAGE_FRAGMENT));
       expect(fishItems).toHaveLength(0);
+    });
+
+    it('does not contain any fish aquarium images in CATEGORIES list', () => {
+      const fishCats = CATEGORIES.filter((c) => c.image && c.image.includes(FISH_IMAGE_FRAGMENT));
+      expect(fishCats).toHaveLength(0);
+      const mixNamkeen = CATEGORIES.find(c => c.id === 'mix-namkeen');
+      expect(mixNamkeen).toBeDefined();
+      expect(mixNamkeen.image).not.toContain(FISH_IMAGE_FRAGMENT);
     });
 
     it('Special Royal Combo, Special Lausan Mix, and Surati Gotado Mix have valid food images', () => {
@@ -54,6 +63,35 @@ describe('Product Image Override & Expression in Storefront', () => {
 
       expect(gotado).toBeDefined();
       expect(gotado.image).not.toContain(FISH_IMAGE_FRAGMENT);
+    });
+
+    it('purgeFishImagesFromStorage automatically cleanses corrupted fish image overrides', () => {
+      // Simulate user having stale overrides with fish image in localStorage
+      const corruptOverrides = {
+        'prod-special-combo': {
+          id: 'prod-special-combo',
+          name: 'Special Royal Combo - 8 Taste Pack',
+          image: `https://images.unsplash.com/${FISH_IMAGE_FRAGMENT}?w=500`,
+        },
+        'chana': {
+          id: 'prod-moong-jor',
+          name: 'chana',
+          image: `https://images.unsplash.com/${FISH_IMAGE_FRAGMENT}?w=500`,
+        },
+      };
+      localStorage.setItem('storefront_product_overrides', JSON.stringify(corruptOverrides));
+      localStorage.setItem('erpProducts', JSON.stringify([
+        { id: 'prod-moong-jor', name: 'chana', image: `https://images.unsplash.com/${FISH_IMAGE_FRAGMENT}` }
+      ]));
+
+      purgeFishImagesFromStorage();
+
+      const cleanedOverrides = JSON.parse(localStorage.getItem('storefront_product_overrides'));
+      expect(cleanedOverrides['prod-special-combo'].image).not.toContain(FISH_IMAGE_FRAGMENT);
+      expect(cleanedOverrides['chana'].image).not.toContain(FISH_IMAGE_FRAGMENT);
+
+      const cleanedErp = JSON.parse(localStorage.getItem('erpProducts'));
+      expect(cleanedErp[0].image).not.toContain(FISH_IMAGE_FRAGMENT);
     });
   });
 
@@ -244,6 +282,52 @@ describe('Product Image Override & Expression in Storefront', () => {
       await waitFor(() => {
         const img = screen.getByAltText('Special Royal Combo - 8 Taste Pack');
         expect(img.getAttribute('src')).toBe(DHANIYA_IMAGE_URL);
+      });
+    });
+
+    it('cleanses old fish image when modal opens and showcases custom image for chana', async () => {
+      // Simulate prior corrupted override with fish image for chana
+      const corruptOverrides = {
+        'prod-moong-jor': {
+          id: 'prod-moong-jor',
+          name: 'chana',
+          image: `https://images.unsplash.com/${FISH_IMAGE_FRAGMENT}?w=500`,
+        },
+      };
+      localStorage.setItem('storefront_product_overrides', JSON.stringify(corruptOverrides));
+
+      let contextApi = null;
+      render(
+        <StoreCartProvider isOwner={true}>
+          <StorefrontCatalogInspector onProducts={(api) => { contextApi = api; }} />
+        </StoreCartProvider>
+      );
+
+      // Verify that even before edit, the corrupt fish image was sanitized away
+      const chana = contextApi.products.find((p) => p.id === 'prod-moong-jor' || p.name === 'chana');
+      expect(chana).toBeDefined();
+      expect(chana.image).not.toContain(FISH_IMAGE_FRAGMENT);
+
+      // Now owner edits chana with a custom image
+      act(() => {
+        contextApi.setEditingProduct(chana);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeDefined();
+      });
+
+      const urlInput = screen.getByPlaceholderText('https://example.com/product-image.jpg');
+      // The input should NOT show the fish image URL
+      expect(urlInput.value).not.toContain(FISH_IMAGE_FRAGMENT);
+
+      fireEvent.change(urlInput, { target: { value: CHANA_CUSTOM_IMAGE_URL } });
+      const saveBtn = screen.getByText('Save Changes & Sync');
+      fireEvent.click(saveBtn);
+
+      await waitFor(() => {
+        const img = screen.getByAltText(chana.name);
+        expect(img.getAttribute('src')).toBe(CHANA_CUSTOM_IMAGE_URL);
       });
     });
   });

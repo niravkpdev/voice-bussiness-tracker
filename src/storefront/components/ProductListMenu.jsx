@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingBag, Check, Plus, Minus, Search, Sparkles, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useStoreCart } from '../context/StoreCartContext';
+import { useStoreCart, sanitizeSnackImage, DEFAULT_SNACK_IMAGE } from '../context/StoreCartContext';
 import { CATEGORIES } from '../data/namkeenData';
 import { useDebouncedCallback } from '../utils/debounce.js';
 
@@ -139,13 +139,13 @@ export function ProductListMenu() {
                       {/* Product Thumbnail */}
                       <div className="trinetr-menu-thumb-wrap">
                         <img
-                          src={product.image}
+                          src={sanitizeSnackImage(product.image)}
                           alt={product.name}
                           loading="lazy"
                           className="trinetr-menu-thumb"
                           onError={(e) => {
                             e.target.onerror = null;
-                            e.target.src = 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=150&auto=format&fit=crop&q=80';
+                            e.target.src = DEFAULT_SNACK_IMAGE;
                           }}
                         />
                       </div>

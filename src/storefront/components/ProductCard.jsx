@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Heart, ShoppingBag, Check, Star, Edit3 } from 'lucide-react';
-import { useStoreCart } from '../context/StoreCartContext';
+import { useStoreCart, sanitizeSnackImage, DEFAULT_SNACK_IMAGE } from '../context/StoreCartContext';
 
 export function ProductCard({ product }) {
   const { addToCart, wishlist, toggleWishlist, setEditingProduct, isOwner, currentCurrency, convertPrice } = useStoreCart();
@@ -66,13 +66,13 @@ export function ProductCard({ product }) {
       {/* Image */}
       <div className="trinetr-product-img-wrap">
         <img
-          src={product.image}
+          src={sanitizeSnackImage(product.image)}
           alt={product.name}
           loading="lazy"
           className="trinetr-product-img"
           onError={(e) => {
             e.target.onerror = null;
-            e.target.src = 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=500&auto=format&fit=crop&q=80';
+            e.target.src = DEFAULT_SNACK_IMAGE;
           }}
         />
 

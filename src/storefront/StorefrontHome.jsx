@@ -485,7 +485,7 @@ function StorefrontContent(props) {
                 <button type="button" onClick={() => navigateTo('shop', 'chana')}>View All ({CATEGORIES.find(c=>c.id==='chana')?.count})</button>
               </div>
               <div className="trinetr-products-carousel-grid">
-                {PRODUCTS.filter(p => p.category === 'chana').slice(0, 4).map(p => (
+                {catalog.filter(p => p.category === 'chana').slice(0, 4).map(p => (
                   <ProductCard key={p.id} product={p} />
                 ))}
               </div>
@@ -498,7 +498,7 @@ function StorefrontContent(props) {
                 <button type="button" onClick={() => navigateTo('shop', 'wafer')}>View All ({CATEGORIES.find(c=>c.id==='wafer')?.count})</button>
               </div>
               <div className="trinetr-products-carousel-grid">
-                {PRODUCTS.filter(p => p.category === 'wafer').slice(0, 4).map(p => (
+                {catalog.filter(p => p.category === 'wafer').slice(0, 4).map(p => (
                   <ProductCard key={p.id} product={p} />
                 ))}
               </div>
@@ -511,7 +511,7 @@ function StorefrontContent(props) {
                 <button type="button" onClick={() => navigateTo('shop', 'soya-sticks')}>View All ({CATEGORIES.find(c=>c.id==='soya-sticks')?.count})</button>
               </div>
               <div className="trinetr-products-carousel-grid">
-                {PRODUCTS.filter(p => p.category === 'soya-sticks').slice(0, 4).map(p => (
+                {catalog.filter(p => p.category === 'soya-sticks').slice(0, 4).map(p => (
                   <ProductCard key={p.id} product={p} />
                 ))}
               </div>

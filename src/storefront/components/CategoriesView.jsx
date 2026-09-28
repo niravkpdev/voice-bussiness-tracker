@@ -1,6 +1,6 @@
 import React from 'react';
 import { CATEGORIES } from '../data/namkeenData';
-import { useStoreCart } from '../context/StoreCartContext';
+import { useStoreCart, sanitizeSnackImage, DEFAULT_SNACK_IMAGE } from '../context/StoreCartContext';
 
 export function CategoriesView({ onSelectCategory }) {
   const { setActiveCategory } = useStoreCart();
@@ -31,12 +31,12 @@ export function CategoriesView({ onSelectCategory }) {
           >
             <div className="trinetr-category-img-box">
               <img
-                src={cat.image}
+                src={sanitizeSnackImage(cat.image)}
                 alt={cat.name}
                 loading="lazy"
                 onError={(e) => {
                   e.target.onerror = null;
-                  e.target.src = 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=300&auto=format&fit=crop&q=80';
+                  e.target.src = DEFAULT_SNACK_IMAGE;
                 }}
               />
             </div>

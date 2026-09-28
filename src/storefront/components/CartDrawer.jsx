@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Trash2, Plus, Minus, MessageCircle, CheckCircle, ShoppingBag, Truck, MapPin } from 'lucide-react';
-import { useStoreCart } from '../context/StoreCartContext';
+import { useStoreCart, sanitizeSnackImage, DEFAULT_SNACK_IMAGE } from '../context/StoreCartContext';
 import { STORE_INFO } from '../data/namkeenData';
 
 export function CartDrawer() {
@@ -319,12 +319,12 @@ export function CartDrawer() {
                 cart.map(item => (
                   <div key={item.cartItemId} className="trinetr-cart-item-row">
                     <img
-                      src={item.image}
+                      src={sanitizeSnackImage(item.image)}
                       alt={item.name}
                       className="trinetr-cart-item-img"
                       onError={(e) => {
                         e.target.onerror = null;
-                        e.target.src = 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=120&auto=format&fit=crop&q=80';
+                        e.target.src = DEFAULT_SNACK_IMAGE;
                       }}
                     />
 

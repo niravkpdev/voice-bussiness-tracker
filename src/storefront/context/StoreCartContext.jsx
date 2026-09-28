@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo } from '
 import { STORE_INFO, PRODUCTS } from '../data/namkeenData';
 import { formatWhatsAppPhone } from '../../security.js';
 import { fetchMenuItems, clearStorefrontMenuCache } from '../../supabaseClient.js';
+import { readScopedString, writeScopedString } from '../../storageScope.js';
 
 const StoreCartContext = createContext(null);
 
@@ -18,6 +19,98 @@ const PRODUCT_OVERRIDES_KEY = 'storefront_product_overrides';
 const CURRENCY_STORAGE_KEY = 'trinetr_store_currency';
 const DELIVERY_CONFIG_KEY = 'trinetr_delivery_partner_config';
 
+export const FISH_IMAGE_FRAGMENT = 'photo-1626082927389-6cd097cdc6ec';
+export const DEFAULT_SNACK_IMAGE = 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=500&auto=format&fit=crop&q=80';
+
+export function isFishImage(url) {
+  if (!url || typeof url !== 'string') return false;
+  return url.includes('1626082927389') || url.includes('6cd097cdc6ec');
+}
+
+export function sanitizeSnackImage(url, fallback = DEFAULT_SNACK_IMAGE) {
+  if (!url || typeof url !== 'string' || isFishImage(url)) {
+    return fallback;
+  }
+  return url;
+}
+
+export function purgeFishImagesFromStorage() {
+  try {
+    const rawOverrides = localStorage.getItem(PRODUCT_OVERRIDES_KEY);
+    if (rawOverrides && (rawOverrides.includes('1626082927389') || rawOverrides.includes('6cd097cdc6ec'))) {
+      const overrides = JSON.parse(rawOverrides) || {};
+      let modified = false;
+      Object.keys(overrides).forEach(key => {
+        const item = overrides[key];
+        if (item && isFishImage(item.image)) {
+          item.image = DEFAULT_SNACK_IMAGE;
+          modified = true;
+        }
+      });
+      if (modified) {
+        localStorage.setItem(PRODUCT_OVERRIDES_KEY, JSON.stringify(overrides));
+      }
+    }
+  } catch {}
+
+  try {
+    const rawErp = localStorage.getItem('erpProducts');
+    if (rawErp && (rawErp.includes('1626082927389') || rawErp.includes('6cd097cdc6ec'))) {
+      const erp = JSON.parse(rawErp) || [];
+      if (Array.isArray(erp)) {
+        let modified = false;
+        const cleaned = erp.map(item => {
+          if (item && isFishImage(item.image)) {
+            modified = true;
+            return { ...item, image: DEFAULT_SNACK_IMAGE };
+          }
+          return item;
+        });
+        if (modified) {
+          localStorage.setItem('erpProducts', JSON.stringify(cleaned));
+        }
+      }
+    }
+  } catch {}
+
+  try {
+    const scopedRaw = readScopedString('erpProducts');
+    if (scopedRaw && (scopedRaw.includes('1626082927389') || scopedRaw.includes('6cd097cdc6ec'))) {
+      const parsed = JSON.parse(scopedRaw);
+      if (Array.isArray(parsed)) {
+        const cleaned = parsed.map(item => {
+          if (item && isFishImage(item.image)) {
+            return { ...item, image: DEFAULT_SNACK_IMAGE };
+          }
+          return item;
+        });
+        writeScopedString('erpProducts', JSON.stringify(cleaned));
+      }
+    }
+  } catch {}
+
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && (k.endsWith(':erpProducts') || k.endsWith(':businessInventory'))) {
+        const val = localStorage.getItem(k);
+        if (val && (val.includes('1626082927389') || val.includes('6cd097cdc6ec'))) {
+          const parsed = JSON.parse(val);
+          if (Array.isArray(parsed)) {
+            const cleaned = parsed.map(item => {
+              if (item && isFishImage(item.image)) {
+                return { ...item, image: DEFAULT_SNACK_IMAGE };
+              }
+              return item;
+            });
+            localStorage.setItem(k, JSON.stringify(cleaned));
+          }
+        }
+      }
+    }
+  } catch {}
+}
+
 export const DEFAULT_DELIVERY_CONFIG = {
   provider: 'shiprocket', // 'shiprocket' | 'delhivery' | 'borzo' | 'dunzo' | 'self'
   apiKey: '',
@@ -33,6 +126,7 @@ export const DEFAULT_DELIVERY_CONFIG = {
 
 function applyProductOverrides(items) {
   if (!Array.isArray(items)) return [];
+  purgeFishImagesFromStorage();
   let overrides = {};
   try {
     const raw = localStorage.getItem(PRODUCT_OVERRIDES_KEY);
@@ -41,7 +135,10 @@ function applyProductOverrides(items) {
 
   const overrideKeys = Object.keys(overrides);
   if (overrideKeys.length === 0) {
-    return items;
+    return items.map(item => ({
+      ...item,
+      image: sanitizeSnackImage(item?.image)
+    }));
   }
 
   const overrideValues = Object.values(overrides);
@@ -70,11 +167,15 @@ function applyProductOverrides(items) {
       }
     }
 
+    let resolved = item;
     if (matchedOverride) {
       const { id: _ignoredId, ...overrideFields } = matchedOverride;
-      return { ...item, ...overrideFields, id: item.id };
+      resolved = { ...item, ...overrideFields, id: item.id };
     }
-    return item;
+    return {
+      ...resolved,
+      image: sanitizeSnackImage(resolved.image)
+    };
   });
 }
 
@@ -251,17 +352,27 @@ function resolveStoreInfo(customProfile) {
 }
 
 function resolveInventoryItems(customInventoryProp) {
+  purgeFishImagesFromStorage();
   let customItems = [];
   if (Array.isArray(customInventoryProp) && customInventoryProp.length > 0) {
     customItems = customInventoryProp;
   } else {
     try {
-      const fromErp = localStorage.getItem('erpProducts');
-      if (fromErp) {
-        const parsed = JSON.parse(fromErp);
+      const scopedRaw = readScopedString('erpProducts');
+      if (scopedRaw) {
+        const parsed = JSON.parse(scopedRaw);
         if (Array.isArray(parsed) && parsed.length > 0) customItems = parsed;
       }
     } catch {}
+    if (customItems.length === 0) {
+      try {
+        const fromErp = localStorage.getItem('erpProducts');
+        if (fromErp) {
+          const parsed = JSON.parse(fromErp);
+          if (Array.isArray(parsed) && parsed.length > 0) customItems = parsed;
+        }
+      } catch {}
+    }
     if (customItems.length === 0) {
       try {
         const fromBusiness = localStorage.getItem('businessInventory');
@@ -303,13 +414,13 @@ function resolveInventoryItems(customInventoryProp) {
       category: (item.category || 'mix-namkeen').toLowerCase().replace(/\s+/g, '-'),
       categoryLabel: item.category || 'General',
       description: item.details || item.description || `Fresh & authentic ${item.name || 'product'}. Made with pure ingredients and hygienic packaging.`,
-      image: item.image || 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=500&auto=format&fit=crop&q=80',
+      image: sanitizeSnackImage(item.image),
       isTopSeller: Boolean(item.isTopSeller),
       isNotForJain: Boolean(item.isNotForJain),
       isOutOfStock,
       rating: 4.9,
       reviewsCount: 32,
-      variants: [
+      variants: Array.isArray(item.variants) && item.variants.length > 0 ? item.variants : [
         { weight, price, inStock: !isOutOfStock }
       ]
     };
@@ -373,13 +484,40 @@ export function StoreCartProvider({ children, storeProfile, customInventory, isO
   // Catalog products state (merged ERP inventory + Storefront catalog)
   const [products, setProducts] = useState(() => resolveInventoryItems(customInventory));
 
-  // Sync inventory if customInventory prop updates or window emits inventory event
+  // Sync inventory if customInventory prop updates
   useEffect(() => {
     setProducts(resolveInventoryItems(customInventory));
   }, [customInventory]);
 
+  // Handle global inventory updates and storage changes without race conditions
   useEffect(() => {
-    const handleInventoryChange = () => {
+    const handleInventoryChange = (e) => {
+      if (e?.detail?.updatedFields || e?.detail?.product) {
+        const prod = e.detail.product || e.detail.updatedFields;
+        const targetId = e.detail.id || e.detail.productId || prod?.id;
+        const targetName = prod?.name ? prod.name.toLowerCase().trim() : '';
+        setProducts(prevProducts => {
+          let matched = false;
+          const next = prevProducts.map(p => {
+            const matchesId = targetId && p.id === targetId;
+            const matchesName = targetName && p.name && p.name.toLowerCase().trim() === targetName;
+            if (matchesId || matchesName) {
+              matched = true;
+              return {
+                ...p,
+                ...prod,
+                image: sanitizeSnackImage(prod.image || p.image)
+              };
+            }
+            return p;
+          });
+          if (!matched && targetId) {
+            return [{ id: targetId, ...prod, image: sanitizeSnackImage(prod.image) }, ...next];
+          }
+          return next;
+        });
+        return;
+      }
       setProducts(resolveInventoryItems(customInventory));
     };
     window.addEventListener('trinetr-inventory-updated', handleInventoryChange);
@@ -672,14 +810,26 @@ export function StoreCartProvider({ children, storeProfile, customInventory, isO
     }
 
     const normUpdatedName = updatedFields.name ? updatedFields.name.toLowerCase().trim() : '';
+    const safeImage = sanitizeSnackImage(updatedFields.image, DEFAULT_SNACK_IMAGE);
+    const sanitizedFields = {
+      ...updatedFields,
+      image: safeImage
+    };
 
-    // 1. Save override in localStorage by ID and normalized name
+    // 1. Clean up old conflicting aliases and save override in localStorage
     try {
       const raw = localStorage.getItem(PRODUCT_OVERRIDES_KEY);
       const overrides = raw ? JSON.parse(raw) : {};
+
+      // Remove any prior alias entries pointing to the same productId or old name
+      Object.keys(overrides).forEach(k => {
+        if (overrides[k]?.id === productId) {
+          delete overrides[k];
+        }
+      });
+
       const overrideData = {
-        ...(overrides[productId] || {}),
-        ...updatedFields,
+        ...sanitizedFields,
         id: productId,
       };
       overrides[productId] = overrideData;
@@ -691,7 +841,7 @@ export function StoreCartProvider({ children, storeProfile, customInventory, isO
       console.error('Failed to save product override', e);
     }
 
-    // 2. Sync to erpProducts
+    // 2. Sync to erpProducts (both plain and scoped storage)
     let syncedErpProduct = null;
     try {
       const fromErp = localStorage.getItem('erpProducts');
@@ -701,45 +851,48 @@ export function StoreCartProvider({ children, storeProfile, customInventory, isO
         if (idx >= 0) {
           erpItems[idx] = {
             ...erpItems[idx],
-            name: updatedFields.name || erpItems[idx].name,
-            category: updatedFields.categoryLabel || updatedFields.category || erpItems[idx].category,
-            sellingPrice: updatedFields.variants?.[0]?.price ?? erpItems[idx].sellingPrice,
-            image: updatedFields.image || erpItems[idx].image,
-            details: updatedFields.description || erpItems[idx].details,
-            isTopSeller: Boolean(updatedFields.isTopSeller),
-            isNotForJain: Boolean(updatedFields.isNotForJain),
-            unit: updatedFields.variants?.[0]?.weight || erpItems[idx].unit
+            name: sanitizedFields.name || erpItems[idx].name,
+            category: sanitizedFields.categoryLabel || sanitizedFields.category || erpItems[idx].category,
+            sellingPrice: sanitizedFields.variants?.[0]?.price ?? erpItems[idx].sellingPrice,
+            image: sanitizedFields.image,
+            details: sanitizedFields.description || erpItems[idx].details,
+            isTopSeller: Boolean(sanitizedFields.isTopSeller),
+            isNotForJain: Boolean(sanitizedFields.isNotForJain),
+            unit: sanitizedFields.variants?.[0]?.weight || erpItems[idx].unit,
+            variants: sanitizedFields.variants
           };
           syncedErpProduct = erpItems[idx];
         } else {
           syncedErpProduct = {
             id: productId,
-            name: updatedFields.name,
-            category: updatedFields.categoryLabel || updatedFields.category || 'Namkeen',
-            sellingPrice: updatedFields.variants?.[0]?.price || 100,
-            currentStock: updatedFields.isOutOfStock ? 0 : 50,
-            image: updatedFields.image,
-            details: updatedFields.description,
-            isTopSeller: Boolean(updatedFields.isTopSeller),
-            isNotForJain: Boolean(updatedFields.isNotForJain),
-            unit: updatedFields.variants?.[0]?.weight || '250 GM'
+            name: sanitizedFields.name,
+            category: sanitizedFields.categoryLabel || sanitizedFields.category || 'Namkeen',
+            sellingPrice: sanitizedFields.variants?.[0]?.price || 100,
+            currentStock: sanitizedFields.isOutOfStock ? 0 : 50,
+            image: sanitizedFields.image,
+            details: sanitizedFields.description,
+            isTopSeller: Boolean(sanitizedFields.isTopSeller),
+            isNotForJain: Boolean(sanitizedFields.isNotForJain),
+            unit: sanitizedFields.variants?.[0]?.weight || '250 GM',
+            variants: sanitizedFields.variants
           };
           erpItems.push(syncedErpProduct);
         }
         localStorage.setItem('erpProducts', JSON.stringify(erpItems));
+        writeScopedString('erpProducts', JSON.stringify(erpItems));
       }
     } catch (e) {
       console.error('Failed to sync product to ERP', e);
     }
 
     // 3. Dispatch global sync event with both formats
-    const fullProduct = syncedErpProduct || { id: productId, ...updatedFields };
+    const fullProduct = syncedErpProduct || { id: productId, ...sanitizedFields };
     window.dispatchEvent(new CustomEvent('trinetr-inventory-updated', {
       detail: {
         id: productId,
         productId,
         product: fullProduct,
-        updatedFields
+        updatedFields: sanitizedFields
       }
     }));
 
@@ -756,13 +909,13 @@ export function StoreCartProvider({ children, storeProfile, customInventory, isO
         const matchesName = normUpdatedName && p.name && p.name.toLowerCase().trim() === normUpdatedName;
         if (matchesId || matchesName) {
           found = true;
-          return { ...p, ...updatedFields };
+          return { ...p, ...sanitizedFields };
         }
         return p;
       });
 
       if (!found) {
-        return [{ id: productId, ...updatedFields }, ...updatedList];
+        return [{ id: productId, ...sanitizedFields }, ...updatedList];
       }
       return updatedList;
     });
