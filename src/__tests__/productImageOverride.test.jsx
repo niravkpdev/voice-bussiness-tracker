@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { PRODUCTS, CATEGORIES } from '../storefront/data/namkeenData.js';
-import { StoreCartProvider, useStoreCart, purgeFishImagesFromStorage, isFishImage, sanitizeSnackImage, DEFAULT_SNACK_IMAGE } from '../storefront/context/StoreCartContext.jsx';
+import { StoreCartProvider, useStoreCart, purgeFishImagesFromStorage, isFishImage, sanitizeSnackImage, DEFAULT_SNACK_IMAGE, applyProductOverrides } from '../storefront/context/StoreCartContext.jsx';
 import { ProductCard } from '../storefront/components/ProductCard.jsx';
 import { ProductEditModal } from '../storefront/components/ProductEditModal.jsx';
 import { saveCloudRecord, getSupabaseClient, setSupabaseClientForTesting } from '../supabaseClient.js';
@@ -413,4 +413,122 @@ describe('Product Image Override & Expression in Storefront', () => {
       setSupabaseClientForTesting(null);
     });
   });
+
+  describe('6. End-to-End Image File Upload & Expression for Chana & Custom ERP Products', () => {
+    it('allows owner to upload an image file for chana, compresses it, and immediately expresses it on the card', async () => {
+      const originalCreateElement = document.createElement.bind(document);
+      vi.spyOn(document, 'createElement').mockImplementation((tagName) => {
+        const el = originalCreateElement(tagName);
+        if (tagName.toLowerCase() === 'canvas') {
+          el.getContext = () => ({
+            fillStyle: '#FFFFFF',
+            fillRect: vi.fn(),
+            drawImage: vi.fn(),
+          });
+          el.toBlob = (cb, type) => {
+            cb(new Blob(['custom-compressed-chana-bytes'], { type: type || 'image/jpeg' }));
+          };
+          el.toDataURL = () => 'data:image/jpeg;base64,customChanaUploadedDataUrl12345';
+        }
+        return el;
+      });
+
+      const customInventory = [
+        {
+          id: 'erp-chana-101',
+          name: 'chana',
+          category: 'KATHOR',
+          sellingPrice: 120,
+          currentStock: 50,
+          unit: '500 GM',
+          image: '',
+        }
+      ];
+
+      let contextApi = null;
+      render(
+        <StoreCartProvider customInventory={customInventory} isOwner={true}>
+          <StorefrontCatalogInspector onProducts={(api) => { contextApi = api; }} />
+        </StoreCartProvider>
+      );
+
+      // Verify chana is in catalog
+      const chana = contextApi.products.find((p) => p.name === 'chana');
+      expect(chana).toBeDefined();
+
+      // Open owner product editor for chana
+      act(() => {
+        contextApi.setEditingProduct(chana);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeDefined();
+      });
+
+      // Find file upload input
+      const fileInput = document.querySelector('input[type="file"][accept="image/*"]');
+      expect(fileInput).toBeTruthy();
+
+      const testFile = new File(['mock-chana-photo-data'], 'fresh-desi-chana.jpg', { type: 'image/jpeg' });
+      fireEvent.change(fileInput, { target: { files: [testFile] } });
+
+      // Wait for auto-compression stats to appear
+      await waitFor(() => {
+        expect(screen.getByText(/Auto-Compressed:/i)).toBeDefined();
+      });
+
+      // Click "Save Changes & Sync"
+      const saveBtn = screen.getByText('Save Changes & Sync');
+      fireEvent.click(saveBtn);
+
+      // Verify the ProductCard for chana showcases the new custom dataUrl image!
+      await waitFor(() => {
+        const chanaCardImg = screen.getByAltText('chana');
+        expect(chanaCardImg.getAttribute('src')).toBe('data:image/jpeg;base64,customChanaUploadedDataUrl12345');
+        // Ensure it is definitely NOT the old Gujarati thali fallback
+        expect(chanaCardImg.getAttribute('src')).not.toContain('photo-1546833999-b9f581a1996d');
+      });
+
+      // Simulate onError on the image: verify it does not revert to the wrong fallback
+      const chanaCardImg = screen.getByAltText('chana');
+      fireEvent.error(chanaCardImg);
+      expect(chanaCardImg.getAttribute('src')).toBe('data:image/jpeg;base64,customChanaUploadedDataUrl12345');
+    });
+
+    it('preserves uploaded custom image across resolveInventoryItems without being wiped by stale overrides', () => {
+      // 1. Simulate an override with a custom uploaded dataUrl image
+      const overrides = {
+        'erp-chana-101': {
+          id: 'erp-chana-101',
+          name: 'chana',
+          category: 'kathor',
+          image: 'data:image/jpeg;base64,persistedChanaDataUrl',
+          imageDataUrl: 'data:image/jpeg;base64,persistedChanaDataUrl',
+          variants: [{ weight: '500 GM', price: 120, inStock: true }]
+        },
+        'chana': {
+          refId: 'erp-chana-101'
+        }
+      };
+      localStorage.setItem('storefront_product_overrides', JSON.stringify(overrides));
+
+      const items = applyProductOverrides([
+        {
+          id: 'erp-chana-101',
+          name: 'chana',
+          category: 'KATHOR',
+          sellingPrice: 120,
+          currentStock: 40,
+          image: ''
+        }
+      ]);
+
+      const chanaItem = items.find(i => i.name === 'chana');
+      expect(chanaItem).toBeDefined();
+      expect(chanaItem.image).toBe('data:image/jpeg;base64,persistedChanaDataUrl');
+      expect(chanaItem.imageDataUrl).toBe('data:image/jpeg;base64,persistedChanaDataUrl');
+      expect(chanaItem.image).not.toContain('photo-1546833999-b9f581a1996d');
+    });
+  });
 });
+

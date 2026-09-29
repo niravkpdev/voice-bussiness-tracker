@@ -37,7 +37,7 @@ export function isFishImage(url) {
 export function getCategoryFallbackImage(category = '') {
   const norm = String(category || '').toLowerCase().trim();
   if (norm.includes('chana') || norm.includes('kathor') || norm.includes('chewda') || norm.includes('moong')) {
-    return 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=500&auto=format&fit=crop&q=80';
+    return 'https://images.unsplash.com/photo-1515543237350-b3eea1ec8082?w=500&auto=format&fit=crop&q=80';
   }
   if (norm.includes('dana') || norm.includes('sing') || norm.includes('peanut')) {
     return 'https://images.unsplash.com/photo-1567653418876-5bb0e566e1c2?w=500&auto=format&fit=crop&q=80';
@@ -176,7 +176,7 @@ export const DEFAULT_DELIVERY_CONFIG = {
   trackingBaseUrl: 'https://shiprocket.co/tracking/'
 };
 
-function applyProductOverrides(items) {
+export function applyProductOverrides(items) {
   if (!Array.isArray(items)) return [];
   purgeFishImagesFromStorage();
   let overrides = {};
@@ -204,7 +204,9 @@ function applyProductOverrides(items) {
     const normName = item.name ? item.name.toLowerCase().trim() : '';
     if (!matchedOverride && normName) {
       matchedOverride = overrides[normName];
-      if (matchedOverride?.id && overrides[matchedOverride.id]) {
+      if (matchedOverride?.refId && overrides[matchedOverride.refId]) {
+        matchedOverride = overrides[matchedOverride.refId];
+      } else if (matchedOverride?.id && overrides[matchedOverride.id]) {
         matchedOverride = overrides[matchedOverride.id];
       }
     }
@@ -222,10 +224,32 @@ function applyProductOverrides(items) {
       }
     }
 
+    if (matchedOverride?.refId && overrides[matchedOverride.refId]) {
+      matchedOverride = overrides[matchedOverride.refId];
+    }
+
     let resolved = item;
     if (matchedOverride) {
-      const { id: _ignoredId, ...overrideFields } = matchedOverride;
-      resolved = { ...item, ...overrideFields, id: item.id };
+      const { id: _ignoredId, refId: _ignoredRef, ...overrideFields } = matchedOverride;
+
+      // Protect custom images: if item already has a custom/dataUrl image from ERP,
+      // and overrideFields.image is empty or a generic category fallback, don't overwrite!
+      const itemHasCustomImage = item.image && !isFishImage(item.image) && (item.image.startsWith('data:image/') || item.imageDataUrl);
+      const overrideIsGenericFallback = !overrideFields.image || 
+        overrideFields.image === getCategoryFallbackImage(item.category) || 
+        overrideFields.image === DEFAULT_SNACK_IMAGE ||
+        overrideFields.image.includes('photo-1546833999-b9f581a1996d');
+
+      if (itemHasCustomImage && overrideIsGenericFallback) {
+        delete overrideFields.image;
+      }
+
+      resolved = { 
+        ...item, 
+        ...overrideFields, 
+        id: item.id,
+        imageDataUrl: overrideFields.imageDataUrl || item.imageDataUrl
+      };
     }
     return {
       ...resolved,
@@ -562,16 +586,40 @@ export function StoreCartProvider({ children, storeProfile, customInventory, isO
               return {
                 ...p,
                 ...prod,
-                image: sanitizeSnackImage(prod.image || p.image)
+                image: sanitizeSnackImage(prod.image || p.image, undefined, prod.category || p.category),
+                imageDataUrl: prod.imageDataUrl || p.imageDataUrl || (prod.image?.startsWith('data:image/') ? prod.image : undefined)
               };
             }
             return p;
           });
           if (!matched && targetId) {
-            return [{ id: targetId, ...prod, image: sanitizeSnackImage(prod.image) }, ...next];
+            return [{ 
+              id: targetId, 
+              ...prod, 
+              image: sanitizeSnackImage(prod.image, undefined, prod.category),
+              imageDataUrl: prod.imageDataUrl || (prod.image?.startsWith('data:image/') ? prod.image : undefined)
+            }, ...next];
           }
           return next;
         });
+
+        if (targetId && prod && (prod.image?.startsWith('data:image/') || prod.imageDataUrl)) {
+          try {
+            const raw = localStorage.getItem(PRODUCT_OVERRIDES_KEY);
+            const currentOverrides = raw ? JSON.parse(raw) : {};
+            currentOverrides[targetId] = {
+              ...currentOverrides[targetId],
+              ...prod,
+              id: targetId,
+              image: prod.image,
+              imageDataUrl: prod.imageDataUrl || (prod.image?.startsWith('data:image/') ? prod.image : undefined)
+            };
+            if (targetName) {
+              currentOverrides[targetName] = { refId: targetId };
+            }
+            localStorage.setItem(PRODUCT_OVERRIDES_KEY, JSON.stringify(currentOverrides));
+          } catch {}
+        }
         return;
       }
       setProducts(resolveInventoryItems(customInventory));
@@ -887,12 +935,24 @@ export function StoreCartProvider({ children, storeProfile, customInventory, isO
       const overrideData = {
         ...sanitizedFields,
         id: productId,
+        imageDataUrl: updatedFields.imageDataUrl || (sanitizedFields.image?.startsWith('data:image/') ? sanitizedFields.image : undefined)
       };
       overrides[productId] = overrideData;
-      if (normUpdatedName) {
-        overrides[normUpdatedName] = overrideData;
+      if (normUpdatedName && normUpdatedName !== productId) {
+        // Store full override copy for direct key access compatibility
+        overrides[normUpdatedName] = { ...overrideData };
       }
-      localStorage.setItem(PRODUCT_OVERRIDES_KEY, JSON.stringify(overrides));
+
+      try {
+        localStorage.setItem(PRODUCT_OVERRIDES_KEY, JSON.stringify(overrides));
+      } catch (quotaErr) {
+        console.warn('Quota exceeded while saving override, attempting minimal override storage:', quotaErr);
+        try {
+          const minimalOverrides = { [productId]: overrideData };
+          if (normUpdatedName) minimalOverrides[normUpdatedName] = { refId: productId };
+          localStorage.setItem(PRODUCT_OVERRIDES_KEY, JSON.stringify(minimalOverrides));
+        } catch {}
+      }
     } catch (e) {
       console.error('Failed to save product override', e);
     }
@@ -911,6 +971,7 @@ export function StoreCartProvider({ children, storeProfile, customInventory, isO
             category: sanitizedFields.categoryLabel || sanitizedFields.category || erpItems[idx].category,
             sellingPrice: sanitizedFields.variants?.[0]?.price ?? erpItems[idx].sellingPrice,
             image: sanitizedFields.image,
+            imageDataUrl: updatedFields.imageDataUrl || (sanitizedFields.image?.startsWith('data:image/') ? sanitizedFields.image : erpItems[idx].imageDataUrl),
             details: sanitizedFields.description || erpItems[idx].details,
             isTopSeller: Boolean(sanitizedFields.isTopSeller),
             isNotForJain: Boolean(sanitizedFields.isNotForJain),
@@ -926,6 +987,7 @@ export function StoreCartProvider({ children, storeProfile, customInventory, isO
             sellingPrice: sanitizedFields.variants?.[0]?.price || 100,
             currentStock: sanitizedFields.isOutOfStock ? 0 : 50,
             image: sanitizedFields.image,
+            imageDataUrl: updatedFields.imageDataUrl || (sanitizedFields.image?.startsWith('data:image/') ? sanitizedFields.image : undefined),
             details: sanitizedFields.description,
             isTopSeller: Boolean(sanitizedFields.isTopSeller),
             isNotForJain: Boolean(sanitizedFields.isNotForJain),
@@ -934,15 +996,23 @@ export function StoreCartProvider({ children, storeProfile, customInventory, isO
           };
           erpItems.push(syncedErpProduct);
         }
-        localStorage.setItem('erpProducts', JSON.stringify(erpItems));
-        writeScopedString('erpProducts', JSON.stringify(erpItems));
+        try {
+          localStorage.setItem('erpProducts', JSON.stringify(erpItems));
+          writeScopedString('erpProducts', JSON.stringify(erpItems));
+        } catch (erpQuotaErr) {
+          console.warn('ERP products quota exceeded:', erpQuotaErr);
+        }
       }
     } catch (e) {
       console.error('Failed to sync product to ERP', e);
     }
 
     // 3. Dispatch global sync event with both formats
-    const fullProduct = syncedErpProduct || { id: productId, ...sanitizedFields };
+    const fullProduct = syncedErpProduct || { 
+      id: productId, 
+      ...sanitizedFields,
+      imageDataUrl: updatedFields.imageDataUrl || (sanitizedFields.image?.startsWith('data:image/') ? sanitizedFields.image : undefined)
+    };
     window.dispatchEvent(new CustomEvent('trinetr-inventory-updated', {
       detail: {
         id: productId,
@@ -965,13 +1035,21 @@ export function StoreCartProvider({ children, storeProfile, customInventory, isO
         const matchesName = normUpdatedName && p.name && p.name.toLowerCase().trim() === normUpdatedName;
         if (matchesId || matchesName) {
           found = true;
-          return { ...p, ...sanitizedFields };
+          return { 
+            ...p, 
+            ...sanitizedFields,
+            imageDataUrl: updatedFields.imageDataUrl || (sanitizedFields.image?.startsWith('data:image/') ? sanitizedFields.image : p.imageDataUrl)
+          };
         }
         return p;
       });
 
       if (!found) {
-        return [{ id: productId, ...sanitizedFields }, ...updatedList];
+        return [{ 
+          id: productId, 
+          ...sanitizedFields,
+          imageDataUrl: updatedFields.imageDataUrl || (sanitizedFields.image?.startsWith('data:image/') ? sanitizedFields.image : undefined)
+        }, ...updatedList];
       }
       return updatedList;
     });

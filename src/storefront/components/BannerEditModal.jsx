@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Sparkles, Check, RefreshCw, Upload, Image as ImageIcon } from 'lucide-react';
 import { useStoreCart } from '../context/StoreCartContext';
-import { compressFoodImage, blobToDataUrl } from '../../imageCompression.js';
+import { compressFoodImage, blobToDataUrl, testImageLoad } from '../../imageCompression.js';
 import { uploadStorefrontImage, getSupabaseClient, getCurrentSupabaseUser, isSupabaseConfigured } from '../../supabaseClient.js';
 
 const DEFAULT_BANNER_IMAGE = 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=700&auto=format&fit=crop&q=80';
@@ -85,7 +85,12 @@ export function BannerEditModal({ isOpen, onClose, onUpdateProfile }) {
               itemId: 'banner'
             });
             if (uploadRes?.publicUrl) {
-              finalUrl = uploadRes.publicUrl;
+              const loads = await testImageLoad(uploadRes.publicUrl, 2500);
+              if (loads) {
+                finalUrl = uploadRes.publicUrl;
+              } else {
+                console.info('Supabase banner URL not publicly loadable; preserving robust compressed dataUrl.');
+              }
             }
           }
         }

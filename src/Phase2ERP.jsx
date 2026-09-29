@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { formatWhatsAppPhone, normalizeAmount, sanitizeEmail, sanitizeText, validateEmail, validatePhone } from './security.js';
 import { readScopedString, writeScopedString } from './storageScope.js';
-import { compressFoodImage } from './imageCompression.js';
+import { compressFoodImage, testImageLoad } from './imageCompression.js';
 import { uploadStorefrontImage, getSupabaseClient, getCurrentSupabaseUser, isSupabaseConfigured } from './supabaseClient.js';
 
 const PRODUCT_KEY = 'erpProducts';
@@ -921,15 +921,18 @@ export default function Phase2ERP({
     const current = editingProduct;
 
     let finalImageUrl = current?.image || '';
+    let compressedDataUrl = current?.imageDataUrl || '';
     if (image && image.size) {
       try {
         const compressed = await compressFoodImage(image, {
-          maxDimension: 500,
-          maxSizeBytes: 150 * 1024,
+          maxDimension: 480,
+          maxSizeBytes: 100 * 1024,
+          initialQuality: 0.8,
           mimeType: 'image/jpeg',
           fileName: image.name || 'product.jpg',
         });
         finalImageUrl = compressed.dataUrl;
+        compressedDataUrl = compressed.dataUrl;
 
         try {
           if (isSupabaseConfigured()) {
@@ -942,7 +945,12 @@ export default function Phase2ERP({
                 itemId: current?.id || 'prd',
               });
               if (uploadRes?.publicUrl) {
-                finalImageUrl = uploadRes.publicUrl;
+                const loads = await testImageLoad(uploadRes.publicUrl, 2500);
+                if (loads) {
+                  finalImageUrl = uploadRes.publicUrl;
+                } else {
+                  console.info('Supabase ERP product image URL not publicly loadable; preserving robust compressed dataUrl.');
+                }
               }
             }
           }
@@ -952,6 +960,7 @@ export default function Phase2ERP({
       } catch (err) {
         console.warn('Image compression fallback:', err);
         finalImageUrl = await fileToDataUrl(image);
+        compressedDataUrl = finalImageUrl;
       }
     }
 
@@ -963,6 +972,7 @@ export default function Phase2ERP({
       category: sanitizeText(form.get('category'), 80) || 'General',
       sku: sanitizeText(form.get('sku'), 60) || `SKU-${Date.now().toString().slice(-5)}`,
       image: finalImageUrl,
+      imageDataUrl: compressedDataUrl || (finalImageUrl?.startsWith('data:image/') ? finalImageUrl : undefined),
       purchasePrice: normalizeAmount(form.get('purchasePrice')),
       sellingPrice: normalizeAmount(form.get('sellingPrice')),
       currentStock: normalizeAmount(form.get('currentStock')),
@@ -990,8 +1000,44 @@ export default function Phase2ERP({
       setProducts(nextProducts);
       writeArray(PRODUCT_KEY, nextProducts);
       onProductsChange?.(nextProducts);
+
+      // Sync with storefront overrides so online store cards immediately showcase the new image
       try {
-        window.dispatchEvent(new CustomEvent('trinetr-inventory-updated', { detail: { product } }));
+        const rawOverrides = localStorage.getItem('storefront_product_overrides');
+        const overrides = rawOverrides ? JSON.parse(rawOverrides) : {};
+        const normName = product.name ? product.name.toLowerCase().trim() : '';
+        overrides[product.id] = {
+          id: product.id,
+          name: product.name,
+          category: (product.category || 'General').toLowerCase().replace(/\s+/g, '-'),
+          categoryLabel: product.category || 'General',
+          description: product.details || product.description || '',
+          image: product.image,
+          imageDataUrl: product.imageDataUrl,
+          sellingPrice: product.sellingPrice,
+          isTopSeller: Boolean(product.isTopSeller),
+          isNotForJain: Boolean(product.isNotForJain),
+          variants: [
+            { weight: product.unit || '1 Pack', price: product.sellingPrice || 100, inStock: (product.currentStock || 0) > 0 }
+          ]
+        };
+        if (normName) {
+          overrides[normName] = { refId: product.id };
+        }
+        localStorage.setItem('storefront_product_overrides', JSON.stringify(overrides));
+      } catch (overrideErr) {
+        console.warn('Failed to sync ERP image to storefront overrides:', overrideErr);
+      }
+
+      try {
+        window.dispatchEvent(new CustomEvent('trinetr-inventory-updated', { 
+          detail: { 
+            id: product.id, 
+            productId: product.id,
+            product, 
+            updatedFields: product 
+          } 
+        }));
       } catch (e) {}
       await addNotification(current ? 'Product updated' : 'Product added', `${product.name} saved with stock ${product.currentStock}.`, 'Inventory');
       setEditingProduct(null);

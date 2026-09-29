@@ -423,7 +423,15 @@ export async function compressFoodImage(fileOrBlob, options = {}) {
     }
   }
 
-  const finalDataUrl = await blobToDataUrl(blob);
+  let finalDataUrl = '';
+  try {
+    if (typeof canvas.toDataURL === 'function') {
+      finalDataUrl = canvas.toDataURL(mimeType, quality);
+    }
+  } catch {}
+  if (!finalDataUrl) {
+    finalDataUrl = await blobToDataUrl(blob);
+  }
   const outFileName = fileName.replace(/\.[^.]+$/, '') + '.jpg';
   const finalFile = new File([blob], outFileName, { type: mimeType, lastModified: Date.now() });
 
@@ -439,3 +447,62 @@ export async function compressFoodImage(fileOrBlob, options = {}) {
     reductionPercent: originalSize > 0 ? Math.max(0, Math.round((1 - blob.size / originalSize) * 100)) : 0,
   };
 }
+
+/**
+ * Asynchronously verifies if an image URL is valid and successfully loadable by the browser.
+ * Data URLs (data:image/...) always resolve true immediately.
+ * @param {string} url 
+ * @param {number} timeoutMs 
+ * @returns {Promise<boolean>}
+ */
+export function testImageLoad(url, timeoutMs = 3500) {
+  return new Promise((resolve) => {
+    if (!url || typeof url !== 'string' || !url.trim()) {
+      return resolve(false);
+    }
+    const trimmed = url.trim();
+    if (trimmed.startsWith('data:image/')) {
+      return resolve(true);
+    }
+    if (typeof Image === 'undefined') {
+      return resolve(true);
+    }
+
+    let settled = false;
+    const img = new Image();
+
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        resolve(false);
+      }
+    }, timeoutMs);
+
+    img.onload = () => {
+      if (!settled) {
+        settled = true;
+        clearTimeout(timer);
+        resolve(true);
+      }
+    };
+
+    img.onerror = () => {
+      if (!settled) {
+        settled = true;
+        clearTimeout(timer);
+        resolve(false);
+      }
+    };
+
+    try {
+      img.src = trimmed;
+    } catch {
+      if (!settled) {
+        settled = true;
+        clearTimeout(timer);
+        resolve(false);
+      }
+    }
+  });
+}
+

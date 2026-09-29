@@ -72,7 +72,11 @@ export function ProductCard({ product }) {
           className="trinetr-product-img"
           onError={(e) => {
             e.target.onerror = null;
-            e.target.src = getCategoryFallbackImage(product.category);
+            if (product.imageDataUrl && product.imageDataUrl !== e.target.src) {
+              e.target.src = product.imageDataUrl;
+            } else if (!product.imageDataUrl && !product.image?.startsWith('data:image/')) {
+              e.target.src = getCategoryFallbackImage(product.category);
+            }
           }}
         />
 

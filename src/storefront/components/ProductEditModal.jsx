@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Upload, Link, Plus, Trash2, Check, Sparkles, RefreshCw, AlertCircle, Image as ImageIcon, Globe } from 'lucide-react';
 import { useStoreCart, isFishImage, sanitizeSnackImage, DEFAULT_SNACK_IMAGE, getCategoryFallbackImage } from '../context/StoreCartContext';
 import { CATEGORIES } from '../data/namkeenData';
-import { compressFoodImage, blobToDataUrl } from '../../imageCompression.js';
+import { compressFoodImage, blobToDataUrl, testImageLoad } from '../../imageCompression.js';
 import { uploadStorefrontImage, getSupabaseClient, getCurrentSupabaseUser, isSupabaseConfigured, clearStorefrontMenuCache, saveCloudRecord } from '../../supabaseClient.js';
 
 export function ProductEditModal() {
@@ -36,6 +36,7 @@ export function ProductEditModal() {
         categoryLabel: editingProduct.categoryLabel || editingProduct.category || '',
         description: editingProduct.description || '',
         image: initialImage,
+        imageDataUrl: editingProduct.imageDataUrl || (initialImage.startsWith('data:image/') ? initialImage : ''),
         isTopSeller: Boolean(editingProduct.isTopSeller),
         isNotForJain: Boolean(editingProduct.isNotForJain),
         isOutOfStock: Boolean(editingProduct.isOutOfStock),
@@ -82,8 +83,9 @@ export function ProductEditModal() {
         // Resizes to max resolution 500x500 px (aspect ratio maintained)
         // Limits max compressed size to 150 KB with JPEG format
         const compressionResult = await compressFoodImage(file, {
-          maxDimension: 500,
-          maxSizeBytes: 150 * 1024,
+          maxDimension: 480,
+          maxSizeBytes: 100 * 1024,
+          initialQuality: 0.8,
           mimeType: 'image/jpeg',
           fileName: file.name || `food-${formData?.id || 'item'}.jpg`,
         });
@@ -106,7 +108,7 @@ export function ProductEditModal() {
         setCompressionStats(stats);
       }
 
-      // 2. Pass compressed Blob directly to Supabase storage upload call if configured & authenticated
+      // 2. The client-compressed dataUrl is guaranteed to express reliably everywhere
       let finalImageUrl = uploadDataUrl;
       try {
         if (isSupabaseConfigured()) {
@@ -122,8 +124,14 @@ export function ProductEditModal() {
               file: uploadBlob,
               itemId: formData?.id || 'food-item',
             });
+            // Verify remote publicUrl is actually accessible and loadable by the browser
             if (uploadRes?.publicUrl) {
-              finalImageUrl = uploadRes.publicUrl;
+              const loads = await testImageLoad(uploadRes.publicUrl, 2500);
+              if (loads) {
+                finalImageUrl = uploadRes.publicUrl;
+              } else {
+                console.info('Supabase storage URL not publicly loadable; preserving robust compressed dataUrl.');
+              }
             }
           }
         }
@@ -133,7 +141,11 @@ export function ProductEditModal() {
       }
 
       if (finalImageUrl) {
-        setFormData(prev => ({ ...prev, image: finalImageUrl }));
+        setFormData(prev => ({ 
+          ...prev, 
+          image: finalImageUrl,
+          imageDataUrl: uploadDataUrl || prev.imageDataUrl 
+        }));
       }
       setErrorMessage('');
     } catch (err) {
@@ -200,7 +212,7 @@ export function ProductEditModal() {
     { label: 'Sev', url: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=500&auto=format&fit=crop&q=80' },
     { label: 'Gathiya', url: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=500&auto=format&fit=crop&q=80' },
     { label: 'Mix Pack', url: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=500&auto=format&fit=crop&q=80' },
-    { label: 'Chana / Kathor', url: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=500&auto=format&fit=crop&q=80' },
+    { label: 'Chana / Kathor', url: 'https://images.unsplash.com/photo-1515543237350-b3eea1ec8082?w=500&auto=format&fit=crop&q=80' },
     { label: 'Sing Dana', url: 'https://images.unsplash.com/photo-1567653418876-5bb0e566e1c2?w=500&auto=format&fit=crop&q=80' },
     { label: 'Wafer', url: 'https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=500&auto=format&fit=crop&q=80' }
   ];
@@ -224,6 +236,7 @@ export function ProductEditModal() {
       categoryLabel: formData.categoryLabel.trim() || formData.category,
       description: formData.description.trim(),
       image: cleanImage,
+      imageDataUrl: formData.imageDataUrl || (cleanImage.startsWith('data:image/') ? cleanImage : undefined),
       isTopSeller: formData.isTopSeller,
       isNotForJain: formData.isNotForJain,
       isOutOfStock: formData.isOutOfStock,
@@ -340,7 +353,11 @@ export function ProductEditModal() {
                     className="trinetr-edit-preview-img"
                     onError={(e) => {
                       e.target.onerror = null;
-                      e.target.src = getCategoryFallbackImage(formData?.category);
+                      if (formData.imageDataUrl && formData.imageDataUrl !== e.target.src) {
+                        e.target.src = formData.imageDataUrl;
+                      } else {
+                        e.target.src = getCategoryFallbackImage(formData?.category);
+                      }
                     }}
                   />
                 ) : (
@@ -389,10 +406,24 @@ export function ProductEditModal() {
                 <input 
                   type="text" 
                   className="trinetr-edit-input" 
-                  value={isFishImage(formData.image) ? '' : formData.image} 
+                  value={
+                    formData.image?.startsWith('data:image/') 
+                      ? '' 
+                      : (isFishImage(formData.image) ? '' : (formData.image || ''))
+                  } 
                   onChange={(e) => setFormData(prev => ({ ...prev, image: e.target.value }))}
-                  placeholder="https://example.com/product-image.jpg"
+                  placeholder={
+                    formData.image?.startsWith('data:image/')
+                      ? '✓ Custom device image selected (type web URL to change)'
+                      : 'https://example.com/product-image.jpg'
+                  }
                 />
+                {formData.image?.startsWith('data:image/') && (
+                  <span style={{ fontSize: '12px', color: '#16a34a', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', fontWeight: 500 }}>
+                    <Check size={12} />
+                    <span>Device image active — will express immediately on storefront</span>
+                  </span>
+                )}
               </div>
 
               {/* Sample presets */}
