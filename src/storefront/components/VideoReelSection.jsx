@@ -49,7 +49,7 @@ export function VideoReelSection({ onExploreMenu, onWatchVideos, storeName }) {
               loop
               playsInline
               muted={isMuted}
-              poster="https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=600&auto=format&fit=crop&q=80"
+              poster="https://images.unsplash.com/photo-1601050690597-df0568f70950?w=600&auto=format&fit=crop&q=80"
               src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
               onClick={togglePlay}
             />

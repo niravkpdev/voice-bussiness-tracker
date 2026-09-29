@@ -19,31 +19,59 @@ const PRODUCT_OVERRIDES_KEY = 'storefront_product_overrides';
 const CURRENCY_STORAGE_KEY = 'trinetr_store_currency';
 const DELIVERY_CONFIG_KEY = 'trinetr_delivery_partner_config';
 
-export const FISH_IMAGE_FRAGMENT = 'photo-1626082927389-6cd097cdc6ec';
-export const DEFAULT_SNACK_IMAGE = 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=500&auto=format&fit=crop&q=80';
+export const FISH_IMAGE_IDS = [
+  '1599488615731', // Neon fish aquarium with bubbles
+  '7e5c2823ff28',
+  '1626082927389', // Fried chicken drumsticks
+  '6cd097cdc6ec'
+];
+export const FISH_IMAGE_FRAGMENT = 'photo-1599488615731-7e5c2823ff28';
+export const DEFAULT_SNACK_IMAGE = 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=500&auto=format&fit=crop&q=80';
+export const DEFAULT_BANNER_SNACK_IMAGE = 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=700&auto=format&fit=crop&q=80';
 
 export function isFishImage(url) {
   if (!url || typeof url !== 'string') return false;
-  return url.includes('1626082927389') || url.includes('6cd097cdc6ec');
+  return FISH_IMAGE_IDS.some(id => url.includes(id));
 }
 
-export function sanitizeSnackImage(url, fallback = DEFAULT_SNACK_IMAGE) {
-  if (!url || typeof url !== 'string' || isFishImage(url)) {
-    return fallback;
+export function getCategoryFallbackImage(category = '') {
+  const norm = String(category || '').toLowerCase().trim();
+  if (norm.includes('chana') || norm.includes('kathor') || norm.includes('chewda') || norm.includes('moong')) {
+    return 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=500&auto=format&fit=crop&q=80';
+  }
+  if (norm.includes('dana') || norm.includes('sing') || norm.includes('peanut')) {
+    return 'https://images.unsplash.com/photo-1567653418876-5bb0e566e1c2?w=500&auto=format&fit=crop&q=80';
+  }
+  if (norm.includes('wafer') || norm.includes('potato') || norm.includes('chips') || norm.includes('frymes')) {
+    return 'https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=500&auto=format&fit=crop&q=80';
+  }
+  if (norm.includes('stick') || norm.includes('fulvadi') || norm.includes('soya')) {
+    return 'https://images.unsplash.com/photo-1599490659213-e2b9527bd087?w=500&auto=format&fit=crop&q=80';
+  }
+  if (norm.includes('sev')) {
+    return 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=500&auto=format&fit=crop&q=80';
+  }
+  return DEFAULT_SNACK_IMAGE;
+}
+
+export function sanitizeSnackImage(url, fallback = DEFAULT_SNACK_IMAGE, category = '') {
+  if (!url || typeof url !== 'string' || !url.trim() || isFishImage(url)) {
+    return category ? getCategoryFallbackImage(category) : fallback;
   }
   return url;
 }
 
 export function purgeFishImagesFromStorage() {
+  // 1. Purge product overrides
   try {
     const rawOverrides = localStorage.getItem(PRODUCT_OVERRIDES_KEY);
-    if (rawOverrides && (rawOverrides.includes('1626082927389') || rawOverrides.includes('6cd097cdc6ec'))) {
+    if (rawOverrides && FISH_IMAGE_IDS.some(id => rawOverrides.includes(id))) {
       const overrides = JSON.parse(rawOverrides) || {};
       let modified = false;
       Object.keys(overrides).forEach(key => {
         const item = overrides[key];
         if (item && isFishImage(item.image)) {
-          item.image = DEFAULT_SNACK_IMAGE;
+          item.image = getCategoryFallbackImage(item.category);
           modified = true;
         }
       });
@@ -53,16 +81,17 @@ export function purgeFishImagesFromStorage() {
     }
   } catch {}
 
+  // 2. Purge erpProducts (plain)
   try {
     const rawErp = localStorage.getItem('erpProducts');
-    if (rawErp && (rawErp.includes('1626082927389') || rawErp.includes('6cd097cdc6ec'))) {
+    if (rawErp && FISH_IMAGE_IDS.some(id => rawErp.includes(id))) {
       const erp = JSON.parse(rawErp) || [];
       if (Array.isArray(erp)) {
         let modified = false;
         const cleaned = erp.map(item => {
           if (item && isFishImage(item.image)) {
             modified = true;
-            return { ...item, image: DEFAULT_SNACK_IMAGE };
+            return { ...item, image: getCategoryFallbackImage(item.category) };
           }
           return item;
         });
@@ -73,14 +102,15 @@ export function purgeFishImagesFromStorage() {
     }
   } catch {}
 
+  // 3. Purge scoped erpProducts
   try {
     const scopedRaw = readScopedString('erpProducts');
-    if (scopedRaw && (scopedRaw.includes('1626082927389') || scopedRaw.includes('6cd097cdc6ec'))) {
+    if (scopedRaw && FISH_IMAGE_IDS.some(id => scopedRaw.includes(id))) {
       const parsed = JSON.parse(scopedRaw);
       if (Array.isArray(parsed)) {
         const cleaned = parsed.map(item => {
           if (item && isFishImage(item.image)) {
-            return { ...item, image: DEFAULT_SNACK_IMAGE };
+            return { ...item, image: getCategoryFallbackImage(item.category) };
           }
           return item;
         });
@@ -89,23 +119,45 @@ export function purgeFishImagesFromStorage() {
     }
   } catch {}
 
+  // 4. Purge businessProfile bannerImage
+  try {
+    const rawProfile = localStorage.getItem('businessProfile');
+    if (rawProfile && FISH_IMAGE_IDS.some(id => rawProfile.includes(id))) {
+      const profile = JSON.parse(rawProfile);
+      if (profile && isFishImage(profile.bannerImage)) {
+        profile.bannerImage = DEFAULT_BANNER_SNACK_IMAGE;
+        localStorage.setItem('businessProfile', JSON.stringify(profile));
+      }
+    }
+  } catch {}
+
+  // 5. Purge all scoped inventory & business inventory across localStorage
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (k && (k.endsWith(':erpProducts') || k.endsWith(':businessInventory'))) {
-        const val = localStorage.getItem(k);
-        if (val && (val.includes('1626082927389') || val.includes('6cd097cdc6ec'))) {
+      if (!k) continue;
+      const val = localStorage.getItem(k);
+      if (val && FISH_IMAGE_IDS.some(id => val.includes(id))) {
+        try {
           const parsed = JSON.parse(val);
           if (Array.isArray(parsed)) {
             const cleaned = parsed.map(item => {
               if (item && isFishImage(item.image)) {
-                return { ...item, image: DEFAULT_SNACK_IMAGE };
+                return { ...item, image: getCategoryFallbackImage(item.category) };
               }
               return item;
             });
             localStorage.setItem(k, JSON.stringify(cleaned));
+          } else if (parsed && typeof parsed === 'object') {
+            if (isFishImage(parsed.bannerImage)) {
+              parsed.bannerImage = DEFAULT_BANNER_SNACK_IMAGE;
+            }
+            if (isFishImage(parsed.image)) {
+              parsed.image = DEFAULT_SNACK_IMAGE;
+            }
+            localStorage.setItem(k, JSON.stringify(parsed));
           }
-        }
+        } catch {}
       }
     }
   } catch {}
@@ -137,7 +189,7 @@ function applyProductOverrides(items) {
   if (overrideKeys.length === 0) {
     return items.map(item => ({
       ...item,
-      image: sanitizeSnackImage(item?.image)
+      image: sanitizeSnackImage(item?.image, undefined, item?.category)
     }));
   }
 
@@ -152,6 +204,9 @@ function applyProductOverrides(items) {
     const normName = item.name ? item.name.toLowerCase().trim() : '';
     if (!matchedOverride && normName) {
       matchedOverride = overrides[normName];
+      if (matchedOverride?.id && overrides[matchedOverride.id]) {
+        matchedOverride = overrides[matchedOverride.id];
+      }
     }
 
     // 3. Search through values if key was different ID/alias
@@ -174,7 +229,7 @@ function applyProductOverrides(items) {
     }
     return {
       ...resolved,
-      image: sanitizeSnackImage(resolved.image)
+      image: sanitizeSnackImage(resolved.image, undefined, resolved.category)
     };
   });
 }
@@ -300,7 +355,8 @@ function resolveStoreInfo(customProfile) {
   const hours = profileData?.hours || STORE_INFO.hours;
   const bannerOffer = profileData?.bannerOffer || 'FLAT 20% OFF';
   const bannerRegion = profileData?.bannerRegion || "For All Gujarat and Mumbai City's Customers";
-  const bannerImage = profileData?.bannerImage || 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=700&auto=format&fit=crop&q=80';
+  const rawBanner = profileData?.bannerImage;
+  const bannerImage = (rawBanner && !isFishImage(rawBanner)) ? rawBanner : DEFAULT_BANNER_SNACK_IMAGE;
 
   // Dynamic social handles matching business name if not customized
   let facebook = profileData?.facebook;
@@ -414,7 +470,7 @@ function resolveInventoryItems(customInventoryProp) {
       category: (item.category || 'mix-namkeen').toLowerCase().replace(/\s+/g, '-'),
       categoryLabel: item.category || 'General',
       description: item.details || item.description || `Fresh & authentic ${item.name || 'product'}. Made with pure ingredients and hygienic packaging.`,
-      image: sanitizeSnackImage(item.image),
+      image: sanitizeSnackImage(item.image, undefined, item.category),
       isTopSeller: Boolean(item.isTopSeller),
       isNotForJain: Boolean(item.isNotForJain),
       isOutOfStock,
@@ -810,7 +866,7 @@ export function StoreCartProvider({ children, storeProfile, customInventory, isO
     }
 
     const normUpdatedName = updatedFields.name ? updatedFields.name.toLowerCase().trim() : '';
-    const safeImage = sanitizeSnackImage(updatedFields.image, DEFAULT_SNACK_IMAGE);
+    const safeImage = sanitizeSnackImage(updatedFields.image, getCategoryFallbackImage(updatedFields.category), updatedFields.category);
     const sanitizedFields = {
       ...updatedFields,
       image: safeImage

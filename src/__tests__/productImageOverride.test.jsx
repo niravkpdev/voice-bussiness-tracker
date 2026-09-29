@@ -7,7 +7,8 @@ import { ProductCard } from '../storefront/components/ProductCard.jsx';
 import { ProductEditModal } from '../storefront/components/ProductEditModal.jsx';
 import { saveCloudRecord, getSupabaseClient, setSupabaseClientForTesting } from '../supabaseClient.js';
 
-const FISH_IMAGE_FRAGMENT = 'photo-1626082927389-6cd097cdc6ec';
+const FISH_IMAGE_FRAGMENT = 'photo-1599488615731-7e5c2823ff28'; // Actual neon fish aquarium with bubbles
+const CHICKEN_IMAGE_FRAGMENT = 'photo-1626082927389-6cd097cdc6ec'; // Fried chicken drumsticks
 const DHANIYA_IMAGE_URL = 'https://images.unsplash.com/photo-fresh-dhaniya-coriander.jpg';
 const CHANA_CUSTOM_IMAGE_URL = 'https://images.unsplash.com/photo-fresh-chana-masala.jpg';
 
@@ -36,17 +37,18 @@ describe('Product Image Override & Expression in Storefront', () => {
   });
 
   describe('1. Default Catalog & Category Integrity', () => {
-    it('does not contain any fish aquarium images in PRODUCTS catalog', () => {
-      const fishItems = PRODUCTS.filter((p) => p.image && p.image.includes(FISH_IMAGE_FRAGMENT));
+    it('does not contain any fish aquarium or non-veg images in PRODUCTS catalog', () => {
+      const fishItems = PRODUCTS.filter((p) => p.image && (p.image.includes(FISH_IMAGE_FRAGMENT) || p.image.includes(CHICKEN_IMAGE_FRAGMENT) || isFishImage(p.image)));
       expect(fishItems).toHaveLength(0);
     });
 
-    it('does not contain any fish aquarium images in CATEGORIES list', () => {
-      const fishCats = CATEGORIES.filter((c) => c.image && c.image.includes(FISH_IMAGE_FRAGMENT));
+    it('does not contain any fish aquarium or non-veg images in CATEGORIES list', () => {
+      const fishCats = CATEGORIES.filter((c) => c.image && (c.image.includes(FISH_IMAGE_FRAGMENT) || c.image.includes(CHICKEN_IMAGE_FRAGMENT) || isFishImage(c.image)));
       expect(fishCats).toHaveLength(0);
       const mixNamkeen = CATEGORIES.find(c => c.id === 'mix-namkeen');
       expect(mixNamkeen).toBeDefined();
       expect(mixNamkeen.image).not.toContain(FISH_IMAGE_FRAGMENT);
+      expect(mixNamkeen.image).not.toContain(CHICKEN_IMAGE_FRAGMENT);
     });
 
     it('Special Royal Combo, Special Lausan Mix, and Surati Gotado Mix have valid food images', () => {
@@ -56,17 +58,26 @@ describe('Product Image Override & Expression in Storefront', () => {
 
       expect(combo).toBeDefined();
       expect(combo.image).not.toContain(FISH_IMAGE_FRAGMENT);
+      expect(combo.image).not.toContain(CHICKEN_IMAGE_FRAGMENT);
       expect(combo.image).toMatch(/^https:\/\/images\.unsplash\.com\//);
 
       expect(lausan).toBeDefined();
       expect(lausan.image).not.toContain(FISH_IMAGE_FRAGMENT);
+      expect(lausan.image).not.toContain(CHICKEN_IMAGE_FRAGMENT);
 
       expect(gotado).toBeDefined();
       expect(gotado.image).not.toContain(FISH_IMAGE_FRAGMENT);
+      expect(gotado.image).not.toContain(CHICKEN_IMAGE_FRAGMENT);
     });
 
-    it('purgeFishImagesFromStorage automatically cleanses corrupted fish image overrides', () => {
-      // Simulate user having stale overrides with fish image in localStorage
+    it('DEFAULT_SNACK_IMAGE is not fish or non-veg', () => {
+      expect(DEFAULT_SNACK_IMAGE).not.toContain(FISH_IMAGE_FRAGMENT);
+      expect(DEFAULT_SNACK_IMAGE).not.toContain(CHICKEN_IMAGE_FRAGMENT);
+      expect(isFishImage(DEFAULT_SNACK_IMAGE)).toBe(false);
+    });
+
+    it('purgeFishImagesFromStorage automatically cleanses corrupted fish and chicken image overrides', () => {
+      // Simulate user having stale overrides with fish and chicken image in localStorage
       const corruptOverrides = {
         'prod-special-combo': {
           id: 'prod-special-combo',
@@ -76,22 +87,28 @@ describe('Product Image Override & Expression in Storefront', () => {
         'chana': {
           id: 'prod-moong-jor',
           name: 'chana',
-          image: `https://images.unsplash.com/${FISH_IMAGE_FRAGMENT}?w=500`,
+          image: `https://images.unsplash.com/${CHICKEN_IMAGE_FRAGMENT}?w=500`,
         },
       };
       localStorage.setItem('storefront_product_overrides', JSON.stringify(corruptOverrides));
       localStorage.setItem('erpProducts', JSON.stringify([
-        { id: 'prod-moong-jor', name: 'chana', image: `https://images.unsplash.com/${FISH_IMAGE_FRAGMENT}` }
+        { id: 'prod-moong-jor', name: 'chana', image: `https://images.unsplash.com/${FISH_IMAGE_FRAGMENT}` },
+        { id: 'prod-special-combo', name: 'Special Royal Combo', image: `https://images.unsplash.com/${CHICKEN_IMAGE_FRAGMENT}` }
       ]));
 
       purgeFishImagesFromStorage();
 
       const cleanedOverrides = JSON.parse(localStorage.getItem('storefront_product_overrides'));
       expect(cleanedOverrides['prod-special-combo'].image).not.toContain(FISH_IMAGE_FRAGMENT);
+      expect(cleanedOverrides['prod-special-combo'].image).not.toContain(CHICKEN_IMAGE_FRAGMENT);
       expect(cleanedOverrides['chana'].image).not.toContain(FISH_IMAGE_FRAGMENT);
+      expect(cleanedOverrides['chana'].image).not.toContain(CHICKEN_IMAGE_FRAGMENT);
 
       const cleanedErp = JSON.parse(localStorage.getItem('erpProducts'));
       expect(cleanedErp[0].image).not.toContain(FISH_IMAGE_FRAGMENT);
+      expect(cleanedErp[0].image).not.toContain(CHICKEN_IMAGE_FRAGMENT);
+      expect(cleanedErp[1].image).not.toContain(FISH_IMAGE_FRAGMENT);
+      expect(cleanedErp[1].image).not.toContain(CHICKEN_IMAGE_FRAGMENT);
     });
   });
 

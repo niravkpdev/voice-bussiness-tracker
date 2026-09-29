@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Upload, Link, Plus, Trash2, Check, Sparkles, RefreshCw, AlertCircle, Image as ImageIcon, Globe } from 'lucide-react';
-import { useStoreCart, isFishImage, sanitizeSnackImage, DEFAULT_SNACK_IMAGE } from '../context/StoreCartContext';
+import { useStoreCart, isFishImage, sanitizeSnackImage, DEFAULT_SNACK_IMAGE, getCategoryFallbackImage } from '../context/StoreCartContext';
 import { CATEGORIES } from '../data/namkeenData';
 import { compressFoodImage, blobToDataUrl } from '../../imageCompression.js';
 import { uploadStorefrontImage, getSupabaseClient, getCurrentSupabaseUser, isSupabaseConfigured, clearStorefrontMenuCache, saveCloudRecord } from '../../supabaseClient.js';
@@ -199,7 +199,9 @@ export function ProductEditModal() {
   const sampleImages = [
     { label: 'Sev', url: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=500&auto=format&fit=crop&q=80' },
     { label: 'Gathiya', url: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=500&auto=format&fit=crop&q=80' },
-    { label: 'Mix Pack', url: 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=500&auto=format&fit=crop&q=80' },
+    { label: 'Mix Pack', url: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=500&auto=format&fit=crop&q=80' },
+    { label: 'Chana / Kathor', url: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=500&auto=format&fit=crop&q=80' },
+    { label: 'Sing Dana', url: 'https://images.unsplash.com/photo-1567653418876-5bb0e566e1c2?w=500&auto=format&fit=crop&q=80' },
     { label: 'Wafer', url: 'https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=500&auto=format&fit=crop&q=80' }
   ];
 
@@ -215,7 +217,7 @@ export function ProductEditModal() {
       return;
     }
 
-    const cleanImage = sanitizeSnackImage(formData.image?.trim(), DEFAULT_SNACK_IMAGE);
+    const cleanImage = sanitizeSnackImage(formData.image?.trim(), getCategoryFallbackImage(formData.category), formData.category);
     const updatedProduct = {
       name: formData.name.trim(),
       category: formData.category,
@@ -338,7 +340,7 @@ export function ProductEditModal() {
                     className="trinetr-edit-preview-img"
                     onError={(e) => {
                       e.target.onerror = null;
-                      e.target.src = DEFAULT_SNACK_IMAGE;
+                      e.target.src = getCategoryFallbackImage(formData?.category);
                     }}
                   />
                 ) : (

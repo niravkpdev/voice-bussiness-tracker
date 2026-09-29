@@ -270,14 +270,14 @@ function StorefrontContent(props) {
                 <div className="trinetr-hero-visual-col">
                   <div className="trinetr-hero-snack-card">
                     <img 
-                      src={activeStore.bannerImage || 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=700&auto=format&fit=crop&q=80'} 
+                      src={activeStore.bannerImage || 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=700&auto=format&fit=crop&q=80'} 
                       alt={`${activeStore.name} Fresh Kathiyawadi Namkeen & Snacks`} 
                       fetchPriority="high"
                       decoding="async"
                       className="trinetr-hero-snack-img"
                       onError={(e) => {
                         e.target.onerror = null;
-                        e.target.src = 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=700&auto=format&fit=crop&q=80';
+                        e.target.src = 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=700&auto=format&fit=crop&q=80';
                       }}
                     />
                     {isOwner && (
@@ -523,7 +523,7 @@ function StorefrontContent(props) {
             <div className="trinetr-story-container">
               <div className="trinetr-story-image-collage">
                 <div className="collage-col">
-                  <img src="https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=400&auto=format&fit=crop&q=80" alt="Namkeen Store" className="collage-img main" />
+                  <img src="https://images.unsplash.com/photo-1601050690597-df0568f70950?w=400&auto=format&fit=crop&q=80" alt="Namkeen Store" className="collage-img main" />
                 </div>
                 <div className="collage-col">
                   <img src="https://images.unsplash.com/photo-1601050690597-df0568f70950?w=400&auto=format&fit=crop&q=80" alt="Fresh Gathiya" className="collage-img" />

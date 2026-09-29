@@ -4,12 +4,12 @@ import { useStoreCart } from '../context/StoreCartContext';
 import { compressFoodImage, blobToDataUrl } from '../../imageCompression.js';
 import { uploadStorefrontImage, getSupabaseClient, getCurrentSupabaseUser, isSupabaseConfigured } from '../../supabaseClient.js';
 
-const DEFAULT_BANNER_IMAGE = 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=700&auto=format&fit=crop&q=80';
+const DEFAULT_BANNER_IMAGE = 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=700&auto=format&fit=crop&q=80';
 
 const PRESET_BANNER_IMAGES = [
   {
     name: 'Gujarati Farsan Platter',
-    url: 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=700&auto=format&fit=crop&q=80'
+    url: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=700&auto=format&fit=crop&q=80'
   },
   {
     name: 'Kathiyawadi Gathiya',
