@@ -1,34 +1,34 @@
 :root {
-  /* Colors - Trinetr Cosmic Suite: Dark Cosmic Base with Mint Green & Purple Accents */
-  --bg-primary: #050811;
-  --bg-secondary: #0a1626;
-  --bg-tertiary: #0f2238;
+  /* Colors - Enterprise Clean Suite (Crisp Light Mode Standard) */
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f1f5f9;
   
-  --text-primary: #ffffff;
-  --text-secondary: #e2e8f0;
-  --text-muted: #94a3b8;
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
   
-  --border-subtle: rgba(0, 223, 196, 0.18);
-  --border-strong: rgba(0, 223, 196, 0.4);
+  --border-subtle: #e2e8f0;
+  --border-strong: #cbd5e1;
   
-  /* Primary Mint Green / Neon Cyan */
-  --brand-primary: #00dfc4;
-  --brand-primary-hover: #38bdf8;
-  --brand-secondary: rgba(124, 58, 237, 0.22);
-  --brand-secondary-hover: rgba(124, 58, 237, 0.35);
+  /* Primary Brand Blue */
+  --brand-primary: #0284c7;
+  --brand-primary-hover: #0369a1;
+  --brand-secondary: rgba(2, 132, 199, 0.12);
+  --brand-secondary-hover: rgba(2, 132, 199, 0.22);
 
-  /* Purple Accents */
+  /* Accents */
   --accent-purple: #7c3aed;
-  --accent-purple-light: #a855f7;
-  --accent-purple-glow: rgba(124, 58, 237, 0.45);
-  --accent-mint-glow: rgba(0, 223, 196, 0.45);
+  --accent-purple-light: #8b5cf6;
+  --accent-purple-glow: rgba(124, 58, 237, 0.15);
+  --accent-mint-glow: rgba(2, 132, 199, 0.15);
   
-  --success: #00dfc4;
-  --success-bg: rgba(0, 223, 196, 0.15);
+  --success: #10b981;
+  --success-bg: rgba(16, 185, 129, 0.1);
   --danger: #ef4444;
-  --danger-bg: rgba(239, 68, 68, 0.15);
+  --danger-bg: rgba(239, 68, 68, 0.1);
   --warning: #f59e0b;
-  --warning-bg: rgba(245, 158, 11, 0.15);
+  --warning-bg: rgba(245, 158, 11, 0.1);
   
   /* Radii */
   --radius-sm: 6px;
@@ -5707,33 +5707,21 @@ body:not(.storefront-mode) #root {
   min-height: 100dvh;
 }
 
-/* Unified Cosmic Background for Dark Mode with Subtle Ambient Aurora Glow */
+/* Universal Clean Background across all modes */
+body:not(.storefront-mode),
 body.dark:not(.storefront-mode),
 body.dark-neon-suite:not(.storefront-mode),
-body.theme-dark:not(.storefront-mode) {
-  background: 
-    radial-gradient(circle at 50% 10%, rgba(10, 25, 47, 0.8) 0%, transparent 50%),
-    radial-gradient(circle at 90% 20%, rgba(124, 58, 237, 0.12) 0%, transparent 40%),
-    radial-gradient(circle at 10% 80%, rgba(0, 223, 196, 0.08) 0%, transparent 45%),
-    #050811 !important;
-  color: var(--app-text) !important;
-}
-
+body.theme-dark:not(.storefront-mode),
 body.theme-light:not(.storefront-mode) {
   background: #f8fafc !important;
   color: #0f172a !important;
 }
 
-/* Sidebar: Dark Mode Cosmic Navy vs Light Mode Crisp White */
+/* Sidebar: Crisp White */
+.sidebar,
 body.dark:not(.storefront-mode) .sidebar,
 body.dark-neon-suite:not(.storefront-mode) .sidebar,
-body.theme-dark:not(.storefront-mode) .sidebar {
-  background: linear-gradient(180deg, #07111f 0%, #050811 100%) !important;
-  color: var(--app-text) !important;
-  border-right: 1px solid var(--app-border) !important;
-  box-shadow: 10px 0 40px rgba(0, 0, 0, 0.5) !important;
-}
-
+body.theme-dark:not(.storefront-mode) .sidebar,
 body.theme-light:not(.storefront-mode) .sidebar {
   background: #ffffff !important;
   color: #0f172a !important;
@@ -7962,26 +7950,8 @@ table {
   }
 }
 
-/* --- GLOBAL THEME OVERRIDES: TRINETR COSMIC SUITE --- */
-:root {
-  --app-bg: #050811;
-  --app-sidebar-bg: #07111f;
-  --app-topbar-bg: #050811;
-  --app-surface: #0a1626;
-  --app-surface-2: #0f2238;
-  --app-card-bg: rgba(10, 22, 38, 0.82);
-  --app-card-soft: rgba(15, 27, 45, 0.7);
-  --app-heading: #FFFFFF;
-  --app-text: #E2E8F0;
-  --app-muted: #94A3B8;
-  --app-subtle: #64748B;
-  --app-border: rgba(0, 223, 196, 0.2);
-  --app-input-bg: rgba(8, 20, 34, 0.85);
-  --app-primary: #00DFC4;
-  --app-primary-hover: #38BDF8;
-}
-
-/* --- GLOBAL THEME OVERRIDES: LIGHT MODE / CLASSIC WHITE --- */
+/* --- GLOBAL THEME: UNIVERSAL CLEAN LIGHT SUITE --- */
+:root,
 html.theme-light,
 body.theme-light {
   --bg-primary: #f8fafc;

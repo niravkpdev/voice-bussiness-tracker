@@ -169,7 +169,7 @@ const DEFAULT_PROFILE = {
 };
 
 const DEFAULT_PREFERENCES = {
-  themeMode: "dark",
+  themeMode: "light",
   compactMode: false,
   largeText: false,
   defaultLandingPage: "dashboard",
@@ -635,7 +635,11 @@ const inrCurrencyFormatter = new Intl.NumberFormat('en-IN', {
 let activeUserPreferences = DEFAULT_PREFERENCES;
 try {
   const savedPrefs = typeof window !== 'undefined' ? localStorage.getItem('trinetr_user_preferences') : null;
-  if (savedPrefs) activeUserPreferences = { ...DEFAULT_PREFERENCES, ...JSON.parse(savedPrefs) };
+  if (savedPrefs) {
+    const parsed = JSON.parse(savedPrefs);
+    if (parsed.themeMode === 'dark') parsed.themeMode = 'light';
+    activeUserPreferences = { ...DEFAULT_PREFERENCES, ...parsed };
+  }
 } catch {}
 
 if (typeof window !== 'undefined') {
@@ -1772,11 +1776,10 @@ const searchRoutes = [
   { id: 'voice-bookkeeper', label: 'Voice Bookkeeper', route: 'voice-bookkeeper', aliases: ['voice', 'mic'] },
 ];
 
-function GlobalSearch({ onNavigate, theme }) {
+function GlobalSearch({ onNavigate }) {
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const inputRef = useRef(null);
-  const isDark = theme === 'dark';
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -1815,8 +1818,8 @@ function GlobalSearch({ onNavigate, theme }) {
   };
 
   return (
-    <div className={`search-wrapper ${isDark ? 'theme-dark' : ''}`} style={{ position: 'relative', width: '100%', maxWidth: isDark ? '280px' : '480px' }}>
-      <Search size={15} className="search-icon" style={{ pointerEvents: 'none', color: isDark ? '#94a3b8' : undefined, left: '10px' }} />
+    <div className="search-wrapper" style={{ position: 'relative', width: '100%', maxWidth: '480px' }}>
+      <Search size={15} className="search-icon" style={{ pointerEvents: 'none', left: '10px' }} />
       <input 
         ref={inputRef}
         type="text" 
@@ -1830,17 +1833,13 @@ function GlobalSearch({ onNavigate, theme }) {
         style={{
           paddingRight: query ? '32px' : '14px',
           paddingLeft: '32px',
-          height: isDark ? '32px' : '40px',
-          fontSize: isDark ? '12.5px' : '14px',
-          background: isDark ? 'rgba(255, 255, 255, 0.12)' : undefined,
-          color: isDark ? '#ffffff' : undefined,
-          borderColor: isDark ? 'rgba(255, 255, 255, 0.25)' : undefined,
+          height: '40px',
+          fontSize: '14px',
           borderRadius: '6px'
         }}
       />
       <div
         className="search-shortcut hide-on-mobile"
-        style={isDark ? { background: 'rgba(255, 255, 255, 0.18)', color: '#e2e8f0', borderColor: 'rgba(255, 255, 255, 0.25)', fontSize: '10.5px', padding: '1px 5px', right: '8px' } : undefined}
       >
         Ctrl + K
       </div>
@@ -1848,7 +1847,7 @@ function GlobalSearch({ onNavigate, theme }) {
         <button 
           type="button"
           onClick={() => { setQuery(''); inputRef.current?.focus(); }}
-          style={{ position: 'absolute', right: '48px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: isDark ? '#cbd5e1' : '#999', padding: '0 4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ position: 'absolute', right: '48px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#999', padding: '0 4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
           <X size={14} />
         </button>
@@ -2458,7 +2457,11 @@ export default function VoiceExpenseTrackerPreview() {
   const [userPreferences, setUserPreferences] = useState(() => {
     try {
       const saved = localStorage.getItem('trinetr_user_preferences');
-      const prefs = saved ? { ...DEFAULT_PREFERENCES, ...JSON.parse(saved) } : DEFAULT_PREFERENCES;
+      let prefs = saved ? { ...DEFAULT_PREFERENCES, ...JSON.parse(saved) } : DEFAULT_PREFERENCES;
+      if (prefs.themeMode === 'dark') {
+        prefs = { ...prefs, themeMode: 'light' };
+        try { localStorage.setItem('trinetr_user_preferences', JSON.stringify(prefs)); } catch {}
+      }
       return prefs;
     } catch {
       return DEFAULT_PREFERENCES;
@@ -2549,21 +2552,10 @@ export default function VoiceExpenseTrackerPreview() {
       root.classList.remove('storefront-mode');
       document.body.classList.remove('storefront-mode');
 
-      const mode = userPreferences.themeMode || 'dark';
-      const isSystemDark = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const effectiveDark = mode === 'dark' || (mode === 'system' && isSystemDark);
-
-      if (effectiveDark) {
-        root.classList.add('theme-dark', 'dark-neon-suite');
-        root.classList.remove('theme-light');
-        document.body.classList.add('dark', 'dark-neon-suite');
-        document.body.classList.remove('theme-light');
-      } else {
-        root.classList.add('theme-light');
-        root.classList.remove('theme-dark', 'dark-neon-suite');
-        document.body.classList.add('theme-light');
-        document.body.classList.remove('dark', 'dark-neon-suite');
-      }
+      root.classList.add('theme-light');
+      root.classList.remove('theme-dark', 'dark-neon-suite');
+      document.body.classList.add('theme-light');
+      document.body.classList.remove('dark', 'dark-neon-suite');
     }
     
     if (userPreferences.compactMode) root.classList.add('compact-mode');

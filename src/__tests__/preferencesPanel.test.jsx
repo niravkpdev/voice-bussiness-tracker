@@ -5,7 +5,7 @@ import PreferencesPanel from '../PreferencesPanel';
 
 describe('PreferencesPanel Component & Real-time Live Settings', () => {
   const DEFAULT_PREFERENCES = {
-    themeMode: 'dark',
+    themeMode: 'light',
     compactMode: false,
     largeText: false,
     defaultLandingPage: 'dashboard',
@@ -53,7 +53,7 @@ describe('PreferencesPanel Component & Real-time Live Settings', () => {
     expect(screen.getByText(/^Privacy & Safety$/i)).toBeDefined();
   });
 
-  it('renders theme selector buttons and switches theme mode with DOM update', () => {
+  it('renders theme selector without Cosmic Dark and enforces clean Light theme DOM update', () => {
     const setUserPreferences = vi.fn();
     render(
       <PreferencesPanel
@@ -64,20 +64,17 @@ describe('PreferencesPanel Component & Real-time Live Settings', () => {
       />
     );
 
-    // Verify Theme buttons exist
+    // Verify Classic White button exists and Cosmic Dark is removed
     const lightBtn = screen.getByRole('button', { name: /Classic White/i });
-    const darkBtn = screen.getByRole('button', { name: /Cosmic Dark/i });
+    const darkBtn = screen.queryByRole('button', { name: /Cosmic Dark/i });
     expect(lightBtn).toBeDefined();
-    expect(darkBtn).toBeDefined();
+    expect(darkBtn).toBeNull();
 
     // Click Classic White
     fireEvent.click(lightBtn);
     expect(setUserPreferences).toHaveBeenCalled();
     expect(document.documentElement.classList.contains('theme-light')).toBe(true);
-
-    // Click Cosmic Dark
-    fireEvent.click(darkBtn);
-    expect(document.documentElement.classList.contains('theme-dark')).toBe(true);
+    expect(document.documentElement.classList.contains('theme-dark')).toBe(false);
   });
 
   it('toggles Compact Density Mode and adds .compact-mode class to documentElement', () => {

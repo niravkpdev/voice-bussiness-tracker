@@ -9,7 +9,6 @@ import {
   Bell,
   Shield,
   Check,
-  Moon,
   Sun,
   Laptop,
   Eye,
@@ -171,28 +170,15 @@ export default function PreferencesPanel({
     prefsRef.current = next;
   }, [userPreferences]);
 
-  // Apply theme classes immediately to DOM
-  const applyThemeImmediately = (theme) => {
+  // Apply theme classes immediately to DOM (Clean Light Mode enforced)
+  const applyThemeImmediately = () => {
     if (typeof document === 'undefined') return;
     const root = document.documentElement;
     const body = document.body;
-    const isDark =
-      theme === 'dark' ||
-      (theme === 'system' &&
-        window.matchMedia &&
-        window.matchMedia('(prefers-color-scheme: dark)').matches);
-
-    if (isDark) {
-      root.classList.remove('theme-light');
-      root.classList.add('theme-dark', 'dark-neon-suite');
-      body.classList.remove('theme-light');
-      body.classList.add('dark', 'dark-neon-suite');
-    } else {
-      root.classList.remove('theme-dark', 'dark-neon-suite');
-      root.classList.add('theme-light');
-      body.classList.remove('dark', 'dark-neon-suite');
-      body.classList.add('theme-light');
-    }
+    root.classList.remove('theme-dark', 'dark-neon-suite');
+    root.classList.add('theme-light');
+    body.classList.remove('dark', 'dark-neon-suite');
+    body.classList.add('theme-light');
   };
 
   // Immediate live auto-save and state dispatch
@@ -242,7 +228,7 @@ export default function PreferencesPanel({
   const handleReset = () => {
     if (window.confirm('Are you sure you want to reset all preferences to default values?')) {
       const reset = { ...DEFAULT_PREFERENCES };
-      applyThemeImmediately(reset.themeMode || 'dark');
+      applyThemeImmediately(reset.themeMode || 'light');
       if (reset.compactMode) document.documentElement.classList.add('compact-mode');
       else document.documentElement.classList.remove('compact-mode');
       if (reset.largeText) document.documentElement.classList.add('large-text-mode');
@@ -413,13 +399,12 @@ export default function PreferencesPanel({
             <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', color: 'var(--text-primary)', marginBottom: '8px' }}>
               Theme Mode
             </label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
               {[
-                { id: 'dark', label: 'Cosmic Dark', icon: Moon, desc: 'Neon Dark' },
-                { id: 'light', label: 'Classic White', icon: Sun, desc: 'Light Mode' },
-                { id: 'system', label: 'System', icon: Laptop, desc: 'Auto OS' },
+                { id: 'light', label: 'Classic White', icon: Sun, desc: 'Clean Light Mode' },
+                { id: 'system', label: 'System Theme', icon: Laptop, desc: 'High-Contrast Light' },
               ].map((t) => {
-                const isSelected = (localPrefs.themeMode || 'dark') === t.id;
+                const isSelected = (localPrefs.themeMode || 'light') === t.id;
                 const IconComponent = t.icon;
                 return (
                   <button

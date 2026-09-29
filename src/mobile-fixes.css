@@ -1015,12 +1015,13 @@ img, picture, video, canvas {
   }
 }
 
-/* Dark mode adjustments for mobile bottom nav */
+/* Clean light mobile bottom nav */
+.mobile-bottom-nav,
 body.dark .mobile-bottom-nav,
 body.dark-neon-suite .mobile-bottom-nav,
 body.theme-dark .mobile-bottom-nav {
-  background: var(--bg-primary, #070d17) !important;
-  border-top-color: var(--border-subtle, rgba(0, 223, 196, 0.2)) !important;
+  background: #ffffff !important;
+  border-top-color: #e2e8f0 !important;
 }
 
 /* ==========================================================================
